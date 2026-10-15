@@ -377,7 +377,7 @@
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   .unload-flight{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:850;border:1px solid currentColor;white-space:nowrap}.unload-flight-blue{background:#e4efff;color:#174fa3}.unload-flight-purple{background:#f1e8ff;color:#6b299c}.unload-flight-teal{background:#dff5f5;color:#07636b}.unload-flight-green{background:#e4f5e9;color:#246b36}.unload-flight-orange{background:#fff0df;color:#90490b}.unload-flight-unknown{background:#eff1f4;color:#526071;font-size:11px;padding:4px 8px}
 </style>
-<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015"></head>
+<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-bag-flow"></head>
 <body>
   <header>
     <a class="brand" href="/flights.html">MUBC</a>
@@ -482,10 +482,11 @@
     </section>
   </main>
   <dialog id="baggage-editor" class="baggage-editor"><form id="baggage-edit-form"><div class="editor-heading"><h2>Edit baggage / 编辑行李</h2><button type="button" id="baggage-edit-close" aria-label="Close">×</button></div><div id="baggage-edit-fields"></div><p id="baggage-edit-error" class="status err" role="alert"></p><button type="submit">Save / 保存</button></form></dialog>
+  <dialog id="passenger-editor" class="baggage-editor"><form id="passenger-edit-form"><div class="editor-heading"><h2 id="passenger-edit-title"></h2><button type="button" id="passenger-edit-close" aria-label="Close">×</button></div><div id="passenger-edit-fields"></div><p id="passenger-edit-error" class="status err" role="alert"></p><button type="submit" id="passenger-edit-save"></button></form></dialog>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="/pir-delivery.js"></script><script src="/baggage-guide.js"></script>
+  <script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-bag-flow"></script>
   <script>
     const baggageEditor=document.querySelector('#baggage-editor'),baggageEditForm=document.querySelector('#baggage-edit-form');
     document.querySelector('#baggage-edit-close').addEventListener('click',()=>baggageEditor.close());
@@ -493,7 +494,7 @@
       const button=event.target.closest('[data-edit-baggage]');if(!button)return;
       const row=(window._cbsRows||[]).find(r=>String(r.rowNumber)===button.dataset.editBaggage);if(!row)return;
       baggageEditForm.dataset.row=button.dataset.editBaggage;
-      let bags=row.bagIdentifications;try{bags ||= JSON.parse(row.originalFormData||'{}').bagIdentifications;}catch{}
+      let bags=BaggageGuide.bagsFromRecord(row);
       if(!Array.isArray(bags)||!bags.length)bags=[{tag:row.bagTag||'',color:'',type:'',descriptors:''}];
       document.querySelector('#baggage-edit-fields').innerHTML=bags.map((bag,i)=>`<fieldset data-edit-bag><legend>${label('Bag','行李')} ${i+1}</legend><label>${label('Tag number','行李牌号码')}<input name="tag" value="${BaggageGuide.escape(bag.tag)}" maxlength="20"></label>${[['color',BaggageGuide.colors,label('Color','颜色')],['type',BaggageGuide.types,label('Type','类型')]].map(([key,items,title])=>`<label>${title}<select name="${key}" required><option value="">${label('Select','请选择')}</option>${items.map(item=>`<option value="${item[0]}" ${item[0]===bag[key]?'selected':''}>${item[0]} · ${BaggageGuide.label(item,document.documentElement.lang)}</option>`).join('')}</select></label>`).join('')}<div class="editor-descriptors">${BaggageGuide.descriptors.map(item=>`<label><input name="descriptors" type="checkbox" value="${item[0]}" ${String(bag.descriptors||'').split(',').includes(item[0])?'checked':''}>${item[0]} · ${BaggageGuide.label(item,document.documentElement.lang)}</label>`).join('')}</div><label>${label('Description','描述')}<textarea name="description" maxlength="500">${BaggageGuide.escape(bag.description)}</textarea></label><label>${label('Other features','其他特征')}<textarea name="otherFeatures" maxlength="500">${BaggageGuide.escape(bag.otherFeatures)}</textarea></label></fieldset>`).join('');
       document.querySelector('#baggage-edit-error').textContent='';baggageEditor.showModal();
@@ -505,6 +506,25 @@
         if(bags.some(b=>b.descriptors.split(',').filter(Boolean).length>3))throw new Error(label('Select up to 3 descriptive elements per bag.','每件行李最多选择 3 项描述特征。'));
         const res=await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(baggageEditForm.dataset.row)}/update`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'baggage',bagIdentifications:bags,updatedBy:await currentUpdater()})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Save failed');baggageEditor.close();await loadCases();
       }catch(error){document.querySelector('#baggage-edit-error').textContent=error.message;}finally{button.disabled=false;}
+    });
+
+    const passengerEditor=document.querySelector('#passenger-editor'),passengerEditForm=document.querySelector('#passenger-edit-form');
+    document.querySelector('#passenger-edit-close').addEventListener('click',()=>passengerEditor.close());
+    document.addEventListener('click',event=>{
+      const button=event.target.closest('[data-edit-passenger]');if(!button)return;
+      const row=(window._cbsRows||[]).find(item=>String(item.rowNumber)===button.dataset.editPassenger);if(!row)return;
+      passengerEditForm.dataset.row=button.dataset.editPassenger;
+      document.querySelector('#passenger-edit-title').textContent=label('Edit passenger information','编辑旅客资料');
+      document.querySelector('#passenger-edit-save').textContent=label('Save','保存');
+      document.querySelector('#passenger-edit-fields').innerHTML=[['passengerName',label('Passenger Name','旅客姓名'),'text',row.passengerName,true],['email',label('Email','邮箱'),'email',row.email,true],['phone',label('Phone','电话'),'tel',row.phoneNumber||row.phone,true],['ticketNumber',label('Ticket Number (optional)','机票号码（选填）'),'text',row.ticketNumber,false]].map(([name,title,type,value,required])=>`<label>${title}<input name="${name}" type="${type}" value="${BaggageGuide.escape(value)}" maxlength="${name==='phone'||name==='ticketNumber'?80:160}" ${required?'required':''}></label>`).join('');
+      document.querySelector('#passenger-edit-error').textContent='';passengerEditor.showModal();
+    });
+    passengerEditForm.addEventListener('submit',async event=>{
+      event.preventDefault();const button=passengerEditForm.querySelector('[type="submit"]');button.disabled=true;
+      try{
+        const payload={...Object.fromEntries(new FormData(passengerEditForm)),type:'passenger',updatedBy:await currentUpdater()};
+        const res=await fetch(`${apiBase}/cbs-cases/${encodeURIComponent(passengerEditForm.dataset.row)}/update`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await res.json();if(!res.ok)throw new Error(data.error||'Save failed');passengerEditor.close();await loadCases();
+      }catch(error){document.querySelector('#passenger-edit-error').textContent=error.message;}finally{button.disabled=false;}
     });
 
     function renderBaggageCatalog(){
@@ -1338,32 +1358,34 @@
       return !/^Created from Missing Bag Report row\b/i.test(String(row?.updateNote || '')) && (hasValue(row?.email) || hasValue(row?.phone) || hasValue(row?.passengerSignature));
     }
     function fullPassengerFileHtml(row) {
-      try {
-        const original = JSON.parse(row.originalFormData || '{}');
-        row = { ...original, ...Object.fromEntries(Object.entries(row).filter(([, value]) => hasValue(value))) };
-      } catch {}
-      const fieldGrid = (fields) => `<div class="sheet-detail-grid">${fields.filter(([, value]) => hasValue(value)).map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</p>`).join('')}</div>`;
-      const requiredFieldGrid = (fields) => `<div class="sheet-detail-grid">${fields.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>`;
+      try { const original=JSON.parse(row.originalFormData||'{}');row={...original,...Object.fromEntries(Object.entries(row).filter(([,value])=>hasValue(value)))}; } catch {}
+      const fieldGrid=fields=>`<div class="sheet-detail-grid">${fields.filter(([,value])=>hasValue(value)).map(([key,value])=>`<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</p>`).join('')}</div>`;
+      const requiredFieldGrid=fields=>`<div class="sheet-detail-grid">${fields.map(([key,value])=>`<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>`;
+      const edit=(kind)=>row.rowNumber?`<button type="button" class="section-edit" data-edit-${kind}="${escapeHtml(row.rowNumber)}">${label('Edit','编辑')}</button>`:'';
       const requiredPassengerFields = [
-        [label('Passenger Name', '旅客姓名'), row.passengerName], [label('Email', '邮箱'), row.email],
-        [label('Phone', '电话'), row.phoneNumber || row.phone], [label('Ticket Number', '机票号码'), row.ticketNumber],
-        [label('Flight', '航班'), Array.isArray(row.flightRows)&&row.flightRows.length?row.flightRows.map(f=>[f.flightNo,f.flightDate].filter(Boolean).join(' · ')).join(' / '):row.flightRoute]
+        [label('Passenger Name', '旅客姓名'),row.passengerName],[label('Email', '邮箱'),row.email],
+        [label('Phone', '电话'),row.phoneNumber||row.phone],[label('Ticket Number', '机票号码'),row.ticketNumber],
+        [label('Flight', '航班'),Array.isArray(row.flightRows)&&row.flightRows.length?row.flightRows.map(f=>[f.flightNo,f.flightDate].filter(Boolean).join(' · ')).join(' / '):row.flightRoute]
       ];
-      const sharedBaggageFields = [[label('Case Type', '类型'), inferCaseType(row)], [label('Bag Tag', '行李牌'), row.bagTag], [label('Quantity','件数'),Array.isArray(row.bagIdentifications)?row.bagIdentifications.length:''], [label('Other useful information', '其他有用信息'), row.additionalInformation]];
-      const baggageFields = inferCaseType(row) === 'DPR' ? sharedBaggageFields.concat([
-        [label('Baggage Details', '行李详情'), row.baggageDetails || row.dprBagInfo],
-        [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel], [label('Marked views','标记视角'),Array.isArray(row.damageAreas)?row.damageAreas.map(key=>({front:label('Side 1','正面'),back:label('Side 2','背面'),left:label('End 1','左侧'),right:label('End 2','右侧'),top:label('Top','顶部'),bottom:label('Bottom','底部')})[key]).join(', '):''], [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
-        [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType], [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
-        [label('Contents Details', '包内物品详情'), row.contentsDetails]
-      ]) : sharedBaggageFields.concat([
-        [label('Baggage Details', '行李详情'), row.baggageDetails || row.ahlBagDescription], [label('AHL Bag Brand Tag', 'AHL行李品牌牌'), row.ahlBagBrandTag],
-        [label('AHL Bag Type', 'AHL行李类型'), row.ahlBagType], [label('AHL Features', 'AHL特征'), row.ahlFeatures],
-        [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures], [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
-        [label('Contents Details', '包内物品详情'), row.contentsDetails]
-      ]);
-      const deliveryFields = PirDelivery.fields(row, document.documentElement.lang).filter(([key]) => key !== label('Instructions', '提示'));
-      const deliverySection = inferCaseType(row) === 'DPR' ? '' : `<section class="full-file-section delivery-information"><h3>${label('Delivery Information', '配送信息')}</h3>${fieldGrid(deliveryFields)}</section>`;
-      return `<div class="full-file">${deliverySection}<section class="full-file-section"><h3>${label('Passenger information', '旅客资料')}</h3>${requiredFieldGrid(requiredPassengerFields)}</section><section class="full-file-section"><h3>${label('Baggage information', '行李资料')}</h3>${Array.isArray(row.bagIdentifications)&&row.bagIdentifications.length?BaggageGuide.cards(row.bagIdentifications,document.documentElement.lang):''}${fieldGrid(Array.isArray(row.bagIdentifications)&&row.bagIdentifications.length?baggageFields.filter(([key])=>![label('Baggage Details','行李详情'),label('AHL Bag Type','AHL行李类型')].includes(key)):baggageFields)}${row.rowNumber?`<button type="button" class="secondary" data-edit-baggage="${escapeHtml(row.rowNumber)}">${label('Edit baggage','编辑行李')}</button>`:''}</section></div>`;
+      const caseType=inferCaseType(row),bags=BaggageGuide.bagsFromRecord(row);
+      const passengerFields=row.formVersion>=3?requiredPassengerFields.filter(([key])=>key!==label('Flight','航班')):requiredPassengerFields;
+      const summaryFields=[[label('Case Type','类型'),caseType],[label('Bag Tag','行李牌'),row.bagTag||bags.map(bag=>bag.tag).filter(Boolean).join(' / ')],[label('Quantity','件数'),bags.length||'']];
+      const details=[[label('Other useful information','其他有用信息'),row.additionalInformation]];
+      if(caseType==='DPR'){
+        details.push([label('Damage level','破损程度'),row.dprDamageLevel],[label('Inner damage','内物破损'),row.dprInnerDamage]);
+        const raw=String(row.baggageDetails||row.dprBagInfo||'').trim();
+        if(raw&&!bags.length)details.push([label('Baggage Details','行李详情'),raw]);
+        else if(raw&&!/IATA identification:/i.test(raw)&&!bags.some(bag=>String(bag.description||'').trim()))details.push([label('Damage description','破损描述'),raw]);
+        if(!bags.some(bag=>String(bag.description||'').trim())&&row.baggageDetails&&row.dprBagInfo&&row.baggageDetails!==row.dprBagInfo&&!/IATA identification:/i.test(row.dprBagInfo))details.push([label('Damage description','破损描述'),row.dprBagInfo]);
+      }else{
+        if(!bags.length)details.push([label('Baggage Details','行李详情'),row.baggageDetails||row.ahlBagDescription],[label('Bag type','行李类型'),row.ahlBagType],[label('Other features','其他明显特征'),row.ahlOtherFeatures]);
+        details.push([label('Bag brand','行李品牌'),row.ahlBagBrandTag],[label('Features','特征'),row.ahlFeatures]);
+      }
+      if(!bags.some(bag=>bag.contentsRows?.length))details.push([label('Contents','包内物品'),row.contentsDetails||row.ahlContents]);
+      const unique=[],values=new Set();for(const [key,value]of details){if(!hasValue(value))continue;const signature=String(value).trim();if(values.has(signature))continue;values.add(signature);unique.push([key,value]);}
+      const deliveryFields=PirDelivery.fields(row,document.documentElement.lang).filter(([key])=>key!==label('Instructions','提示'));
+      const deliverySection=caseType==='DPR'?'':`<section class="full-file-section delivery-information"><h3>${label('Delivery Information','配送信息')}</h3>${fieldGrid(deliveryFields)}</section>`;
+      return `<div class="full-file">${deliverySection}<section class="full-file-section passenger-info-section"><div class="case-section-heading"><h3>${label('Passenger information','旅客资料')}</h3>${edit('passenger')}</div>${requiredFieldGrid(passengerFields)}</section><section class="full-file-section baggage-info-section"><div class="case-section-heading"><h3>${label('Baggage information','行李资料')}</h3>${edit('baggage')}</div><div class="baggage-summary">${fieldGrid(summaryFields)}</div>${bags.length?BaggageGuide.cards(bags,document.documentElement.lang,{caseType}):''}${fieldGrid(unique)}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;

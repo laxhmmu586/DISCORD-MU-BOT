@@ -1634,7 +1634,7 @@ function jpegFromDataUrl(dataUrl) {
 }
 
 function createPirPdf(record) {
-  if (record.formVersion === 2) return CbsReport.createPdf(record, { pdfText, pdfHelveticaTextWidth, jpegFromDataUrl });
+  if ([2, 3].includes(record.formVersion)) return CbsReport.createPdf(record, { pdfText, pdfHelveticaTextWidth, jpegFromDataUrl });
   const objects = [];
   const addObject = (content) => {
     objects.push(content);
@@ -1859,8 +1859,7 @@ function cbsPassengerMessageHtml(language, caseType = 'AHL') {
 }
 
 function buildCbsEmailHtml(record) {
-  const summary = record.formVersion === 2 ? CbsReport.emailSummary(record) : '';
-  return summary + cbsPassengerMessageHtml(record.language, record.caseType);
+  return cbsPassengerMessageHtml(record.language, record.caseType);
 }
 
 function cbsEmailIsChinese(record = {}) {
@@ -1880,18 +1879,22 @@ function worldTracerUpdateEmail(record, fileNumber) {
   const reference = String(fileNumber || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
   const isDpr = String(record?.caseType || '').toUpperCase() === 'DPR';
   if (isDpr && cbsEmailIsChinese(record)) return {
+    emailContext:{...record,template:'worldTracerUpdateEmail',worldTracerFileNumber:fileNumber},
     subject: `【请勿回复】行李案件建案确认通知 – WorldTracer 案件编号：${fileNumber}`,
     html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件已成功建立。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将根据您所提供的信息进行后续查询及跟进。如案件有进一步进展，我们会主动与您联系并提供最新信息，请您耐心等候。</p><p><strong>如果您在建案后 7 天内仍未收到我们的进一步通知，请发送邮件至 <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> 与我们联系，以便我们进一步跟进您的案件。</strong></p><p><strong>此邮件为系统自动发送，请勿直接回复此邮件。</strong></p><p>感谢您的耐心与理解。</p><p>此致<br><strong>中国东方航空</strong></p>`
   };
   if (isDpr) return {
+    emailContext:{...record,template:'worldTracerUpdateEmail',worldTracerFileNumber:fileNumber},
     subject: `[DO NOT REPLY] Baggage Case Confirmation – WorldTracer Reference: ${fileNumber}`,
     html: `<p>Dear Passenger,</p><p>Your baggage case has been successfully created.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>We will continue to trace and follow up on your case based on the information provided. We will contact you and provide further updates as soon as additional information becomes available.</p><p><strong>If you have not received any further updates from us within 7 days after your case was created, please contact us at <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> so that we can further follow up on your case.</strong></p><p><strong>This is an automatically generated email. Please do not reply to this message.</strong></p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br><strong>China Eastern Airlines</strong></p>`
   };
   if (cbsEmailIsChinese(record)) return {
+    emailContext:{...record,template:'worldTracerUpdateEmail',worldTracerFileNumber:fileNumber},
     subject: `行李案件更新通知 – WorldTracer 案件编号：${fileNumber}`,
     html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件现已更新至 WorldTracer 全球行李查询系统。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>请妥善保存此案件编号，以便后续查询或跟进行李处理进度时使用。</p><p>我们将继续跟进您的行李案件。如有进一步信息或进展，我们会及时与您联系。</p><p>感谢您的耐心与理解。</p><p>此致<br>中国东方航空</p>`
   };
   return {
+    emailContext:{...record,template:'worldTracerUpdateEmail',worldTracerFileNumber:fileNumber},
     subject: `Baggage Case Update – WorldTracer Reference: ${fileNumber}`,
     html: `<p>Dear Passenger,</p><p>We would like to inform you that your baggage case has been updated in the WorldTracer baggage tracing system.</p><p><strong>WorldTracer Reference Number: ${reference}</strong></p><p>Please keep this reference number for your records, as it may be required for future inquiries or updates regarding your baggage case.</p><p>We will continue to follow up on your case and provide further updates when additional information becomes available.</p><p>Thank you for your patience and understanding.</p><p>Sincerely,<br>China Eastern Airlines</p>`
   };
@@ -1908,7 +1911,7 @@ function requestedBagsUpdateEmail(record, fileNumber) {
     .replace(chinese ? '目前已提交转运申请并正在安排转运' : 'transfer request has been arranged', (phrase) => `<strong>${phrase}</strong>`)
     .replace(chinese ? `WorldTracer 案件编号：${reference}` : `WorldTracer Reference Number: ${reference}`, (phrase) => `<strong>${phrase}</strong>`)
     .replace(chinese ? '中国东方航空' : 'China Eastern Airlines', (phrase) => `<strong>${phrase}</strong>`);
-  return { subject, text, html };
+  return { emailContext:{...record,template:'requestedBagsUpdateEmail',worldTracerFileNumber:fileNumber}, subject, text, html };
 }
 
 function addressConfirmRequestEmail(record = {}) {
@@ -1922,7 +1925,7 @@ function addressConfirmRequestEmail(record = {}) {
     ? [`WorldTracer 案件编号：${fileNumber}`, '自行领取', '配送至报失记录中的地址', '配送至其他地址', '如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。', '中国东方航空']
     : [`WorldTracer Reference Number: ${fileNumber}`, 'Self Pick-Up', 'Delivery to the Address on File', 'Delivery to a Different Address', 'If we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.', 'China Eastern Airlines'];
   const html = emphasized.reduce((body, phrase) => body.replaceAll(phrase, `<strong>${phrase}</strong>`), cbsPlainTextEmailHtml(text));
-  return { subject, text, html };
+  return { emailContext:{...record,template:'addressConfirmRequestEmail'}, subject, text, html };
 }
 
 function baggagePickupDeliveryMethodConfirmationEmail(record = {}) {
@@ -1936,7 +1939,7 @@ function baggagePickupDeliveryMethodConfirmationEmail(record = {}) {
     ? [`WorldTracer 案件编号：${fileNumber}`, '自行领取', '2. 配送', '如果我们未收到您的回复，我们将默认按照您在行李报失记录（Report）中提供的地址安排配送。', '中国东方航空公司']
     : [`WorldTracer Reference Number: ${fileNumber}`, 'Self Pick-Up', '2. Delivery', 'If we do not receive a response from you, we will proceed with delivery to the address provided in your baggage report.', 'China Eastern Airlines'];
   const html = emphasized.reduce((body, phrase) => body.replaceAll(phrase, `<strong>${phrase}</strong>`), cbsPlainTextEmailHtml(text));
-  return { subject, text, html };
+  return { emailContext:{...record,template:'baggagePickupDeliveryMethodConfirmationEmail'}, subject, text, html };
 }
 
 function openBagAuthorizationPvgEmail(record) {
@@ -1946,7 +1949,7 @@ function openBagAuthorizationPvgEmail(record) {
   const text = chinese
     ? `尊敬的旅客：\n\n您好！\n\nWorldTracer 案件编号：${fileNumber}\n\n您的行李目前暂扣于上海浦东国际机场（PVG），需要进行开箱检查后方可继续安排后续运输。\n\n由于开箱检查需要获得您的本人授权，请您填写并签署附件中的授权表格，并尽快将填写完整的表格发送回给我们。\n\n收到您的授权后，我们会将相关文件转交上海浦东机场工作人员，以便尽快完成行李检查并安排后续运输。\n\n给您带来的不便，我们深表歉意，也感谢您的理解与配合。\n\n此致\n中国东方航空`
     : `Dear Passenger,\n\nWorldTracer Reference Number: ${fileNumber}\n\nYour baggage is currently being held at Shanghai Pudong International Airport (PVG) and requires an open-bag inspection before it can be released for further transportation.\n\nTo proceed with the inspection, your authorization is required.\n\nPlease complete and sign the attached authorization form and return the completed form to us as soon as possible. Once we receive your authorization, we will forward it to the appropriate team at PVG so they can proceed with the baggage inspection.\n\nWe appreciate your prompt cooperation and apologize for any inconvenience this may cause.\n\nSincerely,\nChina Eastern Airlines`;
-  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+  return { emailContext:{...record,template:'openBagAuthorizationPvgEmail'}, subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
 function baggagePickupAtLaxEmail(record = {}) {
@@ -1955,7 +1958,7 @@ function baggagePickupAtLaxEmail(record = {}) {
   const text = chinese
     ? '尊敬的旅客：\n\n您好！\n\n我们通知您，您此前遗留在洛杉矶国际机场（LAX）的行李目前已由我们保管，并存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 7:00 – 下午 3:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司'
     : 'Dear Passenger,\n\nWe would like to inform you that the baggage you left behind at LAX is currently being held at our office at the Tom Bradley International Terminal (TBIT), Counter A68.\n\nPlease come to collect your baggage during the following office hours:\n\nPick-up Location: LAX TBIT, Counter A68 Office\nPick-up Hours: 7:00 AM – 3:00 PM\n\nPlease bring a valid photo ID for verification when collecting your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines';
-  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+  return { emailContext:{...record,template:'baggagePickupAtLaxEmail'}, subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
 function baggagePickedUpByAnotherPassengerEmail(record = {}) {
@@ -1964,7 +1967,7 @@ function baggagePickedUpByAnotherPassengerEmail(record = {}) {
   const text = chinese
     ? "尊敬的旅客：\n\n您好！\n\n非常抱歉您在抵达后未能正常领取到您的行李。\n\n经过我们进一步核查，您的行李在行李提取区域被另一位旅客误拿。目前我们已经与相关旅客取得联系，并正在协调对方尽快将您的行李归还。\n\n我们理解此次情况给您带来的不便和担忧，并对此深表歉意。我们会继续跟进行李的处理进展，如有任何最新消息，我们会第一时间与您联系。\n\n感谢您的耐心与理解。\n\n此致\n敬礼\n中国东方航空\n洛杉矶站"
     : "Dear Passenger,\n\nWe sincerely apologize that you were unable to receive your baggage upon arrival.\n\nAfter reviewing the situation, we found that your baggage was mistakenly picked up by another passenger at the baggage claim area.\n\nWe have already contacted the passenger involved and are currently coordinating the return of your baggage as soon as possible.\n\nWe understand the inconvenience and concern this situation may have caused, and we sincerely apologize for the inconvenience. We will continue to follow up and will notify you immediately once we receive any further updates regarding your baggage.\n\nThank you for your patience and understanding.\n\nBest regards,\nChina Eastern Airlines\nLos Angeles Station";
-  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+  return { emailContext:{...record,template:'baggagePickedUpByAnotherPassengerEmail'}, subject, text, html:cbsPlainTextEmailHtml(text) };
 }
 
 function incorrectBaggagePickupEmail(record = {}) {
@@ -1996,7 +1999,7 @@ function incorrectBaggagePickupEmail(record = {}) {
       <p style="margin:28px 0 0;padding-top:20px;border-top:1px solid #e4e7ec;">${chinese ? '此致<br>中国东方航空' : 'Best regards,<br>China Eastern Airlines'}</p>
     </div>
   </div>`;
-  return { subject, text, html };
+  return { emailContext:{...record,template:'incorrectBaggagePickupEmail'}, subject, text, html };
 }
 
 function baggageInspectionExplanationEmail(record = {}) {
@@ -2005,7 +2008,7 @@ function baggageInspectionExplanationEmail(record = {}) {
   const text = chinese
     ? '尊敬的旅客：\n\n您好！\n\n您的行李在运输过程中可能因安全检查需要被相关部门开箱查验。该检查可能由中国机场安检部门进行，也可能由行李抵达美国后由美国海关及边境保护局（U.S. Customs and Border Protection）进行。\n\n如您的行李曾由美国相关部门开箱检查，行李箱内可能会留有检查通知单，建议您查看箱内是否有相关文件。\n\n需要说明的是，航空公司并不参与机场安检或海关的开箱检查，因此我们无法确认您的行李是否曾被开箱查验，也无法确认行李未上锁的情况是否由相关检查所导致。\n\n感谢您的理解。\n\n此致\n中国东方航空'
     : 'Dear Passenger,\n\nYour baggage may have been opened for security inspection during your journey. The inspection may have been conducted by airport security authorities in China or by U.S. Customs and Border Protection upon arrival in the United States.\n\nIf your baggage was inspected by U.S. authorities, an inspection notice may have been placed inside your suitcase. We recommend checking the contents of your baggage for any such notice.\n\nPlease note that the airline is not involved in security or customs inspections. Therefore, we are unable to confirm whether an inspection was conducted or whether it resulted in your baggage being left unlocked.\n\nThank you for your understanding.\n\nSincerely,\nChina Eastern Airlines';
-  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+  return { emailContext:{...record,template:'baggageInspectionExplanationEmail'}, subject, text, html:cbsPlainTextEmailHtml(text) };
 }
 
 function baggageFuturePickupAtLaxEmail(record = {}, availableDate = '') {
@@ -2018,7 +2021,7 @@ function baggageFuturePickupAtLaxEmail(record = {}, availableDate = '') {
   const text = chinese
     ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您此前遗留在洛杉矶国际机场（LAX）的行李预计将于${available}起可以领取，届时行李将存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 8:00 – 下午 2:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司`
     : `Dear Passenger,\n\nWe would like to inform you that the baggage you previously left behind at Los Angeles International Airport (LAX) is expected to be available for pick-up starting ${available}.\n\nWorldTracer Reference Number: ${fileNumber}\n\nYour baggage will be held at our office located at the Tom Bradley International Terminal (TBIT), Counter A68.\n\nPlease come to collect your baggage during the following hours:\n\nPick-Up Location: LAX TBIT, Counter A68 Office\nPick-Up Hours: 8:00 AM – 2:00 PM\n\nPlease bring a valid photo ID for identity verification when picking up your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines`;
-  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+  return { emailContext:{...record,template:'baggageFuturePickupAtLaxEmail',availableDate}, subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
 function signedOpenBagAuthorizationToPvgEmail(record) {
@@ -2026,7 +2029,7 @@ function signedOpenBagAuthorizationToPvgEmail(record) {
   const bagTag = sanitizeCbsText(record?.bagTag, 120) || '—';
   const subject = `行李开箱检查授权文件 – WorldTracer ${fileNumber}`;
   const text = `同事您好，\n\n以下行李目前需要进行开箱检查：\n\nWorldTracer 案件编号：${fileNumber}\n行李牌号码：${bagTag}\n\n附件为旅客已签字的开箱检查授权页，烦请查收并协助后续开箱检查及行李转运安排。\n\n如需补充其他资料，请告知。\n\n谢谢！\n洛杉矶站 - 中国东方航空`;
-  return { subject, text, html:cbsPlainTextEmailHtml(text) };
+  return { emailContext:{...record,template:'signedOpenBagAuthorizationToPvgEmail'}, subject, text, html:cbsPlainTextEmailHtml(text) };
 }
 
 function formatRushArrivalTime(value, chinese = false) {
@@ -2048,7 +2051,7 @@ function rushToLaxInformationEmail(record, fileNumber, estimatedArrivalTime) {
   const text = chinese
     ? `尊敬的旅客：\n\n您好！\n\n这是一封关于您延误行李的系统自动状态更新邮件。\n\nWorldTracer 案件编号：${fileNumber}\n\n目前，您的行李正在安排转运，预计于 ${arrival} 运抵洛杉矶（LAX）。\n\n请注意，预计抵达时间可能根据实际运输情况发生变化。如您的行李状态有进一步更新，我们将及时通知您。\n\n此邮件由系统自动发送，请勿直接回复。\n\n中国东方航空`
     : `Dear Passenger,\n\nThis is an automated update regarding your delayed baggage.\n\nWorldTracer Case Number: ${fileNumber}\n\nYour baggage is currently being arranged for transfer and is expected to arrive in Los Angeles (LAX) on ${arrival}.\n\nPlease note that the estimated arrival date is subject to change depending on actual transportation arrangements. You will receive further updates if there are any changes to your baggage status.\n\nThis is an automatically generated email. Please do not reply to this message.\n\nSincerely,\nChina Eastern Airlines`;
-  return { subject, text, html: cbsPlainTextEmailHtml(text) };
+  return { emailContext:{...record,template:'rushToLaxInformationEmail',worldTracerFileNumber:fileNumber,estimatedArrivalTime}, subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
 function adcShippingUpdateEmail(record, fileNumber) {
@@ -2067,7 +2070,7 @@ function adcShippingUpdateEmail(record, fileNumber) {
     html = html.replace(escapedPhrase, `<strong>${escapedPhrase}</strong>`);
   }
   html = `<div style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:15px;line-height:1.75;letter-spacing:0.15px;color:#222;">${html}</div>`;
-  return { subject, text, html };
+  return { emailContext:{...record,template:'adcShippingUpdateEmail',worldTracerFileNumber:fileNumber}, subject, text, html };
 }
 function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAddress = '') {
   const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
@@ -2079,7 +2082,7 @@ function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAd
     ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已通过 FedEx 安排寄出${address ? '，并将配送至以下地址：' : '。'}\n\nWorldTracer 案件编号：${fileNumber}\nFedEx Tracking Number：${tracking}${address ? `\n配送地址：${address}` : ''}\n\n您可以使用上述 FedEx Tracking Number 查询最新配送进度。\n\n请留意后续配送情况${address ? '，并确保上述地址可以正常接收行李' : ''}。\n\n${address ? '如您发现配送地址有误，或配送过程中有任何问题' : '如配送过程中有任何问题'}，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
     : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped via FedEx${address ? ' and will be delivered to the following address:' : '.'}\n\nWorldTracer Reference Number: ${fileNumber}\nFedEx Tracking Number: ${tracking}${address ? `\nDelivery Address: ${address}` : ''}\n\nYou may use the FedEx tracking number above to check the latest delivery status of your baggage.\n\nPlease monitor the delivery status${address ? ' and ensure that the above address is available to receive your baggage' : ''}.\n\n${address ? 'If you notice any issues with the delivery address or experience any problems with the delivery' : 'If you experience any problems with the delivery'}, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
   const htmlText = text.replace(fileNumber, escapeHtml(fileNumber)).replace(tracking, escapeHtml(tracking)).replace(address, escapeHtml(address));
-  return { subject, text, html: cbsPlainTextEmailHtml(htmlText) };
+  return { emailContext:{...record,template:'fedexShippingUpdateEmail',worldTracerFileNumber:fileNumber}, subject, text, html: cbsPlainTextEmailHtml(htmlText) };
 }
 
 function airportPickupClosureEmail(record, fileNumber) {
@@ -2089,7 +2092,7 @@ function airportPickupClosureEmail(record, fileNumber) {
   const text = chinese
     ? `尊敬的旅客：\n\n您好！\n\n我们确认您的行李已于机场领取完毕。\n\nWorldTracer 案件编号：${fileNumber}\n\n由于您的行李已成功领取，本次行李案件现已结案（Closed），我们将不再对该案件进行后续追踪。\n\n如您对本次行李案件仍有任何问题，请回复此邮件与我们联系。\n\n感谢您的耐心与配合，也再次对行李问题给您的旅程带来的不便表示歉意。\n\n此致\n中国东方航空`
     : `Dear Passenger,\n\nWe confirm that your baggage has been successfully picked up at the airport.\n\nWorldTracer Reference Number: ${fileNumber}\n\nAs your baggage has been successfully collected, your baggage case is now closed, and no further tracing action is required.\n\nIf you have any remaining questions regarding this baggage case, please reply to this email and contact us.\n\nThank you for your patience and cooperation. We sincerely apologize again for any inconvenience caused by the baggage issue.\n\nSincerely,\nChina Eastern Airlines`;
-  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+  return { emailContext:{...record,template:'airportPickupClosureEmail',worldTracerFileNumber:fileNumber}, subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
 function passengerPaidShippingEmail(record, fileNumber) {
@@ -2099,7 +2102,7 @@ function passengerPaidShippingEmail(record, fileNumber) {
   const text = chinese
     ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已按照您所提供的配送方式安排寄出。\n\nWorldTracer 案件编号：${fileNumber}\n\n由于本次配送方式由您提供，请您通过相应的承运商或配送服务查询后续运输及配送进度。\n\n行李交付给您所指定的承运商后，如有运输延误、配送状态或其他与运输相关的问题，请直接与相应承运商联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
     : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped using the shipping method provided by you.\n\nWorldTracer Reference Number: ${fileNumber}\n\nAs the shipping method was provided by you, please check the shipment and delivery status directly with the applicable carrier or delivery service.\n\nOnce the baggage has been handed over to your designated carrier, please contact the carrier directly regarding any shipping delays, delivery status, or other transportation-related matters.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
-  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+  return { emailContext:{...record,template:'passengerPaidShippingEmail',worldTracerFileNumber:fileNumber}, subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
 function lostBaggageUpdateEmail(record, fileNumber) {
@@ -2109,7 +2112,7 @@ function lostBaggageUpdateEmail(record, fileNumber) {
   const text = chinese
     ? `尊敬的旅客：\n\n您好！\n\n我们非常遗憾地通知您，经过持续查询与追踪，目前仍未能找到您的行李。您的行李案件现已由延误行李（Delayed Baggage）转为遗失行李（Lost Baggage）案件。\n\nWorldTracer 案件编号：${fileNumber}\n\n对于行李遗失给您的旅程带来的不便，我们深表歉意。\n\n后续我们将根据遗失行李案件的处理流程继续跟进。如您在案件转为 Lost 后 7 天内仍未收到我们的进一步通知，请发送邮件至 laxllmu@chinaeastern-usa.com 与我们联系，以便我们进一步跟进您的案件。\n\n此邮件为系统自动发送，请勿直接回复此邮件。\n\n感谢您的耐心与理解。\n\n此致\n中国东方航空`
     : `Dear Passenger,\n\nWe regret to inform you that despite our continued tracing efforts, we have not been able to locate your baggage. Your baggage case has now been changed from a Delayed Baggage case to a Lost Baggage case.\n\nWorldTracer Reference Number: ${fileNumber}\n\nWe sincerely apologize for the inconvenience caused by the loss of your baggage.\n\nWe will continue to follow up on your case in accordance with the lost baggage handling process. If you have not received any further updates from us within 7 days after your case was changed to Lost, please contact us at laxllmu@chinaeastern-usa.com so that we can further follow up on your case.\n\nThis is an automatically generated email. Please do not reply to this message.\n\nThank you for your patience and understanding.\n\nSincerely,\nChina Eastern Airlines`;
-  return { subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
+  return { emailContext:{...record,template:'lostBaggageUpdateEmail',worldTracerFileNumber:fileNumber}, subject, text, html: cbsPlainTextEmailHtml(text.replace(fileNumber, reference)) };
 }
 
 function adcShippingUpdateEmail(record, fileNumber) {
@@ -2128,7 +2131,7 @@ function adcShippingUpdateEmail(record, fileNumber) {
     html = html.replace(escapedPhrase, `<strong>${escapedPhrase}</strong>`);
   }
   html = `<div style="font-family:Arial,'Microsoft YaHei',sans-serif;font-size:15px;line-height:1.75;letter-spacing:0.15px;color:#222;">${html}</div>`;
-  return { subject, text, html };
+  return { emailContext:{...record,template:'adcShippingUpdateEmail',worldTracerFileNumber:fileNumber}, subject, text, html };
 }
 function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAddress = '') {
   const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
@@ -2140,7 +2143,7 @@ function fedexShippingUpdateEmail(record, fileNumber, trackingNumber, shippingAd
     ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李已通过 FedEx 安排寄出${address ? '，并将配送至以下地址：' : '。'}\n\nWorldTracer 案件编号：${fileNumber}\nFedEx Tracking Number：${tracking}${address ? `\n配送地址：${address}` : ''}\n\n您可以使用上述 FedEx Tracking Number 查询最新配送进度。\n\n请留意后续配送情况${address ? '，并确保上述地址可以正常接收行李' : ''}。\n\n${address ? '如您发现配送地址有误，或配送过程中有任何问题' : '如配送过程中有任何问题'}，请尽快回复此邮件与我们联系。\n\n感谢您的耐心与配合。\n\n此致\n中国东方航空`
     : `Dear Passenger,\n\nWe would like to inform you that your baggage has been shipped via FedEx${address ? ' and will be delivered to the following address:' : '.'}\n\nWorldTracer Reference Number: ${fileNumber}\nFedEx Tracking Number: ${tracking}${address ? `\nDelivery Address: ${address}` : ''}\n\nYou may use the FedEx tracking number above to check the latest delivery status of your baggage.\n\nPlease monitor the delivery status${address ? ' and ensure that the above address is available to receive your baggage' : ''}.\n\n${address ? 'If you notice any issues with the delivery address or experience any problems with the delivery' : 'If you experience any problems with the delivery'}, please reply to this email as soon as possible.\n\nThank you for your patience and cooperation.\n\nSincerely,\nChina Eastern Airlines`;
   const htmlText = text.replace(fileNumber, escapeHtml(fileNumber)).replace(tracking, escapeHtml(tracking)).replace(address, escapeHtml(address));
-  return { subject, text, html: cbsPlainTextEmailHtml(htmlText) };
+  return { emailContext:{...record,template:'fedexShippingUpdateEmail',worldTracerFileNumber:fileNumber}, subject, text, html: cbsPlainTextEmailHtml(htmlText) };
 }
 
 function buildCbsFlightRoute(body) {
@@ -2213,7 +2216,7 @@ function sanitizeCbsAttachments(value) {
     totalBytes += bytes;
     if (totalBytes > maxTotalBytes) return null;
     const attachmentType = sanitizeCbsText(item?.attachmentType, 40);
-    return { filename, mimeType, contentBase64, attachmentType };
+    return { filename, mimeType, contentBase64, attachmentType, ...(Number.isInteger(item?.bagNumber) ? {bagNumber:item.bagNumber} : {}) };
   }).filter(Boolean);
 }
 
@@ -2716,6 +2719,10 @@ app.get('/miss-connection-report', async (req, res) => {
 
 function buildCbsUpdateFields(update = {}) {
   const type = sanitizeCbsText(update.type, 40).toLowerCase();
+  if(type==='passenger'){
+    let passengerPatch;try{passengerPatch=CbsReport.normalizePassenger(update);}catch{return null;}
+    return {passengerPatch,updateEvent:{key:'passenger',title:'Passenger information updated',fields:[['Passenger Name',passengerPatch.passengerName],['Email',passengerPatch.email],['Phone',passengerPatch.phone],['Ticket Number',passengerPatch.ticketNumber]]}};
+  }
   if(type==='baggage'){
     let bags;try{bags=CbsReport.normalizeBags(update.bagIdentifications);}catch{return null;}
     return {baggagePatch:{bagIdentifications:bags,bagTag:normalizeCbsBagTags(bags.map(b=>b.tag))},updateEvent:{key:'baggage',title:'Baggage information updated',fields:[['Bags',String(bags.length)]]}};
@@ -2911,7 +2918,7 @@ app.post('/cbs-email', async (req, res) => {
       const attachments = sanitizeCbsAttachments(req.body?.attachments);
       if (attachments.length !== 1) return res.status(400).json({ error:'A signed Letter of Authorization attachment is required' });
       const message = signedOpenBagAuthorizationToPvgEmail({});
-      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ccOperations:false });
+      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, attachments, ccOperations:false });
       return res.json({ sent:true, email });
     }
     if (emailAction === 'contact_pax_pickup_bags') {
@@ -2919,7 +2926,7 @@ app.post('/cbs-email', async (req, res) => {
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
       const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
       const message = baggagePickupAtLaxEmail(record);
-      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
     if (emailAction === 'pickup_wrong_bags') {
@@ -2927,7 +2934,7 @@ app.post('/cbs-email', async (req, res) => {
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
       const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
       const message = incorrectBaggagePickupEmail(record);
-      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
     if (emailAction === 'baggage_picked_up_by_another_passenger') {
@@ -2935,7 +2942,7 @@ app.post('/cbs-email', async (req, res) => {
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
       const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
       const message = baggagePickedUpByAnotherPassengerEmail(record);
-      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
     if (emailAction === 'baggage_open_by_customs') {
@@ -2943,7 +2950,7 @@ app.post('/cbs-email', async (req, res) => {
       if (!isValidEmail(passengerEmail)) return res.status(400).json({ error:'A valid passenger email is required' });
       const record = { language:sanitizeCbsText(req.body?.language, 5) === 'zh' ? 'zh' : 'en' };
       const message = baggageInspectionExplanationEmail(record);
-      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ccOperations:false });
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, ccOperations:false });
       return res.json({ sent:true, email });
     }
     if (['pickup_bags_future_available', 'baggage_transfer_status_eta', 'address_confirm_request', 'baggage_pickup_delivery_method_confirmation', 'require_open_bag_authorization_pvg'].includes(emailAction)) {
@@ -2969,7 +2976,7 @@ app.post('/cbs-email', async (req, res) => {
         message = openBagAuthorizationPvgEmail(record);
       }
       const authorizationForm = emailAction === 'require_open_bag_authorization_pvg' ? await getCbsOpenBagAuthorizationPdf() : null;
-      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, text:message.text, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
+      const email = await sendCbsCaseEmail({ passengerEmail, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
       return res.json({ sent:true, email });
     }
     return res.status(400).json({ error:'A valid email subject is required' });
@@ -3901,7 +3908,7 @@ app.post('/cbs-unresolved-baggage/:rowNumber/update', async (req, res) => {
       else if (emailAction === 'baggage_picked_up_by_another_passenger') message = baggagePickedUpByAnotherPassengerEmail(emailRecord);
       else if (emailAction === 'pickup_wrong_bags') message = incorrectBaggagePickupEmail(emailRecord);
       else message = baggagePickupAtLaxEmail(emailRecord);
-      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
+      const email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, attachments, ...(authorizationForm ? { pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name } : {}), ccOperations:false });
       const updatedBy = sanitizeCbsText(req.body?.updatedBy, 160);
       const resolutionTitle = ({ baggage_picked_up_by_another_passenger:'Reason: Baggage Picked Up by Another Passenger', pickup_wrong_bags:'Pick up Wrong bags', sent_open_bag_authorization_to_pvg:'Sent Open Bag Authorization to PVG', contact_pax_pickup_bags:'Pick-up Bags - available', pickup_bags_future_available:'Pick-up Bags - future available', baggage_transfer_status_eta:'Baggage transfer status update - ETA', address_confirm_request:'Address Confirm Request Email', baggage_pickup_delivery_method_confirmation:'Baggage Pick-Up / Delivery Method Confirmation', require_open_bag_authorization_pvg:'Sent authorization form to passenger', baggage_open_by_customs:'Explanation - Baggage Open by Custom' })[emailAction];
       const resolutionNote = `${resolutionTitle} | Email To: ${emailTo}${updatedBy ? ` | Updated by: ${updatedBy}` : ''}`;
@@ -4071,18 +4078,19 @@ app.post('/cbs-cases', async (req, res) => {
     if (!passengerName) return res.status(400).json({ error: 'Passenger name is required' });
     const caseType = sanitizeCbsText(body.caseType, 10).toUpperCase();
     if (!['AHL', 'DPR'].includes(caseType)) return res.status(400).json({ error: 'Case type must be AHL or DPR' });
-    const photoReport = body.formVersion === 2;
+    const bagTagReport = body.formVersion === 3;
+    const photoReport = [2, 3].includes(body.formVersion);
     let bagIdentifications;
     try { bagIdentifications = photoReport ? CbsReport.normalizeBags(body.bagIdentifications) : []; }
     catch(error) { return res.status(400).json({error:error.message}); }
     const firstFlight = Array.isArray(body.flightRows) ? body.flightRows[0] || {} : {};
     if (!sanitizeCbsText(body.phone, 80)) return res.status(400).json({ error: 'Phone is required' });
-    if (!sanitizeCbsText(body.ticketNumber, 80)) return res.status(400).json({ error: 'Ticket number is required' });
-    if (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || (!photoReport && (!sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20)))) return res.status(400).json({ error: 'First flight row is required' });
+    if (!bagTagReport && !sanitizeCbsText(body.ticketNumber, 80)) return res.status(400).json({ error: 'Ticket number is required' });
+    if (!bagTagReport && (!sanitizeCbsText(firstFlight.flightNo, 20) || !sanitizeCbsText(firstFlight.flightDate, 20) || (!photoReport && (!sanitizeCbsText(firstFlight.origin, 20) || !sanitizeCbsText(firstFlight.destination, 20))))) return res.status(400).json({ error: 'First flight row is required' });
     let delivery;
     try { delivery = PirDelivery.normalize(body); }
     catch (error) { return res.status(400).json({ error: error.message }); }
-    const normalizedBagTags = normalizeCbsBagTags(body.bagTags || body.bagTag);
+    const normalizedBagTags = normalizeCbsBagTags(bagTagReport ? bagIdentifications.map(bag=>bag.tag) : body.bagTags || body.bagTag);
     if (!normalizedBagTags && !photoReport) return res.status(400).json({ error: 'Bag tag is required' });
     if (!sanitizeCbsText(body.issueDate, 40)) return res.status(400).json({ error: 'Issue date is required' });
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
@@ -4095,10 +4103,11 @@ app.post('/cbs-cases', async (req, res) => {
     if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
     const otherAttachmentCount = attachments.filter((attachment) => String(attachment.attachmentType || '').trim().toLowerCase() === 'other').length;
     if (otherAttachmentCount > 4) return res.status(400).json({ error: 'Use no more than 4 Others attachments.' });
-    if (photoReport && (!/^[A-Z0-9]{2,3}\d{1,4}$/i.test(String(firstFlight.flightNo || '').trim()) || !/^\d{4}-\d{2}-\d{2}$/.test(String(firstFlight.flightDate || '')))) return res.status(400).json({error:'Valid flight number and date are required'});
-    const contentsRows = buildCbsContentsRows(body);
+    if (photoReport && !bagTagReport && (!/^[A-Z0-9]{2,3}\d{1,4}$/i.test(String(firstFlight.flightNo || '').trim()) || !/^\d{4}-\d{2}-\d{2}$/.test(String(firstFlight.flightDate || '')))) return res.status(400).json({error:'Valid flight number and date are required'});
+    if (bagTagReport) { try { CbsReport.validateBagTagPhotos(bagIdentifications, attachments); } catch(error) { return res.status(400).json({error:error.message}); } }
+    const contentsRows = bagTagReport ? bagIdentifications.flatMap(bag=>(bag.contentsRows||[]).map(item=>({category:`Bag ${bag.number} · ${item.category}`,description:item.description}))) : buildCbsContentsRows(body);
     const record = {
-      ...(photoReport ? {formVersion:2,bagIdentifications,flightRows:[{flightNo:sanitizeCbsText(firstFlight.flightNo,20).toUpperCase(),flightDate:sanitizeCbsText(firstFlight.flightDate,20)}],tagPhotoCount:attachments.filter(a=>a.attachmentType==='bagTag').length,damageAreas:Array.isArray(body.damageAreas)?body.damageAreas.filter(x=>['front','back','left','right','top','bottom'].includes(x)):[]} : {}),
+      ...(photoReport ? {formVersion:body.formVersion,bagIdentifications,flightRows:bagTagReport?[]:[{flightNo:sanitizeCbsText(firstFlight.flightNo,20).toUpperCase(),flightDate:sanitizeCbsText(firstFlight.flightDate,20)}],tagPhotoCount:attachments.filter(a=>a.attachmentType==='bagTag').length,damageAreas:Array.isArray(body.damageAreas)?body.damageAreas.filter(x=>['front','back','left','right','top','bottom'].includes(x)):[]} : {}),
       caseType,
       status: 'Open',
       passengerName,
@@ -4143,6 +4152,7 @@ app.post('/cbs-cases', async (req, res) => {
         passengerEmail: record.email,
         subject: '[DO NOT REPLY] China Eastern Baggage Case',
         html: buildCbsEmailHtml(record),
+        emailContext:{...record,template:'received'},
         pdfBuffer,
         filename: 'baggage-report.pdf',
         attachments
@@ -4200,7 +4210,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
           result.email = await sendCbsCaseEmail({
             passengerEmail: record.email,
             subject: message.subject,
-            html: message.html,
+            html: message.html, emailContext:message.emailContext,
             ccOperations: false
           });
         } catch (mailErr) {
@@ -4225,7 +4235,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
         result.email = await sendCbsCaseEmail({
           passengerEmail: record.email,
           subject: message.subject,
-          html: message.html,
+          html: message.html, emailContext:message.emailContext,
           text: message.text,
           ccOperations: false
         });
@@ -4264,9 +4274,9 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       try {
         if (requirePvgAuthorizationEmail) {
           const authorizationForm = await getCbsOpenBagAuthorizationPdf();
-          result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name, ccOperations:false });
+          result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, pdfBuffer:authorizationForm.buffer, filename:authorizationForm.name, ccOperations:false });
         } else {
-          result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, text:message.text, attachments:emailAttachments, ccOperations:false });
+          result.email = await sendCbsCaseEmail({ passengerEmail:emailTo, subject:message.subject, html:message.html, emailContext:message.emailContext, text:message.text, attachments:emailAttachments, ccOperations:false });
         }
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
@@ -4282,7 +4292,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const fileNumber = record.worldTracerFileNumber || '';
       const message = adcShippingUpdateEmail(record, fileNumber);
       try {
-        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, emailContext:message.emailContext, text: message.text, ccOperations: false });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS ADC shipping update email error:', mailErr);
@@ -4293,7 +4303,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const fileNumber = record.worldTracerFileNumber || '';
       const message = fedexShippingUpdateEmail(record, fileNumber, record.trackingNumber, record.shippingAddress);
       try {
-        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, emailContext:message.emailContext, text: message.text, ccOperations: false });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS FedEx shipping update email error:', mailErr);
@@ -4304,7 +4314,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const fileNumber = record.worldTracerFileNumber || '';
       const message = airportPickupClosureEmail(record, fileNumber);
       try {
-        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, emailContext:message.emailContext, text: message.text, ccOperations: false });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS airport pickup closure email error:', mailErr);
@@ -4315,7 +4325,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const fileNumber = record.worldTracerFileNumber || '';
       const message = passengerPaidShippingEmail(record, fileNumber);
       try {
-        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, emailContext:message.emailContext, text: message.text, ccOperations: false });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS passenger-paid shipping email error:', mailErr);
@@ -4326,7 +4336,7 @@ app.post('/cbs-cases/:rowNumber/update', async (req, res) => {
       const fileNumber = record.worldTracerFileNumber || '';
       const message = lostBaggageUpdateEmail(record, fileNumber);
       try {
-        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, text: message.text, ccOperations: false });
+        result.email = await sendCbsCaseEmail({ passengerEmail: record.email, subject: message.subject, html: message.html, emailContext:message.emailContext, text: message.text, ccOperations: false });
       } catch (mailErr) {
         result.emailError = cbsEmailErrorMessage(mailErr);
         console.error('CBS lost baggage email error:', mailErr);

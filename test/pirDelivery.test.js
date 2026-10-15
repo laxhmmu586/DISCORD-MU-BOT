@@ -107,7 +107,7 @@ test('both languages preserve the exact requested third-party notice', () => {
 
 test('CBS renders delivery before passenger information and escapes passenger addresses', () => {
   const page = read('public/public/cbs.html');
-  const context = { PirDelivery, document: { documentElement: { lang: 'en' } }, hasValue: (x) => x != null && String(x).trim() !== '', label: (en) => en, inferCaseType: () => 'AHL', renderValue: (x) => x || '--', escapeHtml: (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') };
+  const context = { BaggageGuide: require('../public/public/baggage-guide'), PirDelivery, document: { documentElement: { lang: 'en' } }, hasValue: (x) => x != null && String(x).trim() !== '', label: (en) => en, inferCaseType: () => 'AHL', renderValue: (x) => x || '--', escapeHtml: (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') };
   vm.createContext(context);
   vm.runInContext(page.slice(page.indexOf('    function fullPassengerFileHtml('), page.indexOf('    function updateFormHtml(')), context);
   const html = context.fullPassengerFileHtml({ originalFormData: JSON.stringify({ deliveryPreference: 'temporary', temporaryAddress: '<img src=x onerror=alert(1)>' }) });

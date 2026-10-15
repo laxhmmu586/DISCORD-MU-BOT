@@ -8,18 +8,63 @@ function normalizeBags(value) {
     if(!Guide.colors.some(x=>x[0]===color)||!Guide.types.some(x=>x[0]===type)) throw new Error('Select a valid IATA color and type for each bag.');
     if(descriptors.length>3||descriptors.some(c=>!Guide.descriptors.some(x=>x[0]===c))) throw new Error('Select up to 3 valid descriptive elements.');
     for(const [none,group] of [['X-M','material'],['X-E','external']]) if(descriptors.includes(none)&&descriptors.some(c=>c!==none&&Guide.descriptors.find(x=>x[0]===c)?.[5]===group))throw new Error('No element cannot be combined with an element in the same group.');
-    return {number:index+1,tag:clean(bag.tag,20).toUpperCase(),color,type,descriptors:descriptors.join(','),description:clean(bag.description),otherFeatures:clean(bag.otherFeatures)};
+    return {number:index+1,tag:clean(bag.tag,20).toUpperCase().replace(/\s+/g,''),color,type,descriptors:descriptors.join(','),description:clean(bag.description),otherFeatures:clean(bag.otherFeatures), ...(Array.isArray(bag.contentsRows) ? {contentsRows:bag.contentsRows.slice(0,30).map(item=>({category:clean(item?.category,80),description:clean(item?.description,300)})).filter(item=>item.category||item.description)} : {})};
   });
+}
+function normalizePassenger(value={}) {
+  const passenger={passengerName:clean(value.passengerName,160),email:clean(value.email,160).toLowerCase(),phone:clean(value.phone,80),ticketNumber:clean(value.ticketNumber,80)};
+  if(!passenger.passengerName||!passenger.phone||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(passenger.email))throw new Error('Valid passenger name, email and phone are required.');
+  return passenger;
+}
+function validateBagTagPhotos(bags, attachments) {
+  const seen = new Set();
+  for (const bag of bags) {
+    if (!bag.tag) throw new Error('Enter a tag number for every bag.');
+    if (seen.has(bag.tag)) throw new Error('Each bag must have a different tag number.');
+    seen.add(bag.tag);
+  }
+  const photos = attachments.filter(item => item.attachmentType === 'bagTag');
+  if (photos.length !== bags.length || photos.some(item => !Number.isInteger(item.bagNumber) || item.bagNumber < 1 || item.bagNumber > bags.length || !String(item.mimeType).startsWith('image/'))) throw new Error('Photograph the tag for every bag.');
+  for (const bag of bags) if (photos.filter(item => item.bagNumber === bag.number).length !== 1) throw new Error('Each bag must have its own tag photo.');
 }
 function emailSummary(record){
   const zh=record.language==='zh',label=(en,cn)=>zh?cn:en;
   const rows=[[label('Passenger','旅客'),record.passengerName],[label('Flight','航班'),(record.flightRows||[]).map(f=>`${f.flightNo} · ${f.flightDate}`).join(' / ')],[label('Case type','案件类型'),record.caseType],[label('Bags','行李件数'),record.bagIdentifications?.length||0],[label('Tag photographs','行李牌照片'),record.tagPhotoCount||0]];
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="10" style="background:#f0f6ff;border:1px solid #dce8f8;border-radius:10px;margin-bottom:24px">${rows.map(([k,v])=>`<tr><td style="color:#627f9f;font-size:12px">${Guide.escape(k)}</td><td style="font-weight:700;color:#173f73;font-size:13px">${Guide.escape(v)}</td></tr>`).join('')}</table>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="10" style="background:#f0f6ff;border:1px solid #dce8f8;border-radius:10px;margin-bottom:24px">${rows.filter(([,value])=>value!==undefined&&value!==null&&String(value).trim()).map(([k,v])=>`<tr><td style="color:#627f9f;font-size:12px">${Guide.escape(k)}</td><td style="font-weight:700;color:#173f73;font-size:13px">${Guide.escape(v)}</td></tr>`).join('')}</table>`;
 }
-function emailShell({subject='',html='',text=''}) {
-  const escape=Guide.escape;
-  const content=html||String(text).split(/\n\n+/).map(p=>`<p>${escape(p).replace(/\n/g,'<br>')}</p>`).join('');
-  return `<html><body style="margin:0;background:#f0f5fc;color:#243c5b;font-family:Arial,'Microsoft YaHei',sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="padding:28px 12px"><table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;margin:auto;background:white;border:1px solid #dae6f5;border-radius:16px;overflow:hidden"><tr><td style="padding:24px 28px;background:#123f7a;color:#fff;font-size:13px;letter-spacing:2px">BAGGAGE SERVICE</td></tr><tr><td style="padding:24px 28px 12px;font-size:23px;font-weight:700;color:#123f7a;border-bottom:1px solid #e4edf8">${escape(subject)}</td></tr><tr><td style="padding:22px 28px;font-size:14px;line-height:1.8">${content}</td></tr><tr><td style="padding:18px 28px;background:#f1f7ff;color:#667f9f;font-size:12px">China Eastern Airlines · LAX</td></tr></table></td></tr></table></body></html>`;
+function emailShell({subject='',html='',text='',record={}}) {
+  const escape=Guide.escape,zh=/^zh/.test(record.language||''),pick=(en,cn)=>zh?cn:en;
+  const template=record.template||'',received=template==='received',transfer=template==='rushToLaxInformationEmail',pickup=template==='baggagePickupAtLaxEmail',future=template==='baggageFuturePickupAtLaxEmail';
+  let title=String(subject).replace(/^(?:\[?DO NOT REPLY\]?|【?请勿回复】?)\s*[–—-]?\s*/i,'');
+  if(received)title=pick('Property Irregularity Report Received','已收到您的行李事故报告');
+  if(transfer)title=pick('Baggage Transfer Status Update','行李转运状态更新');
+  if(pickup)title=pick('Your Baggage Is Available for Pick-Up at LAX','您的行李已可在洛杉矶机场领取');
+  const subtitle=received?(record.caseType==='DPR'?pick('DPR – Damaged Baggage','DPR – 行李损坏'):pick('AHL – Delayed / Lost Baggage','AHL – 行李延误／遗失')):record.worldTracerFileNumber?`${pick('WorldTracer Case','WorldTracer 案件编号')}: ${record.worldTracerFileNumber}`:'';
+  const rows=[];
+  if(received)rows.push([pick('Report Type','报告类型'),record.caseType==='DPR'?pick('DPR – Damaged Baggage','DPR – 行李损坏'):pick('AHL – Delayed / Lost Baggage','AHL – 行李延误／遗失')]);
+  if(record.worldTracerFileNumber)rows.push([pick('WorldTracer Case Number','WorldTracer 案件编号'),record.worldTracerFileNumber]);
+  if(pickup||future){rows.push([pick('Pick-Up Location','领取地点'),'LAX TBIT, Counter A68 Office'],[pick('Pick-Up Hours','领取时间'),future?pick('8:00 AM – 2:00 PM','上午 8:00 – 下午 2:00'):pick('7:00 AM – 3:00 PM','上午 7:00 – 下午 3:00')]);if(future&&record.availableDate)rows.push([pick('Available from','可领取日期'),record.availableDate]);}
+  rows.push([pick('Passenger Name','旅客姓名'),record.passengerName],[pick('Contact Phone','联系电话'),record.phoneNumber||record.phone],[pick('Bag Tag Number','行李牌号码'),record.bagTag||(record.bagIdentifications||[]).map(b=>b.tag).filter(Boolean).join(' / ')]);
+  if(transfer)rows.push([pick('Current Status','当前状态'),pick('In Transfer','转运中')],[pick('Estimated Arrival at LAX','预计抵达洛杉矶日期'),record.estimatedArrivalTime]);
+  for(const flight of record.formVersion>=3?[]:record.flightRows||[])rows.push([pick('Flight Number','航班号'),flight.flightNo],[pick('Travel Date','出行日期'),flight.flightDate]);
+  if(!(record.flightRows||[]).length&&record.formVersion<3)rows.push([pick('Flight','航班'),record.flightRoute]);
+  if(record.destinationOnBags)rows.push([pick('Final Destination','最终目的地'),record.destinationOnBags]);
+  if(received&&record.caseType==='DPR')rows.push([pick('Damage Level','破损程度'),zh?({Minor:'轻微',Major:'严重',Total:'完全损坏'}[record.dprDamageLevel]||record.dprDamageLevel):record.dprDamageLevel]);
+  const table=rows.filter(([,v])=>v!==undefined&&v!==null&&String(v).trim()).length?`<table role="presentation" width="100%" cellspacing="0" cellpadding="10" style="border-collapse:collapse;border:1px solid #dce7f6;margin:20px 0">${rows.filter(([,v])=>v!==undefined&&v!==null&&String(v).trim()).map(([k,v])=>`<tr><td style="width:42%;background:#f1f6fd;border:1px solid #e0eaf7;color:#6b83a4;font-size:13px">${escape(k)}</td><td style="background:#fff;border:1px solid #e0eaf7;color:#153565;font-size:13px">${escape(v)}</td></tr>`).join('')}</table>`:'';
+  let content=html||String(text).split(/\n\n+/).map(p=>`<p>${escape(p).replace(/\n/g,'<br>')}</p>`).join('');
+  content=content.replace(/<h2>([\s\S]*?)<\/h2>/gi,'<p style="margin:0 0 16px">$1</p>');
+  // Insert the detail table after the introduction, preserving all existing wording and links.
+  let inserted=false;
+  content=content.replace(/<p\b([^>]*)>([\s\S]*?)<\/p>/gi,(whole,attrs,body)=>{
+    const plain=body.replace(/<[^>]*>/g,'').trim();
+    let paragraph=whole;
+    if(/retain|保留|valid photo ID|身份证件|authorized representative|受委托人/i.test(plain))paragraph=`<p style="padding:14px 16px;background:#faf6eb;border-radius:6px;color:#34496a;line-height:1.7">${body}</p>`;
+    else if(transfer&&/arranged for transfer|安排转运|subject to change|发生变化/i.test(plain))paragraph=`<p style="padding:14px 16px;background:#eef6ff;border-radius:6px;color:#254b82;line-height:1.7">${body}</p>`;
+    if(!inserted&&!/^(?:Dear Passenger[,，:]?|尊敬的旅客[：:]?|亲爱的旅客[：:]?|您好[！!]?|您好！)$/i.test(plain)){inserted=true;return paragraph+table;}
+    return paragraph;
+  });
+  if(!inserted)content+=table;
+  return `<html><body style="margin:0;background:#f3f6fa;color:#1d355f;font-family:Arial,'Microsoft YaHei',sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="padding:24px 12px"><table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;margin:auto;background:#fff"><tr><td style="padding:26px 28px 14px;color:#aa8b50;font-size:11px;letter-spacing:3px">${pick('BAGGAGE SERVICE','行李服务')}</td></tr><tr><td style="padding:0 28px 22px;color:#102c58"><h1 style="margin:0;font-size:25px;line-height:1.3">${escape(title)}</h1>${subtitle?`<p style="margin:6px 0 0;font-size:16px">${escape(subtitle)}</p>`:''}</td></tr><tr><td style="padding:0 28px 28px;font-size:14px;line-height:1.75">${content}</td></tr></table></td></tr></table></body></html>`;
 }
 // Embed smaller photo previews in the PDF; the original files remain separate mail/Discord attachments.
 async function prepareReportAttachments(attachments){
@@ -71,13 +116,13 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
     }
   }
   function attachmentGallery(list,height=64){
-    const photos=list.filter(a=>a.mimeType==='image/jpeg');gallery(photos.map((a,i)=>({data:`data:image/jpeg;base64,${a.contentBase64}`,caption:`${i+1}. ${clean(a.filename,45)}`})),height,Math.min(3,Math.max(1,photos.length)));
+    const photos=list.filter(a=>a.mimeType==='image/jpeg');gallery(photos.map((a,i)=>({data:`data:image/jpeg;base64,${a.contentBase64}`,caption:a.attachmentType==='bagTag'&&a.bagNumber?`${label('Bag','行李')} ${a.bagNumber} · ${record.bagIdentifications?.[a.bagNumber-1]?.tag||''}`:`${i+1}. ${clean(a.filename,45)}`})),height,Math.min(3,Math.max(1,photos.length)));
     list.filter(a=>a.mimeType!=='image/jpeg').forEach(a=>field(label('Separate attachment','独立附件'),a.filename));
   }
   newPage();heading(label('1  Passenger information','1  旅客信息'));
   grid([[label('Name','姓名'),record.passengerName],[label('Email','电子邮箱'),record.email],[label('Contact number','联系电话'),record.phone],[label('Ticket','机票号码'),record.ticketNumber]]);
-  heading(label('2  Flight information','2  航班信息'));
-  (record.flightRows||[]).forEach(f=>field(label('Flight / Date','航班／日期'),`${f.flightNo} · ${f.flightDate}`));
+  heading(record.formVersion >= 3 ? label('2  Baggage tags','2  行李牌号码及照片') : label('2  Flight information','2  航班信息'));
+  (record.formVersion >= 3 ? [] : record.flightRows||[]).forEach(f=>field(label('Flight / Date','航班／日期'),`${f.flightNo} · ${f.flightDate}`));
   attachmentGallery((record.reportAttachments||[]).filter(a=>a.attachmentType==='bagTag'),64);
   heading(label('3  Baggage information','3  行李信息'));
   (record.bagIdentifications||[]).forEach((bag,i)=>{
@@ -85,6 +130,7 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
     const codes=[['color',bag.color],['type',bag.type],...bag.descriptors.split(',').filter(Boolean).map(code=>['descriptor',code])];
     gallery(codes.map(([kind,code])=>({data:localImage(kind,code),caption:`${code.replace(/-.*/,'')} ${Guide.label((kind==='color'?Guide.colors:kind==='type'?Guide.types:Guide.descriptors).find(item=>item[0]===code),record.language)}`})),42,5);
     field(label('Description','描述'),bag.description);field(label('Other features','其他特征'),bag.otherFeatures);
+    (bag.contentsRows||[]).forEach(item=>field(label('Contents','包内物品'),[item.category,item.description].filter(Boolean).join(': ')));
   });
   if(record.caseType==='AHL'){
     heading(label('4  Collection / delivery','4  领取／配送方式'));
@@ -93,11 +139,11 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
     heading(label('4  Damage details','4  破损详情'));
     const areas=(record.damageAreas||[]).map(key=>({front:label('Side 1','正面'),back:label('Side 2','背面'),left:label('End 1','左侧'),right:label('End 2','右侧'),top:label('Top','顶部'),bottom:label('Bottom','底部')})[key]).join(', ');
     grid([[label('Damage level','破损程度'),zh?({Minor:'轻微',Major:'严重',Total:'完全损坏'}[record.dprDamageLevel]||record.dprDamageLevel):record.dprDamageLevel],[label('Marked views','标记视角'),areas]]);
-    field(label('Damage location','破损位置'),record.dprBagInfo);field(label('Inner damage','内物破损'),record.dprInnerDamage);
+    if(record.formVersion < 3)field(label('Damage location','破损位置'),record.dprBagInfo);field(label('Inner damage','内物破损'),record.dprInnerDamage);
     if(record.damageSketch){ensure(92);drawPicture(record.damageSketch,40,y,532,80);y-=87;}
   }
   if(record.additionalInformation)field(label('Other useful information','其他有用信息'),record.additionalInformation);
-  if(record.contentsRows?.length){heading(label('Contents','包内物品'));record.contentsRows.forEach(item=>paragraph([item.category,item.description].filter(Boolean).join(': ')));}
+  if(record.formVersion < 3 && record.contentsRows?.length){heading(label('Contents','包内物品'));record.contentsRows.forEach(item=>paragraph([item.category,item.description].filter(Boolean).join(': ')));}
   const supporting=(record.reportAttachments||[]).filter(a=>a.attachmentType!=='bagTag');
   if(supporting.length){heading(label('5  Attachments','5  附件'));attachmentGallery(supporting,46);}
   ensure(record.passengerSignatureDataUrl?70:42);heading(label('6  Passenger signature','6  旅客签字'));field(label('Date of issue','填写日期'),record.issueDate);
@@ -112,4 +158,4 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
   const pagesId=add(`<< /Type /Pages /Kids [${ids.map(id=>`${id} 0 R`).join(' ')}] /Count ${ids.length} >>`),catalog=add(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   let pdf='%PDF-1.4\n';const offsets=[0];objects.forEach((o,i)=>{offsets.push(Buffer.byteLength(pdf,'binary'));pdf+=`${i+1} 0 obj\n${o}\nendobj\n`;});const xref=Buffer.byteLength(pdf,'binary');pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n${offsets.slice(1).map(o=>`${String(o).padStart(10,'0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length+1} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;return Buffer.from(pdf,'binary');
 }
-module.exports={normalizeBags,emailShell,emailSummary,createPdf,prepareReportAttachments};
+module.exports={normalizeBags,emailShell,emailSummary,createPdf,prepareReportAttachments,validateBagTagPhotos,normalizePassenger};

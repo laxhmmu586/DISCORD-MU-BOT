@@ -17,7 +17,7 @@ const functionSource = (source, name) => {
 const storage = vm.createContext({});
 vm.runInContext(drive.match(/const CBS_HEADERS = \[[\s\S]*?\];/)[0], storage);
 vm.runInContext(drive.slice(drive.indexOf('function cbsRecordFromSheet('), drive.indexOf('async function appendCbsCase(')), storage);
-const display = vm.createContext({ document: { documentElement: { lang: 'en' } }, PirDelivery: require('../public/public/pir-delivery') });
+const display = vm.createContext({ BaggageGuide: require('../public/public/baggage-guide'), document: { documentElement: { lang: 'en' } }, PirDelivery: require('../public/public/pir-delivery') });
 for (const name of ['label', 'escapeHtml', 'inferCaseType', 'hasValue', 'normalizeShippingMethodLabel', 'renderValue', 'fullPassengerFileHtml']) {
   vm.runInContext(functionSource(page, name), display);
 }

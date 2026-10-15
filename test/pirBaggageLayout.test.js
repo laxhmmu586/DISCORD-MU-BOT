@@ -22,8 +22,8 @@ test('PIR has one bag list and removes the redundant AHL section and mandatory d
 function payloadFor(bags) {
   const selectors = { 'data-bag-tag': 'tag', 'data-bag-color': 'color', 'data-bag-type': 'type', 'data-bag-descriptors': 'descriptors', 'data-bag-description': 'description', 'data-bag-other-features': 'otherFeatures' };
   const context = {
-    payload: {}, typeSelect: { value: 'AHL' },
-    bagSelectorGrid: { querySelectorAll: () => bags.map(bag => ({ querySelector: selector => ({ value: bag[selectors[selector.slice(1, -1)]] || '' }) })) }
+    collectContentsRows: () => [], payload: {}, typeSelect: { value: 'AHL' },
+    bagSelectorGrid: { querySelectorAll: () => bags.map(bag => ({ tagIdentity: {querySelector: () => ({value:bag.tag||''})}, querySelector: selector => ({ value: bag[selectors[selector.slice(1, -1)]] || '' }) })) }
   };
   vm.createContext(context);
   vm.runInContext(form.slice(form.indexOf('      const bagIdentifications ='), form.indexOf('      payload.contentsRows =')), context);

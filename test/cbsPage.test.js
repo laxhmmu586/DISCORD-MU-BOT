@@ -834,8 +834,8 @@ test('CBS passenger information keeps all operationally required fields visible'
     assert.match(requiredFields, new RegExp(`label\\('${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
   }
   assert.doesNotMatch(requiredFields, /label\('Bag Tag'/);
-  assert.match(page, /requiredFieldGrid\(requiredPassengerFields\)/);
-  assert.match(page, /PirDelivery.fields\(row, document.documentElement.lang\)/);
+  assert.match(page, /requiredFieldGrid\(passengerFields\)/);
+  assert.match(page, /PirDelivery.fields\(row,\s*document.documentElement.lang\)/);
   assert.match(page, /fieldGrid\(deliveryFields\)/);
 });
 
@@ -1232,12 +1232,14 @@ test('Passenger Filed shipping automatically closes the case after recording shi
 });
 
 test('CBS passenger detail view can recover values from the original form snapshot', () => {
-  assert.match(page, /JSON\.parse\(row\.originalFormData \|\| '\{\}'\)/);
+  assert.match(page, /JSON\.parse\(row\.originalFormData\s*\|\|\s*'\{\}'\)/);
 });
 
-test('CBS baggage information displays baggage details from sheet column N for AHL and DPR cases', () => {
-  assert.match(page, /inferCaseType\(row\) === 'DPR' \? sharedBaggageFields\.concat\(\[\s*\[label\('Baggage Details', '行李详情'\), row\.baggageDetails \|\| row\.dprBagInfo\]/);
-  assert.match(page, /label\('Baggage Details', '行李详情'\), row\.baggageDetails \|\| row\.ahlBagDescription/);
+test('CBS baggage details use visual cards with column N as the legacy fallback', () => {
+  assert.match(page, /BaggageGuide.bagsFromRecord\(row\)/);
+  assert.match(page, /BaggageGuide.cards\(bags,document.documentElement.lang,\{caseType\}\)/);
+  assert.match(page, /row.baggageDetails\|\|row.dprBagInfo/);
+  assert.match(page, /row.baggageDetails\|\|row.ahlBagDescription/);
 });
 
 test('CBS detail view omits the redundant journey and address section', () => {
@@ -1249,11 +1251,11 @@ test('PIR form labels the optional attachment category as Others', () => {
   assert.doesNotMatch(pirForm, />Other document<\/span>/);
 });
 
-test('AHL and DPR photo reports prefill MU583 and a local flight date without route fields', () => {
-  assert.match(pirForm, /name="flightNo1" value="MU583"/);
-  assert.doesNotMatch(pirForm, /name="flightOrigin1"|name="destination1"/);
-  assert.match(pirForm, /name="flightDate1" type="date" required/);
-  assert.match(pirForm, /timeZone:'America\/Los_Angeles'/);
+test('AHL and DPR collect per-bag manual tags and photos without flight fields', () => {
+  assert.doesNotMatch(pirForm, /name="flightNo1"|name="flightDate1"|name="flightOrigin1"|name="destination1"/);
+  assert.match(pirForm, /data-bag-tag/);
+  assert.match(pirForm, /data-attachment-type="bagTag"/);
+  assert.match(pirForm, /payload\.formVersion = 3/);
 });
 
 test('PIR form limits Others attachments to 4 on the client and server', () => {

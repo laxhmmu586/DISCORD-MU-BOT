@@ -139,26 +139,26 @@
   </style>
   <link rel="stylesheet" href="/aviation-glass.css?v=20261013-pickers">
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
-<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/cbs-report.css?v=20261015"></head>
+<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-bag-flow"></head>
 <body class="aviation-page aviation-pir">
   <header><a class="back-link" href="/cbs-form.html"><span class="en">‹ Baggage assistance</span><span class="zh">‹ 行李服务</span></a>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
   <div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
   <main class="wrap">
     <section class="page-title">
-      <h1><span class="en">Property Irregularity Report (PIR)</span><span class="zh">行李运输事故记录单</span></h1>
+      <img class="report-heading-baggage" src="/assets/cbs-delayed-header.png" alt="" aria-hidden="true"><h1><span class="en">Property Irregularity Report</span><span class="zh">行李运输事故记录单</span></h1>
       <p><span class="en">If you encounter any difficulties while completing the form, please email us directly at <a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>, and we will be happy to assist you.</span><span class="zh">如果您在填写过程中遇到任何困难，请直接发送邮件至：<a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>，我们将尽快为您提供协助。</span></p>
     </section>
 
     <section class="card">
       <nav class="report-progress" id="report-progress" aria-label="Report progress"></nav>
-      <form id="cbs-form">
+      <form id="cbs-form" novalidate>
         <input name="caseType" id="case-type" type="hidden" value="AHL" />
-        <section class="report-step" data-step="0"><h2><span class="en">Flight information</span><span class="zh">航班信息</span></h2><div class="grid flight-info"><label><span class="en">Flight number</span><span class="zh">航班号</span><input name="flightNo1" value="MU583" required maxlength="10"></label><label><span class="en">Flight date</span><span class="zh">航班日期</span><input name="flightDate1" type="date" required></label></div><div class="attachment-group tag-capture" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true" data-max-attachments="10"><strong><span class="en">Tag number · Photograph baggage tag</span><span class="zh">行李牌号码 · 拍摄行李牌</span></strong><p class="muted"><span class="en">Take a clear photo of each bag tag. Your photos will be attached to the report.</span><span class="zh">请拍下每张行李牌，确保号码清晰可见。照片将作为报告附件。</span></p><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Take / add photo</span><span class="zh">拍摄／添加照片</span></span><input name="bagTagAttachment" data-attachment-input data-attachment-type="bagTag" type="file" accept="image/*" capture="environment" multiple /></label></div></section>
+        <section class="report-step" data-step="0" id="tag-step"><h2><span class="en">Bag tag numbers and photos</span><span class="zh">行李牌号码及照片</span></h2><p class="step-intro"><span class="en">Enter the tag number and photograph the tag for each bag.</span><span class="zh">请逐件输入行李牌号码，并拍摄对应的行李牌照片。</span></p><div id="bag-tag-entries" class="bag-tag-entries"></div><button type="button" class="add-another-bag" id="add-tag-bag">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button></section>
         <section class="report-step" data-step="1"><h2><span class="en">Passenger information</span><span class="zh">旅客信息</span></h2><div class="grid passenger-grid">          <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
           <label><span class="en">Contact number</span><span class="zh">联系电话</span><input name="phone" type="tel" autocomplete="tel" placeholder="" required /></label>
-          <label><span class="en">Ticket number</span><span class="zh">机票号码</span><input name="ticketNumber" placeholder="7816262626666" required /></label>
+          <label><span class="en">Ticket number (optional)</span><span class="zh">机票号码（选填）</span><input name="ticketNumber" placeholder="7816262626666" /></label>
 </div></section>
 
         <section class="case-fields is-active" id="shared-baggage-fields" data-step="2">
@@ -168,13 +168,6 @@
             <div class="bag-selector-grid" id="bag-selector-grid"></div>
             <button class="add-another-bag" id="add-another-bag" type="button">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button>
           </div>
-        </section>
-
-        <section class="case-fields is-active" id="contents-fields" data-step="3">
-          <h3><span class="en">Contents</span><span class="zh">包内物品</span></h3>
-          <div class="contents-row flight-head"><span><span class="en">Category</span><span class="zh">类别</span></span><span><span class="en">Description</span><span class="zh">描述</span></span><span></span></div>
-          <div id="contents-list"></div>
-          <button class="secondary" id="add-content-row" type="button">+ <span class="en">Add item</span><span class="zh">添加物品</span></button>
         </section>
 
         <section id="delivery-fields" class="case-fields is-active" data-step="3"><h3><span class="en">Collection / delivery</span><span class="zh">领取／配送方式</span></h3>          <label class="wide"><span class="en">Collection / delivery method</span><span class="zh">取件方式</span><select name="deliveryPreference" id="delivery-preference" required><option value="">Select a method</option><option value="permanent">Delivery to a permanent address</option><option value="temporary">Delivery to a temporary address</option><option value="pickup">Collect at the airport</option></select></label>
@@ -187,7 +180,6 @@
           <h3><span class="en">DPR information</span><span class="zh">破损行李信息</span></h3>
           <div class="grid">
             <label><span class="en">Damage level</span><span class="zh">破损程度</span><select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
-            <label class="wide"><span class="en">Baggage information / damage location</span><span class="zh">行李信息 / 破损位置</span><textarea name="dprBagInfo" ></textarea></label>
             <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
             <div class="wide sketch-shell">
               <strong><span class="en">Circle damaged area</span><span class="zh">圈出破损部位</span></strong>
@@ -197,9 +189,9 @@
           </div>
         </section>
 
-        <label class="wide" data-step="4"><span class="en">Other useful information</span><span class="zh">其他有用信息</span><span class="attachment-hint" id="additional-information-hint"><span class="en">Optional. Include baggage features, what happened, or other information that may help us handle your report.</span><span class="zh">选填，可填写行李特征、误取经过或其他有助于处理的信息</span></span><textarea name="additionalInformation" maxlength="1000" aria-describedby="additional-information-hint"></textarea></label>
+        <section class="report-step" data-step="4"><h2><span class="en">Other useful information</span><span class="zh">其他有用信息</span></h2><label class="wide"><span class="en">Additional details (optional)</span><span class="zh">补充说明（选填）</span><span class="attachment-hint" id="additional-information-hint"><span class="en">Optional. Include baggage features, what happened, or other information that may help us handle your report.</span><span class="zh">选填，可填写行李特征、误取经过或其他有助于处理的信息</span></span><textarea name="additionalInformation" maxlength="1000" aria-describedby="additional-information-hint"></textarea></label></section>
 
-        <section class="case-fields is-active wide" data-step="4">
+        <section class="case-fields is-active wide" data-step="5">
           <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
           <div class="attachment-grid">
             <div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-required-attachment="true" data-max-attachments="1">
@@ -211,10 +203,10 @@
               <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Others</span><span class="zh">其他附件</span></span><span class="attachment-filename"></span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" accept="image/*,.pdf" multiple /></label>
             </div>
           </div>
-          <span class="attachment-hint"><span class="en">Boarding pass and bag tag receipt are required. You may upload up to 4 files under Others (22 MB total after photo optimization). Your bag tag photos from the first step are already included.</span><span class="zh">必须上传登机牌和行李票。“其他附件”最多可上传 4 个文件（照片优化后总计不超过 22 MB）。第一步拍摄的行李牌照片已包含在内。</span></span>
+          <span class="attachment-hint"><span class="en">Boarding pass and bag tag receipt are required. You may upload up to 4 files under Others (22 MB total after photo optimization). Each bag’s tag photo is already included.</span><span class="zh">必须上传登机牌和行李票。“其他附件”最多可上传 4 个文件（照片优化后总计不超过 22 MB）。每件行李已拍摄的行李牌照片均已包含在内。</span></span>
         </section>
 
-        <section class="case-fields is-active" data-step="4">
+        <section class="case-fields is-active" data-step="5">
           <h3><span class="en">Passenger signature and date</span><span class="zh">旅客签字和日期</span></h3>
           <label><span class="en">Date of issue</span><span class="zh">填写日期</span><input name="issueDate" id="issue-date" type="date" required /></label>
           <div class="wide">
@@ -224,7 +216,7 @@
           </div>
         </section>
 
-        <div class="actions" data-step="4"><button type="submit"><span class="en">Submit</span><span class="zh">提交</span></button><button class="secondary" type="reset"><span class="en">Reset</span><span class="zh">重置</span></button><span id="form-status" class="status"></span></div>
+        <div class="actions" data-step="5"><button type="submit"><span class="en">Submit</span><span class="zh">提交</span></button><button class="secondary" type="reset"><span class="en">Reset</span><span class="zh">重置</span></button><span id="form-status" class="status"></span></div>
         <div class="wizard-actions"><button type="button" class="secondary" id="step-back"><span class="en">← Back</span><span class="zh">← 上一步</span></button><button type="button" id="step-next"><span class="en">Continue →</span><span class="zh">下一步 →</span></button></div><p id="step-error" class="status err" role="alert"></p>
       </form>
     </section>
@@ -233,7 +225,7 @@
   </main>
   <dialog class="submitting-dialog" id="submitting-dialog" aria-labelledby="submitting-title"><div class="submitting-spinner" aria-hidden="true"></div><div class="en"><h2 id="submitting-title">Processing</h2><p>Please wait. Do not submit again.</p></div><div class="zh"><h2>处理中</h2><p>请稍候，请勿重复提交。</p></div></dialog>
   <dialog class="chart-dialog" id="chart-dialog"><button class="chart-close" id="chart-close" type="button" aria-label="Close">×</button><img id="chart-dialog-image" alt="" /><div class="enlarged-icon" id="enlarged-icon" hidden></div></dialog><div class="hover-image-preview" id="hover-image-preview" hidden></div>
-  <script src="/pir-delivery.js"></script><script src="/baggage-guide.js"></script>
+  <script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-bag-flow"></script>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const form = document.querySelector('#cbs-form');
@@ -248,13 +240,12 @@
     const formStatus = document.querySelector('#form-status');
     const submittingDialog = document.querySelector('#submitting-dialog');
     const thanks = document.querySelector('#thanks');
-    const attachmentInputs = Array.from(document.querySelectorAll('[data-attachment-input]'));
+    const attachmentInputs = () => Array.from(form.querySelectorAll('[data-attachment-input]'));
     const canvas = document.querySelector('#damage-sketch');
     const ctx = canvas.getContext('2d');
     const signaturePad = document.querySelector('#signature-pad');
     const signatureCtx = signaturePad.getContext('2d');
-    const contentsList = document.querySelector('#contents-list');
-    const addContentRowButton = document.querySelector('#add-content-row');
+    const bagTagEntries = document.querySelector('#bag-tag-entries');
     const issueDateInput = document.querySelector('#issue-date');
     const languageToggle = document.querySelector('#language-toggle');
     const bagSelectorGrid = document.querySelector('#bag-selector-grid');
@@ -270,28 +261,71 @@
     let signing = false;
     let submitting = false;
 
-    let currentStep=0;
-    const stepNames=[['Flight','航班'],['Passenger','旅客'],['Baggage','行李'],['Details','详情'],['Confirm','确认']];
-    function renderProgress(){
-      document.querySelector('#report-progress').innerHTML=stepNames.map((name,i)=>`<span class="${i===currentStep?'is-current':i<currentStep?'is-done':''}" ${i===currentStep?'aria-current="step"':''}><b>${i<currentStep?'✓':i+1}</b>${name[document.documentElement.lang==='en'?0:1]}</span>`).join('');
+    let currentStep = 0;
+    const lastStep = 5;
+    let wizardSession = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const stepNames = [['Bag tags','行李牌'],['Passenger','旅客'],['Baggage','行李'],['Details','详情'],['More','补充'],['Sign','签字']];
+    function renderProgress() {
+      const names = stepNames.map(pair => pair.slice());
+      names[3] = typeSelect.value === 'AHL' ? ['Delivery','配送'] : ['Damage','破损'];
+      document.querySelector('#report-progress').innerHTML = names.map((name,i) => `<span class="${i === currentStep ? 'is-current' : i < currentStep ? 'is-done' : ''}" ${i === currentStep ? 'aria-current="step"' : ''}><b>${i < currentStep ? '✓' : i + 1}</b>${name[document.documentElement.lang === 'en' ? 0 : 1]}</span>`).join('');
     }
-    function showStep(step){currentStep=step;form.querySelectorAll('[data-step]').forEach(el=>el.hidden=Number(el.dataset.step)!==step || (step===3 && (el.id==='dpr-fields'?typeSelect.value!=='DPR':['delivery-fields','contents-fields'].includes(el.id)&&typeSelect.value!=='AHL')));document.querySelector('#step-back').hidden=step===0;document.querySelector('#step-next').hidden=step===4;document.querySelector('#step-error').textContent='';renderProgress();}
-    function advanceStep(){
-      const lang=document.documentElement.lang,error=document.querySelector('#step-error');error.textContent='';
-      const controls=Array.from(form.querySelectorAll(`[data-step="${currentStep}"] input,[data-step="${currentStep}"] select,[data-step="${currentStep}"] textarea`)).filter(x=>!x.disabled&&x.getClientRects().length);
-      if(controls.some(x=>!x.reportValidity()))return;
-      if(currentStep===0 && !(selectedAttachments.get('bagTag')||[]).length){error.textContent=lang==='en'?'Please photograph your bag tag.':'请先拍摄行李牌。';return;}
-      if(currentStep===2 && Array.from(bagSelectorGrid.children).some(b=>!b.querySelector('[data-bag-color]').value||!b.querySelector('[data-bag-type]').value)){error.textContent=lang==='en'?'Select a color and type for each bag.':'请为每件行李选择颜色和类型。';return;}
-      showStep(Math.min(4,currentStep+1));document.querySelector('#report-progress').scrollIntoView({block:'start',behavior:'smooth'});
+    function showStep(step, mode = 'push') {
+      currentStep = Math.max(0, Math.min(lastStep, step));
+      form.querySelectorAll('[data-step]').forEach(el => {
+        el.hidden = Number(el.dataset.step) !== currentStep || (currentStep === 3 && (el.id === 'dpr-fields' ? typeSelect.value !== 'DPR' : el.id === 'delivery-fields' && typeSelect.value !== 'AHL'));
+      });
+      // Move the same inputs and photo preview, so both steps edit one bag record.
+      if (currentStep === 0 || currentStep === 2) {
+        for (const bag of bagSelectorGrid.children) {
+          const slot = currentStep === 0 ? bag.tagEntry.querySelector('[data-tag-slot]') : bag.querySelector('[data-tag-slot]');
+          slot.appendChild(bag.tagIdentity);
+        }
+      }
+      document.querySelectorAll('[data-picker-panel][open]').forEach(panel => panel.close());
+      document.querySelector('#step-back').hidden = currentStep === 0;
+      document.querySelector('#step-next').hidden = currentStep === lastStep;
+      document.querySelector('#step-error').textContent = '';
+      if (mode !== 'pop') history[mode === 'replace' ? 'replaceState' : 'pushState']({ ...history.state, pirWizard: { session: wizardSession, step: currentStep } }, '');
+      renderProgress();
     }
-    document.querySelector('#step-next').addEventListener('click',advanceStep);
-    document.querySelector('#step-back').addEventListener('click',()=>showStep(Math.max(0,currentStep-1)));
-    submittingDialog.addEventListener('cancel',event=>event.preventDefault());
-
-    function setDefaultFirstFlight() {
-      form.elements.flightNo1.value = 'MU583';
-      form.elements.flightDate1.value = new Date().toLocaleDateString('en-CA', {timeZone:'America/Los_Angeles'});
+    function validateStep(step) {
+      const lang = document.documentElement.lang;
+      if (step === 0 || step === 2) {
+        for (const bag of bagSelectorGrid.children) {
+          const tag = bag.tagIdentity.querySelector('[data-bag-tag]');
+          tag.value = tag.value.trim().toUpperCase().replace(/\s/g, '');
+          if (!tag.value) return { message: lang === 'en' ? 'Enter the tag number for every bag.' : '请填写每件行李的行李牌号码。', control: tag };
+          const input = bag.tagIdentity.querySelector('[data-attachment-input]');
+          if (!(selectedAttachments.get(attachmentKey(input)) || []).length) return { message: lang === 'en' ? 'Photograph the tag for every bag.' : '请拍摄每件行李对应的行李牌照片。', control: input };
+          if (step === 2 && (!bag.querySelector('[data-bag-color]').value || !bag.querySelector('[data-bag-type]').value)) return { message: lang === 'en' ? 'Select a color and type for every bag.' : '请为每件行李选择颜色和种类。' };
+        }
+        const tags = collectBagTags();
+        if (new Set(tags).size !== tags.length) return { message: lang === 'en' ? 'Each bag must have a different tag number.' : '每件行李的行李牌号码不能重复。' };
+      }
+      const controls = Array.from(form.querySelectorAll(`[data-step="${step}"] input,[data-step="${step}"] select,[data-step="${step}"] textarea`)).filter(control => !control.disabled && control.type !== 'file');
+      const invalid = controls.find(control => !control.checkValidity());
+      if (invalid) return { message: lang === 'en' ? 'Please complete the required fields.' : '请填写必填项目。', control: invalid };
+      return null;
     }
+    function displayStepError(error, step = currentStep) {
+      if (step !== currentStep) showStep(step);
+      document.querySelector('#step-error').textContent = error.message;
+      if (error.control && error.control.type !== 'file') { error.control.focus(); error.control.reportValidity(); }
+    }
+    function advanceStep() {
+      const error = validateStep(currentStep);
+      if (error) { displayStepError(error); return; }
+      showStep(Math.min(lastStep, currentStep + 1));
+      document.querySelector('#report-progress').scrollIntoView({ block:'start', behavior:'smooth' });
+    }
+    document.querySelector('#step-next').addEventListener('click', advanceStep);
+    document.querySelector('#step-back').addEventListener('click', () => { if (currentStep > 0) history.back(); });
+    window.addEventListener('popstate', event => {
+      const state = event.state?.pirWizard;
+      if (state?.session === wizardSession) showStep(state.step, 'pop');
+    });
+    submittingDialog.addEventListener('cancel', event => event.preventDefault());
 
     function setLanguage(lang) {
       document.documentElement.lang = lang;
@@ -320,7 +354,7 @@
     }
     function localizeGuide() {
       const lang=document.documentElement.lang;
-      document.querySelectorAll('[data-bag-tag]').forEach(x=>x.placeholder=lang==='en'?'Tag photo attached':'已附行李牌照片');
+      document.querySelectorAll('[data-bag-tag]').forEach(x => x.placeholder = lang === 'en' ? 'e.g. MU123456' : '例如 MU123456');
       document.querySelectorAll('[data-picker]').forEach(p=>{
         const input=p.querySelector('input'),values=input.value.split(',').filter(Boolean),items=p.dataset.picker==='color'?bagColors:p.dataset.picker==='type'?bagTypes:descriptors;
         p.querySelector('[data-picker-trigger]').textContent=values.length?values.map(code=>`${code.replace(/-.*/,'')} · ${BaggageGuide.label(items.find(x=>x[0]===code),lang)}`).join(', '):(lang==='en'?'Select':'请选择');
@@ -332,21 +366,50 @@
       const levels=form.elements.dprDamageLevel;['Minor','Major','Total'].forEach((value,i)=>{levels.options[i].value=value;levels.options[i].textContent=lang==='en'?value:['轻微','严重','完全损坏'][i];});
     }
     let bagCounter = 0;
+    function renumberBags() {
+      Array.from(bagSelectorGrid.children).forEach((bag,index) => {
+        const title = `<span class="en">Bag ${index + 1}</span><span class="zh">行李 ${index + 1}</span>`;
+        bag.querySelector('[data-bag-title]').innerHTML = title;
+        bag.tagEntry.querySelector('[data-bag-title]').innerHTML = title;
+      });
+      document.querySelectorAll('[data-remove-bag-id]').forEach(button => button.hidden = bagSelectorGrid.children.length === 1);
+      document.querySelectorAll('#add-tag-bag,#add-another-bag').forEach(button => button.disabled = bagSelectorGrid.children.length >= 10);
+    }
     function addBag() {
       if (bagSelectorGrid.children.length >= 10) return;
       const number = ++bagCounter;
       const card = document.createElement('section');
       card.className = 'bag-selector'; card.dataset.bagNumber = number;
-      card.innerHTML = `<h4><span class="en">Bag ${number}</span><span class="zh">行李 ${number}</span></h4><div class="bag-fields"><label class="bag-tag-field"><span class="en">Tag photograph</span><span class="zh">行李牌照片</span><input data-bag-tag name="ahlBagTag${number}" readonly placeholder="${document.documentElement.lang==='en'?'Tag photo attached':'已附行李牌照片'}"></label>${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}<label class="wide ahl-detail-field"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea data-bag-description maxlength="500"></textarea></label><label class="wide ahl-detail-field"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea data-bag-other-features maxlength="500"></textarea></label></div>${number > 1 ? '<div class="bag-card-actions"><button class="remove-bag" type="button" data-remove-bag><span class="en">Remove bag</span><span class="zh">删除行李</span></button></div>' : ''}`;
-      card.querySelectorAll('[data-picker]').forEach((element) => { const panel = element.querySelector('[data-picker-panel]'); element.querySelector('[data-picker-options]').innerHTML = pickerOptions(element.dataset.picker); panel.addEventListener('click', (event) => { if (event.target === panel) panel.close(); }); });
-      bagSelectorGrid.appendChild(card);
-      localizeGuide();
+      card.innerHTML = `<div class="bag-card-heading"><h4 data-bag-title></h4><button class="remove-bag" type="button" data-remove-bag-id="${number}"><span class="en">Remove</span><span class="zh">删除</span></button></div><div data-tag-slot></div><div class="bag-fields">${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}<label class="wide ahl-detail-field"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea data-bag-description maxlength="500"></textarea></label><label class="wide ahl-detail-field"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea data-bag-other-features maxlength="500"></textarea></label><section class="bag-contents wide"><h4><span class="en">Contents (optional)</span><span class="zh">包内物品（选填）</span></h4><div data-contents-list></div><button type="button" class="secondary" data-add-content><span class="en">+ Add item</span><span class="zh">+ 添加物品</span></button></section></div>`;
+      const identity = document.createElement('div'); identity.className = 'bag-tag-identity';
+      identity.innerHTML = `<label class="bag-tag-field"><span class="en">Bag tag number</span><span class="zh">行李牌号码</span><input data-bag-tag name="ahlBagTag${number}" maxlength="20" required autocomplete="off" autocapitalize="characters" spellcheck="false"></label><div class="attachment-group tag-capture" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true" data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Photograph bag tag</span><span class="zh">拍摄行李牌</span></span><input name="bagTagAttachment${number}" data-attachment-input data-attachment-type="bagTag" data-bag-id="${number}" type="file" accept="image/*" capture="environment"></label></div>`;
+      const entry = document.createElement('section'); entry.className = 'tag-entry-card';
+      entry.innerHTML = `<div class="bag-card-heading"><h3 data-bag-title></h3><button class="remove-bag" type="button" data-remove-bag-id="${number}"><span class="en">Remove</span><span class="zh">删除</span></button></div><div data-tag-slot></div>`;
+      card.tagIdentity = identity; card.tagEntry = entry;
+      bagTagEntries.appendChild(entry); bagSelectorGrid.appendChild(card);
+      (currentStep === 2 ? card : entry).querySelector('[data-tag-slot]').appendChild(identity);
+      card.querySelectorAll('[data-picker]').forEach(element => {
+        const panel = element.querySelector('[data-picker-panel]');
+        element.querySelector('[data-picker-options]').innerHTML = pickerOptions(element.dataset.picker);
+        panel.addEventListener('click', event => { if (event.target === panel) panel.close(); });
+      });
+      addContentRow(card.querySelector('[data-contents-list]'));
+      renumberBags(); localizeGuide();
     }
-    function resetBagCards() { bagSelectorGrid.innerHTML = ''; bagCounter = 0; addBag(); }
+    function resetBagCards() { bagSelectorGrid.innerHTML = ''; bagTagEntries.innerHTML = ''; bagCounter = 0; addBag(); }
+    function removeBag(number) {
+      if (bagSelectorGrid.children.length <= 1) return;
+      const bag = Array.from(bagSelectorGrid.children).find(item => item.dataset.bagNumber === number);
+      if (!bag) return;
+      const input = bag.tagIdentity.querySelector('[data-attachment-input]');
+      clearAttachmentGroup(input.closest('[data-attachment-group]'));
+      selectedAttachments.delete(attachmentKey(input)); bag.tagEntry.remove(); bag.remove(); renumberBags();
+    }
     addBag();
     document.querySelector('#add-another-bag').addEventListener('click', addBag);
+    document.querySelector('#add-tag-bag').addEventListener('click', addBag);
+    form.addEventListener('click', event => { const button = event.target.closest('[data-remove-bag-id]'); if (button) removeBag(button.dataset.removeBagId); });
     bagSelectorGrid.addEventListener('click', (event) => {
-      const remove = event.target.closest('[data-remove-bag]'); if (remove) { remove.closest('.bag-selector').remove(); return; }
       const pickerElement = event.target.closest('[data-picker]'); if (!pickerElement) return;
       const panel = pickerElement.querySelector('[data-picker-panel]');
       if (event.target.closest('[data-picker-trigger]')) { document.querySelectorAll('[data-picker-panel]').forEach((item) => { if (item !== panel) item.close(); }); if (panel.open) panel.close(); else panel.showModal(); return; }
@@ -365,31 +428,24 @@
     document.querySelector('#chart-close').addEventListener('click', () => chartDialog.close());
     chartDialog.addEventListener('click', (event) => { if (event.target === chartDialog) chartDialog.close(); });
 
-    function addContentRow(category = '', description = '') {
-      const row = document.createElement('div');
-      row.className = 'contents-row';
-      row.innerHTML = `<input name="contentCategory" placeholder="Category" value="${category.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" /><input name="contentDescription" placeholder="Description" value="${description.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" /><button class="secondary" type="button" data-remove-content>−</button>`;
-      contentsList.appendChild(row);
+    function addContentRow(list, category = '', description = '') {
+      const row = document.createElement('div'); row.className = 'contents-row';
+      row.innerHTML = `<label><span class="en">Category</span><span class="zh">类别</span><input name="contentCategory" maxlength="80" value="${BaggageGuide.escape(category)}"></label><label><span class="en">Description</span><span class="zh">描述</span><input name="contentDescription" maxlength="300" value="${BaggageGuide.escape(description)}"></label><button class="secondary" type="button" data-remove-content aria-label="Remove item">−</button>`;
+      list.appendChild(row);
     }
-    addContentRowButton.addEventListener('click', () => addContentRow());
-    contentsList.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-remove-content]');
-      if (button && contentsList.children.length > 1) button.closest('.contents-row')?.remove();
+    bagSelectorGrid.addEventListener('click', event => {
+      const add = event.target.closest('[data-add-content]');
+      if (add) addContentRow(add.closest('.bag-contents').querySelector('[data-contents-list]'));
+      const remove = event.target.closest('[data-remove-content]');
+      if (remove) remove.closest('.contents-row').remove();
     });
-
-    function collectBagTags() {
-      return Array.from(form.querySelectorAll('[data-bag-tag]:not(:disabled)')).map((input) => input.value.trim()).filter(Boolean);
-    }
-
-    function collectContentsRows() {
-      return Array.from(contentsList.querySelectorAll('.contents-row')).map((row) => ({
-        category: row.querySelector('[name="contentCategory"]')?.value || '',
-        description: row.querySelector('[name="contentDescription"]')?.value || ''
-      })).filter((row) => row.category.trim() || row.description.trim());
+    function collectBagTags() { return Array.from(bagSelectorGrid.children).map(bag => bag.tagIdentity.querySelector('[data-bag-tag]').value.trim().toUpperCase()).filter(Boolean); }
+    function collectContentsRows(bag) {
+      return Array.from(bag.querySelectorAll('.contents-row')).map(row => ({ category:row.querySelector('[name="contentCategory"]').value.trim(), description:row.querySelector('[name="contentDescription"]').value.trim() })).filter(row => row.category || row.description);
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); document.querySelector('#delivery-fields').hidden = !isAhl; document.querySelector('#contents-fields').hidden = !isAhl; }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; const artwork = document.querySelector('.report-heading-baggage'); artwork.src = isAhl ? '/assets/cbs-delayed-header.png' : '/assets/cbs-damaged-header.png'; artwork.dataset.kind = isAhl ? 'delayed' : 'damaged'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); document.querySelector('#delivery-fields').hidden = !isAhl; }
     function setAddressFields() {
       const isAhl = typeSelect.value === 'AHL';
       deliveryPreference.closest('label').hidden = !isAhl;
@@ -512,7 +568,7 @@
     const selectedAttachments = new Map();
 
     function attachmentKey(input) {
-      return input.dataset.attachmentType || 'document';
+      return input.dataset.bagId ? `bagTag:${input.dataset.bagId}` : (input.dataset.attachmentType || 'document');
     }
 
     function createAttachmentTile(file, index, input) {
@@ -582,23 +638,31 @@
       input.value = '';
     }
 
-    attachmentInputs.forEach((input) => input.addEventListener('change', () => updateAttachmentPreview(input)));
+    form.addEventListener('input', () => { document.querySelector('#step-error').textContent=''; });
+    form.addEventListener('change', event => { document.querySelector('#step-error').textContent='';if (event.target.matches('[data-attachment-input]')) updateAttachmentPreview(event.target); });
     function clearAttachmentPreviews() {
       document.querySelectorAll('[data-attachment-group]').forEach(clearAttachmentGroup);
       selectedAttachments.clear();
-      attachmentInputs.forEach(renderAttachmentGroup);
+      attachmentInputs().forEach(renderAttachmentGroup);
     }
 
     async function collectRequiredAttachments() {
       const output = [];
       const selectedCount = Array.from(selectedAttachments.values()).reduce((total, files) => total + files.length, 0);
       if (selectedCount > 20) throw new Error(document.documentElement.lang === 'en' ? 'You may upload up to 20 files.' : '最多可上传 20 个文件。');
-      for (const input of attachmentInputs) {
+      for (const input of attachmentInputs()) {
         const files = selectedAttachments.get(attachmentKey(input)) || [];
         if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Boarding pass and bag tag receipt attachments are required.' : '必须上传登机牌和行李票附件。');
         for (const file of files) {
           const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
-          if (attachment) output.push(attachment);
+          if (attachment) {
+            if (input.dataset.bagId) {
+              const bags = Array.from(bagSelectorGrid.children), index = bags.findIndex(bag => bag.dataset.bagNumber === input.dataset.bagId);
+              attachment.bagNumber = index + 1;
+              attachment.filename = `bag-${index + 1}-${bags[index].tagIdentity.querySelector('[data-bag-tag]').value.trim()}-${attachment.filename}`;
+            }
+            output.push(attachment);
+          }
         }
       }
       const totalBytes = output.reduce((total, attachment) => total + Math.floor(attachment.contentBase64.length * 3 / 4), 0);
@@ -609,7 +673,8 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (submitting) return;
-      if(currentStep<4){advanceStep();return;}
+      if (currentStep < lastStep) { advanceStep(); return; }
+      for (let step = 0; step <= lastStep; step++) { const error = validateStep(step); if (error) { displayStepError(error, step); return; } }
       formStatus.className = 'status';
       formStatus.textContent = document.documentElement.lang === 'en' ? 'Submitting...' : '提交中...';
       if (!signatureDirty) { formStatus.className = 'status err'; formStatus.textContent = document.documentElement.lang === 'en' ? 'Passenger signature is required.' : '请旅客签字。'; return; }
@@ -619,12 +684,12 @@
       submittingDialog.showModal();
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.caseType = typeSelect.value;
-      payload.formVersion = 2;
-      ['passportAttachment', 'boardingPassAttachment', 'bagTagAttachment', 'otherAttachment'].forEach((key) => delete payload[key]);
-      payload.flightRows = [{flightNo:payload.flightNo1,flightDate:payload.flightDate1}];
+      payload.formVersion = 3;
+      Object.keys(payload).forEach(key => { if (key.includes('Attachment')) delete payload[key]; });
+      payload.flightRows = [];
       payload.bagTags = collectBagTags();
       payload.bagTag = payload.bagTags.join(' / ');
-      const bagIdentifications = Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).map((bag, index) => ({ number:index + 1, tag:bag.querySelector('[data-bag-tag]').value, color:bag.querySelector('[data-bag-color]').value, type:bag.querySelector('[data-bag-type]').value, descriptors:bag.querySelector('[data-bag-descriptors]').value, description:bag.querySelector('[data-bag-description]').value.trim(), otherFeatures:bag.querySelector('[data-bag-other-features]').value.trim() }));
+      const bagIdentifications = Array.from(bagSelectorGrid.querySelectorAll('.bag-selector')).map((bag, index) => ({ number:index + 1, tag:bag.tagIdentity.querySelector('[data-bag-tag]').value.trim().toUpperCase(), color:bag.querySelector('[data-bag-color]').value, type:bag.querySelector('[data-bag-type]').value, descriptors:bag.querySelector('[data-bag-descriptors]').value, description:bag.querySelector('[data-bag-description]').value.trim(), otherFeatures:bag.querySelector('[data-bag-other-features]').value.trim(), contentsRows:collectContentsRows(bag) }));
       payload.bagIdentifications = bagIdentifications;
       const iataIdentification = bagIdentifications.map((bag) => `Bag ${bag.number} Tag ${bag.tag}, ${bag.color}-${bag.type}, elements ${bag.descriptors || '-'}`).join(' / ');
       if (typeSelect.value === 'AHL') {
@@ -634,7 +699,7 @@
       } else {
         payload.dprBagInfo = payload.dprBagInfo || '';
       }
-      payload.contentsRows = collectContentsRows();
+      payload.contentsRows = bagIdentifications.flatMap(bag => bag.contentsRows.map(item => ({ category:`Bag ${bag.number} · ${item.category}`, description:item.description })));
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.75) : '';
       payload.damageSketch = sketchDirty ? collectDamageSketch() : '';
@@ -667,14 +732,13 @@
         form.querySelector('button[type="submit"]').disabled = false;
       }
     });
-    form.addEventListener('reset', () => setTimeout(() => { if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; damageMarks.clear();damageDirtyViews.clear();damageView='front';drawBagBase(); clearSignature(); contentsList.innerHTML = ''; addContentRow(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setDefaultFirstFlight(); setTypeFields(); setAddressFields(); showStep(0); }, 0));
-    addContentRow();
+    form.addEventListener('reset', () => setTimeout(() => { if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); sketchDirty = false; damageMarks.clear();damageDirtyViews.clear();damageView='front';drawBagBase(); clearSignature(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); showStep(0, 'replace'); }, 0));
     issueDateInput.valueAsDate = new Date();
-    setDefaultFirstFlight();
+
     setLanguage(new URLSearchParams(location.search).get('lang')==='en'?'en':'zh');
     setTypeFields();
     setAddressFields();
-    showStep(0);
+    showStep(0, 'replace');
   </script>
   <script src="/attachment-drop.js"></script>
 </body>
