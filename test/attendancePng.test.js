@@ -15,8 +15,8 @@ test('glass cards expand for long names, reasons and notes while keeping the foo
   assert.match(svg,/<text text-anchor="end" x="755"[^>]*>Submitted /);
   assert.match(svg,/font-family="Poppins"/);
   assert.doesNotMatch(svg,/stroke-width="10"[^>]*filter="url\(#blur\)"/);
-  const panelHeight=Number(svg.match(/x="360" y="164" width="401" height="(\d+)"/)[1]);
-  const footerY=Number(svg.match(/M44 (\d+)H757/)[1]);assert.ok(footerY>164+panelHeight);
+  const [,panelY,panelHeight]=svg.match(/x="360" y="(\d+)" width="401" height="(\d+)"/).map(Number);
+  const footerY=Number(svg.match(/M44 (\d+)H757/)[1]);assert.ok(footerY>panelY+panelHeight);
   const image=(await renderCards(record))[0].attachment;assert.equal(image.readUInt32BE(16),800);assert.ok(image.readUInt32BE(20)>1500);
  }
 });
@@ -39,4 +39,18 @@ test('both card sets render in an isolated checkout without node_modules or syst
     `], { cwd: dir, encoding: 'utf8', timeout: 20000 });
     assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /2 PNGs generated/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test('employee name is the prominent heading and request type occupies the former employee row',()=>{
+ const {buildCardSvg}=require('../attendanceCards');
+ for(const type of ['late','sick']){
+  const svg=buildCardSvg({type,employeeName:'Watsika Tupwat',date:'2026-10-15',arrivalTime:'09:30',reason:'Not feeling well',submittedAt:'2026-10-15T14:19:00Z'}).toString();
+  assert.match(svg,/<text x="360" y="89"[^>]*font-family="Poppins"[^>]*>Watsika <tspan[^>]*>Tupwat<\/tspan>/);
+  assert.match(svg,/>Request type<\/text>/);
+  assert.ok(svg.includes('>'+ (type==='late'?'Coming Late':'Call Off / Sick')+'</text>'));
+  assert.doesNotMatch(svg,/>Employee<\/text>/);
+  const escaped=buildCardSvg({type,employeeName:'A & <B>',date:'2026-10-15',reason:'Test',submittedAt:'2026-10-15T14:19:00Z'}).toString();
+  assert.match(escaped,/A &amp; <tspan[^>]*>&lt;B&gt;<\/tspan>/);
+ }
 });
