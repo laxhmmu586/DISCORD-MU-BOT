@@ -8,7 +8,7 @@ Assets:
 
 The card edge now carries a single light trail aligned exactly to its rounded corners: gold for Coming Late, coral/rose-gold for Call Off / Sick, with a bright core and a softly dispersed aura. No separated secondary orbit is drawn. Both scenes are unbranded.
 
-Headings use a bundled Poppins ExtraBold face, layered shallow extrusion, silver/champagne gradients for Coming Late and silver/coral gradients for Call Off / Sick, and restrained highlights. The submitted timestamp is aligned to the bottom right. The scene contains no generated text; all real values are composited by the server renderer.
+Employee names appear as the main headings; the first glass-panel row is labeled Request type and displays Coming Late or Call Off / Sick in the theme accent. Long names wrap into additional heading lines and move the panel down to avoid overlap. Headings use a bundled Poppins ExtraBold face, layered shallow extrusion, silver/champagne gradients for Coming Late and silver/coral gradients for Call Off / Sick, and restrained highlights. The submitted timestamp is aligned to the bottom right. The scene contains no generated text; all real values are composited by the server renderer.
 
 ## Coming Late prompt
 

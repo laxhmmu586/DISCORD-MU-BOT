@@ -23,8 +23,11 @@ function icon(kind,x,y,accent) {
   const shapes={person:'<circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3Z"/>',calendar:'<rect x="3" y="5" width="18" height="17" rx="2"/><path d="M7 2v6M17 2v6M3 11h18"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 5v7l5 3"/>',note:'<path d="M4 3h16v14H10l-6 5Z"/>'};
   return '<circle cx="'+(x+12)+'" cy="'+(y+12)+'" r="21" fill="#10213b" fill-opacity=".8" stroke="'+accent+'" stroke-opacity=".5"/><g transform="translate('+x+' '+y+')" fill="none" stroke="'+accent+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+shapes[kind]+'</g>';
 }
-function luxuryTitle(late) {
-  const draw=(silver,gold)=>'<text x="360" y="89" font-family="Poppins" font-size="47" font-weight="800" letter-spacing="-1.2" fill="'+silver+'">'+(late?'Coming <tspan fill="'+gold+'">Late</tspan>':'CALL <tspan fill="'+gold+'">OFF / SICK</tspan>')+'</text>';
+function luxuryTitle(late, nameLines) {
+  const draw=(silver,gold)=>nameLines.map((line,index)=>{
+    const words=line.split(' '),last=words.pop();
+    return '<text x="360" y="'+(89+index*48)+'" font-family="Poppins" font-size="43" font-weight="800" letter-spacing="-1.2" fill="'+silver+'">'+escape(words.length?words.join(' ')+' ':'')+'<tspan fill="'+gold+'">'+escape(last)+'</tspan></text>';
+  }).join('');
   return '<g transform="translate(0 3)" opacity=".55">'+draw('#020b20',late?'#4c321b':'#642637')+'</g>'+
     '<g transform="translate(0 1.3)">'+draw('#99adcf',late?'#b68d43':'#b54d5f')+'</g>'+
     '<g opacity=".14" filter="url(#titleBloom)">'+draw('#dceeff',late?'#ffe2a0':'#ffb9a7')+'</g>'+draw('url(#titleWhite)',late?'url(#titleGold)':'url(#titleCoral)');
@@ -41,28 +44,29 @@ function orbitalRim(height,late) {
 function buildCardSvg(record) {
   const late=record.type==='late', accent=late?'#ffce57':'#ff809c';
   const arrival=record.arrivalTime ? new Date('2000-01-01T'+record.arrivalTime+':00Z').toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'UTC'}) : '';
-  const fields=[{label:'Employee',kind:'person',lines:wrap(record.employeeName,23)},{label:'Date',kind:'calendar',lines:[record.date]}];
+  const nameLines=wrap(record.employeeName,15),headerExtra=(nameLines.length-1)*48,panelY=164+headerExtra;
+  const fields=[{label:'Request type',kind:'person',lines:[late?'Coming Late':'Call Off / Sick']},{label:'Date',kind:'calendar',lines:[record.date]}];
   if(late) fields.push({label:'Expected arrival',kind:'clock',lines:[arrival]});
   fields.push({label:late?'Why?':'Reason',kind:'note',lines:wrap(record.reason,25)});
   if(record.note) fields.push({label:'Additional note',kind:'note',lines:wrap(record.note,25)});
   const panelHeight=fields.reduce((sum,field)=>sum+71+(field.lines.length-1)*25,0)+16;
-  const height=Math.max(515,164+panelHeight+84),footerY=height-55;
+  const height=Math.max(515+headerExtra,panelY+panelHeight+84),footerY=height-55;
   const scene=fs.readFileSync(path.join(__dirname,'public','public','assets','attendance',late?'late-luminous-v1.png':'sick-luminous-v1.png')).toString('base64');
   const sceneHeight=late?560:540;
   let content='<image x="0" y="0" width="800" height="'+sceneHeight+'" preserveAspectRatio="none" href="data:image/png;base64,'+scene+'"/>';
   content+='<rect x="0" y="'+(sceneHeight-65)+'" width="800" height="65" fill="url(#sceneFade)"/>';
-  content+=luxuryTitle(late);
-  content+='<path d="M512 108Q620 98 760 122Q639 104 512 108Z" fill="url(#lightTrail)" opacity=".85" filter="url(#trailHalo)"/>'+
+  content+=luxuryTitle(late,nameLines);
+  content+='<g transform="translate(0 '+headerExtra+')"><path d="M512 108Q620 98 760 122Q639 104 512 108Z" fill="url(#lightTrail)" opacity=".85" filter="url(#trailHalo)"/>'+
     '<path d="M512 108Q620 99 760 122Q641 105 512 108Z" fill="url(#lightTrail)"/>'+
     '<path d="M552 106Q626 102 709 113" stroke="url(#lightCore)" stroke-width=".9" fill="none"/>'+
-    '<ellipse cx="604" cy="105" rx="17" ry="1.5" fill="#fff6d8" opacity=".4" filter="url(#trailHalo)"/>';
-  content+=text(362,133,'Employee Request Received',20,'#b6c7e7');
-  content+='<rect x="360" y="164" width="401" height="'+panelHeight+'" rx="23" fill="#06152f" fill-opacity=".65"/><rect x="360" y="164" width="401" height="'+panelHeight+'" rx="23" fill="url(#glass)" stroke="url(#glassEdge)" stroke-width="1"/>';
-  content+='<path d="M362 166H736Q657 173 590 197H362Z" fill="#c7dfff" opacity=".08"/>';
-  let rowY=178;
+    '<ellipse cx="604" cy="105" rx="17" ry="1.5" fill="#fff6d8" opacity=".4" filter="url(#trailHalo)"/></g>';
+  content+=text(362,133+headerExtra,'Employee Request Received',20,'#b6c7e7');
+  content+='<rect x="360" y="'+panelY+'" width="401" height="'+panelHeight+'" rx="23" fill="#06152f" fill-opacity=".65"/><rect x="360" y="'+panelY+'" width="401" height="'+panelHeight+'" rx="23" fill="url(#glass)" stroke="url(#glassEdge)" stroke-width="1"/>';
+  content+='<path transform="translate(0 '+headerExtra+')" d="M362 166H736Q657 173 590 197H362Z" fill="#c7dfff" opacity=".08"/>';
+  let rowY=178+headerExtra;
   fields.forEach((field,index)=>{
     content+=icon(field.kind,390,rowY+17,accent)+text(436,rowY+22,field.label,15,'#a8bde2');
-    field.lines.forEach((line,i)=>content+=text(436,rowY+47+i*25,line,20,'#f2f5ff',field.kind==='person'||field.kind==='calendar'||field.kind==='clock'?700:400));
+    field.lines.forEach((line,i)=>content+=text(436,rowY+47+i*25,line,20,index===0?accent:'#f2f5ff',field.kind==='person'||field.kind==='calendar'||field.kind==='clock'?700:400));
     rowY+=71+(field.lines.length-1)*25;
     if(index<fields.length-1)content+='<path d="M381 '+(rowY-3)+'H741" stroke="#8baee8" stroke-opacity=".14"/>';
   });
