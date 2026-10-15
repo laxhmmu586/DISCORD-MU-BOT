@@ -29,7 +29,7 @@ async function renderAdvisory(data) {
   </svg>`;
   const layers=[{input:Buffer.from(overlay)}];
   async function digits(value,center,top,size,maxWidth,colors,glow,label='') {
-    let mask=await sharp({text:{text:escape(value),font:'Archivo Black '+size,fontfile:path.join(__dirname,'assets/etab/fonts/ArchivoBlack-Regular.ttf'),rgba:true,dpi:72}}).png().toBuffer();
+    let mask=await sharp({text:{text:escape(value),font:'Archivo Black, '+size,fontfile:path.join(__dirname,'assets/etab/fonts/ArchivoBlack-Regular.ttf'),rgba:true,dpi:72}}).png().toBuffer();
     let meta=await sharp(mask).metadata();
     if(meta.width>maxWidth){mask=await sharp(mask).resize({width:maxWidth}).png().toBuffer();meta=await sharp(mask).metadata();}
     let left=Math.round(center-meta.width/2);

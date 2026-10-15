@@ -1,6 +1,6 @@
-# ETAB advisory integration (local preview)
+# ETAB advisory integration
 
-ETAB email parsing, image rendering and ordered Discord delivery now run in the MUFC bot. The Apps Script is not required after cutover. No PR or live cutover has been performed.
+ETAB email parsing, image rendering and ordered Discord delivery run in the MUFC bot. The Apps Script is not required after cutover. Use `node scripts/send-etab-test.cjs <authorized-test-channel-id>` only when an operator explicitly requests real test delivery; it uses separate persistent state and verifies both posted messages without changing production deduplication state.
 
 ## Polling and workload
 
@@ -12,7 +12,7 @@ ETAB email parsing, image rendering and ordered Discord delivery now run in the 
 ## Data and delivery
 
 - Schedule remains `12NH3eQTx6GuOWHWgi4kxI0UsKgaJXW_ceKDnMGF3Zlo`, `Live Schedule`. Read the second row as dates, names in column B, and shift exactly `A`. Dates use Sheets serial values to avoid server locale ambiguity.
-- Match names case-insensitively to the server's employee database (`EP.DB`, the same store as employee administration), then use its `discordId`. Missing, ambiguous or invalid mappings stop delivery with a diagnostic, allowing correction before a later retry. Employee IDs are not read from the old employee Sheet.
+- Match names to the server's employee database (`EP.DB`, the same store as employee administration), ignoring case, punctuation, whitespace and parenthesized nicknames/account suffixes. For example `TAN, CHUYANG(Tamsun)` matches `TAN, CHUYANG`, and `George(CZ)` matches `George`. Missing, ambiguous or invalid mappings stop delivery with a diagnostic, allowing correction before a later retry. Employee IDs are not read from the old employee Sheet. Only a cell equal to `A` after trimming and uppercasing qualifies; `A/B`, `OFF`, other shifts and blanks do not.
 - Clock-in retains every minute boundary of the supplied Apps Script, including midnight rollover. STD still takes precedence over ETD.
 - Send the PNG first, then a separate ordinary Discord message with `## 👥 Arrival Team`, `## 🕒 Clock-in　**0830L**`, and one `<@id>` per line. Only resolved employee IDs can be mentioned. Discord supplies each member's current display name.
 - Persist the image message ID before sending the team message. If the team message fails, retry only that second part on the next cycle. Deterministic Discord nonces reduce duplicate sends after an ambiguous network response; Discord's nonce deduplication has a limited time window, so this is not an absolute exactly-once guarantee across a crash immediately after sending.
@@ -20,7 +20,7 @@ ETAB email parsing, image rendering and ordered Discord delivery now run in the 
 
 ## Cutover
 
-The service is disabled by default to keep previews from posting alongside the old trigger. After reviewing the images, deploy the code/dependencies/assets, verify Gmail and schedule access and employee Discord IDs, disable the Apps Script trigger, then set `ETAB_ADVISORY_ENABLED=true` and restart the bot. Set it to `false` to stop this integration before restoring the old trigger. Existing Google OAuth and Sheets service account configuration is reused.
+The service is disabled by default to keep previews from posting alongside the old trigger. Deploy the code/dependencies/assets, run `node scripts/check-etab.cjs` for read-only Gmail/schedule/Admin/channel/rendering checks, disable the Apps Script trigger, then set `ETAB_ADVISORY_ENABLED=true` and restart the bot. Set it to `false` to stop this integration before restoring the old trigger. When enabled, `/send` skips legacy text ETAB advisories to the configured ETAB channel, preventing duplicates if the old trigger is accidentally restored. Other messages and channels retain their normal behavior. Gmail reuses the existing mail OAuth connection; the original Sheets service account reads the fixed Live Schedule tab gid `1378812072` (including if its title changes). Optional `ETAB_SCHEDULE_AUTH_MODE=drive` reuses an existing PBB Drive OAuth grant if explicitly configured; it never requests new scopes.
 
 Optional environment variables: `ETAB_DISCORD_CHANNEL_ID` (default `1252026975720046655`), `ETAB_SCHEDULE_SHEET_ID` (default above). Database location follows the existing `PBB_DB_PATH`; employee store follows `PBB_EMPLOYEE_DB_PATH`.
 

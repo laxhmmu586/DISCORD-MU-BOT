@@ -5,8 +5,8 @@ function createScheduleReader({google=require('googleapis').google,env=process.e
   function getClient(){
     if(client)return client;
     let auth;
-    // Reuse the already-authorized archive account; the Gmail token is mail-only.
-    if(env.PBB_DRIVE_REFRESH_TOKEN){
+    // Default to the original service account shared on the schedule. Gmail is mail-only.
+    if(env.ETAB_SCHEDULE_AUTH_MODE==='drive' && env.PBB_DRIVE_REFRESH_TOKEN){
       auth=new google.auth.OAuth2(env.PBB_DRIVE_CLIENT_ID||env.GOOGLE_CLIENT_ID||env.GMAIL_CLIENT_ID,env.PBB_DRIVE_CLIENT_SECRET||env.GOOGLE_CLIENT_SECRET||env.GMAIL_CLIENT_SECRET,env.PBB_DRIVE_REDIRECT_URI||env.GOOGLE_REDIRECT_URI||env.GMAIL_REDIRECT_URI||'http://localhost');
       auth.setCredentials({refresh_token:env.PBB_DRIVE_REFRESH_TOKEN});
     }else{
