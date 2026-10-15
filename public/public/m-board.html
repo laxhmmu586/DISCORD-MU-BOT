@@ -145,7 +145,7 @@
         container.innerHTML = '<div class="empty">' + (type === 'scan' ? 'No boarding scan rows found.' : 'No infant scans found.') + '</div>';
         return;
       }
-      if (!container.querySelector('.bn-grid')) container.innerHTML = '<div class="bn-heading">BN</div><div class="bn-grid"></div>';
+      if (!container.querySelector('.bn-grid')) container.innerHTML = '<div class="bn-grid"></div>';
       const grid = container.querySelector('.bn-grid');
       const existing = new Map([...grid.children].map((cell) => [cell.dataset.recordKey, cell]));
       const nextKeys = new Set(rows.map((row) => recordKey(type, row)));

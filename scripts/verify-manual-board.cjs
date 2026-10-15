@@ -53,9 +53,7 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
       await page.goto('https://www.mufcapp.net/m-board.html');
       await cells.last().waitFor();
       assert.equal(await cells.count(), 17);
-      assert.equal(await page.locator('#table-wrap .bn-heading').count(), 1);
-      assert.equal(await page.locator('#table-wrap .bn-heading').textContent(), 'BN');
-      assert.equal(await page.locator('#infant-wrap .bn-heading').count(), 1);
+      assert.equal(await page.locator('.bn-heading').count(), 0, 'Neither scan view displays a BN heading');
       assert.equal(await page.locator('#boarding-panel').isVisible(), true);
       assert.equal(await page.locator('#infant-panel').isVisible(), false);
       assert.deepEqual(await cells.allTextContents(), rows.filter(row => row.bn).map(row => row.bn));
@@ -63,9 +61,6 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
       const geometry = await cells.evaluateAll(items => items.slice(0, 3).map(item => ({ x: item.getBoundingClientRect().x, y: item.getBoundingClientRect().y })));
       assert.equal(geometry[0].y, geometry[1].y);
       assert.ok(geometry[1].x > geometry[0].x && geometry[2].y > geometry[0].y);
-      const heading = await page.locator('#table-wrap .bn-heading').boundingBox();
-      const grid = await page.locator('#table-wrap .bn-grid').boundingBox();
-      assert.ok(Math.abs(heading.x + heading.width / 2 - grid.x - grid.width / 2) < 1);
       await cells.nth(7).click();
       await page.waitForFunction(() => document.querySelector('#status').textContent === 'Marked through BN 008.');
       assert.deepEqual(writes[0], { rowNumbers: [100, 101, 102, 103, 104, 105, 106, 107], entered: true });
@@ -122,6 +117,6 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
     await page.getByRole('tab', { name: 'Infant', exact: true }).click();
     assert.match(await page.locator('#infant-wrap').textContent(), /No infant scans/);
     assert.deepEqual(errors, []);
-    console.log('Manual board tabs, single BN heading, two columns, save cutoff and original row style passed at 320/390/640/1015px.');
+    console.log('Manual board tabs, no BN heading, two columns, save cutoff and original row style passed at 320/390/640/1015px.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
