@@ -33,7 +33,8 @@ async function main(){
  const info=await channel.json();console.log(JSON.stringify({check:'discord-channel',id:info.id,name:info.name,type:info.type}));
  const rendered=await require('../etabImage').renderAdvisory(latest);
  const meta=await require('sharp')(rendered).metadata();
- if(meta.width!==900||meta.height!==900)throw Error('Unexpected ETAB image dimensions');
+ const {IMAGE_BOUNDS}=require('../etabImage');
+ if(meta.width!==IMAGE_BOUNDS.width||meta.height!==IMAGE_BOUNDS.height)throw Error('Unexpected ETAB image dimensions');
  if(process.env.ETAB_PREFLIGHT_IMAGE)fs.writeFileSync(process.env.ETAB_PREFLIGHT_IMAGE,rendered);
  console.log(JSON.stringify({check:'renderer',width:meta.width,height:meta.height,bytes:rendered.length}));
 }
