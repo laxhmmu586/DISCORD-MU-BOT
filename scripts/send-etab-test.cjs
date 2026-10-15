@@ -14,7 +14,7 @@ async function main(){
   const store=createStateStore(stateDb);let failed=false;
   const service=createAdvisoryService({getClient:gd.getNextDayInfoGmailClient,readSchedule:gd.readEtabSchedule,
    getEmployees:()=>JSON.parse(employeeDb.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data).employees,
-   channel:async()=>({send:payload=>rest.post(Routes.channelMessages(channelId),{body:{content:payload.content,nonce:payload.nonce,enforce_nonce:payload.enforceNonce,allowed_mentions:payload.allowedMentions},files:payload.files?.map(f=>({name:f.name,data:f.attachment}))})}),
+   channel:async()=>({id:channelId,send:payload=>rest.post(Routes.channelMessages(channelId),{body:{content:payload.content,nonce:payload.nonce,enforce_nonce:payload.enforceNonce,allowed_mentions:payload.allowedMentions},files:payload.files?.map(f=>({name:f.name,data:f.attachment}))})}),
    render:require('../etabImage').renderAdvisory,store,log:{info:console.log,error:(...a)=>{failed=true;console.error(...a);}}
   });
   await service.tick();if(failed)throw Error('ETAB test failed; partial delivery state retained for retry');

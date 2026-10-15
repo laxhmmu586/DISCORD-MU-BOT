@@ -100,7 +100,7 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,rend
       }
       const p=state.pending, target=await channel();
       // Deterministic Discord nonces also protect retries after an ambiguous network response.
-      const nonce=kind=>crypto.createHash('sha256').update(p.messageId+kind).digest('hex').slice(0,24);
+      const nonce=kind=>crypto.createHash('sha256').update(String(target.id||'default')+'|'+p.messageId+'|'+kind).digest('hex').slice(0,24);
       if(!p.imageId) {
         const attachment=await render(p.advisory);
         const sent=await target.send({files:[{attachment,name:'ETAB-'+p.advisory.date+'.png'}],nonce:nonce('image'),enforceNonce:true,allowedMentions:{parse:[]}});
