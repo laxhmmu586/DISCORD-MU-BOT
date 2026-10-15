@@ -61,14 +61,22 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
       assert.equal(await page.locator('#infant-panel').isVisible(), false);
       assert.deepEqual(await cells.allTextContents(), rows.filter(row => row.bn).map(row => row.bn));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-      const geometry = await cells.evaluateAll(items => items.slice(0, 3).map(item => ({ x: item.getBoundingClientRect().x, y: item.getBoundingClientRect().y })));
+      const geometry = await cells.evaluateAll(items => items.slice(0, 4).map(item => ({ x: item.getBoundingClientRect().x, y: item.getBoundingClientRect().y })));
       assert.equal(geometry[0].y, geometry[1].y);
-      assert.ok(geometry[1].x > geometry[0].x && geometry[2].y > geometry[0].y);
+      assert.equal(geometry[1].y, geometry[2].y);
+      assert.ok(geometry[1].x > geometry[0].x && geometry[2].x > geometry[1].x && geometry[3].y > geometry[0].y);
+      await cells.nth(8).click();
+      await page.waitForFunction(() => document.querySelector('#status').textContent === 'Marked through BN 009.');
+      assert.deepEqual(await page.locator('#table-wrap .is-entered').allTextContents(), ['001','002','003','004','005','006','007','008','009']);
+      assert.equal(await cells.nth(9).evaluate(cell => cell.classList.contains('is-entered')), false);
+      writes.length = 0;
       await cells.nth(7).click();
       await page.waitForFunction(() => document.querySelector('#status').textContent === 'Marked through BN 008.');
       assert.deepEqual(writes[0], { rowNumbers: [100, 101, 102, 103, 104, 105, 106, 107], entered: true });
       assert.deepEqual(writes[1], { rowNumbers: [108, 109, 110, 111, 112, 113, 114, 115, 116], entered: false });
       assert.equal(await page.locator('#table-wrap .is-entered').count(), 8);
+      assert.deepEqual(await page.locator('#table-wrap .is-entered').allTextContents(), ['001','002','003','004','005','006','007','008']);
+      assert.equal(await cells.nth(8).evaluate(cell => cell.classList.contains('is-entered')), false, '008 leaves 009 in the same row pending');
       const style = await cells.nth(7).evaluate(cell => {
         const surface = getComputedStyle(cell), strip = getComputedStyle(cell, '::before');
         return { radius: surface.borderRadius, background: surface.backgroundColor, color: surface.color, strip: strip.backgroundColor, width: strip.width };
@@ -93,7 +101,7 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
       await cells.last().waitFor();
       assert.equal(await page.locator('#table-wrap .is-entered').count(), 8, 'Persisted cutoff survives reload');
     }
-    // Selecting an earlier left-column BN reopens all subsequent records.
+    // Selecting an earlier third-column BN reopens all subsequent records.
     await cells.nth(2).focus();
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.querySelector('#status').textContent === 'Marked through BN 003.');
@@ -161,6 +169,6 @@ const output = process.env.MANUAL_BOARD_OUTPUT || path.join(__dirname, '../.veri
       }
     }
     assert.deepEqual(errors, []);
-    console.log('Manual board tabs, two columns, save cutoff, and top/bottom Refresh to latest Boarding/Infant record passed at 320/390/640/1015px.');
+    console.log('Manual board tabs, three columns, exact 008/009 cutoffs, and top/bottom Refresh to latest Boarding/Infant record passed at 320/390/640/1015px.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
