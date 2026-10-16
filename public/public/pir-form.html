@@ -139,7 +139,8 @@
   </style>
   <link rel="stylesheet" href="/aviation-glass.css?v=20261013-pickers">
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
-<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"></head>
+<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><link rel="stylesheet" href="/assets/cbs-reference.css?v=20261016">
+</head>
 <body class="aviation-page aviation-pir">
   <header><a class="back-link" href="/cbs-form.html"><span class="en">‹ Baggage assistance</span><span class="zh">‹ 行李服务</span></a>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
@@ -154,12 +155,11 @@
       <nav class="report-progress" id="report-progress" aria-label="Report progress"></nav>
       <form id="cbs-form" novalidate>
         <input name="caseType" id="case-type" type="hidden" value="AHL" />
-        <section class="report-step" data-step="0" id="tag-step"><h2><span class="en">Bag tag numbers and photos</span><span class="zh">行李牌号码及照片</span></h2><p class="step-intro"><span class="en">Enter the tag number and photograph the tag for each bag.</span><span class="zh">请逐件输入行李牌号码，并拍摄对应的行李牌照片。</span></p><div id="bag-tag-entries" class="bag-tag-entries"></div><button type="button" class="add-another-bag" id="add-tag-bag">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button></section>
+        <section class="report-step" data-step="0" id="tag-step"><h2><span class="en">Bag tag numbers and photos</span><span class="zh">行李牌号码及照片</span></h2><p class="step-intro"><span class="en">Enter each bag’s tag number. Add the receipt and photos from your camera or photo library.</span><span class="zh">请逐件输入行李牌号码，可拍照或从相册添加行李收据及照片。</span></p><div id="bag-tag-entries" class="bag-tag-entries"></div><button type="button" class="add-another-bag" id="add-tag-bag">⊕ <span class="en">Add another bag</span><span class="zh">添加另一个行李</span></button></section>
         <section class="report-step" data-step="1"><h2><span class="en">Passenger information</span><span class="zh">旅客信息</span></h2><div class="grid passenger-grid">          <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
           <label><span class="en">Contact number</span><span class="zh">联系电话</span><input name="phone" type="tel" autocomplete="tel" placeholder="" required /></label>
-          <label><span class="en">Ticket number (optional)</span><span class="zh">机票号码（选填）</span><input name="ticketNumber" placeholder="7816262626666" /></label>
-</div></section>
+<label class="wide" id="dpr-address-field"><span class="en">Address (optional)</span><span class="zh">地址（选填）</span><textarea name="dprAddress" maxlength="500"></textarea></label><div class="wide passenger-boarding"><div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf"></label></div></div></div></section>
 
         <section class="case-fields is-active" id="shared-baggage-fields" data-step="2">
           <h3><span class="en">Baggage information</span><span class="zh">行李信息</span></h3>
@@ -170,7 +170,7 @@
           </div>
         </section>
 
-        <section id="delivery-fields" class="case-fields is-active" data-step="3"><h3><span class="en">Collection / delivery</span><span class="zh">领取／配送方式</span></h3>          <label class="wide"><span class="en">Collection / delivery method</span><span class="zh">取件方式</span><select name="deliveryPreference" id="delivery-preference" required><option value="">Select a method</option><option value="permanent">Delivery to a permanent address</option><option value="temporary">Delivery to a temporary address</option><option value="pickup">Collect at the airport</option></select></label>
+        <section id="delivery-fields" class="case-fields is-active" data-step="3"><h3><span class="en">Collection / delivery</span><span class="zh">领取／配送方式</span></h3>          <label class="wide"><span class="en">Collection / delivery method</span><span class="zh">取件方式</span><select name="deliveryPreference" id="delivery-preference" required><option value="">Select a method</option><option value="permanent">Delivery to a permanent address</option><option value="temporary">Delivery to a temporary address</option><option value="pickup">Airport Self-Pickup</option></select></label>
           <label class="wide" id="permanent-address-field" hidden><span class="en">Permanent address</span><span class="zh">永久地址</span><textarea name="permanentAddress" maxlength="500" disabled aria-describedby="delivery-hint"></textarea></label>
           <label id="valid-until-field" hidden><span class="en">Temporary address valid until</span><span class="zh">临时地址有效期至</span><input name="temporaryAddressValidUntil" type="date" /></label>
           <label class="wide" id="temporary-address-field" hidden><span class="en">Temporary address</span><span class="zh">临时地址</span><textarea name="temporaryAddress" maxlength="500" disabled aria-describedby="delivery-hint"></textarea></label>
@@ -181,10 +181,11 @@
           <div class="damage-bag-controls"><label><span class="en">Damaged bag tag number</span><span class="zh">损坏行李牌号码</span><select id="damage-bag-select"></select></label><button type="button" id="add-damaged-bag" class="secondary"><span class="en">Add another damaged bag</span><span class="zh">添加另一件损坏行李</span></button><button type="button" id="remove-damaged-bag" class="secondary"><span class="en">Remove this damage entry</span><span class="zh">移除此件破损信息</span></button><p id="damaged-bag-summary" aria-live="polite"></p></div><div class="grid">
             <label><span class="en">Damage level</span><span class="zh">破损程度</span><select name="dprDamageLevel"><option>Minor</option><option>Major</option><option>Total</option></select></label>
             <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
-            <div class="wide sketch-shell">
-              <strong><span class="en">Circle damaged area</span><span class="zh">圈出破损部位</span></strong>
-              <div id="damage-views" class="damage-views"></div><canvas id="damage-sketch" class="sketch-board" width="900" height="500" aria-label="Baggage damage sketch canvas"></canvas>
-              <div class="actions"><button class="secondary" id="clear-sketch" type="button"><span class="en">Clear sketch</span><span class="zh">清除标记</span></button><span class="attachment-hint"><span class="en">Draw freely on the picture. The marked sketch is included in the PDF report.</span><span class="zh">可在图上自由绘制，标记图会显示在PDF报告中。</span></span></div>
+            <div class="wide sketch-shell damage-viewer">
+              <strong><span class="en">Mark damaged area (3D view)</span><span class="zh">标记破损部位（3D视图）</span></strong>
+              <div class="damage-stage"><svg class="damage-orbit" viewBox="0 0 300 65" aria-hidden="true"><defs><marker id="orbit-arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0 0 6 3 0 6" fill="#8b9ebc"/></marker></defs><path d="M48 16C-18 43 38 59 150 59S318 43 252 16" fill="none" stroke="#8b9ebc" stroke-width="1" marker-start="url(#orbit-arrow)" marker-end="url(#orbit-arrow)"/></svg><canvas id="damage-sketch" aria-label="Rotate the suitcase or mark damage on its surface"></canvas><div class="damage-controls damage-controls-left"><button type="button" data-view-action="up" aria-label="Rotate up">⌃</button><button type="button" data-view-action="front" aria-label="Front view">⌂</button><button type="button" data-view-action="down" aria-label="Rotate down">⌄</button></div><div class="damage-controls damage-controls-right"><button type="button" data-view-action="in" aria-label="Zoom in">⊕</button><button type="button" data-view-action="out" aria-label="Zoom out">⊖</button><button type="button" data-view-action="reset" aria-label="Reset view">↺</button></div></div>
+              <p class="swipe-hint">↔ <span class="en">Swipe to rotate</span><span class="zh">滑动旋转</span></p>
+              <div class="damage-tools"><button type="button" data-damage-tool="mark" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4 5 5-11 11H4v-5L15 4Zm-8 9 5 5M14 5l5 5"/></svg> <span class="en">Mark</span><span class="zh">标记</span></button><button type="button" data-damage-tool="erase" aria-pressed="false">▱ <span class="en">Eraser</span><span class="zh">橡皮擦</span></button><button type="button" id="clear-sketch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V3h8v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg> <span class="en">Clear all</span><span class="zh">全部清除</span></button></div><p class="damage-help"><span class="en">Mark: circle damaged areas. Tap Mark again to rotate, or swipe with two fingers.</span><span class="zh">标记：圈出损坏位置。再次点击标记或双指滑动旋转。</span></p><p id="damage-viewer-error" role="alert" hidden></p>
             </div>
           </div>
         </section>
@@ -192,18 +193,14 @@
         <section class="report-step" data-step="4"><h2><span class="en">Other useful information</span><span class="zh">其他有用信息</span></h2><label class="wide"><span class="en">Additional details (optional)</span><span class="zh">补充说明（选填）</span><span class="attachment-hint" id="additional-information-hint"><span class="en">Optional. Include baggage features, what happened, or other information that may help us handle your report.</span><span class="zh">选填，可填写行李特征、误取经过或其他有助于处理的信息</span></span><textarea name="additionalInformation" maxlength="1000" aria-describedby="additional-information-hint"></textarea></label></section>
 
         <section class="case-fields is-active wide" data-step="5">
-          <h3><span class="en">Attachments</span><span class="zh">附件</span><span class="required-mark">*</span></h3>
+          <h3><span class="en">Other attachments</span><span class="zh">其他附件</span></h3>
           <div class="attachment-grid">
-            <div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-required-attachment="true" data-max-attachments="1">
-              <div class="attachment-items" data-attachment-items></div>
-              <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span><span class="required-mark">*</span></span><span class="attachment-filename"></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf" /></label>
-            </div>
             <div class="attachment-group" data-attachment-group data-attachment-type="other" data-max-attachments="4">
               <div class="attachment-items" data-attachment-items></div>
               <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Others</span><span class="zh">其他附件</span></span><span class="attachment-filename"></span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" accept="image/*,.pdf" multiple /></label>
             </div>
           </div>
-          <span class="attachment-hint"><span class="en">Boarding pass and bag tag receipt are required. You may upload up to 4 files under Others (22 MB total after photo optimization). Each bag’s tag photo is already included.</span><span class="zh">必须上传登机牌和行李票。“其他附件”最多可上传 4 个文件（照片优化后总计不超过 22 MB）。每件行李已拍摄的行李牌照片均已包含在内。</span></span>
+          <span class="attachment-hint"><span class="en">Optional: up to 4 other files. Total attachments must be under 22 MB after photo optimization.</span><span class="zh">选填：最多4个其他附件，所有附件经照片优化后共不超过22 MB。</span></span>
         </section>
 
         <section class="case-fields is-active" data-step="5">
@@ -225,7 +222,8 @@
   </main>
   <dialog class="submitting-dialog" id="submitting-dialog" aria-labelledby="submitting-title"><div class="submitting-spinner" aria-hidden="true"></div><div class="en"><h2 id="submitting-title">Processing</h2><p>Please wait. Do not submit again.</p></div><div class="zh"><h2>处理中</h2><p>请稍候，请勿重复提交。</p></div></dialog>
   <dialog class="chart-dialog" id="chart-dialog"><button class="chart-close" id="chart-close" type="button" aria-label="Close">×</button><img id="chart-dialog-image" alt="" /><div class="enlarged-icon" id="enlarged-icon" hidden></div></dialog><div class="hover-image-preview" id="hover-image-preview" hidden></div>
-  <script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-bag-flow"></script>
+  <script type="module" src="/damage-viewer.js?v=20261016"></script>
+  <script src="/pir-delivery.js?v=20261016"></script><script src="/baggage-guide.js?v=20261015-bag-flow"></script>
   <script>
     const apiBase = (window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
     const form = document.querySelector('#cbs-form');
@@ -242,7 +240,7 @@
     const thanks = document.querySelector('#thanks');
     const attachmentInputs = () => Array.from(form.querySelectorAll('[data-attachment-input]'));
     const canvas = document.querySelector('#damage-sketch');
-    const ctx = canvas.getContext('2d');
+
     const signaturePad = document.querySelector('#signature-pad');
     const signatureCtx = signaturePad.getContext('2d');
     const bagTagEntries = document.querySelector('#bag-tag-entries');
@@ -298,8 +296,7 @@
           const tag = bag.tagIdentity.querySelector('[data-bag-tag]');
           tag.value = tag.value.trim().toUpperCase().replace(/\s/g, '');
           if (!tag.value) return { message: lang === 'en' ? 'Enter the tag number for every bag.' : '请填写每件行李的行李牌号码。', control: tag };
-          const input = bag.tagIdentity.querySelector('[data-attachment-input]');
-          if (!(selectedAttachments.get(attachmentKey(input)) || []).length) return { message: lang === 'en' ? 'Photograph the tag for every bag.' : '请拍摄每件行李对应的行李牌照片。', control: input };
+          for(const input of bag.tagIdentity.querySelectorAll('[data-attachment-input]')){const required=input.closest('[data-attachment-group]').dataset.requiredAttachment==='true';if(required&&!(selectedAttachments.get(attachmentKey(input))||[]).length)return {message:lang==='en'?'Upload the receipt and required baggage photos for each bag.':'请上传每件行李的收据和必填照片。',control:input};}
           if (step === 2 && (!bag.querySelector('[data-bag-color]').value || !bag.querySelector('[data-bag-type]').value)) return { message: lang === 'en' ? 'Select a color and type for every bag.' : '请为每件行李选择颜色和种类。' };
         }
         const tags = collectBagTags();
@@ -334,7 +331,7 @@
       languageToggle.textContent = lang === 'en' ? '中文' : 'English';
       deliveryPreference.options[0].textContent = lang === 'en' ? 'Select a method' : '请选择取件方式';
       Array.from(deliveryPreference.options).slice(1).forEach((option) => { option.textContent = PirDelivery.pick(PirDelivery.methods[option.value], lang); });
-      localizeGuide(); renderProgress(); setAddressFields(); if(!sketchDirty)drawBagBase();
+      localizeGuide(); renderProgress(); setAddressFields(); saveDamageView();
     }
     languageToggle.addEventListener('click', () => setLanguage(document.documentElement.lang === 'en' ? 'zh' : 'en'));
 
@@ -384,7 +381,7 @@
       card.className = 'bag-selector'; card.dataset.bagNumber = number;
       card.innerHTML = `<div class="bag-card-heading"><h4 data-bag-title></h4><button class="remove-bag" type="button" data-remove-bag-id="${number}"><span class="en">Remove</span><span class="zh">删除</span></button></div><div data-tag-slot></div><div class="bag-fields">${picker('color',number,'Color','颜色')}${picker('type',number,'Type','种类')}${picker('descriptor',number,'Descriptive Element(s)','描述特征')}<label class="wide ahl-detail-field"><span class="en">Baggage description</span><span class="zh">行李描述</span><textarea data-bag-description maxlength="500"></textarea></label><label class="wide ahl-detail-field"><span class="en">Other visible features</span><span class="zh">其他明显特征</span><textarea data-bag-other-features maxlength="500"></textarea></label><section class="bag-contents wide"><h4><span class="en">Contents (optional)</span><span class="zh">包内物品（选填）</span></h4><div data-contents-list></div><button type="button" class="secondary" data-add-content><span class="en">+ Add item</span><span class="zh">+ 添加物品</span></button></section></div>`;
       const identity = document.createElement('div'); identity.className = 'bag-tag-identity';
-      identity.innerHTML = `<label class="bag-tag-field"><span class="en">Bag tag number</span><span class="zh">行李牌号码</span><input data-bag-tag name="ahlBagTag${number}" maxlength="20" required autocomplete="off" autocapitalize="characters" spellcheck="false"></label><div class="attachment-group tag-capture" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true" data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Photograph bag tag</span><span class="zh">拍摄行李牌</span></span><input name="bagTagAttachment${number}" data-attachment-input data-attachment-type="bagTag" data-bag-id="${number}" type="file" accept="image/*" capture="environment"></label></div>`;
+      identity.innerHTML = `<label class="bag-tag-field"><span class="en">Bag tag number</span><span class="zh">行李牌号码</span><input data-bag-tag name="ahlBagTag${number}" maxlength="20" required autocomplete="off" autocapitalize="characters" spellcheck="false"></label><div class="bag-upload-grid"><div class="attachment-group" data-attachment-group data-attachment-type="bagTag" data-required-attachment="true" data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Bag tag receipt</span><span class="zh">行李收据</span><span class="required-mark">*</span></span><input name="bagTagAttachment${number}" data-attachment-input data-attachment-type="bagTag" data-bag-id="${number}" type="file" accept="image/*,.pdf"></label></div><div class="attachment-group" data-attachment-group data-attachment-type="damagePhoto" data-required-attachment="true" data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Damage photo</span><span class="zh">破损照片</span><span class="required-mark">*</span></span><input name="damagePhotoAttachment${number}" data-attachment-input data-attachment-type="damagePhoto" data-bag-id="${number}" type="file" accept="image/*"></label></div><div class="attachment-group" data-attachment-group data-attachment-type="tagOnBag" data-required-attachment="true" data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Tag on this bag</span><span class="zh">行李牌在此行李上</span><span class="required-mark">*</span></span><input name="tagOnBagAttachment${number}" data-attachment-input data-attachment-type="tagOnBag" data-bag-id="${number}" type="file" accept="image/*"></label></div><div class="attachment-group" data-attachment-group data-attachment-type="bagExtra1"  data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Other 1</span><span class="zh">其他 1</span></span><input name="bagExtra1Attachment${number}" data-attachment-input data-attachment-type="bagExtra1" data-bag-id="${number}" type="file" accept="image/*,.pdf"></label></div><div class="attachment-group" data-attachment-group data-attachment-type="bagExtra2"  data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Other 2</span><span class="zh">其他 2</span></span><input name="bagExtra2Attachment${number}" data-attachment-input data-attachment-type="bagExtra2" data-bag-id="${number}" type="file" accept="image/*,.pdf"></label></div><div class="attachment-group" data-attachment-group data-attachment-type="bagExtra3"  data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Other 3</span><span class="zh">其他 3</span></span><input name="bagExtra3Attachment${number}" data-attachment-input data-attachment-type="bagExtra3" data-bag-id="${number}" type="file" accept="image/*,.pdf"></label></div></div>`;
       const entry = document.createElement('section'); entry.className = 'tag-entry-card';
       entry.innerHTML = `<div class="bag-card-heading"><h3 data-bag-title></h3><button class="remove-bag" type="button" data-remove-bag-id="${number}"><span class="en">Remove</span><span class="zh">删除</span></button></div><div data-tag-slot></div>`;
       card.tagIdentity = identity; card.tagEntry = entry;
@@ -396,16 +393,14 @@
         panel.addEventListener('click', event => { if (event.target === panel) panel.close(); });
       });
       addContentRow(card.querySelector('[data-contents-list]'));
-      renumberBags(); localizeGuide();
+      renumberBags(); localizeGuide(); syncEvidenceSlots();
     }
     function resetBagCards() { bagSelectorGrid.innerHTML = ''; bagTagEntries.innerHTML = ''; bagCounter = 0; addBag(); }
     function removeBag(number) {
       if (bagSelectorGrid.children.length <= 1) return;
       const bag = Array.from(bagSelectorGrid.children).find(item => item.dataset.bagNumber === number);
       if (!bag) return;
-      const input = bag.tagIdentity.querySelector('[data-attachment-input]');
-      clearAttachmentGroup(input.closest('[data-attachment-group]'));
-      selectedAttachments.delete(attachmentKey(input)); bag.tagEntry.remove(); bag.remove(); renumberBags();
+      bag.tagIdentity.querySelectorAll('[data-attachment-input]').forEach(input=>{clearAttachmentGroup(input.closest('[data-attachment-group]'));selectedAttachments.delete(attachmentKey(input));}); bag.tagEntry.remove(); bag.remove(); renumberBags();
     }
     addBag();
     document.querySelector('#add-another-bag').addEventListener('click', addBag);
@@ -447,7 +442,8 @@
     }
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; const artwork = document.querySelector('.report-heading-baggage'); artwork.src = isAhl ? '/assets/cbs-delayed-header.png' : '/assets/cbs-damaged-header.png'; artwork.dataset.kind = isAhl ? 'delayed' : 'damaged'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); document.querySelector('#delivery-fields').hidden = !isAhl; }
+    function syncEvidenceSlots(){const dpr=typeSelect.value==='DPR';document.querySelector('#dpr-address-field').hidden=!dpr;form.elements.dprAddress.disabled=!dpr;document.querySelectorAll('.bag-upload-grid [data-attachment-group]').forEach(group=>{const type=group.dataset.attachmentType;const special=['damagePhoto','tagOnBag'].includes(type);if(!special)return;group.dataset.requiredAttachment=String(dpr);group.querySelector('input').accept=dpr?'image/*':'image/*,.pdf';group.querySelector('.attachment-title').innerHTML=dpr?(type==='damagePhoto'?'<span class="en">Damage photo *</span><span class="zh">破损照片 *</span>':'<span class="en">Tag on this bag *</span><span class="zh">行李牌在此行李上 *</span>'):'<span class="en">Other</span><span class="zh">其他</span>';});}
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; syncEvidenceSlots(); const artwork = document.querySelector('.report-heading-baggage'); artwork.src = isAhl ? '/assets/cbs-delayed-header.png' : '/assets/cbs-damaged-header.png'; artwork.dataset.kind = isAhl ? 'delayed' : 'damaged'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); document.querySelector('#delivery-fields').hidden = !isAhl; }
     function setAddressFields() {
       const isAhl = typeSelect.value === 'AHL';
       deliveryPreference.closest('label').hidden = !isAhl;
@@ -472,7 +468,7 @@
     if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType;
     setTypeFields();
 
-    const damageViews=[['front','Side 1','正面'],['back','Side 2','背面'],['left','End 1','左侧'],['right','End 2','右侧'],['top','Top','顶部'],['bottom','Bottom','底部']];
+    const damageViews=[['front','Front','正面'],['back','Back','背面'],['left','Left','左侧'],['right','Right','右侧'],['top','Top','顶部'],['bottom','Bottom','底部']];
     let damageView='front';let damageMarks=new Map(),damageDirtyViews=new Set();const damageImages=new Map();
     const damageEntries=new Map();let activeDamageId='';
     function damageBagList(){return Array.from(bagSelectorGrid.children).map(bag=>({id:bag.tagIdentity.querySelector('[data-bag-id]').dataset.bagId,tag:bag.tagIdentity.querySelector('[data-bag-tag]').value}));}
@@ -483,32 +479,10 @@
     document.querySelector('#damage-bag-select').addEventListener('change',event=>{if(event.target.value)openDamageEntry(event.target.value);});
     document.querySelector('#add-damaged-bag').addEventListener('click',()=>{const next=damageBagList().find(bag=>!damageEntries.has(bag.id));if(next)openDamageEntry(next.id);});
     document.querySelector('#remove-damaged-bag').addEventListener('click',()=>{if(damageEntries.size<=1)return;damageEntries.delete(activeDamageId);activeDamageId='';openDamageEntry(damageEntries.keys().next().value);});
-    function collectDamageEntries(){saveDamageEntry();return damageBagList().filter(bag=>damageEntries.has(bag.id)).map(bag=>{const d=damageEntries.get(bag.id);return {tag:bag.tag,damageLevel:d.level,innerDamage:d.inner,damageAreas:[...d.views],damageSketch:combineDamageMarks([...d.marks.values()])};});}
-    damageViews.forEach(([key])=>{const image=new Image();image.onload=()=>{if(damageView===key&&!drawing)drawBagBase();};image.src=`/assets/baggage-guide-3d/damage-${key}.webp`;damageImages.set(key,image);});
-    function drawBagBase(){
-      const lang=document.documentElement.lang;
-      document.querySelector('#damage-views').innerHTML=damageViews.map(([key,en,zh])=>`<button type="button" data-damage-view="${key}" aria-pressed="${key===damageView}"><img src="/assets/baggage-guide-3d/damage-${key}.webp" alt="">${lang==='en'?en:zh}${damageDirtyViews.has(key)?' •':''}</button>`).join('');
-      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
-      const saved=damageMarks.get(damageView);if(saved){ctx.drawImage(saved,0,0);return;}const image=damageImages.get(damageView);
-      if(image?.complete&&image.naturalWidth){const scale=Math.min((canvas.width-60)/image.naturalWidth,(canvas.height-35)/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;ctx.drawImage(image,(canvas.width-w)/2,10,w,h);}
-      if(!saved){ctx.fillStyle='#173f73';ctx.font='bold 16px Arial';ctx.textAlign='center';ctx.fillText(damageViews.find(x=>x[0]===damageView)[lang==='en'?1:2],canvas.width/2,canvas.height-10);ctx.textAlign='left';}
-    }
-    function saveDamageView(){if(!damageDirtyViews.has(damageView))return;const snapshot=document.createElement('canvas');snapshot.width=canvas.width;snapshot.height=canvas.height;snapshot.getContext('2d').drawImage(canvas,0,0);damageMarks.set(damageView,snapshot);}
-    function collectDamageSketch(){
-      saveDamageView();return combineDamageMarks([...damageMarks.values()]);
-    }
-    function combineDamageMarks(marked){if(!marked.length)return '';if(marked.length===1)return marked[0].toDataURL('image/jpeg',0.92);
-      const combined=document.createElement('canvas');combined.width=900;combined.height=Math.ceil(marked.length/2)*260;const context=combined.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,combined.width,combined.height);marked.forEach((image,i)=>context.drawImage(image,(i%2)*450,Math.floor(i/2)*260,450,260));return combined.toDataURL('image/jpeg',.75);
-    }
-    document.querySelector('#damage-views').addEventListener('click',event=>{const button=event.target.closest('[data-damage-view]');if(!button)return;saveDamageView();damageView=button.dataset.damageView;drawBagBase();});
-    function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x:(event.clientX-rect.left)*canvas.width/rect.width, y:(event.clientY-rect.top)*canvas.height/rect.height }; }
-    canvas.addEventListener('pointerdown', (event) => { drawing = true; const point = canvasPoint(event); canvas.setPointerCapture(event.pointerId); ctx.strokeStyle = '#d92d20'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(point.x, point.y); });
-    canvas.addEventListener('pointermove', (event) => { if (!drawing) return; const point = canvasPoint(event); ctx.lineTo(point.x, point.y); ctx.stroke(); sketchDirty = true; damageDirtyViews.add(damageView); });
-    canvas.addEventListener('pointerup', () => { drawing = false; });
-    canvas.addEventListener('pointercancel', () => { drawing = false; });
-    document.querySelector('#clear-sketch').addEventListener('click', () => { damageMarks.delete(damageView);damageDirtyViews.delete(damageView);sketchDirty=damageDirtyViews.size>0;drawBagBase(); });
-    drawBagBase();
-
+    function collectDamageEntries(){saveDamageEntry();return damageBagList().filter(bag=>damageEntries.has(bag.id)).map(bag=>{const d=damageEntries.get(bag.id);return {tag:bag.tag,damageLevel:d.level,innerDamage:d.inner,sketchLayout:'six-face-3d',damageAreas:[...d.views],damageSketch:window.DamageViewer?.export(d.marks)||''};});}
+    function saveDamageView(){if(!window.DamageViewer)return;damageMarks=window.DamageViewer.snapshot();damageDirtyViews=new Set(damageMarks.keys());sketchDirty=damageMarks.size>0;}
+    function drawBagBase(){window.DamageViewer?.load(damageMarks);}
+    document.addEventListener('damage-viewer-ready',drawBagBase);
     function clearSignature() {
       signatureCtx.clearRect(0, 0, signaturePad.width, signaturePad.height);
       signatureCtx.fillStyle = '#fff';
@@ -582,7 +556,7 @@
     const selectedAttachments = new Map();
 
     function attachmentKey(input) {
-      return input.dataset.bagId ? `bagTag:${input.dataset.bagId}` : (input.dataset.attachmentType || 'document');
+      return input.dataset.bagId ? `${input.dataset.attachmentType}:${input.dataset.bagId}` : (input.dataset.attachmentType || 'document');
     }
 
     function createAttachmentTile(file, index, input) {
@@ -663,10 +637,10 @@
     async function collectRequiredAttachments() {
       const output = [];
       const selectedCount = Array.from(selectedAttachments.values()).reduce((total, files) => total + files.length, 0);
-      if (selectedCount > 20) throw new Error(document.documentElement.lang === 'en' ? 'You may upload up to 20 files.' : '最多可上传 20 个文件。');
+      if (selectedCount > 65) throw new Error(document.documentElement.lang === 'en' ? 'You may upload up to 65 files.' : '最多可上传 65 个文件。');
       for (const input of attachmentInputs()) {
         const files = selectedAttachments.get(attachmentKey(input)) || [];
-        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Boarding pass and bag tag receipt attachments are required.' : '必须上传登机牌和行李票附件。');
+        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Upload the required bag tag receipt and baggage photos.' : '请上传行李收据及必填的行李照片。');
         for (const file of files) {
           const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
           if (attachment) {
@@ -699,6 +673,7 @@
       const payload = Object.fromEntries(new FormData(form).entries());
       payload.caseType = typeSelect.value;
       payload.formVersion = 3;
+      payload.evidenceVersion = 1;
       Object.keys(payload).forEach(key => { if (key.includes('Attachment')) delete payload[key]; });
       payload.flightRows = [];
       payload.bagTags = collectBagTags();
@@ -716,6 +691,7 @@
       payload.contentsRows = bagIdentifications.flatMap(bag => bag.contentsRows.map(item => ({ category:`Bag ${bag.number} · ${item.category}`, description:item.description })));
       payload.language = document.documentElement.lang;
       payload.passengerSignature = signatureDirty ? signaturePad.toDataURL('image/jpeg', 0.75) : '';
+      for(const input of attachmentInputs())delete payload[input.name];
       payload.damagedBags=typeSelect.value==='DPR'?collectDamageEntries():[];
       payload.damageSketch = payload.damagedBags[0]?.damageSketch || '';
       payload.dprDamageLevel=payload.damagedBags[0]?.damageLevel||payload.dprDamageLevel;

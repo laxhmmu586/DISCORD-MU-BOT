@@ -6,7 +6,7 @@
   const methods = {
     permanent: ['Delivery to a permanent address', '寄件，提供永久地址'],
     temporary: ['Delivery to a temporary address', '寄件，提供临时地址'],
-    pickup: ['Collect at the airport', '取件：自行来机场取']
+    pickup: ['Airport Self-Pickup', '取件：自行来机场取']
   };
   const notice = [
     'Please note: Once the baggage is handed over for delivery, it will be handled by a third-party delivery service. Due to delivery arrangements and actual operating conditions, we are unable to provide or confirm a specific delivery time.',

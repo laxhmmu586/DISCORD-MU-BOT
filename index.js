@@ -2204,7 +2204,7 @@ function cbsPdfLines(record) {
 
 function sanitizeCbsAttachments(value) {
   const list = Array.isArray(value) ? value : [];
-  const maxAttachments = 20;
+  const maxAttachments = 65;
   const maxTotalBytes = 22 * 1024 * 1024;
   let totalBytes = 0;
   return list.slice(0, maxAttachments).map((item, index) => {
@@ -2221,9 +2221,9 @@ function sanitizeCbsAttachments(value) {
 }
 
 
-function missingRequiredCbsAttachmentTypes(attachments = []) {
+function missingRequiredCbsAttachmentTypes(attachments = [], caseType = 'AHL', evidenceVersion = 0) {
   const uploadedTypes = new Set(attachments.map((item) => String(item.attachmentType || '').trim().toLowerCase()));
-  return ['boardingpass', 'bagtag'].filter((type) => !uploadedTypes.has(type));
+  return (evidenceVersion === 1 ? (caseType === 'DPR' ? ['bagtag', 'damagephoto', 'tagonbag'] : ['bagtag']) : ['boardingpass','bagtag']).filter((type) => !uploadedTypes.has(type));
 }
 
 
@@ -4096,11 +4096,17 @@ app.post('/cbs-cases', async (req, res) => {
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
-    if (!Array.isArray(body.attachments) || body.attachments.length > 20 || attachments.length !== body.attachments.length) {
-      return res.status(400).json({ error: 'Use no more than 20 attachments and no more than 22 MB total after photo optimization.' });
+    if (!Array.isArray(body.attachments) || body.attachments.length > 65 || attachments.length !== body.attachments.length) {
+      return res.status(400).json({ error: 'Use no more than 65 attachments and no more than 22 MB total after photo optimization.' });
     }
-    const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments);
-    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Boarding pass and bag tag receipt attachments are required' });
+    const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments, caseType, body.evidenceVersion);
+    if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Missing required baggage attachments: ' + missingAttachmentTypes.join(', ') });
+    const requiredBagTypes = caseType === 'DPR' ? ['bagtag', 'damagephoto', 'tagonbag'] : ['bagtag'];
+    const bagCount = Array.isArray(body.bagIdentifications) ? body.bagIdentifications.length : normalizedBagTags.split('/').length;
+    for (let bagNumber = 1; body.evidenceVersion === 1 && bagNumber <= bagCount; bagNumber++) {
+      if (requiredBagTypes.some(type => !attachments.some(item => item.bagNumber === bagNumber && item.attachmentType.toLowerCase() === type))) return res.status(400).json({error:'Each bag needs its receipt and required baggage photos.'});
+    }
+    if (body.evidenceVersion === 1 && caseType === 'DPR' && attachments.some(item => ['damagephoto','tagonbag'].includes(item.attachmentType.toLowerCase()) && !item.mimeType.startsWith('image/'))) return res.status(400).json({error:'Damage and tag-on-bag evidence must be photos.'});
     const otherAttachmentCount = attachments.filter((attachment) => String(attachment.attachmentType || '').trim().toLowerCase() === 'other').length;
     if (otherAttachmentCount > 4) return res.status(400).json({ error: 'Use no more than 4 Others attachments.' });
     if (photoReport && !bagTagReport && (!/^[A-Z0-9]{2,3}\d{1,4}$/i.test(String(firstFlight.flightNo || '').trim()) || !/^\d{4}-\d{2}-\d{2}$/.test(String(firstFlight.flightDate || '')))) return res.status(400).json({error:'Valid flight number and date are required'});
@@ -4111,6 +4117,7 @@ app.post('/cbs-cases', async (req, res) => {
     const record = {
       ...(photoReport ? {formVersion:body.formVersion,bagIdentifications,flightRows:bagTagReport?[]:[{flightNo:sanitizeCbsText(firstFlight.flightNo,20).toUpperCase(),flightDate:sanitizeCbsText(firstFlight.flightDate,20)}],tagPhotoCount:attachments.filter(a=>a.attachmentType==='bagTag').length,damageAreas:Array.isArray(body.damageAreas)?body.damageAreas.filter(x=>['front','back','left','right','top','bottom'].includes(x)):[]} : {}),
       ...(damagedBags?{damagedBags}:{}),
+      ...(body.evidenceVersion === 1 ? {evidenceVersion:1} : {}),
       caseType,
       status: 'Open',
       passengerName,
@@ -4124,6 +4131,7 @@ app.post('/cbs-cases', async (req, res) => {
       bagTag: normalizedBagTags,
       destinationOnBags: sanitizeCbsText(body.destinationOnBags, 80).toUpperCase(),
       ...delivery,
+      ...(caseType === 'DPR' ? {permanentAddress:sanitizeCbsText(body.dprAddress, 500)} : {}),
       ahlBagDescription: sanitizeCbsText(body.ahlBagDescription, 500),
       ahlBagBrandTag: sanitizeCbsText(body.ahlBagBrandTag, 200),
       ahlBagType: sanitizeCbsText(body.ahlBagType, 160),
@@ -4132,6 +4140,7 @@ app.post('/cbs-cases', async (req, res) => {
       ahlContents: sanitizeCbsText(body.ahlContents, 1000),
       dprDamageLevel: sanitizeCbsText(body.dprDamageLevel, 40),
       dprBagInfo: sanitizeCbsText(body.dprBagInfo, 500),
+      dprAddress: sanitizeCbsText(body.dprAddress, 500),
       dprBagType: sanitizeCbsText(body.dprBagType, 160),
       dprInnerDamage: sanitizeCbsText(body.dprInnerDamage, 1000),
       additionalInformation: sanitizeCbsText(body.additionalInformation, 1000),

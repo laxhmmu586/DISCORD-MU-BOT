@@ -24,12 +24,12 @@ function validateBagTagPhotos(bags, attachments) {
     seen.add(bag.tag);
   }
   const photos = attachments.filter(item => item.attachmentType === 'bagTag');
-  if (photos.length !== bags.length || photos.some(item => !Number.isInteger(item.bagNumber) || item.bagNumber < 1 || item.bagNumber > bags.length || !String(item.mimeType).startsWith('image/'))) throw new Error('Photograph the tag for every bag.');
+  if (photos.length !== bags.length || photos.some(item => !Number.isInteger(item.bagNumber) || item.bagNumber < 1 || item.bagNumber > bags.length || !(String(item.mimeType).startsWith('image/') || item.mimeType === 'application/pdf'))) throw new Error('Upload the bag tag receipt for every bag.');
   for (const bag of bags) if (photos.filter(item => item.bagNumber === bag.number).length !== 1) throw new Error('Each bag must have its own tag photo.');
 }
 function normalizeDamagedBags(value,bags){
   if(!Array.isArray(value)||!value.length||value.length>bags.length)throw new Error('Select the damaged bag tag number.');
-  const seen=new Set();return value.map(item=>{const tag=clean(item?.tag,20).toUpperCase().replace(/\s+/g,'');if(!bags.some(bag=>bag.tag===tag)||seen.has(tag))throw new Error('Select each damaged bag once from the entered tags.');seen.add(tag);if(!['Minor','Major','Total'].includes(item.damageLevel))throw new Error('Choose a valid damage level.');const sketch=String(item.damageSketch||'');if(sketch&&(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(sketch)||sketch.length>4000000))throw new Error('Invalid damage sketch.');return {tag,damageLevel:item.damageLevel,innerDamage:clean(item.innerDamage,1000),damageAreas:(item.damageAreas||[]).filter(key=>['front','back','left','right','top','bottom'].includes(key)),damageSketch:sketch};});
+  const seen=new Set();return value.map(item=>{const tag=clean(item?.tag,20).toUpperCase().replace(/\s+/g,'');if(!bags.some(bag=>bag.tag===tag)||seen.has(tag))throw new Error('Select each damaged bag once from the entered tags.');seen.add(tag);if(!['Minor','Major','Total'].includes(item.damageLevel))throw new Error('Choose a valid damage level.');const sketch=String(item.damageSketch||'');if(sketch&&(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(sketch)||sketch.length>4000000))throw new Error('Invalid damage sketch.');return {tag,damageLevel:item.damageLevel,...(item.sketchLayout==='six-face-3d'?{sketchLayout:'six-face-3d'}:{}),innerDamage:clean(item.innerDamage,1000),damageAreas:(item.damageAreas||[]).filter(key=>['front','back','left','right','top','bottom'].includes(key)),damageSketch:sketch};});
 }
 function emailSummary(record){
   const zh=record.language==='zh',label=(en,cn)=>zh?cn:en;
