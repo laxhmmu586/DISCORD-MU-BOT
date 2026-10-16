@@ -6,3 +6,12 @@
 @media(max-width:360px){.bag-upload-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .damage-orbit{position:absolute;left:5%;bottom:8px;width:90%;height:45px;pointer-events:none}.damage-stage canvas{position:relative;z-index:1}.damage-controls{z-index:2}
 .damage-tools svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.6;vertical-align:-2px}
+.bag-upload-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.bag-upload-grid .attachment-tile{height:100%}
+.damage-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.damage-heading>strong{font-size:13px;color:#102e60}.damage-home{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:5px 7px;border:1px solid #dbe8fb;border-radius:8px;background:#fff;color:#264d7a;font-size:11px;box-shadow:none}.damage-home>span[aria-hidden]{font-size:16px}
+.damage-orbit-vertical{position:absolute;left:0;top:0;width:52px;height:100%;pointer-events:none}
+.aviation-pir .damage-home{min-height:30px;height:30px;padding:4px 7px;border:1px solid #dbe8fb;border-radius:8px;background:#fff;color:#264d7a;font-size:11px;box-shadow:none}.damage-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
+.damage-tools [data-damage-tool="mark"][aria-pressed="true"]{border-color:#16a064;box-shadow:0 0 0 1px #16a06433;animation:none}
+.damage-tools [data-damage-tool="mark"][aria-pressed="false"]{border-color:#ed9024;animation:damage-mark-rotate 2.4s ease-in-out infinite}
+@keyframes damage-mark-rotate{0%,100%{border-color:#ed9024;box-shadow:0 0 0 1px #ed902433}50%{border-color:#f8d6ad;box-shadow:0 0 0 3px #ed902408}}
+@media(prefers-reduced-motion:reduce){.damage-tools [data-damage-tool="mark"][aria-pressed="false"]{animation:none}}
+.aviation-pir .bag-tag-identity .bag-upload-grid .attachment-preview{height:40px}.aviation-pir .bag-tag-identity .bag-upload-grid .attachment-preview img{height:40px;max-height:40px;object-fit:contain}.aviation-pir .bag-tag-identity .bag-upload-grid .attachment-tile{min-height:94px;padding:5px;gap:5px}

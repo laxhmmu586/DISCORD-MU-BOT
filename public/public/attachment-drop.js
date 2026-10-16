@@ -17,6 +17,7 @@
       const zone = input.closest('label') || input.closest('[data-attachment-group], .attachments');
       if (!zone || zone.dataset.fileDropReady) return;
       zone.dataset.fileDropReady = 'true';
+      if (input.closest('[data-file-drop-hints="false"]')) return;
       const hint = document.createElement('span');
       hint.className = 'file-drop-hint';
       if(document.body.classList.contains('aviation-pir')) hint.innerHTML='<span class="en">Drop files here or tap +</span><span class="zh">拖放文件或点击 +</span>';
