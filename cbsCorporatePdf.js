@@ -31,7 +31,7 @@ module.exports=function corporatePdf(record,{pdfText,pdfHelveticaTextWidth,jpegF
  section('2','Baggage tags','行李牌号码及照片',94);
  const attachments=record.reportAttachments||[],tags=attachments.filter(a=>a.attachmentType==='bagTag');for(const [i,a]of tags.entries()){ensure(98);const tag=record.bagIdentifications?.[(a.bagNumber||i+1)-1]?.tag||'';rect(28,y,370,74,'#f5f7fa');picture(data(a),32,y+3,362,68);rect(411,y,173,74,'#edf4ff');icon('bag',426,y+29);text(L('BAG TAG NUMBER','行李牌号码'),450,y+24,8,false,muted);lines(tag,450,y+40,124,12,true);y+=84;}
  if(!tags.length)narrative(L('Bag tag','行李牌号码'),record.bagTag);
- section('3','Baggage information','行李信息',123);
+ section('3','Baggage information','行李信息',133);y+=10;
  for(const [i,bag]of (record.bagIdentifications||[]).entries()){
   const desc=String(bag.descriptors||'').split(',').filter(Boolean),material=desc.filter(code=>Guide.descriptors.find(item=>item[0]===code)?.[5]==='material'),feature=desc.filter(code=>!material.includes(code));
   const groups=[{title:L('Color','颜色'),codes:[bag.color],kind:'color',detail:`${bag.color} ${Guide.label(Guide.colors.find(item=>item[0]===bag.color),record.language)}`},{title:L('Type','类型'),codes:[bag.type],kind:'type',detail:`${bag.type} ${Guide.label(Guide.types.find(item=>item[0]===bag.type),record.language)}`},{title:L('Material','材质'),codes:material,kind:'descriptor',detail:material.map(code=>`${code.replace(/-.*/,'')} ${Guide.label(Guide.descriptors.find(item=>item[0]===code),record.language)}`).join(' · ')||'—'},{title:L('Feature','特征'),codes:feature,kind:'descriptor',detail:feature.map(code=>`${code.replace(/-.*/,'')} ${Guide.label(Guide.descriptors.find(item=>item[0]===code),record.language)}`).join(' · ')||'—'}];
@@ -44,7 +44,7 @@ module.exports=function corporatePdf(record,{pdfText,pdfHelveticaTextWidth,jpegF
  }
  const usedPhotos=new Set();
  if(record.caseType==='DPR'){
-  section('4','Damage details','破损详情',148);
+  section('4','Damage details','破损详情',158);y+=10;
   const damages=record.damagedBags?.length?record.damagedBags:[{tag:record.bagIdentifications?.[0]?.tag,damageLevel:record.dprDamageLevel,innerDamage:record.dprInnerDamage,damageSketch:record.damageSketch,damageAreas:record.damageAreas}];
   for(const damage of damages){const imageHeight=damage.sketchLayout==='six-face-3d'?258:(damage.damageAreas||[]).length>2?Math.min(230,90*Math.ceil(damage.damageAreas.length/2)):114;ensure(imageHeight+32);const top=y;const severity=zh?({Minor:'轻微',Major:'严重',Total:'完全损坏'}[damage.damageLevel]||damage.damageLevel):damage.damageLevel;text(`${L('Bag tag','行李牌号码')} · ${damage.tag||''}`,30,top,8,true);rect(28,top+19,192,48,'#f0f5fc');text(L('Damage level','破损程度'),40,top+25,8,true);rect(40,top+41,72,19,damage.damageLevel==='Minor'?'#dff3e7':'#fce8e8',9);text(severity||'—',52,top+44,9,true,damage.damageLevel==='Minor'?'#287b54':'#ac3a42');icon('note',32,top+80);text(L('Damage description','破损描述'),54,top+76,8,false,muted);const dLines=wrap(damage.innerDamage||'—',164,9);dLines.slice(0,4).forEach((s,j)=>text(s,54,top+90+j*12,9));
    const bagIndex=(record.bagIdentifications||[]).findIndex(b=>b.tag===damage.tag),photos=attachments.filter(a=>['damage','damagePhoto'].includes(a.attachmentType)&&(a.bagNumber===bagIndex+1||(!a.bagNumber&&damages.length===1))),detail=photos.find(a=>data(a))||(damages.length===1?attachments.find(a=>a.attachmentType==='other'&&data(a)):undefined);
