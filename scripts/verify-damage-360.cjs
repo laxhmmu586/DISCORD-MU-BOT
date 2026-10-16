@@ -32,7 +32,7 @@ const {chromium}=require('playwright');
    await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:12});await page.mouse.up();
   }
   // Test actual captured pointer drags, rather than assigning camera angles.
-  await mark.click();assert.equal(await mark.getAttribute('aria-pressed'),'false');
+  assert.equal(await mark.getAttribute('aria-pressed'),'false','marking starts off so the first drag rotates');
   const quarterTurn=Math.PI/2/.012;
   for(const axis of ['horizontal','vertical']){
    const initial=await image();let quarter;
