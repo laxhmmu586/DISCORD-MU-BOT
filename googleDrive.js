@@ -4509,6 +4509,7 @@ async function getCbsUnresolvedBaggageCases(options = {}) {
           resolution:values[8] || '', resolutionNote:values[9] || '', resolvedAt:values[10] || '',
           worldTracerFileNumber:values[11] || '', worldTracerUpdatedBy:values[12] || '', createdBy:values[13] || '', resolvedBy:values[14] || '',
           exchangeHistory:safeJsonArray(values[15]), passengerName:values[16] || '', updateEvents,
+          bagIdentifications:updateEvents.filter(event => event?.key === 'bag-identification' && event.bagIdentification).map(event => event.bagIdentification),
           rushTagNumber:cbsUnresolvedRushTag(updateEvents), rowNumber:startIndex + index + 1
         };
       }).filter((row) => !isCbsOnHandExcludedBag(row))
@@ -4570,8 +4571,9 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   if (isCbsOnHandExcludedBag(record)) return { created: false, excluded: true };
   const title = await getCbsUnresolvedBaggageSheetTitle();
   const existing = await getCbsUnresolvedBaggageCases();
-  const bagTag = sanitizeSheetText(record.bagTag, 80).toUpperCase();
-  if (existing.some((row) => row.bagTag.toUpperCase() === bagTag)) {
+  const noTag = record.direction === "inbound" && /^no tag$/i.test(String(record.bagTag || "").trim());
+  const bagTag = noTag ? "No Tag" : sanitizeSheetText(record.bagTag, 80).toUpperCase();
+  if (!noTag && existing.some((row) => row.bagTag.toUpperCase() === bagTag)) {
     await appendCbsNotLoadBaggageCase(record);
     return { created: false };
   }
@@ -4590,9 +4592,17 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
     createdAt: sanitizeSheetText(record.submittedAt || new Date().toISOString(), 40),
     createdBy: sanitizeSheetText(record.submittedBy, 160)
   };
+  const identification = noTag && record.bagIdentification ? {
+    number:1, tag:'No Tag', color:sanitizeSheetText(record.bagIdentification.color, 10),
+    type:sanitizeSheetText(record.bagIdentification.type, 10), descriptors:sanitizeSheetText(record.bagIdentification.descriptors, 80)
+  } : null;
+  const updateEvents = identification ? [{key:'bag-identification', title:'Baggage identification', at:saved.createdAt, by:saved.createdBy, bagIdentification:identification,
+    fields:[['Color',identification.color],['Type',identification.type],['Descriptive elements',identification.descriptors]]}] : [];
+  saved.bagIdentifications = identification ? [identification] : [];
+  saved.updateEvents = updateEvents;
   const response = await sheets.spreadsheets.values.append({
     spreadsheetId: CBS_SHEET_ID, range: `${escapeSheetTitle(title)}!A:R`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[saved.bagTag, saved.direction, saved.flightNumber, saved.flightDate, saved.bagType, saved.status, saved.location, saved.createdAt, '', '', '', sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase(), '', saved.createdBy, '', '', sanitizeSheetText(record.passengerName, 160), '']] }
+    requestBody: { values: [[saved.bagTag, saved.direction, saved.flightNumber, saved.flightDate, saved.bagType, saved.status, saved.location, saved.createdAt, '', '', '', sanitizeSheetText(record.worldTracerFileNumber, 120).toUpperCase(), '', saved.createdBy, '', '', sanitizeSheetText(record.passengerName, 160), JSON.stringify(updateEvents)]] }
   });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) saved.rowNumber = Number(appendedRow);
