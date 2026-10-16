@@ -946,8 +946,9 @@
       rows.forEach((row) => {
         const tag = String(row.bagTag || '').trim().toUpperCase();
         if (!tag) return;
-        if (!rowsByTag.has(tag)) rowsByTag.set(tag, []);
-        rowsByTag.get(tag).push(row);
+        const key = tag === "NO TAG" ? `no-tag-row-${row.rowNumber}` : tag;
+        if (!rowsByTag.has(key)) rowsByTag.set(key, []);
+        rowsByTag.get(key).push(row);
       });
       rows = [...rowsByTag.values()].map((history) => {
         history.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
@@ -1009,7 +1010,7 @@
         const flightColor = ({MU586:'blue', MU578:'purple', MU9586:'teal', MU583:'green', MU577:'orange'})[flight] || 'unknown';
         const flightCell = isBagRoomGroup ? `<td class="sheet-meta"><span class="unload-flight unload-flight-${flightColor}">${escapeHtml(flight || 'Not recorded')}</span></td>` : '';
         const dateBand = dateBands.get(String(row.flightDate || '').trim() || 'unknown') === 0 ? 'date-band-a' : 'date-band-b';
-        return `<tr class="case-summary-row ${dateBand}" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}${flightCell}<td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
+        return `<tr class="case-summary-row ${dateBand}" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}${flightCell}<td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${row.bagIdentifications?.length ? BaggageGuide.cards(row.bagIdentifications, document.documentElement.lang) : ""}${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }

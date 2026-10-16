@@ -8,6 +8,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const PirDelivery = require('./public/public/pir-delivery');
 const CbsReport = require('./cbsReport');
+const BaggageGuide = require('./public/public/baggage-guide');
 const { BoardingSqliteLive } = require('./boardingSqliteLive');
 const { createNbrdConfirmationStore } = require('./nbrdConfirmation');
 const { nbrdEntriesFromFb, nbrdEntriesFromPd } = require('./boardingNbrd');
@@ -4458,17 +4459,38 @@ app.get('/test-baggage/:bagTag', async (req, res) => {
 
 app.post('/test-baggage', async (req, res) => {
   try {
-    const bagTag = normalizeTestBagTag(req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
+    const noTag = req.body?.noTag === true;
+    const bagTag = noTag ? "No Tag" : normalizeTestBagTag(req.body?.bagTag);
+    if (!noTag && !isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const direction = cleanBodyText(req.body?.direction, 20).toLowerCase();
     if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: 'Direction must be inbound or outbound' });
+    if (noTag && (direction !== 'inbound' || !['Passenger bag', 'Inbound rush'].includes(req.body?.bagType) || String(req.body?.location || '').trim().toLowerCase() !== 'office')) {
+      return res.status(400).json({ error: 'No Tag bags must be inbound Passenger bag or Inbound rush at Office' });
+    }
     const date = cleanBodyText(req.body?.date, 20);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Missing or invalid date' });
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
     if (!/^[A-Z]{2}\d{1,4}[A-Z]?$/.test(flight)) return res.status(400).json({ error: 'Missing or invalid flight number' });
     const rushTagNumber = cleanBodyText(req.body?.rushTagNumber, 80).toUpperCase();
     if (rushTagNumber && !isValidRushBagTag(rushTagNumber)) return res.status(400).json({ error: 'RUSH tag must use an airline code followed by 6 digits, for example DL123456, B6123456, or 3U515289' });
-    const result = await appendTestBaggageRecord({
+    let bagIdentification;
+    if (noTag) {
+      const input = req.body?.bagIdentification || {};
+      bagIdentification = {color:cleanBodyText(input.color, 10).toUpperCase(), type:cleanBodyText(input.type, 10).toUpperCase(), descriptors:cleanBodyText(input.descriptors, 80).toUpperCase()};
+      const elements = bagIdentification.descriptors.split(',').map(value => value.trim()).filter(Boolean);
+      if ((bagIdentification.color && !BaggageGuide.colors.some(item => item[0] === bagIdentification.color))
+        || (bagIdentification.type && !BaggageGuide.types.some(item => item[0] === bagIdentification.type))
+        || elements.length > 3 || new Set(elements).size !== elements.length
+        || elements.some(code => !BaggageGuide.descriptors.some(item => item[0] === code))
+        || (elements.includes('X-M') && elements.some(code => code !== 'X-M' && BaggageGuide.descriptors.find(item => item[0] === code)?.[5] === 'material'))
+        || (elements.includes('X-E') && elements.some(code => code !== 'X-E' && BaggageGuide.descriptors.find(item => item[0] === code)?.[5] === 'external'))) {
+        return res.status(400).json({error:'Select valid baggage color, type, and up to 3 compatible descriptive elements'});
+      }
+      bagIdentification.descriptors = elements.join(',');
+    }
+    const saveRecord = noTag ? appendCbsUnresolvedBaggageCase : appendTestBaggageRecord;
+    const result = await saveRecord({
+      bagIdentification,
       bagTag,
       direction,
       flight,

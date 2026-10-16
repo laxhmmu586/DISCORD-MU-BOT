@@ -1348,3 +1348,6 @@
 
 .service-topbar .login-button svg{fill:none;stroke:currentColor}
 @media(max-width:760px){.service-page .test-create-entry .test-form-grid{grid-template-columns:minmax(0,1fr)}.service-page .test-create-entry .test-field,.service-page .test-outbound-bag-tags{grid-column:auto}.service-page .test-choice-grid{grid-template-columns:minmax(0,1fr)}}
+
+.test-search-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.test-search-actions .report-run{flex:1;min-width:0;}
