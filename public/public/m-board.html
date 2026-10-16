@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <script src="/flight-session.js"></script>
+    <script src="/flight-session.js?v=20261016-box"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Manual</title>
@@ -29,6 +29,8 @@
     .board-section { display:grid; gap:10px; margin-top:18px; }
     .board-section h2 { margin:0; font-size:22px; }
     .manual-scan-actions { display:flex; justify-content:flex-end; }
+    .between-panels { margin:10px 4px -6px; }
+    @media(max-width:380px) { .aviation-board .toolbar h1 { font-size:26px; } .aviation-board .board-toolbar-actions a.button { padding:10px 12px; } }
     .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:16px; }
     table { width:100%; border-collapse:collapse; min-width:420px; background:white; }
     th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
@@ -51,7 +53,7 @@
 <body class="aviation-page aviation-board">
   <main>
     <section class="card">
-      <div class="toolbar"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Manual</h1><div class="board-toolbar-actions"><a class="button secondary" href="/scan.html">Boarding</a><button class="refresh-board" id="refresh" type="button">Refresh</button></div></div>
+      <div class="toolbar"><h1><span class="boarding-live-indicator" id="boarding-live-indicator" role="status" aria-label="Live boarding connection" hidden></span>Manual</h1><div class="board-toolbar-actions"><a class="button secondary" href="/scan.html">Boarding</a><a class="button secondary" href="/box.html">BOX</a></div></div>
       <p class="status" id="status" hidden></p>
       <div class="board-section" id="nbrd-section">
         <h2>NBRD</h2>
@@ -62,6 +64,7 @@
           <button type="submit">Add</button>
         </form>
       </div>
+      <div class="manual-scan-actions between-panels"><button class="refresh-board" id="refresh" type="button">Refresh</button></div>
       <div class="board-section manual-scan-section">
         <div class="manual-scan-tabs" role="tablist" aria-label="Scan records">
           <button id="boarding-tab" type="button" role="tab" aria-controls="boarding-panel" aria-selected="true">Boarding</button>
@@ -69,7 +72,6 @@
         </div>
         <div id="boarding-panel" class="boarding-scan" role="tabpanel" aria-labelledby="boarding-tab"><div class="table-wrap" id="table-wrap"><div class="empty">Loading boarding records...</div></div></div>
         <div id="infant-panel" role="tabpanel" aria-labelledby="infant-tab" hidden><div class="table-wrap" id="infant-wrap"><div class="empty">Loading infant scans...</div></div></div>
-        <div class="manual-scan-actions"><button class="refresh-board" id="bottom-refresh" type="button">Refresh</button></div>
       </div>
       <div class="board-section"><button class="secondary clear-board" id="clear-board" type="button">手动清空当前航班</button></div>
     </section>

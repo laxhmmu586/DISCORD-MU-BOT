@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <script src="/flight-session.js"></script>
+    <script src="/flight-session.js?v=20261016-box"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Boarding</title><link rel="stylesheet" href="/flight-navigation.css?v=20261009-vertical-switch">
@@ -60,7 +60,7 @@
   <link rel="stylesheet" href="/assets/nbrd-inline-add.css?v=20261015-manual">
 </head>
 <body class="aviation-page aviation-scan">
-  <header><a class="mufc-wordmark" href="/flights.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">BAB</a><button class="avatar-button" id="user-menu-button" type="button" aria-label="Account menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.6-4.4 4.3-6.6 8-6.6s6.4 2.2 8 6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="user-menu" id="user-menu" hidden><button id="change-password" type="button">Change password</button><button id="logout" type="button">Logout</button></div></div><div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
+  <header><a class="mufc-wordmark" href="/flights.html">MUFC</a><div class="header-actions"><a class="button" href="m-board.html">BAB</a><a class="button" href="/box.html">BOX</a></div><div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
   <main>
     <section class="card" id="nbrd-section" aria-label="NBRD records">
       <div class="nbrd-heading"><h2>NBRD</h2></div>
@@ -81,7 +81,6 @@
     </section>
   </main>
   <div class="dialog-backdrop" id="message-dialog" hidden><div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div class="dialog-icon" id="dialog-icon" hidden></div><h2 id="dialog-title">Message</h2><p id="dialog-message"></p><button id="dialog-ok" type="button">OK</button></div></div>
-  <div class="dialog-backdrop" id="password-dialog" hidden><form class="dialog-card" id="password-form" role="dialog" aria-modal="true" aria-labelledby="password-title"><h2 id="password-title">Change password</h2><input id="new-password" type="password" autocomplete="new-password" placeholder="New password" minlength="6" required /><input id="confirm-password" type="password" autocomplete="new-password" placeholder="Confirm password" minlength="6" required /><button type="submit">Update password</button><button class="secondary" id="password-cancel" type="button">Cancel</button></form></div>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
@@ -146,15 +145,6 @@
     const dialogMessage = document.querySelector('#dialog-message');
     const dialogIcon = document.querySelector('#dialog-icon');
     const dialogOk = document.querySelector('#dialog-ok');
-    const passwordDialog = document.querySelector('#password-dialog');
-    const passwordForm = document.querySelector('#password-form');
-    const passwordCancel = document.querySelector('#password-cancel');
-    const newPasswordInput = document.querySelector('#new-password');
-    const confirmPasswordInput = document.querySelector('#confirm-password');
-    const userMenuButton = document.querySelector('#user-menu-button');
-    const userMenu = document.querySelector('#user-menu');
-    const changePasswordButton = document.querySelector('#change-password');
-    const logoutButton = document.querySelector('#logout');
     let controls = null;
     let scanBusy = false;
     let lastScanText = '';
@@ -192,45 +182,6 @@
     }
     function hideMessage() { dialog.hidden = true; if (controls && !scanBusy) setStatus('Scanning'); void scanOutbox?.pump(); }
     dialogOk.addEventListener('click', hideMessage);
-    userMenuButton.addEventListener('click', () => {
-      const isOpen = userMenu.hidden;
-      userMenu.hidden = !isOpen;
-      userMenuButton.setAttribute('aria-expanded', String(isOpen));
-    });
-    document.addEventListener('click', (event) => {
-      if (userMenu.hidden || event.target.closest('.header-actions')) return;
-      userMenu.hidden = true;
-      userMenuButton.setAttribute('aria-expanded', 'false');
-    });
-    changePasswordButton.addEventListener('click', () => {
-      userMenu.hidden = true;
-      userMenuButton.setAttribute('aria-expanded', 'false');
-      newPasswordInput.value = '';
-      confirmPasswordInput.value = '';
-      passwordDialog.hidden = false;
-      newPasswordInput.focus();
-    });
-    passwordCancel.addEventListener('click', () => { passwordDialog.hidden = true; });
-    passwordForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const nextPassword = newPasswordInput.value;
-      if (nextPassword !== confirmPasswordInput.value) { showMessage('Passwords do not match.', 'Change password', 'error'); return; }
-      try {
-        await auth.currentUser.updatePassword(nextPassword);
-        passwordDialog.hidden = true;
-        showMessage('Password updated successfully.', 'Success', 'success');
-      } catch (err) {
-        showMessage(err.message || 'Unable to update password. Please login again and retry.', 'Change password', 'error');
-      }
-    });
-    logoutButton.addEventListener('click', async () => {
-      localStorage.removeItem(AUTH_SESSION_STARTED_KEY);
-      localStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
-      sessionStorage.removeItem(AUTH_SESSION_STARTED_KEY);
-      sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
-      await auth?.signOut?.();
-      window.location.replace(loginUrl());
-    });
     const nbrdReview = NbrdReview.create({container:document.querySelector('#nbrd-bns'), apiBase, onChanged:refreshNbrd});
     const nbrdReviewTokens = new Map();
     let nbrdVerified = false;

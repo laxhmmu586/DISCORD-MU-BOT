@@ -3220,6 +3220,23 @@ app.get('/flights', async (_req, res) => {
   catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
 });
 
+app.get('/boarding-box', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const flightNo = normalizeSupportedFlight(req.query.flightNo);
+  const flightDate = String(req.query.flightDate || '').toUpperCase();
+  if (!flightNo || flightDate !== operationalDate()) return res.status(400).json({ error: 'Please select today’s flight.' });
+  try {
+    const log = await getLatestFlightLog();
+    if (!log) return res.status(503).json({ error: 'Unable to load flight logs.' });
+    const box = require('./syParser').findBoardingBoxInfo(scopedLog(log, flightNo, flightDate), flightNo, flightDate);
+    if (!box) return res.status(404).json({ error: 'No SY found for the selected flight.' });
+    return res.json(box);
+  } catch (error) {
+    console.error('Boarding BOX failed:', error);
+    return res.status(503).json({ error: 'Unable to load BOX. Please refresh.' });
+  }
+});
+
 app.get('/cbs-scan/live-state', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try { return res.json(await boardingLive.records(require('./boardingContext').boardingFlight(), boardingDate(req))); }
