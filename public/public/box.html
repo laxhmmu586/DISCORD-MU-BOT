@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BOX</title>
+  <script src="/flight-session.js?v=20261016-box"></script>
+  <link rel="stylesheet" href="/box.css?v=20261016">
+</head>
+<body>
+  <main>
+    <header><a class="brand" href="/flights.html"><span class="plane" aria-hidden="true">✈</span><span>MUFC<small>Boarding Pass Box</small></span></a><nav aria-label="Boarding"><a href="/scan.html">Boarding</a><a href="/m-board.html">BAB</a></nav></header>
+    <div class="flight-line"><span data-selected-flight></span><button id="refresh" type="button">Refresh</button></div>
+    <section class="summary" aria-label="Passenger comparison">
+      <div><span>SY passengers</span><strong id="expected">—</strong></div>
+      <div><span>FB passengers</span><strong id="detected">—</strong></div>
+      <div><span>Check</span><strong class="check" id="check">—</strong></div>
+    </section>
+    <p id="status" role="status" aria-live="polite">Loading FB and SY…</p>
+    <div id="box-content" hidden>
+      <p class="legend">20 BN per box · Red = 19 passes or fewer</p>
+      <section class="boxes" id="boxes" aria-label="Boarding pass boxes"></section>
+      <section class="total" aria-label="Total people"><span>Passengers + Infant = Total people</span><strong id="total">—</strong><p id="sy-total"></p></section>
+    </div>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="/__/firebase/init.js"></script>
+  <script src="/box.js?v=20261016"></script>
+</body>
+</html>

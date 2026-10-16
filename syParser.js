@@ -1986,6 +1986,47 @@ function sortSYMatches(matches, preferredFlightNo = '') {
 
 
 
+// BOX counts only local passenger identities established by individual FB lookups.
+// Never use a connecting flight's BN, the largest BN, or scan rows as a count.
+function findBoardingBoxInfo(log, flightNo, flightDate) {
+  const sections = splitLogicalSections(log);
+  const match = sections.map(section => ({ section, info: parseSYSection(section) }))
+    .filter(({ section, info }) => /^>\s*SY\b/im.test(section.content || '') && info
+      && matchesSyFlightRecord(info.flightNo, info.flightDate, { flightNo, flightDate }))
+    .sort((a, b) => parseSectionTimestamp(b.section.timestamp) - parseSectionTimestamp(a.section.timestamp))[0];
+  if (!match) return null;
+  const operationDay = getYmdFromTimestamp(match.section.timestamp);
+  const latest = new Map();
+  const foundByFb = new Set();
+  const chronological = sections.map((section, index) => ({ section, index }))
+    .sort((a, b) => parseSectionTimestamp(a.section.timestamp) - parseSectionTimestamp(b.section.timestamp) || a.index - b.index);
+  for (const { section } of chronological) {
+    const text = section.content || '';
+    if (!sectionMatchesFlightOperationDate(section, operationDay, flightNo)) continue;
+    const header = text.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})[^\r\n]*/i);
+    if (!header || !matchesSyFlightRecord(header[1], header[2], { flightNo, flightDate })) continue;
+    const line = getPassengerRecordLine(text);
+    const localBn = header[0].match(/,\s*BN\s*(\d{1,3})\b/i)?.[1]
+      || line.match(/\bBN\s*(\d{1,3})\b/i)?.[1];
+    if (!localBn || Number(localBn) < 1 || !line) continue;
+    const bn = Number(localBn);
+    const queryBn = text.match(/^>\s*FB\s*(\d{1,3})\s*$/im)?.[1];
+    if (queryBn && Number(queryBn) === bn) foundByFb.add(bn);
+    latest.set(bn, { bn, offloaded: isDeletedPassengerLine(line),
+      infant: /^\s*INF-/im.test(text) || /\bINF1\/\d+\b/i.test(text) || /\bTKNE\/INF\d+/i.test(text) });
+  }
+  const records = [...latest.values()].filter(row => foundByFb.has(row.bn) && !row.offloaded).sort((a, b) => a.bn - b.bn);
+  const triple = match.info.checkedIn?.slice(1, 4);
+  const expectedPassengers = triple?.length === 3 ? triple.reduce((sum, value) => sum + Number(value), 0) : null;
+  const expectedInfants = match.info.inf == null ? null : Number(match.info.inf);
+  const passengers = records.length;
+  const infants = records.filter(row => row.infant).length;
+  return { flightNo, flightDate, bns: records.map(row => row.bn), infantBns: records.filter(row => row.infant).map(row => row.bn),
+    passengers, infants, total: passengers + infants, expectedPassengers, expectedInfants,
+    expectedTotal: expectedPassengers == null || expectedInfants == null ? null : expectedPassengers + expectedInfants,
+    matched: expectedPassengers != null && expectedInfants != null && passengers === expectedPassengers && infants === expectedInfants };
+}
+
 function findSYInfo(log, queryDate, options = {}) {
   const sections = splitLogicalSections(log);
   const preferredFlightNo = String(options.preferredFlightNo || '').trim().toUpperCase();
@@ -2075,4 +2116,4 @@ function findSYInfo(log, queryDate, options = {}) {
   return null;
 }
 
-module.exports = { findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isCclClosedContent };
+module.exports = { findBoardingBoxInfo, findSYInfo, normalizeOperationalFlightNo, normalizeJcsyFlightNo, sectionMatchesFlightOperationDate, matchesSyFlightRecord, extractPassportCountryCodes, parseJcsyRows, hasUnclearedApiSourceRisk, extractInvoluntaryUpgrade, enrichCheckinAgentStatsFromLog, hasChdServiceCode, isCcAirportClosedContent, isCclClosedContent };
