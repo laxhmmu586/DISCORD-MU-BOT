@@ -22,6 +22,7 @@ const textures=new Map(),surfaces=[];
 for(const key of keys){const ink=document.createElement('canvas');ink.width=512;ink.height=768;const texture=new THREE.CanvasTexture(ink);texture.colorSpace=THREE.SRGBColorSpace;textures.set(key,{ink,texture});const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});let w=1.7,h=2.5;if(['left','right'].includes(key))w=.78;if(['top','bottom'].includes(key)){w=1.7;h=.78;}const mesh=new THREE.Mesh(skinGeometries.get(key)||new THREE.PlaneGeometry(w,h),material);if(key==='right'){mesh.position.x=.89;mesh.rotation.y=Math.PI/2;}if(key==='left'){mesh.position.x=-.89;mesh.rotation.y=-Math.PI/2;}if(key==='top'){mesh.position.y=1.29;mesh.rotation.x=-Math.PI/2;}if(key==='bottom'){mesh.position.y=-1.29;mesh.rotation.x=Math.PI/2;}mesh.userData.face=key;bag.add(mesh);surfaces.push(mesh);}
 let tool='mark',yaw=-.23,pitch=.04,zoom=1,dirty=new Set(),last=null;
 const pointers=new Map(),ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+let rotationGesture=false;
 function render(){bag.rotation.set(pitch,yaw,0,'YXZ');camera.zoom=zoom;camera.updateProjectionMatrix();bag.updateMatrixWorld(true);renderer.render(scene,camera);}
 function resize(){const r=canvas.parentElement.getBoundingClientRect();if(!r.width||!r.height)return;renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;render();}
 new ResizeObserver(resize).observe(canvas.parentElement);
@@ -30,9 +31,30 @@ document.querySelectorAll('[data-view-action]').forEach(b=>b.onclick=()=>{const 
 document.querySelectorAll('[data-damage-tool]').forEach(b=>b.onclick=()=>{tool=tool===b.dataset.damageTool?'rotate':b.dataset.damageTool;document.querySelectorAll('[data-damage-tool]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.damageTool===tool)));});
 function hit(e){const r=canvas.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera);return ray.intersectObjects(surfaces)[0];}
 function paint(e){const intersection=hit(e);if(!intersection){last=null;return;}const key=intersection.object.userData.face,{ink,texture}=textures.get(key),ctx=ink.getContext('2d');const p={x:intersection.uv.x*ink.width,y:(1-intersection.uv.y)*ink.height,key};ctx.globalCompositeOperation=tool==='erase'?'destination-out':'source-over';ctx.strokeStyle='#ef3439';ctx.fillStyle='#ef3439';ctx.lineWidth=tool==='erase'?35:10;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();if(last?.key===key){ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();}else{ctx.arc(p.x,p.y,ctx.lineWidth/2,0,Math.PI*2);ctx.fill();}last=p;texture.needsUpdate=true;const data=ctx.getImageData(0,0,ink.width,ink.height).data;let hasInk=false;for(let i=3;i<data.length;i+=4)if(data[i]){hasInk=true;break;}if(hasInk)dirty.add(key);else dirty.delete(key);render();}
-canvas.onpointerdown=e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});last=null;if(pointers.size===1&&tool!=='rotate')paint(e);};
-canvas.onpointermove=e=>{const prev=pointers.get(e.pointerId);if(!prev)return;e.preventDefault();if(tool==='rotate'||pointers.size>1){yaw+=(e.clientX-prev.x)*.012;pitch+=(e.clientY-prev.y)*.012;last=null;render();}else paint(e);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});};
-canvas.onpointerup=canvas.onpointercancel=e=>{pointers.delete(e.pointerId);last=null;};canvas.onlostpointercapture=e=>{pointers.delete(e.pointerId);last=null;};
+canvas.onpointerdown=e=>{
+ e.preventDefault();canvas.setPointerCapture(e.pointerId);
+ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,moved:false});last=null;
+ // Wait for movement or a completed tap: a second finger can still join this gesture.
+ if(pointers.size>1)rotationGesture=true;
+};
+canvas.onpointermove=e=>{
+ const prev=pointers.get(e.pointerId);if(!prev)return;e.preventDefault();
+ if(tool==='rotate'||rotationGesture){
+  yaw+=(e.clientX-prev.x)*.012;pitch+=(e.clientY-prev.y)*.012;last=null;render();
+ }else{
+  if(!prev.moved)paint({clientX:prev.x,clientY:prev.y});
+  paint(e);
+ }
+ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,moved:true});
+};
+function finishPointer(e){
+ const pointer=pointers.get(e.pointerId);
+ if(e.type==='pointerup'&&pointer&&!pointer.moved&&!rotationGesture&&tool!=='rotate')paint(e);
+ pointers.delete(e.pointerId);last=null;
+ // Releasing one finger must not turn the remaining rotation gesture into drawing.
+ if(!pointers.size)rotationGesture=false;
+}
+canvas.onpointerup=canvas.onpointercancel=canvas.onlostpointercapture=finishPointer;
 function snapshot(){return new Map([...dirty].map(key=>{const src=textures.get(key).ink,c=document.createElement('canvas');c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);return [key,c];}));}
 function load(marks=new Map()){dirty=new Set(marks.keys());for(const [key,{ink,texture}] of textures){const ctx=ink.getContext('2d');ctx.clearRect(0,0,ink.width,ink.height);if(marks.has(key))ctx.drawImage(marks.get(key),0,0);texture.needsUpdate=true;}render();}
 document.querySelector('#clear-sketch').onclick=()=>load();
