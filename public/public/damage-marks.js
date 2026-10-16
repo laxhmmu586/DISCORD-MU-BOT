@@ -46,8 +46,9 @@ export function createDamageMarks({bag,canvas,getCamera}){
  function paint(event){
   if(!current)begin(event);
   prepareRay(event);
-  const hit=ray.intersectObjects(targets,false)[0];
-  const position=hit?.point.clone()||ray.ray.intersectPlane(plane,new T.Vector3());
+  // Keep one circle on its anchored drawing plane. Switching between shell,
+  // handle and background depths mid-stroke would kink the loop in side views.
+  const position=ray.ray.intersectPlane(plane,new T.Vector3());
   if(!position)return;
   const point=bag.worldToLocal(position);
   const last=current.points.at(-1);

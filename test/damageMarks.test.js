@@ -3,7 +3,7 @@ async function fixture(){
  const T=await import('../public/public/vendor/three.module.js');
  const {createSuitcase}=await import('../public/public/suitcase-model.js');
  const {createDamageMarks}=await import('../public/public/damage-marks.js');
- const {bag}=createSuitcase(T),camera=new T.PerspectiveCamera(33,4/3,.1,100);
+ globalThis.window={innerWidth:800,innerHeight:600};const source=require('node:fs').readFileSync(require.resolve('../public/public/assets/Baggage.fbx'));const {bag}=await createSuitcase(T,source.buffer.slice(source.byteOffset,source.byteOffset+source.byteLength));delete globalThis.window;const camera=new T.PerspectiveCamera(33,4/3,.1,100);
  camera.position.set(0,0,7);camera.updateMatrixWorld();bag.updateMatrixWorld(true);
  const marks=createDamageMarks({bag,canvas:{getBoundingClientRect:()=>({left:0,top:0,width:400,height:300})},getCamera:()=>camera});
  return {T,bag,camera,marks};

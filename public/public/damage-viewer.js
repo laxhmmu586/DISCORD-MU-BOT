@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { HDRLoader } from './vendor/HDRLoader.js';
-import { createSuitcase } from './suitcase-model.js?v=20261016-side-shell';
+import { createSuitcase } from './suitcase-model.js?v=20261016-supplied-fbx';
 import { createDamageMarks } from './damage-marks.js?v=20261016-outer-strokes';
 
 // Surface-anchored 3D strokes can extend beyond the silhouette while following the suitcase.
@@ -16,7 +16,7 @@ const scene=new THREE.Scene();let camera=new THREE.PerspectiveCamera(33,1,.1,100
 scene.add(new THREE.HemisphereLight(0xffffff,0x7c899c,.8));
 const hdr=await new HDRLoader().loadAsync('/assets/studio_small_08_1k.hdr');hdr.mapping=THREE.EquirectangularReflectionMapping;const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentRotation.y=.65;hdr.dispose();pmrem.dispose();
 for(const [x,y,z,power] of [[-3,5,6,2.5],[4,2,3,1.2]]){const light=new THREE.DirectionalLight(0xffffff,power);light.position.set(x,y,z);if(power===2.5){light.castShadow=true;light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-3,right:3,top:3,bottom:-3,near:.1,far:15});light.shadow.bias=-.0003;light.shadow.normalBias=.015;light.shadow.radius=3;}scene.add(light);}
-const {bag}=createSuitcase(THREE);scene.add(bag);const shadowCanvas=document.createElement('canvas');shadowCanvas.width=128;shadowCanvas.height=128;const sc=shadowCanvas.getContext('2d'),sg=sc.createRadialGradient(64,64,0,64,64,64);sg.addColorStop(0,'rgba(12,24,40,.22)');sg.addColorStop(.4,'rgba(12,24,40,.12)');sg.addColorStop(1,'rgba(12,24,40,0)');sc.fillStyle=sg;sc.fillRect(0,0,128,128);const floor=new THREE.Mesh(new THREE.PlaneGeometry(2.5,1.15),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}));floor.rotation.x=-Math.PI/2;floor.position.y=-1.59;scene.add(floor);
+const {bag}=await createSuitcase(THREE);scene.add(bag);const shadowCanvas=document.createElement('canvas');shadowCanvas.width=128;shadowCanvas.height=128;const sc=shadowCanvas.getContext('2d'),sg=sc.createRadialGradient(64,64,0,64,64,64);sg.addColorStop(0,'rgba(12,24,40,.22)');sg.addColorStop(.4,'rgba(12,24,40,.12)');sg.addColorStop(1,'rgba(12,24,40,0)');sc.fillStyle=sg;sc.fillRect(0,0,128,128);const floor=new THREE.Mesh(new THREE.PlaneGeometry(2.5,1.15),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}));floor.rotation.x=-Math.PI/2;floor.position.y=-1.59;scene.add(floor);
 const annotations=createDamageMarks({bag,canvas,getCamera:()=>camera});
 let tool='mark',yaw=-.23,pitch=.04,zoom=1;
 const pointers=new Map();
