@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { HDRLoader } from './vendor/HDRLoader.js';
-import { createSuitcase } from './suitcase-model.js?v=20261016-c4d-reference';
+import { createSuitcase } from './suitcase-model.js?v=20261016-silver-reset';
 import { createDamageMarks } from './damage-marks.js?v=20261016-outer-strokes';
 
 // Surface-anchored 3D strokes can extend beyond the silhouette while following the suitcase.
@@ -21,13 +21,11 @@ const annotations=createDamageMarks({bag,canvas,getCamera:()=>camera});
 let tool='mark',yaw=-.23,pitch=.04,zoom=1;
 const pointers=new Map();
 let rotationGesture=false;
-function render(){bag.rotation.set(pitch,yaw,0,'YXZ');bag.updateMatrixWorld(true);camera.zoom=1;camera.updateProjectionMatrix();camera.updateMatrixWorld();const bounds=new THREE.Box3().setFromObject(bag);let ex=0,ey=0;for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){const p=new THREE.Vector3(x,y,z).project(camera);ex=Math.max(ex,Math.abs(p.x));ey=Math.max(ey,Math.abs(p.y));}camera.zoom=Math.min(.76/ex,.91/ey)*zoom;camera.updateProjectionMatrix();bag.updateMatrixWorld(true);annotations.updateVisibility();renderer.render(scene,camera);}
+function render(){bag.rotation.set(pitch,yaw,0,'YXZ');bag.updateMatrixWorld(true);camera.zoom=1;camera.updateProjectionMatrix();camera.updateMatrixWorld();const bounds=new THREE.Box3().setFromObject(bag);let ex=0,ey=0;for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){const p=new THREE.Vector3(x,y,z).project(camera);ex=Math.max(ex,Math.abs(p.x));ey=Math.max(ey,Math.abs(p.y));}camera.zoom=Math.min(.86/ex,.91/ey)*zoom;camera.updateProjectionMatrix();bag.updateMatrixWorld(true);annotations.updateVisibility();renderer.render(scene,camera);}
 function resize(){const r=canvas.parentElement.getBoundingClientRect();if(!r.width||!r.height)return;renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;render();}
 new ResizeObserver(resize).observe(canvas.parentElement);
 function view(key){[pitch,yaw]=angles[key];document.querySelectorAll('[data-damage-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.damageView===key)));render();}
 document.querySelector('[data-view-action=front]').onclick=()=>{zoom=1;view('front');};
-document.querySelector('[data-view-action=in]').onclick=()=>{zoom=Math.min(1,zoom+.1);render();};
-document.querySelector('[data-view-action=out]').onclick=()=>{zoom=Math.max(.55,zoom-.1);render();};
 document.querySelectorAll('[data-damage-tool]').forEach(b=>b.onclick=()=>{tool=tool===b.dataset.damageTool?'rotate':b.dataset.damageTool;document.querySelectorAll('[data-damage-tool]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.damageTool===tool)));});
 function paint(e){annotations.paint(e);render();}
 canvas.onpointerdown=e=>{
