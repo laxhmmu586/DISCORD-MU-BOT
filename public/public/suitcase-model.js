@@ -31,6 +31,22 @@ export function createSuitcase(T){
    for(const y of [-1.13,1.12])mesh(new T.SphereGeometry(.014,12,8),chrome,x,y,sign*.425);
   }
  }
+ // Separate rounded side-shell halves meet at the central frame and gasket.
+ for(const sign of [-1,1]){
+  for(const z of [-.195,.195]){
+   const panel=roundedBox(.315,2.25,.026,.11,aluminum,sign*.852,0,z);
+   panel.rotation.y=sign*Math.PI/2;
+  }
+  for(const y of [-1.08,1.08]){
+   const cap=roundedBox(.68,.12,.035,.035,y<0?rubber:chrome,sign*.855,y,0);
+   cap.rotation.y=sign*Math.PI/2;
+  }
+ }
+ const lock=roundedBox(.22,.18,.055,.035,graphite,.89,.73,.12);lock.rotation.y=Math.PI/2;
+ for(const z of [.055,.105,.155]){
+  const dial=mesh(new T.CylinderGeometry(.02,.02,.014,12),chrome,.925,.74,z);
+  dial.rotation.z=Math.PI/2;
+ }
  // Telescoping rails, molded grip, top carry handle and flexible side handle.
  for(const x of [-.25,.25])roundedBox(.042,.49,.042,.015,chrome,x,1.43,-.05);
  roundedBox(.64,.092,.12,.04,rubber,0,1.68,-.05);

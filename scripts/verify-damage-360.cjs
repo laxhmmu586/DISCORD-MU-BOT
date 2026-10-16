@@ -20,7 +20,7 @@ const {chromium}=require('playwright');
   const box=await canvas.boundingBox();assert(box.height<=245);
   console.log('Loaded the actual DPR viewer; checking pointer-driven full rotations.');
   const mark=page.locator('[data-damage-tool=mark]');
-  const snapshot=()=>page.evaluate(()=>[...DamageViewer.snapshot()].map(([key,image])=>[key,image.toDataURL()]));
+  const snapshot=()=>page.evaluate(()=>[...DamageViewer.snapshot()].map(([key,image])=>[key,JSON.stringify(image)]));
   const image=()=>canvas.evaluate(el=>el.toDataURL());
   async function difference(a,b){
    const decode=async url=>sharp(Buffer.from(url.split(',')[1],'base64')).ensureAlpha().raw().toBuffer();
@@ -76,17 +76,30 @@ const {chromium}=require('playwright');
   const allInk=await snapshot();assert.equal(allInk.length,6,'all six surfaces must retain their own ink');
   assert.equal(allInk.find(([key])=>key==='front')[1],firstInk[0][1],'turning and marking other surfaces must preserve the original circle');
   await page.locator('[data-view-action=front]').click();
-  await page.locator('[data-view-action=in]').click();assert.deepEqual(await snapshot(),allInk);
-  await page.locator('[data-view-action=reset]').click();assert.deepEqual(await snapshot(),allInk);
+  assert.equal(await page.locator('[data-view-action]').count(),1,'only the front reset control remains');
+  await page.locator('[data-view-action=front]').click();assert.deepEqual(await snapshot(),allInk);
   const exported=await page.evaluate(()=>DamageViewer.export(DamageViewer.snapshot()));assert(exported.startsWith('data:image/jpeg;base64,'));assert.deepEqual(await snapshot(),allInk);
   fs.mkdirSync('.verification/damage-360',{recursive:true});
   fs.writeFileSync('.verification/damage-360/all-surfaces.jpg',Buffer.from(exported.split(',')[1],'base64'));
   await page.locator('.damage-viewer').screenshot({path:'.verification/damage-360/viewer.png'});
-  await page.locator('[data-damage-tool=erase]').click();await circle();
-  const afterErase=await snapshot();assert(!afterErase.some(([key])=>key==='front'),'eraser must remove the touched front circle');
-  assert.equal(afterErase.length,5,'erasing the front must retain other surfaces');
+  assert.equal(await page.locator('.damage-tools button').count(),2,'only Mark and Clear remain');
+  await page.locator('#clear-sketch').click();assert.equal((await snapshot()).length,0);
+  // Start on the background and circle the upper corner/handle across the silhouette.
+  const outside=[];
+  for(let i=0;i<=32;i++){const angle=i/32*Math.PI*2;outside.push({x:cx+45+Math.cos(angle)*30,y:cy-50+Math.sin(angle)*35});}
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(1,outside[0].x,outside[0].y)]});
+  for(const position of outside.slice(1))await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point(1,position.x,position.y)]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  const outer=await page.evaluate(()=>DamageViewer.snapshot().get('front'));
+  assert(outer?.length,'the background portion of a circle must be retained');
+  const stroke=outer[0],first=stroke.points[0],last=stroke.points.at(-1);
+  assert(Math.hypot(...first.map((value,i)=>value-last[i]))<.05,'the outer loop must close');
+  assert(stroke.points.some(position=>position[0]>1),'the loop must extend past the shell edge');
+  await page.locator('.damage-viewer').screenshot({path:'.verification/damage-360/outer-circle.png'});
+  const outerExport=await page.evaluate(()=>DamageViewer.export(DamageViewer.snapshot()));
+  fs.writeFileSync('.verification/damage-360/outer-circle-report.jpg',Buffer.from(outerExport.split(',')[1],'base64'));
   await page.locator('#clear-sketch').click();assert.equal((await snapshot()).length,0);
   assert.deepEqual(errors,[]);
-  console.log('PASS: actual horizontal/vertical 360° drags, multi-touch rotation without stray ink, touch circles on all six surfaces, retained UV ink, zoom/reset, six-face PDF export, eraser and clear.');
+  console.log('PASS: actual horizontal/vertical 360° drags, multi-touch rotation without stray ink, six marked surfaces, closed circles across the silhouette, retained 3D marks, front reset, six-face PDF export and clear.');
  }finally{await browser?.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
