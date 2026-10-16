@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BOX</title>
   <script src="/flight-session.js?v=20261016-box"></script>
-  <link rel="stylesheet" href="/box.css?v=20261016-small-numbers">
+  <link rel="stylesheet" href="/box.css?v=20261016-bn-details">
 </head>
 <body>
   <main>
@@ -15,6 +15,10 @@
     <div id="box-content" hidden>
       <section class="total" aria-label="Total passengers"><span>Passengers + Infant = Total Passengers</span><strong id="total">—</strong></section>
       <section class="boxes" id="boxes" aria-label="Boarding pass boxes"></section>
+      <section class="bn-details" id="bn-details" aria-labelledby="bn-details-title" hidden>
+        <h2 id="bn-details-title">Boarding Pass Details</h2>
+        <div id="bn-detail-rows"></div>
+      </section>
       <footer class="data-summary" aria-label="SY and FB data">
         <p id="sy-data"></p>
         <p id="fb-data"></p>
@@ -25,6 +29,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="/box.js?v=20261016-small-numbers"></script>
+  <script src="/box.js?v=20261016-bn-details"></script>
 </body>
 </html>
