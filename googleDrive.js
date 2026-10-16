@@ -4180,7 +4180,7 @@ function cbsOriginalFormData(record = {}) {
     'ahlBagBrandTag', 'ahlBagType', 'ahlFeatures', 'ahlOtherFeatures', 'ahlContents', 'dprDamageLevel', 'dprBagInfo',
     'dprBagType', 'dprInnerDamage', 'contentsDetails', 'issueDate', 'passengerSignature', 'submittedAt',
     'destinationOnBags', 'departureOrigin', 'language', 'deliveryPreference', 'additionalInformation',
-    'formVersion', 'bagIdentifications', 'flightRows', 'tagPhotoCount', 'damageAreas', 'damagedBags'
+    'formVersion', 'evidenceVersion', 'dprAddress', 'bagIdentifications', 'flightRows', 'tagPhotoCount', 'damageAreas', 'damagedBags'
   ];
   return JSON.stringify(Object.fromEntries(keys.filter((key) => record[key] != null && String(record[key]).trim()).map((key) => [key, key==='damagedBags'?record[key].map(({damageSketch,...damage})=>damage):record[key]])));
 }
