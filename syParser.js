@@ -1037,18 +1037,23 @@ function enrichInfantTicketAuditFromLog(log, syInfo, targetYmd = null) {
     const adultTicketNo = String(row.adultTicketNo || '').trim();
     const infantTicketNo = String(row.infantTicketNo || '').trim();
     if (!adultName && !adultTicketNo) return;
-    const key = `${adultName}|${adultTicketNo}`;
+    // PD truncates names (often with '+'); FB/PR shows the full name.
+    // The adult ticket identifies the same passenger across both displays.
+    const key = adultTicketNo ? `TKT:${adultTicketNo}` : `NAME:${adultName}`;
     const previous = rows.get(key) || {};
+    const hasInfant = row.hasInfant !== false;
     rows.set(key, {
-      adultName: adultName || previous.adultName || 'UNKNOWN',
+      adultName: previous.adultName?.length > adultName.length ? previous.adultName : adultName || 'UNKNOWN',
       adultTicketNo: adultTicketNo || previous.adultTicketNo || '',
-      infantName: infantName || previous.infantName || '',
-      infantTicketNo: infantTicketNo || previous.infantTicketNo || '',
-      hasInfant: true
+      infantName: hasInfant ? infantName || previous.infantName || '' : '',
+      infantTicketNo: hasInfant ? infantTicketNo || previous.infantTicketNo || '' : '',
+      hasInfant
     });
   };
 
-  for (const sectionObj of splitLogicalSections(log)) {
+  const sections = splitLogicalSections(log).sort((a, b) =>
+    parseSectionTimestamp(a.timestamp) - parseSectionTimestamp(b.timestamp));
+  for (const sectionObj of sections) {
     const section = sectionObj.content || '';
     if (!sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const flight = section.match(/\bP[DR]:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
@@ -1063,19 +1068,25 @@ function enrichInfantTicketAuditFromLog(log, syInfo, targetYmd = null) {
         const tickets = line.match(/ET\s+NUMBER:\s*(\d{10,})\/\d+(?:\s+ET\s+NUMBER:\s*INF(\d{10,})\/\d+)?/i);
         if (tickets && adultName) put({ adultName, adultTicketNo: tickets[1], infantTicketNo: tickets[2] || '' });
       }
+      continue;
     }
 
-    const infantName = section.match(/^\s*INF-\s*([^\s]+(?:\s+[^\s]+)?)/im)?.[1]?.replace(/\s+\d{1,2}[A-Z]{3}\d{2,4}.*$/i, '') || '';
-    const infantMarker = infantName || /\bINF1\/\d+\b/i.test(section);
-    if (infantMarker) {
+    if (/\bPR:/i.test(section)) {
+      const activePayload = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
+      const infantName = activePayload.match(/^\s*INF-\s*([^\s]+(?:\s+[^\s]+)?)/im)?.[1]?.replace(/\s+\d{1,2}[A-Z]{3}\d{2,4}.*$/i, '') || '';
       const passengerLine = getPassengerRecordLine(section);
-      const adultName = (passengerLine.match(/^\s*\d+\.\s*\d?([A-Z/]+\+?)/i)?.[1] || '').replace(/\+$/, '');
-      const adultTicketNo = section.match(/(?<![A-Z0-9/])TKNE\/(?!INF)(\d{10,})(?:\/\d+)?\b/i)?.[1] || '';
-      const infantTicketNo = section.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
-      put({ adultName, adultTicketNo, infantName, infantTicketNo });
+      const adultName = getPassengerNameFromSection(section);
+      const adultTicketNo = activePayload.match(/(?<![A-Z0-9/])TKNE\/(?!INF)(\d{10,})(?:\/\d+)?\b/i)?.[1] || '';
+      const infantTicketNo = activePayload.match(/\bET\s+TKNE\/INF(\d{10,})\/\d+\b/i)?.[1] || '';
+      const hasInfant = Boolean(infantName || /\bINF1\/\d+\b/i.test(activePayload) || infantTicketNo);
+      // A ticketed passenger display can clear an old infant association.
+      // History-only pages cannot establish that the infant was removed.
+      if (hasInfant || (passengerLine && adultTicketNo)) {
+        put({ adultName, adultTicketNo, infantName, infantTicketNo, hasInfant });
+      }
     }
   }
-  return [...rows.values()].sort((a, b) => a.adultName.localeCompare(b.adultName));
+  return [...rows.values()].filter((row) => row.hasInfant).sort((a, b) => a.adultName.localeCompare(b.adultName));
 }
 
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
