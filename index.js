@@ -1699,7 +1699,6 @@ function createPirPdf(record) {
   coded('DB', 'Destination on Bags', record.destinationOnBags, 52, 424, 500, 26);
   coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 350, 500, 74);
   if (String(record.caseType).toUpperCase() === 'DPR') {
-    coded('DL', 'Damage Level', record.dprDamageLevel, 52, 324, 500, 26);
     coded('ID', 'Inner Damage', record.dprInnerDamage, 52, 286, 500, 38);
     if (damageImage) {
       box(52, 170, 500, 104, 'Damage Sketch', 8);
@@ -2195,7 +2194,6 @@ function cbsPdfLines(record) {
     ...PirDelivery.fields(record, record.language),
     ['Bag description', record.ahlBagDescription || record.dprBagInfo],
     ['Bag type', record.ahlBagType || record.dprBagType],
-    ['Damage level', record.dprDamageLevel],
     ['Contents / inner damage', record.ahlContents || record.dprInnerDamage]
   ];
 }
