@@ -77,6 +77,7 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  getCbsDamageImage,
   appendWrongBaggageSubmission,
   getWrongBaggageSubmissions,
   updateWrongBaggageSubmission,
@@ -3496,6 +3497,18 @@ async function handleCbsScanNbrdDelete(req, res) {
 
 app.post('/cbs-scan/nbrd-bns/:rowNumber/delete', handleCbsScanNbrdDelete);
 app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
+
+app.get('/cbs-damage-images/:ref', async (req, res) => {
+  try {
+    const image = await getCbsDamageImage(req.params.ref);
+    if (!image) return res.status(404).json({error:'Marked image not found'});
+    res.set('Cache-Control','private, max-age=86400');
+    return res.type('image/jpeg').send(image);
+  } catch (error) {
+    console.error('CBS damage image read failed:', error);
+    return res.status(503).json({error:'Marked image temporarily unavailable'});
+  }
+});
 
 app.get('/cbs-cases', async (req, res) => {
   try {
