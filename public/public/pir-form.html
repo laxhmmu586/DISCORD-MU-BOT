@@ -180,7 +180,6 @@
         <section id="dpr-fields" class="case-fields" data-step="3">
           <h3><span class="en">DPR information</span><span class="zh">破损行李信息</span></h3>
           <div class="damage-bag-controls"><label><span class="en">Damaged bag tag number</span><span class="zh">损坏行李牌号码</span><select id="damage-bag-select"></select></label><button type="button" id="add-damaged-bag" class="secondary"><span class="en">Add another damaged bag</span><span class="zh">添加另一件损坏行李</span></button><button type="button" id="remove-damaged-bag" class="secondary"><span class="en">Remove this damage entry</span><span class="zh">移除此件破损信息</span></button><p id="damaged-bag-summary" aria-live="polite"></p></div><div class="grid">
-            <label class="wide"><span class="en">Inner damage</span><span class="zh">内物破损</span><textarea name="dprInnerDamage"></textarea></label>
             <div class="wide sketch-shell damage-viewer">
               <div class="damage-heading"><strong><span class="en">Mark damaged area (3D view)</span><span class="zh">标记破损部位（3D视图）</span></strong><button class="damage-home" type="button" data-view-action="front" aria-label="Return to front view"><span aria-hidden="true">↺</span><span class="en">Front</span><span class="zh">回正</span></button></div>
               <div class="damage-stage"><svg class="damage-orbit-vertical" viewBox="0 0 70 240" aria-hidden="true"><defs><marker id="vertical-orbit-arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto-start-reverse"><path d="M0 0 6 3 0 6" fill="#8b9ebc"/></marker></defs><path d="M52 20C4 65 4 175 52 220" fill="none" stroke="#8b9ebc" stroke-width="1.2" marker-start="url(#vertical-orbit-arrow)" marker-end="url(#vertical-orbit-arrow)"/></svg><svg class="damage-orbit" viewBox="0 0 300 65" aria-hidden="true"><defs><marker id="orbit-arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0 0 6 3 0 6" fill="#8b9ebc"/></marker></defs><path d="M48 16C-18 43 38 59 150 59S318 43 252 16" fill="none" stroke="#8b9ebc" stroke-width="1" marker-start="url(#orbit-arrow)" marker-end="url(#orbit-arrow)"/></svg><canvas id="damage-sketch" aria-label="Rotate the suitcase or mark damage on its surface"></canvas></div>
@@ -482,15 +481,15 @@
       const visible=!!document.querySelector('#damage-sketch').getClientRects().length;
       if(visible)saveDamageView();
       const marks=visible?damageMarks:previous.marks||damageMarks;
-      damageEntries.set(activeDamageId,{inner:form.elements.dprInnerDamage.value,marks,views:new Set(marks.keys()),view:damageView,pose:visible?window.DamageViewer?.pose():previous.pose});
+      damageEntries.set(activeDamageId,{marks,views:new Set(marks.keys()),view:damageView,pose:visible?window.DamageViewer?.pose():previous.pose});
     }
-    function openDamageEntry(id){saveDamageEntry();activeDamageId=id;const data=damageEntries.get(id)||{inner:'',marks:new Map(),views:new Set(),view:'front'};damageEntries.set(id,data);damageMarks=data.marks;damageDirtyViews=data.views;damageView=data.view;sketchDirty=damageDirtyViews.size>0;form.elements.dprInnerDamage.value=data.inner;drawBagBase();window.DamageViewer?.restorePose(data.pose||{pitch:.04,yaw:-.23,zoom:1});renderDamageChoices();}
+    function openDamageEntry(id){saveDamageEntry();activeDamageId=id;const data=damageEntries.get(id)||{marks:new Map(),views:new Set(),view:'front'};damageEntries.set(id,data);damageMarks=data.marks;damageDirtyViews=data.views;damageView=data.view;sketchDirty=damageDirtyViews.size>0;drawBagBase();window.DamageViewer?.restorePose(data.pose||{pitch:.04,yaw:-.23,zoom:1});renderDamageChoices();}
     function renderDamageChoices(){const bags=damageBagList();document.querySelector('#damage-bag-select').innerHTML=`<option value="">${document.documentElement.lang==='en'?'Select damaged bag':'请选择损坏行李'}</option>`+bags.map(bag=>`<option value="${bag.id}" ${bag.id===activeDamageId?'selected':''}>${BaggageGuide.escape(bag.tag)}${damageEntries.has(bag.id)?' ✓':''}</option>`).join('');document.querySelector('#damaged-bag-summary').textContent=(document.documentElement.lang==='en'?'Damaged bags: ':'已选择损坏行李：')+bags.filter(bag=>damageEntries.has(bag.id)).map(bag=>bag.tag).join(' / ');document.querySelector('#add-damaged-bag').disabled=bags.every(bag=>damageEntries.has(bag.id));document.querySelector('#remove-damaged-bag').disabled=damageEntries.size<=1;}
     function syncDamageBags(){const bags=damageBagList();const ids=new Set(bags.map(bag=>bag.id));if(activeDamageId&&!ids.has(activeDamageId)){activeDamageId='';damageMarks=new Map();damageDirtyViews=new Set();}for(const id of damageEntries.keys())if(!ids.has(id))damageEntries.delete(id);renderDamageChoices();}
     document.querySelector('#damage-bag-select').addEventListener('change',event=>{if(event.target.value)openDamageEntry(event.target.value);});
     document.querySelector('#add-damaged-bag').addEventListener('click',()=>{const next=damageBagList().find(bag=>!damageEntries.has(bag.id));if(next)openDamageEntry(next.id);});
     document.querySelector('#remove-damaged-bag').addEventListener('click',()=>{if(damageEntries.size<=1)return;damageEntries.delete(activeDamageId);activeDamageId='';openDamageEntry(damageEntries.keys().next().value);});
-    function collectDamageEntries(){saveDamageEntry();return damageBagList().filter(bag=>damageEntries.has(bag.id)).map(bag=>{const d=damageEntries.get(bag.id);return {tag:bag.tag,innerDamage:d.inner,sketchLayout:'six-face-3d',damageAreas:[...d.views],damageSketch:window.DamageViewer?.export(d.marks)||''};});}
+    function collectDamageEntries(){saveDamageEntry();return damageBagList().filter(bag=>damageEntries.has(bag.id)).map(bag=>{const d=damageEntries.get(bag.id);return {tag:bag.tag,sketchLayout:'six-face-3d',damageAreas:[...d.views],damageSketch:window.DamageViewer?.export(d.marks)||''};});}
     function saveDamageView(){if(!window.DamageViewer)return;damageMarks=window.DamageViewer.snapshot();damageDirtyViews=new Set(damageMarks.keys());sketchDirty=damageMarks.size>0;}
     function drawBagBase(){window.DamageViewer?.load(damageMarks);}
     document.addEventListener('damage-viewer-ready',drawBagBase);
@@ -706,7 +705,6 @@
       try {
       payload.damagedBags=typeSelect.value==='DPR'?collectDamageEntries():[];
       payload.damageSketch = payload.damagedBags[0]?.damageSketch || '';
-      payload.dprInnerDamage=payload.damagedBags.map(bag=>`${bag.tag}: ${bag.innerDamage}`).filter(value=>!value.endsWith(': ')).join(' / ');
       payload.damageAreas = [...damageDirtyViews];
         payload.attachments = await collectRequiredAttachments();
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
