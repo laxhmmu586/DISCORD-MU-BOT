@@ -44,7 +44,7 @@
         const note = doc.createElement('p'); note.className = 'absent-bns';
         absent.forEach(bn => {
           const item = doc.createElement('span'); item.className = 'absent-bn';
-          item.textContent = 'BN' + String(bn).padStart(3,'0'); note.append(item);
+          item.textContent = String(bn).padStart(3,'0'); note.append(item);
         });
         card.append(note);
       }
