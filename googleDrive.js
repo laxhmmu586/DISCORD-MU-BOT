@@ -200,6 +200,8 @@ const ENABLE_240_SHEET =
   String(process.env.ENABLE_240_SHEET || 'true').toLowerCase() !== 'false';
 
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
+const cbsDamageImages = new (require('./cbsDamageImages').CbsDamageImages)(sheets, CBS_SHEET_ID);
+async function getCbsDamageImage(ref) { return cbsDamageImages.read(ref); }
 const CBS_SHEET_GID = Number(process.env.CBS_SHEET_GID || 0);
 const WRONG_BAGGAGE_SHEET_GID = Number(process.env.WRONG_BAGGAGE_SHEET_GID || 1615438730);
 const WRONG_BAGGAGE_HEADERS = ['Submitted At', 'Status', 'Name', 'Seat Number', 'Baggage Tag Number', 'Email', 'Mobile Number', 'Language', 'Updated At', 'Update Note', 'Update History', 'Additional Information'];
@@ -4180,7 +4182,7 @@ function cbsOriginalFormData(record = {}) {
     'ahlBagBrandTag', 'ahlBagType', 'ahlFeatures', 'ahlOtherFeatures', 'ahlContents', 'dprDamageLevel', 'dprBagInfo',
     'dprBagType', 'dprInnerDamage', 'contentsDetails', 'issueDate', 'passengerSignature', 'submittedAt',
     'destinationOnBags', 'departureOrigin', 'language', 'deliveryPreference', 'additionalInformation',
-    'formVersion', 'evidenceVersion', 'dprAddress', 'bagIdentifications', 'flightRows', 'tagPhotoCount', 'damageAreas', 'damagedBags'
+    'formVersion', 'evidenceVersion', 'dprAddress', 'bagIdentifications', 'flightRows', 'tagPhotoCount', 'damageAreas', 'damagedBags', 'damageSketchRef'
   ];
   return JSON.stringify(Object.fromEntries(keys.filter((key) => record[key] != null && String(record[key]).trim()).map((key) => [key, key==='damagedBags'?record[key].map(({damageSketch,...damage})=>damage):record[key]])));
 }
@@ -4233,6 +4235,7 @@ async function appendCbsCase(record) {
   const title = await getCbsSheetTitle();
   const rows = await getCbsSheetRows({ forceRefresh:true });
   await ensureCbsSheetHeaders(rows);
+  await cbsDamageImages.saveRecord(record);
   const response = await sheets.spreadsheets.values.append({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:AM`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[cbsValuesFromRecord(record)] } });
   const appendedRow = String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)(?::[A-Z]+\d+)?$/i)?.[1];
   if (appendedRow) record.rowNumber = Number(appendedRow);
@@ -5563,6 +5566,7 @@ module.exports = {
   updateSyBookingCounts,
   normalizeSyBookingCounts,
   appendCbsCase,
+  getCbsDamageImage,
   appendWrongBaggageSubmission,
   getWrongBaggageSubmissions,
   updateWrongBaggageSubmission,
