@@ -3251,6 +3251,8 @@ app.get('/boarding-box', async (req, res) => {
   }
 });
 
+require('./boardingBoxStream').registerBoardingBoxStream(app, {cache:boardingBoxCache});
+
 app.get('/cbs-scan/live-state', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try { return res.json(await boardingLive.records(require('./boardingContext').boardingFlight(), boardingDate(req))); }

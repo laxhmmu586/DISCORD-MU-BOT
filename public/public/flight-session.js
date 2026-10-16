@@ -21,7 +21,7 @@
     const url = new URL(resource instanceof Request ? resource.url : resource, location.href);
     const apiOrigin = new URL(window.MU_API_BASE || 'https://api.mufcapp.net').origin;
     const flight = window.mufcFlight;
-    if (url.origin === apiOrigin && (url.pathname === '/search' || url.pathname === '/boarding-box' || /^\/cbs-scan2?(?:\/|$)/.test(url.pathname)) && flight) {
+    if (url.origin === apiOrigin && (url.pathname === '/search' || /^\/boarding-box(?:\/|$)/.test(url.pathname) || /^\/cbs-scan2?(?:\/|$)/.test(url.pathname)) && flight) {
       if (flight.flightDate !== today()) {
         window.setMufcFlight(null); location.replace('/flights.html');
         return Promise.reject(new Error('Please select today’s flight.'));

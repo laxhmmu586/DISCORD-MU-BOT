@@ -57,9 +57,11 @@ test('daily 07:00 cleanup deletes BOX with scans and prevents in-flight pre-clea
   const {db,cache}=setup(t,async()=>log(),{now:()=>current});
   const live=new BoardingSqliteLive({db,now:()=>current,onReset:()=>cache.invalidate()});
   cache.beforeAccess=()=>live.cleanupIfDue();cache.updateFromLog(log());
+  cache.confirm('MU586','16OCT26','1',true);
   const old=cache.beginUpdate();current=nextBoardingCleanup(current);
   assert.equal(live.cleanupIfDue(),true);
   cache.updateFromLog(log(),old);
   assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_box_cache').get().n,0);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_box_confirmations').get().n,0);
   await assert.rejects(cache.read('MU586','16OCT26'),/today/);
 });
