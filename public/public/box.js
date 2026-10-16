@@ -23,10 +23,9 @@
   let loading = false, timer, stopped = false;
   function text(id, value) { doc.getElementById(id).textContent = value; }
   function render(data) {
-    text('expected', data.expectedPassengers ?? '—');
-    text('detected', data.passengers);
-    text('check', data.matched ? 'MATCH' : 'NOT MATCHED');
-    doc.getElementById('check').className = 'check ' + (data.matched ? 'match' : 'mismatch');
+    text('sy-data', `SY: ${data.expectedPassengers ?? '—'} passengers + ${data.expectedInfants ?? '—'} Infant = ${data.expectedTotal ?? '—'}`);
+    text('fb-data', `FB: ${data.passengers} passengers + ${data.infants} Infant = ${data.total}`);
+    text('highest-bn', `Highest BN: ${data.maxBn ?? '—'}`);
     const { groups, columns } = groupBns(data.bns, data.maxBn);
     const boxes = doc.getElementById('boxes');
     boxes.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
@@ -45,7 +44,7 @@
         const note = doc.createElement('p'); note.className = 'absent-bns';
         absent.forEach(bn => {
           const item = doc.createElement('span'); item.className = 'absent-bn';
-          item.textContent = 'X BN' + String(bn).padStart(3,'0'); note.append(item);
+          item.textContent = 'BN' + String(bn).padStart(3,'0'); note.append(item);
         });
         card.append(note);
       }
@@ -82,7 +81,7 @@
       render(data);
     } catch (error) {
       content.hidden = true;
-      ['expected','detected','check'].forEach(id => text(id,'—'));
+      ['sy-data','fb-data','highest-bn'].forEach(id => text(id,''));
       status.textContent = error.message + ' Totals are unavailable. Please refresh.';
       status.hidden = false;
     } finally { loading = false; refresh.disabled = false; }
