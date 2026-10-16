@@ -12,6 +12,8 @@ const {chromium}=require('playwright');
   assert.equal(await page.locator('[name=dprInnerDamage]').count(),0);
   await page.evaluate(()=>{document.querySelector('[data-bag-tag]').value='MU000001';showStep(3,'replace');openDamageEntry('1');});
   const canvas=page.locator('#damage-sketch');await canvas.scrollIntoViewIfNeeded();
+  assert.equal(await page.locator('[data-damage-tool=mark]').getAttribute('aria-pressed'),'false');
+  await page.locator('[data-damage-tool=mark]').click();
   const box=await canvas.boundingBox();await page.mouse.move(box.x+box.width/2+20,box.y+box.height/2);await page.mouse.down();
   for(let i=0;i<=32;i++){const a=i/32*Math.PI*2;await page.mouse.move(box.x+box.width/2+Math.cos(a)*20,box.y+box.height/2+Math.sin(a)*20);}await page.mouse.up();
   await page.evaluate(()=>showStep(4,'replace'));await page.waitForTimeout(200);await page.evaluate(()=>document.querySelector('#submitting-dialog').showModal()).catch(()=>{});
