@@ -1,0 +1,6 @@
+.damage-viewer{max-width:640px;padding:14px}.damage-stage{height:360px}.damage-controls-right{right:2px}
+@media(max-width:600px){.damage-stage{height:310px}.damage-heading>strong{font-size:12px}}
+.aviation-pir .thanks{padding:36px 22px;background:linear-gradient(145deg,#fff,#f8fcff);border:1px solid #dceefc;border-radius:22px;color:#15335c;box-shadow:0 10px 40px #438fce12}
+.aviation-pir .thanks h2{color:#102d59;font-size:28px;margin:20px 0 14px}.aviation-pir .thanks p,.aviation-pir .thanks .muted{color:#66738b;line-height:1.7;margin:8px auto}
+.aviation-pir .thanks .result-emblem{width:82px;height:82px;border:9px solid #e9fbf5;background:#bff3e4;color:#11af86;font-size:52px;box-shadow:0 0 0 1px #f0fcf8}
+.aviation-pir .thanks a.button{margin-top:24px;padding:12px 38px;border:0;border-radius:30px;background:linear-gradient(110deg,#3161ff,#2ea8ff);color:#fff;box-shadow:0 6px 18px #287cff30;text-decoration:none}
