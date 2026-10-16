@@ -27,6 +27,10 @@ function validateBagTagPhotos(bags, attachments) {
   if (photos.length !== bags.length || photos.some(item => !Number.isInteger(item.bagNumber) || item.bagNumber < 1 || item.bagNumber > bags.length || !String(item.mimeType).startsWith('image/'))) throw new Error('Photograph the tag for every bag.');
   for (const bag of bags) if (photos.filter(item => item.bagNumber === bag.number).length !== 1) throw new Error('Each bag must have its own tag photo.');
 }
+function normalizeDamagedBags(value,bags){
+  if(!Array.isArray(value)||!value.length||value.length>bags.length)throw new Error('Select the damaged bag tag number.');
+  const seen=new Set();return value.map(item=>{const tag=clean(item?.tag,20).toUpperCase().replace(/\s+/g,'');if(!bags.some(bag=>bag.tag===tag)||seen.has(tag))throw new Error('Select each damaged bag once from the entered tags.');seen.add(tag);if(!['Minor','Major','Total'].includes(item.damageLevel))throw new Error('Choose a valid damage level.');const sketch=String(item.damageSketch||'');if(sketch&&(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(sketch)||sketch.length>4000000))throw new Error('Invalid damage sketch.');return {tag,damageLevel:item.damageLevel,innerDamage:clean(item.innerDamage,1000),damageAreas:(item.damageAreas||[]).filter(key=>['front','back','left','right','top','bottom'].includes(key)),damageSketch:sketch};});
+}
 function emailSummary(record){
   const zh=record.language==='zh',label=(en,cn)=>zh?cn:en;
   const rows=[[label('Passenger','旅客'),record.passengerName],[label('Flight','航班'),(record.flightRows||[]).map(f=>`${f.flightNo} · ${f.flightDate}`).join(' / ')],[label('Case type','案件类型'),record.caseType],[label('Bags','行李件数'),record.bagIdentifications?.length||0],[label('Tag photographs','行李牌照片'),record.tagPhotoCount||0]];
@@ -36,6 +40,7 @@ function emailShell({subject='',html='',text='',record={}}) {
   const escape=Guide.escape,zh=/^zh/.test(record.language||''),pick=(en,cn)=>zh?cn:en;
   const template=record.template||'',received=template==='received',transfer=template==='rushToLaxInformationEmail',pickup=template==='baggagePickupAtLaxEmail',future=template==='baggageFuturePickupAtLaxEmail';
   let title=String(subject).replace(/^(?:\[?DO NOT REPLY\]?|【?请勿回复】?)\s*[–—-]?\s*/i,'');
+  title=title.replace(/\s*[–—-]\s*(?:WorldTracer|世界行李)[\s\S]*$/i,'').replace(/\s*[–—-]\s*中国东方航空公司$/,'');
   if(received)title=pick('Property Irregularity Report Received','已收到您的行李事故报告');
   if(transfer)title=pick('Baggage Transfer Status Update','行李转运状态更新');
   if(pickup)title=pick('Your Baggage Is Available for Pick-Up at LAX','您的行李已可在洛杉矶机场领取');
@@ -64,14 +69,14 @@ function emailShell({subject='',html='',text='',record={}}) {
     return paragraph;
   });
   if(!inserted)content+=table;
-  return `<html><body style="margin:0;background:#f3f6fa;color:#1d355f;font-family:Arial,'Microsoft YaHei',sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="padding:24px 12px"><table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;margin:auto;background:#fff"><tr><td style="padding:26px 28px 14px;color:#aa8b50;font-size:11px;letter-spacing:3px">${pick('BAGGAGE SERVICE','行李服务')}</td></tr><tr><td style="padding:0 28px 22px;color:#102c58"><h1 style="margin:0;font-size:25px;line-height:1.3">${escape(title)}</h1>${subtitle?`<p style="margin:6px 0 0;font-size:16px">${escape(subtitle)}</p>`:''}</td></tr><tr><td style="padding:0 28px 28px;font-size:14px;line-height:1.75">${content}</td></tr></table></td></tr></table></body></html>`;
+  return `<html><body style="margin:0;background:#f3f6fa;color:#1d355f;font-family:Arial,'Microsoft YaHei',sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="padding:24px 12px"><table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;margin:auto;background:#fff"><tr><td style="padding:26px 28px 14px;color:#aa8b50;font-size:11px;letter-spacing:3px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="color:#aa8b50;font-size:11px;letter-spacing:3px">${pick('BAGGAGE SERVICE','行李服务')}</td><td align="right"><img src="https://www.mufcapp.net/assets/ceair-email-logo.png" width="112" alt="China Eastern Airlines" style="display:block;width:112px;max-width:112px;height:auto;border:0"></td></tr></table></td></tr><tr><td style="padding:0 28px 22px;color:#102c58"><h1 style="margin:0;font-size:25px;line-height:1.3">${escape(title)}</h1>${subtitle?`<p style="margin:6px 0 0;font-size:16px">${escape(subtitle)}</p>`:''}</td></tr><tr><td style="padding:0 28px 28px;font-size:14px;line-height:1.75">${content}</td></tr></table></td></tr></table></body></html>`;
 }
 // Embed smaller photo previews in the PDF; the original files remain separate mail/Discord attachments.
 async function prepareReportAttachments(attachments){
   const sharp=require('sharp');
   return Promise.all(attachments.map(async a=>{
     if(!String(a.mimeType).startsWith('image/'))return a;
-    try{const preview=await sharp(Buffer.from(a.contentBase64,'base64')).rotate().resize({width:1000,height:750,fit:'inside',withoutEnlargement:true}).jpeg({quality:65}).toBuffer();return {...a,mimeType:'image/jpeg',contentBase64:preview.toString('base64')};}
+    try{const preview=await sharp(Buffer.from(a.contentBase64,'base64')).rotate().resize({width:1800,height:1400,fit:'inside',withoutEnlargement:true}).jpeg({quality:88}).toBuffer();return {...a,mimeType:'image/jpeg',contentBase64:preview.toString('base64')};}
     catch{return {...a,mimeType:'application/octet-stream'};}
   }));
 }
@@ -89,16 +94,22 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
   const text=(value,x,baseline,size=8.5)=>{page.push('0.08 0.19 0.35 rg',pdfText(String(value||''),x,baseline,size));};
   function newPage(){
     page=['1 1 1 rg 0 0 612 792 re f'];pages.push(page);
-    text(label('PROPERTY IRREGULARITY REPORT','行李运输事故记录单'),32,759,13);
-    text(`${record.caseType} · LAX · ${label('Baggage service','行李服务')}`,32,741,8.5);
-    if(logo)page.push(`q 148 0 0 55 432 731 cm /${logo.name} Do Q`);
+    if(record.formVersion>=3){
+      if(logo)page.push(`q 130 0 0 43 32 738 cm /${logo.name} Do Q`);
+      text('行李运输事故记录单',350,762,14);text('BAGGAGE INCIDENT REPORT',350,747,9);
+      page.push('0.93 0.96 1 rg 32 691 548 37 re f');
+      text(`${label('CASE TYPE','案件类型')}: ${record.caseType}`,42,706,9);text(`${label('AIRPORT','办理机场')}: LAX`,175,706,9);text(`${label('ISSUE DATE','填写日期')}: ${record.issueDate||''}`,340,706,9);
+      if(record.caseNumber||record.worldTracerFileNumber)text(`${label('CASE NO.','案件编号')}: ${record.caseNumber||record.worldTracerFileNumber}`,32,680,8);
+    }else text(label('PROPERTY IRREGULARITY REPORT','行李运输事故记录单'),32,759,13);
+    if(record.formVersion<3)text(`${record.caseType} · LAX · ${label('Baggage service','行李服务')}`,32,741,8.5);
+    if(record.formVersion<3&&logo)page.push(`q 148 0 0 55 432 731 cm /${logo.name} Do Q`);
     page.push('0.1 0.4 0.8 RG 1.3 w 32 727 m 580 727 l S');
-    y=709;text('laxhmmu@gmail.com',32,20,7);text(String(pages.length),570,20,7);
+    y=record.formVersion>=3?660:709;text('laxhmmu@gmail.com',32,20,7);text(String(pages.length),570,20,7);
   }
   function ensure(height){if(y-height<36)newPage();}
   const width=(value,size)=>(String(value).match(/[\x20-\x7e]+|[^\x20-\x7e]+/g)||[]).reduce((n,run,i)=>n+(i?size*.25:0)+(/^[\x20-\x7e]+$/.test(run)?pdfHelveticaTextWidth(run,size):Array.from(run).length*size),0);
   function wrap(value,maxWidth=526,size=8.5){const lines=[];let line='';for(const ch of Array.from(String(value||''))){if(ch==='\n'||width(line+ch,size)>maxWidth){lines.push(line);line='';if(ch==='\n')continue;}line+=ch;}if(line)lines.push(line);return lines;}
-  function heading(value){ensure(32);page.push('0.9 0.95 1 rg',`32 ${y-8} 548 18 re f`);text(value,40,y-2,9);y-=25;}
+  function heading(value){if(record.formVersion>=3){ensure(34);const number=String(value).match(/^\d+/)?.[0]||'';const title=String(value).replace(/^\d+\s*/, '');const subtitle=({'旅客信息':'PASSENGER INFORMATION','行李牌号码及照片':'BAGGAGE TAG','行李信息':'BAGGAGE INFORMATION','破损详情':'DAMAGE DETAILS','领取／配送方式':'COLLECTION / DELIVERY','附件':'ATTACHMENTS','旅客签字':'PASSENGER SIGNATURE'})[title]||'';page.push('0.06 0.23 0.46 rg',`32 ${y-7} 19 19 re f`,'0.83 0.89 0.97 RG',`56 ${y+9} m 580 ${y+9} l S`);page.push('1 1 1 rg',pdfText(number,38,y-2,10));text(title,59,y-2,10);if(subtitle)text(subtitle,59+width(title,10)+12,y-2,7);y-=29;return;}ensure(32);page.push('0.9 0.95 1 rg',`32 ${y-8} 548 18 re f`);text(value,40,y-2,9);y-=25;}
   function paragraph(value,size=8.5){for(const line of wrap(value,526,size)){ensure(11);text(line,40,y,size);y-=11;}y-=3;}
   function field(key,value){if(value!==undefined&&value!==null&&String(value).trim())paragraph(`${key}: ${value}`);}
   function grid(fields){
@@ -123,7 +134,10 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
   grid([[label('Name','姓名'),record.passengerName],[label('Email','电子邮箱'),record.email],[label('Contact number','联系电话'),record.phone],[label('Ticket','机票号码'),record.ticketNumber]]);
   heading(record.formVersion >= 3 ? label('2  Baggage tags','2  行李牌号码及照片') : label('2  Flight information','2  航班信息'));
   (record.formVersion >= 3 ? [] : record.flightRows||[]).forEach(f=>field(label('Flight / Date','航班／日期'),`${f.flightNo} · ${f.flightDate}`));
-  attachmentGallery((record.reportAttachments||[]).filter(a=>a.attachmentType==='bagTag'),64);
+  if(record.formVersion>=3){
+    const tags=(record.reportAttachments||[]).filter(a=>a.attachmentType==='bagTag');
+    for(const [i,a]of tags.entries()){const tag=record.bagIdentifications?.[(a.bagNumber||i+1)-1]?.tag||'';ensure(145);page.push('0.94 0.97 1 rg',`414 ${y-128} 166 128 re f`);drawPicture(`data:${a.mimeType};base64,${a.contentBase64}`,34,y,368,128);text(label('BAG TAG NUMBER','行李牌号码'),425,y-45,8);wrap(tag,145,11).forEach((line,j)=>text(line,425,y-64-j*14,11));y-=144;}
+  }else attachmentGallery((record.reportAttachments||[]).filter(a=>a.attachmentType==='bagTag'),64);
   heading(label('3  Baggage information','3  行李信息'));
   (record.bagIdentifications||[]).forEach((bag,i)=>{
     ensure(115);field(label('Bag','行李'),`${i+1} · ${bag.tag||label('Tag photograph above','行李条照片见上方')}`);
@@ -137,17 +151,32 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
     const Delivery=require('./public/public/pir-delivery');Delivery.fields(record,record.language).forEach(([k,v])=>field(k,v));
   }else{
     heading(label('4  Damage details','4  破损详情'));
-    const areas=(record.damageAreas||[]).map(key=>({front:label('Side 1','正面'),back:label('Side 2','背面'),left:label('End 1','左侧'),right:label('End 2','右侧'),top:label('Top','顶部'),bottom:label('Bottom','底部')})[key]).join(', ');
-    grid([[label('Damage level','破损程度'),zh?({Minor:'轻微',Major:'严重',Total:'完全损坏'}[record.dprDamageLevel]||record.dprDamageLevel):record.dprDamageLevel],[label('Marked views','标记视角'),areas]]);
-    if(record.formVersion < 3)field(label('Damage location','破损位置'),record.dprBagInfo);field(label('Inner damage','内物破损'),record.dprInnerDamage);
-    if(record.damageSketch){ensure(92);drawPicture(record.damageSketch,40,y,532,80);y-=87;}
+    const damageRecords=record.damagedBags?.length?record.damagedBags:[{tag:record.bagIdentifications?.[0]?.tag,damageLevel:record.dprDamageLevel,innerDamage:record.dprInnerDamage,damageAreas:record.damageAreas,damageSketch:record.damageSketch}];
+    for(const damage of damageRecords){
+      ensure(60);field(label('Damaged bag tag','损坏行李牌号码'),damage.tag);
+      grid([[label('Damage level','破损程度'),zh?({Minor:'轻微',Major:'严重',Total:'完全损坏'}[damage.damageLevel]||damage.damageLevel):damage.damageLevel],[label('Marked views','标记视角'),(damage.damageAreas||[]).map(key=>({front:'正面 / Front',back:'背面 / Back',left:'左侧 / Left',right:'右侧 / Right',top:'顶部 / Top',bottom:'底部 / Bottom'})[key]).join(', ')]]);
+      if(record.formVersion<3)field(label('Damage location','破损位置'),record.dprBagInfo);
+      field(label('Inner damage','内物破损'),damage.innerDamage);
+      if(damage.damageSketch){ensure(155);drawPicture(damage.damageSketch,40,y,532,145);y-=153;}
+    }
   }
   if(record.additionalInformation)field(label('Other useful information','其他有用信息'),record.additionalInformation);
   if(record.formVersion < 3 && record.contentsRows?.length){heading(label('Contents','包内物品'));record.contentsRows.forEach(item=>paragraph([item.category,item.description].filter(Boolean).join(': ')));}
   const supporting=(record.reportAttachments||[]).filter(a=>a.attachmentType!=='bagTag');
+  if(record.formVersion>=3&&supporting.length<=2){
+    ensure(126);const top=y;
+    page.push('0.06 0.23 0.46 rg',`32 ${top-7} 19 19 re f`,`310 ${top-7} 19 19 re f`);
+    page.push('1 1 1 rg',pdfText('5',38,top-2,10),pdfText('6',316,top-2,10));
+    text(label('Attachments','附件 ATTACHMENTS'),59,top-2,9);text(label('Passenger signature','旅客签字 SIGNATURE'),337,top-2,9);
+    supporting.forEach((a,i)=>{const cell=260/Math.max(1,supporting.length),x=34+i*cell;if(a.mimeType==='image/jpeg')drawPicture(`data:image/jpeg;base64,${a.contentBase64}`,x,top-20,cell-8,65);wrap(a.filename,cell-10,6).slice(0,2).forEach((line,j)=>text(line,x,top-94-j*8,6));});
+    page.push('0.83 0.89 0.96 RG',`310 ${top-90} 270 65 re S`);
+    if(record.passengerSignatureDataUrl)drawPicture(record.passengerSignatureDataUrl,315,top-29,255,47);
+    text(`${label('Issue date','填写日期')}: ${record.issueDate||''}`,315,top-106,8);y-=126;
+  }else{
   if(supporting.length){heading(label('5  Attachments','5  附件'));attachmentGallery(supporting,46);}
   ensure(record.passengerSignatureDataUrl?70:42);heading(label('6  Passenger signature','6  旅客签字'));field(label('Date of issue','填写日期'),record.issueDate);
   if(record.passengerSignatureDataUrl){drawPicture(record.passengerSignatureDataUrl,38,y+10,200,30);y-=33;}
+  }
   const f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
   const cid=add('<< /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> /DW 1000 >>');
   const f2=add(`<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [${cid} 0 R] >>`);
@@ -158,4 +187,4 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
   const pagesId=add(`<< /Type /Pages /Kids [${ids.map(id=>`${id} 0 R`).join(' ')}] /Count ${ids.length} >>`),catalog=add(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   let pdf='%PDF-1.4\n';const offsets=[0];objects.forEach((o,i)=>{offsets.push(Buffer.byteLength(pdf,'binary'));pdf+=`${i+1} 0 obj\n${o}\nendobj\n`;});const xref=Buffer.byteLength(pdf,'binary');pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n${offsets.slice(1).map(o=>`${String(o).padStart(10,'0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length+1} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;return Buffer.from(pdf,'binary');
 }
-module.exports={normalizeBags,emailShell,emailSummary,createPdf,prepareReportAttachments,validateBagTagPhotos,normalizePassenger};
+module.exports={normalizeBags,emailShell,emailSummary,createPdf,prepareReportAttachments,validateBagTagPhotos,normalizePassenger,normalizeDamagedBags};

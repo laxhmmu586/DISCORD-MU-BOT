@@ -4105,9 +4105,12 @@ app.post('/cbs-cases', async (req, res) => {
     if (otherAttachmentCount > 4) return res.status(400).json({ error: 'Use no more than 4 Others attachments.' });
     if (photoReport && !bagTagReport && (!/^[A-Z0-9]{2,3}\d{1,4}$/i.test(String(firstFlight.flightNo || '').trim()) || !/^\d{4}-\d{2}-\d{2}$/.test(String(firstFlight.flightDate || '')))) return res.status(400).json({error:'Valid flight number and date are required'});
     if (bagTagReport) { try { CbsReport.validateBagTagPhotos(bagIdentifications, attachments); } catch(error) { return res.status(400).json({error:error.message}); } }
+    let damagedBags;
+    if(bagTagReport&&caseType==='DPR'&&body.damagedBags!==undefined){try{damagedBags=CbsReport.normalizeDamagedBags(body.damagedBags,bagIdentifications);}catch(error){return res.status(400).json({error:error.message});}}
     const contentsRows = bagTagReport ? bagIdentifications.flatMap(bag=>(bag.contentsRows||[]).map(item=>({category:`Bag ${bag.number} · ${item.category}`,description:item.description}))) : buildCbsContentsRows(body);
     const record = {
       ...(photoReport ? {formVersion:body.formVersion,bagIdentifications,flightRows:bagTagReport?[]:[{flightNo:sanitizeCbsText(firstFlight.flightNo,20).toUpperCase(),flightDate:sanitizeCbsText(firstFlight.flightDate,20)}],tagPhotoCount:attachments.filter(a=>a.attachmentType==='bagTag').length,damageAreas:Array.isArray(body.damageAreas)?body.damageAreas.filter(x=>['front','back','left','right','top','bottom'].includes(x)):[]} : {}),
+      ...(damagedBags?{damagedBags}:{}),
       caseType,
       status: 'Open',
       passengerName,

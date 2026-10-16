@@ -118,3 +118,4 @@ body.aviation-pir::after{content:"";position:fixed;width:110vw;height:65vh;right
 .case-detail-right .baggage-visual-options{grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));min-width:0}.case-detail-right .baggage-description-panel{min-width:0}
 
 .case-detail-right .baggage-icon-tile :is(strong,small){min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.damage-bag-controls{display:grid;gap:12px;padding:16px;background:#eef6ff;border:1px solid #d8e8fa;border-radius:14px;margin-bottom:18px}.damage-bag-controls label{min-width:0}.damage-bag-controls select{width:100%}.damage-bag-controls p{font-size:12px;color:#436386;overflow-wrap:anywhere;margin:0}.damage-bag-controls button{justify-self:start}
