@@ -2223,7 +2223,7 @@ function sanitizeCbsAttachments(value) {
 
 function missingRequiredCbsAttachmentTypes(attachments = [], caseType = 'AHL', evidenceVersion = 0) {
   const uploadedTypes = new Set(attachments.map((item) => String(item.attachmentType || '').trim().toLowerCase()));
-  return (evidenceVersion === 1 ? (caseType === 'DPR' ? ['bagtag', 'damagephoto', 'tagonbag'] : ['bagtag']) : ['boardingpass','bagtag']).filter((type) => !uploadedTypes.has(type));
+  return (evidenceVersion === 1 ? (caseType === 'DPR' ? ['boardingpass', 'bagtag', 'damagephoto', 'tagonbag'] : ['boardingpass', 'bagtag']) : ['boardingpass','bagtag']).filter((type) => !uploadedTypes.has(type));
 }
 
 

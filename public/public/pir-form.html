@@ -159,7 +159,7 @@
         <section class="report-step" data-step="1"><h2><span class="en">Passenger information</span><span class="zh">旅客信息</span></h2><div class="grid passenger-grid">          <label><span class="en">Passenger name</span><span class="zh">旅客姓名</span><input name="passengerName" required placeholder="LAST/FIRST" /></label>
           <label><span class="en">Email</span><span class="zh">电子邮箱</span><input name="email" type="email" required placeholder="passenger@example.com" /></label>
           <label><span class="en">Contact number</span><span class="zh">联系电话</span><input name="phone" type="tel" autocomplete="tel" placeholder="" required /></label>
-<label class="wide" id="dpr-address-field"><span class="en">Address (optional)</span><span class="zh">地址（选填）</span><textarea name="dprAddress" maxlength="500"></textarea></label><div class="wide passenger-boarding"><div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-max-attachments="1"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span></span><input name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf"></label></div></div></div></section>
+<label class="wide" id="dpr-address-field"><span class="en">Address (optional)</span><span class="zh">地址（选填）</span><textarea name="dprAddress" maxlength="500"></textarea></label><div class="wide passenger-boarding"><div class="attachment-group" data-attachment-group data-attachment-type="boardingPass" data-max-attachments="1" data-required-attachment="true"><div class="attachment-items" data-attachment-items></div><label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Boarding pass</span><span class="zh">登机牌</span><span class="required-mark">*</span></span><input aria-required="true" name="boardingPassAttachment" data-attachment-input data-attachment-type="boardingPass" type="file" accept="image/*,.pdf"></label></div></div></div></section>
 
         <section class="case-fields is-active" id="shared-baggage-fields" data-step="2">
           <h3><span class="en">Baggage information</span><span class="zh">行李信息</span></h3>
@@ -290,6 +290,10 @@
     }
     function validateStep(step) {
       const lang = document.documentElement.lang;
+      if (step === 1) {
+        const input = form.querySelector('[name=boardingPassAttachment]');
+        if (!(selectedAttachments.get(attachmentKey(input)) || []).length) return { message: lang === 'en' ? 'Upload your boarding pass.' : '请上传登机牌。', control: input };
+      }
       if(step===3&&typeSelect.value==='DPR'&&!activeDamageId)return {message:lang==='en'?'Select the damaged bag tag number.':'请选择损坏的行李牌号码。',control:document.querySelector('#damage-bag-select')};
       if (step === 0 || step === 2) {
         for (const bag of bagSelectorGrid.children) {
@@ -640,7 +644,7 @@
       if (selectedCount > 65) throw new Error(document.documentElement.lang === 'en' ? 'You may upload up to 65 files.' : '最多可上传 65 个文件。');
       for (const input of attachmentInputs()) {
         const files = selectedAttachments.get(attachmentKey(input)) || [];
-        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Upload the required bag tag receipt and baggage photos.' : '请上传行李收据及必填的行李照片。');
+        if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Upload your boarding pass, bag tag receipt and required baggage photos.' : '请上传登机牌、行李收据及必填的行李照片。');
         for (const file of files) {
           const attachment = await fileToAttachment(file, input.dataset.attachmentType || 'document');
           if (attachment) {
