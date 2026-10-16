@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { HDRLoader } from './vendor/HDRLoader.js';
-import { createSuitcase } from './suitcase-model.js?v=20261016-supplied-fbx';
+import { createSuitcase } from './suitcase-model.js?v=20261016-c4d-reference';
 import { createDamageMarks } from './damage-marks.js?v=20261016-outer-strokes';
 
 // Surface-anchored 3D strokes can extend beyond the silhouette while following the suitcase.

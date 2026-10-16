@@ -10,14 +10,17 @@ export async function createSuitcase(T,buffer){
  const loader=new FBXLoader(manager);
  const scene=buffer?loader.parse(buffer,''):await loader.loadAsync(new URL('./assets/Baggage.fbx',import.meta.url).href);
  scene.updateMatrixWorld(true);
- const parts=[];scene.traverse(object=>{if(object.isMesh&&object.name!=='Plane')parts.push(object);});
+ const parts=[];scene.traverse(object=>{if(object.isMesh&&!['Plane','Backdrop_1'].includes(object.name))parts.push(object);});
  if(!parts.length)throw new Error('The supplied luggage model has no suitcase geometry.');
  const bag=new T.Group();bag.name='Baggage.fbx';
  const materials=new Map();
  function recolor(original){
   if(materials.has(original))return materials.get(original);
-  const dark=['Material.003','Material.004'].includes(original.name),hardware=original.name==='Material.002';
-  const material=new T.MeshPhysicalMaterial({name:original.name,color:dark?0x20262d:hardware?0xc9cdd2:0xbfc5cb,metalness:dark?.08:hardware?1:.75,roughness:dark?.72:hardware?.22:.32,clearcoat:dark?0:.08});
+  // C4D reference: silver ribbed shell and fittings, graphite seals and tyres.
+  const shell=original.name==='arch49_plastic_blue_2';
+  const metal=original.name==='arch49_aluminium';
+  const label=original.name==='材质.2';
+  const material=new T.MeshPhysicalMaterial({name:original.name,color:shell?0xc6c9cc:metal?0xb9bec3:label?0x555b60:0x505357,metalness:shell?.82:metal?1:label?.65:.12,roughness:shell?.3:metal?.23:label?.4:.65,clearcoat:shell?.08:0});
   materials.set(original,material);return material;
  }
  for(const part of parts){
