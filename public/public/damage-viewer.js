@@ -21,7 +21,7 @@ const annotations=createDamageMarks({bag,canvas,getCamera:()=>camera});
 let tool='mark',yaw=-.23,pitch=.04,zoom=1;
 const pointers=new Map();
 let rotationGesture=false;
-function render(){bag.rotation.set(pitch,yaw,0,'YXZ');bag.updateMatrixWorld(true);camera.zoom=1;camera.updateProjectionMatrix();camera.updateMatrixWorld();const bounds=new THREE.Box3().setFromObject(bag);let ex=0,ey=0;for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){const p=new THREE.Vector3(x,y,z).project(camera);ex=Math.max(ex,Math.abs(p.x));ey=Math.max(ey,Math.abs(p.y));}camera.zoom=Math.min(.86/ex,.91/ey)*zoom;camera.updateProjectionMatrix();bag.updateMatrixWorld(true);annotations.updateVisibility();renderer.render(scene,camera);}
+function render(){bag.rotation.set(pitch,yaw,0,'YXZ');bag.updateMatrixWorld(true);camera.zoom=1;camera.updateProjectionMatrix();camera.updateMatrixWorld();const bounds=new THREE.Box3().setFromObject(bag);let ex=0,ey=0;for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){const p=new THREE.Vector3(x,y,z).project(camera);ex=Math.max(ex,Math.abs(p.x));ey=Math.max(ey,Math.abs(p.y));}camera.zoom=camera.isOrthographicCamera?zoom:Math.min(.86/ex,.91/ey)*zoom;camera.updateProjectionMatrix();bag.updateMatrixWorld(true);annotations.updateVisibility();renderer.render(scene,camera);}
 function resize(){const r=canvas.parentElement.getBoundingClientRect();if(!r.width||!r.height)return;renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;render();}
 new ResizeObserver(resize).observe(canvas.parentElement);
 function view(key){[pitch,yaw]=angles[key];document.querySelectorAll('[data-damage-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.damageView===key)));render();}
@@ -58,7 +58,15 @@ document.querySelector('#clear-sketch').onclick=()=>load();
 function capture(){render();return canvas.toDataURL('image/jpeg',.92);}
 function pose(){return {pitch,yaw,zoom};}
 function restorePose(value){if(value){({pitch,yaw,zoom}=value);render();}}
-function exportViews(marks){return marks?.size?capture():'';}
+function exportViews(marks){
+ marks=marks||new Map();
+ const saved=snapshot(),rotation=[pitch,yaw,zoom],liveCamera=camera,size=renderer.getSize(new THREE.Vector2());
+ const output=document.createElement('canvas');output.width=900;output.height=660;const ctx=output.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,900,660);
+ // Report views share one physical scale, square viewport, and exact orthogonal axes.
+ camera=new THREE.OrthographicCamera(-1.95,1.95,1.95,-1.95,.1,100);camera.position.set(0,0,8);renderer.setSize(450,450,false);floor.visible=false;zoom=1;load(marks);const extent=annotations.extent();Object.assign(camera,{left:-extent,right:extent,top:extent,bottom:-extent});
+ labels.forEach((name,i)=>{const key=name.toLowerCase();[pitch,yaw]=key==='front'?[0,0]:angles[key];render();const x=(i%3)*300,y=Math.floor(i/3)*330;ctx.drawImage(canvas,x,y,300,300);ctx.fillStyle='#173f73';ctx.font='bold 16px Arial';ctx.textAlign='center';ctx.fillText(name,x+150,y+320);});
+ camera=liveCamera;renderer.setSize(size.x,size.y,false);floor.visible=true;[pitch,yaw,zoom]=rotation;load(saved);render();return output.toDataURL('image/jpeg',.85);
+}
 
 window.DamageViewer={snapshot,load,view,capture,pose,restorePose,export:exportViews};resize();document.dispatchEvent(new Event('damage-viewer-ready'));
 }catch(error){const message=document.querySelector('#damage-viewer-error');message.hidden=false;message.textContent='3D view unavailable. Please enable WebGL or use another browser. You can still upload damage photos.';console.error(error);}

@@ -17,7 +17,7 @@ const {chromium}=require('playwright');
   await page.evaluate(()=>{document.querySelector('[data-bag-tag]').value='MU123456';showStep(3,'replace');openDamageEntry('1');});
   const canvas=page.locator('#damage-sketch');await canvas.scrollIntoViewIfNeeded();
   await canvas.evaluate(el=>el.scrollIntoView({behavior:'instant',block:'center'}));
-  const box=await canvas.boundingBox();assert(box.height<=245);
+  const box=await canvas.boundingBox();assert(box.height>=390&&box.height<=440);
   console.log('Loaded the actual DPR viewer; checking pointer-driven full rotations.');
   const mark=page.locator('[data-damage-tool=mark]');
   const snapshot=()=>page.evaluate(()=>[...DamageViewer.snapshot()].map(([key,image])=>[key,JSON.stringify(image)]));
@@ -81,12 +81,30 @@ const {chromium}=require('playwright');
   const exported=await page.evaluate(()=>DamageViewer.export(DamageViewer.snapshot()));assert(exported.startsWith('data:image/jpeg;base64,'));assert.deepEqual(await snapshot(),allInk);
   fs.mkdirSync('.verification/damage-360',{recursive:true});
   fs.writeFileSync('.verification/damage-360/all-surfaces.jpg',Buffer.from(exported.split(',')[1],'base64'));
+  // Leave the visible damage step, then mimic a mobile viewer losing its live state.
+  await page.evaluate(()=>showStep(4,'replace'));
+  await page.evaluate(()=>DamageViewer.load());
+  const damage=await page.evaluate(()=>collectDamageEntries()[0]);
+  assert.equal(damage.sketchLayout,'six-face-3d');assert.equal(damage.damageAreas.length,6);
+  assert.equal(damage.damageSketch,exported,'hidden submission must use the saved six-face marks');
+  const Report=require('../cbsReport'),vm=require('vm'),source=fs.readFileSync('index.js','utf8'),helpers=vm.createContext({Buffer});
+  vm.runInContext(source.slice(source.indexOf('function pdfSafeText('),source.indexOf('function createPirPdf(')),helpers);
+  const bags=[{tag:'MU123456',color:'GY',type:'22R',descriptors:'R,W',contentsRows:[]}];
+  const normalized=Report.normalizeDamagedBags([damage],bags);
+  const pdf=Report.createPdf({formVersion:3,caseType:'DPR',language:'en',passengerName:'TEST/TRAVELER',email:'fixture@example.com',phone:'5550100000',issueDate:'2026-10-15',bagIdentifications:bags,damagedBags:normalized},helpers);
+  assert(pdf.includes(Buffer.from(damage.damageSketch.split(',')[1],'base64')),'report must embed the actual six-face JPEG');
+  assert(!pdf.includes(Buffer.from('No marked image provided')));
+  fs.writeFileSync('.verification/damage-360/report.pdf',pdf);
+  await page.evaluate(()=>{showStep(3,'replace');openDamageEntry('1');});
+  await canvas.scrollIntoViewIfNeeded();
+  await canvas.evaluate(el=>el.scrollIntoView({behavior:'instant',block:'center'}));
+  console.log('Verified saved marks survive hidden submission and the actual PDF embeds all six views.');
   await page.locator('.damage-viewer').screenshot({path:'.verification/damage-360/viewer.png'});
   assert.equal(await page.locator('.damage-tools button').count(),2,'only Mark and Clear remain');
   await page.locator('#clear-sketch').click();assert.equal((await snapshot()).length,0);
   // Start on the background and circle the upper corner/handle across the silhouette.
   const outside=[];
-  for(let i=0;i<=32;i++){const angle=i/32*Math.PI*2;outside.push({x:cx+45+Math.cos(angle)*30,y:cy-50+Math.sin(angle)*35});}
+  for(let i=0;i<=32;i++){const angle=i/32*Math.PI*2;outside.push({x:cx+box.width*.25+Math.cos(angle)*40,y:cy-50+Math.sin(angle)*35});}
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(1,outside[0].x,outside[0].y)]});
   for(const position of outside.slice(1))await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point(1,position.x,position.y)]});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
