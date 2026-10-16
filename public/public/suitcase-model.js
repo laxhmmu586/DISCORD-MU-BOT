@@ -8,7 +8,7 @@ export async function createSuitcase(T,buffer){
  // existing material groups locally instead of requesting unavailable source paths.
  manager.addHandler(/.*/,{path:'',setPath(path){this.path=path;return this;},load(){return new T.Texture();}});
  const loader=new FBXLoader(manager);
- const scene=buffer?loader.parse(buffer,''):await loader.loadAsync(new URL('./assets/Baggage.fbx',import.meta.url).href);
+ const scene=buffer?loader.parse(buffer,''):await loader.loadAsync(new URL('./assets/Baggage.fbx?v=907b6796740d',import.meta.url).href);
  scene.updateMatrixWorld(true);
  const parts=[];scene.traverse(object=>{if(object.isMesh&&!['Plane','Backdrop_1'].includes(object.name))parts.push(object);});
  if(!parts.length)throw new Error('The supplied luggage model has no suitcase geometry.');
