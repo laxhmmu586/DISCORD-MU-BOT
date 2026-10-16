@@ -139,7 +139,7 @@
   </style>
   <link rel="stylesheet" href="/aviation-glass.css?v=20261013-pickers">
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
-<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-per-bag-damage"></head>
+<link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"></head>
 <body class="aviation-page aviation-pir">
   <header><a class="back-link" href="/cbs-form.html"><span class="en">‹ Baggage assistance</span><span class="zh">‹ 行李服务</span></a>
     <button class="lang-toggle" id="language-toggle" type="button">中文</button>
@@ -497,7 +497,7 @@
     function collectDamageSketch(){
       saveDamageView();return combineDamageMarks([...damageMarks.values()]);
     }
-    function combineDamageMarks(marked){if(!marked.length)return '';
+    function combineDamageMarks(marked){if(!marked.length)return '';if(marked.length===1)return marked[0].toDataURL('image/jpeg',0.92);
       const combined=document.createElement('canvas');combined.width=900;combined.height=Math.ceil(marked.length/2)*260;const context=combined.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,combined.width,combined.height);marked.forEach((image,i)=>context.drawImage(image,(i%2)*450,Math.floor(i/2)*260,450,260));return combined.toDataURL('image/jpeg',.75);
     }
     document.querySelector('#damage-views').addEventListener('click',event=>{const button=event.target.closest('[data-damage-view]');if(!button)return;saveDamageView();damageView=button.dataset.damageView;drawBagBase();});

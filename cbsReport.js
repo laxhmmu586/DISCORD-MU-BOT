@@ -82,6 +82,7 @@ async function prepareReportAttachments(attachments){
 }
 // Reuses the server's Unicode font runs and metrics. Every block wraps and paginates.
 function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
+  if(record.formVersion>=3)return require('./cbsCorporatePdf')(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl});
   const objects=[],add=content=>{objects.push(content);return objects.length;};
   const images={};
   function image(data){const jpg=jpegFromDataUrl(data);if(!jpg)return null;const name=`Im${Object.keys(images).length+1}`;images[name]=add(`<< /Type /XObject /Subtype /Image /Width ${jpg.width} /Height ${jpg.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.buffer.length} >>\nstream\n${jpg.buffer.toString('binary')}\nendstream`);return {...jpg,name};}
