@@ -156,7 +156,7 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
       ensure(60);field(label('Damaged bag tag','损坏行李牌号码'),damage.tag);
       grid([[label('Marked views','标记视角'),(damage.damageAreas||[]).map(key=>({front:'正面 / Front',back:'背面 / Back',left:'左侧 / Left',right:'右侧 / Right',top:'顶部 / Top',bottom:'底部 / Bottom'})[key]).join(', ')]]);
       if(record.formVersion<3)field(label('Damage location','破损位置'),record.dprBagInfo);
-      field(label('Inner damage','内物破损'),damage.innerDamage);
+      if(damage.innerDamage)field(label('Inner damage','内物破损'),damage.innerDamage);
       if(damage.damageSketch){ensure(155);drawPicture(damage.damageSketch,40,y,532,145);y-=153;}
     }
   }

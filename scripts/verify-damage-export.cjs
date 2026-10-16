@@ -9,6 +9,7 @@ const {chromium}=require('playwright');
   await page.addInitScript(()=>{const draw=CanvasRenderingContext2D.prototype.drawImage;CanvasRenderingContext2D.prototype.drawImage=function(source,...args){if(source?.id==='damage-sketch')return;return draw.call(this,source,...args);};});
   await page.goto(`http://127.0.0.1:${server.address().port}/pir-form.html?type=DPR&lang=en`);await page.waitForFunction(()=>window.DamageViewer);
   assert.equal(await page.locator('[name=dprDamageLevel]').count(),0);
+  assert.equal(await page.locator('[name=dprInnerDamage]').count(),0);
   await page.evaluate(()=>{document.querySelector('[data-bag-tag]').value='MU000001';showStep(3,'replace');openDamageEntry('1');});
   const canvas=page.locator('#damage-sketch');await canvas.scrollIntoViewIfNeeded();
   const box=await canvas.boundingBox();await page.mouse.move(box.x+box.width/2+20,box.y+box.height/2);await page.mouse.down();
@@ -16,7 +17,7 @@ const {chromium}=require('playwright');
   await page.evaluate(()=>showStep(4,'replace'));await page.waitForTimeout(200);await page.evaluate(()=>document.querySelector('#submitting-dialog').showModal()).catch(()=>{});
   fs.mkdirSync('.verification/damage-export',{recursive:true});
   for(let repeat=0;repeat<2;repeat++){
-   const damage=await page.evaluate(()=>collectDamageEntries()[0]);assert(damage.damageAreas.includes('front'));assert(!Object.hasOwn(damage,'damageLevel'));
+   const damage=await page.evaluate(()=>collectDamageEntries()[0]);assert(damage.damageAreas.includes('front'));assert(!Object.hasOwn(damage,'damageLevel'));assert(!Object.hasOwn(damage,'innerDamage'));
    const bytes=Buffer.from(damage.damageSketch.split(',')[1],'base64');fs.writeFileSync(`.verification/damage-export/hidden-${repeat}.jpg`,bytes);
    if(repeat===0){
     const vm=require('node:vm'),Report=require('../cbsReport'),source=fs.readFileSync('index.js','utf8'),helpers=vm.createContext({Buffer});vm.runInContext(source.slice(source.indexOf('function pdfSafeText('),source.indexOf('function createPirPdf(')),helpers);
