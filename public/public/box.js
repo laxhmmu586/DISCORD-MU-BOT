@@ -21,6 +21,7 @@
   const content = doc.getElementById('box-content');
   const apiBase = (root.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
   let loading = false, timer, stopped = false;
+  let selectedDetail = '';
   function text(id, value) { doc.getElementById(id).textContent = value; }
   function render(data) {
     text('sy-data', `SY: ${data.expectedPassengers ?? '—'} passengers + ${data.expectedInfants ?? '—'} Infant = ${data.expectedTotal ?? '—'}`);
@@ -32,15 +33,47 @@
     // Keep four columns on phones. Flights above 400 continue in another bank.
     if (columns > 4) boxes.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
     boxes.replaceChildren();
+    const details = doc.getElementById('bn-details');
+    const detailRows = doc.getElementById('bn-detail-rows');
+    detailRows.replaceChildren();
+    const shortages = groups.filter(group => group.absent.length);
+    details.hidden = !shortages.length;
+    shortages.forEach(group => {
+      const row = doc.createElement('div'); row.className = 'bn-detail-row'; row.id = `bn-detail-${group.start}`; row.tabIndex = -1;
+      if (row.id === selectedDetail) row.classList.add('is-selected');
+      const label = doc.createElement('b'); label.textContent = `${group.start}–${group.end}`;
+      const count = doc.createElement('span'); count.className = 'absence-count'; count.textContent = `⚠ ${group.absent.length}`;
+      count.setAttribute('aria-label', `${group.absent.length} BN numbers`);
+      const numbers = doc.createElement('div'); numbers.className = 'detail-numbers';
+      group.absent.forEach(bn => { const badge = doc.createElement('span'); badge.textContent = String(bn).padStart(3,'0'); numbers.append(badge); });
+      row.append(label,count,numbers); detailRows.append(row);
+    });
     function tile(label, count, className, column, row, absent = []) {
-      const card = doc.createElement('article');
+      const compact = absent.length > 2;
+      const card = doc.createElement(compact ? 'a' : 'article');
       card.className = `box ${className}`;
       card.style.gridColumn = column;
       card.style.gridRow = row;
       const range = doc.createElement('div'); range.className = 'range'; range.textContent = label;
       const number = doc.createElement('strong'); number.textContent = count;
       card.append(range, number);
-      if (absent.length) {
+      if (compact) {
+        const targetId = `bn-detail-${Number(label.split('–')[0])}`;
+        card.href = '#' + targetId;
+        card.setAttribute('aria-label', `${label}: ${count} passes, ${absent.length} BN details`);
+        const warning = doc.createElement('span'); warning.className = 'absence-count box-warning'; warning.textContent = `⚠ ${absent.length}`;
+        card.append(warning);
+        card.addEventListener('click', event => {
+          event.preventDefault();
+          const target = doc.getElementById(targetId);
+          if (!target) return;
+          selectedDetail = targetId;
+          detailRows.querySelectorAll('.is-selected').forEach(item => item.classList.remove('is-selected'));
+          target.classList.add('is-selected');
+          target.focus({preventScroll:true});
+          target.scrollIntoView({behavior:root.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',block:'center'});
+        });
+      } else if (absent.length) {
         const note = doc.createElement('p'); note.className = 'absent-bns';
         absent.forEach(bn => {
           const item = doc.createElement('span'); item.className = 'absent-bn';
