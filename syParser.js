@@ -2019,12 +2019,15 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
   const triple = match.info.checkedIn?.slice(1, 4);
   const expectedPassengers = triple?.length === 3 ? triple.reduce((sum, value) => sum + Number(value), 0) : null;
   const expectedInfants = match.info.inf == null ? null : Number(match.info.inf);
+  const maxBnMatch = match.section.content.match(/\bPOS\/GATE\s+BN\s*(\d{1,3})\b/i);
+  const maxBn = maxBnMatch ? Number(maxBnMatch[1]) : null;
   const passengers = records.length;
   const infants = records.filter(row => row.infant).length;
-  return { flightNo, flightDate, bns: records.map(row => row.bn), infantBns: records.filter(row => row.infant).map(row => row.bn),
+  return { flightNo, flightDate, maxBn, bns: records.map(row => row.bn), infantBns: records.filter(row => row.infant).map(row => row.bn),
     passengers, infants, total: passengers + infants, expectedPassengers, expectedInfants,
     expectedTotal: expectedPassengers == null || expectedInfants == null ? null : expectedPassengers + expectedInfants,
-    matched: expectedPassengers != null && expectedInfants != null && passengers === expectedPassengers && infants === expectedInfants };
+    matched: expectedPassengers != null && expectedInfants != null && passengers === expectedPassengers && infants === expectedInfants
+      && (maxBn == null || records.every(row => row.bn <= maxBn)) };
 }
 
 function findSYInfo(log, queryDate, options = {}) {
