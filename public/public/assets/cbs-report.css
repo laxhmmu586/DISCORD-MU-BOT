@@ -119,3 +119,7 @@ body.aviation-pir::after{content:"";position:fixed;width:110vw;height:65vh;right
 
 .case-detail-right .baggage-icon-tile :is(strong,small){min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .damage-bag-controls{display:grid;gap:12px;padding:16px;background:#eef6ff;border:1px solid #d8e8fa;border-radius:14px;margin-bottom:18px}.damage-bag-controls label{min-width:0}.damage-bag-controls select{width:100%}.damage-bag-controls p{font-size:12px;color:#436386;overflow-wrap:anywhere;margin:0}.damage-bag-controls button{justify-self:start}
+
+.baggage-visual-heading .baggage-inline-details{flex:1;min-width:0;overflow-wrap:anywhere;color:#355e8f;font-size:12px;line-height:1.6}.case-detail-right .baggage-visual-options{width:100%;flex-basis:100%}.baggage-visual-heading{align-items:baseline}
+
+.report-heading-baggage{top:24px;bottom:auto;height:125px;width:170px;right:12px}.report-heading-baggage[data-kind="damaged"]{width:190px}@media(max-width:600px){.report-heading-baggage{top:8px;bottom:auto;height:104px;width:116px;right:6px}.report-heading-baggage[data-kind="damaged"]{width:132px}.aviation-pir .page-title h1{max-width:calc(100% - 86px);font-size:clamp(19px,5.4vw,24px)}}
