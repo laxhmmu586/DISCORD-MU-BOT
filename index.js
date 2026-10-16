@@ -45,7 +45,7 @@ const {
 
 const {
 
-  getLatestFlightLog,
+  getLatestFlightLog: downloadLatestFlightLog,
 
   getFlightLogByDate,
   get240InfoByBnAndFlightDate,
@@ -123,9 +123,24 @@ const {
 } = require('./googleDrive');
 
 const nbrdConfirmations = createNbrdConfirmationStore();
-const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => scope
-  ? nbrdConfirmations.clearScope(scope.flight, scope.date) : nbrdConfirmations.clear() });
+let boardingBoxCache;
+const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => {
+  if (scope) nbrdConfirmations.clearScope(scope.flight, scope.date);
+  else { nbrdConfirmations.clear(); boardingBoxCache?.invalidate(); }
+} });
 boardingLive.startCleanup();
+boardingBoxCache = new (require('./boardingBoxCache').BoardingBoxCache)({ db:require('./db'),
+  loadLog:downloadLatestFlightLog, beforeAccess:() => boardingLive.cleanupIfDue() });
+boardingBoxCache.start();
+async function getLatestFlightLog() {
+  const ticket = boardingBoxCache.beginUpdate();
+  const log = await downloadLatestFlightLog();
+  if (log) {
+    try { boardingBoxCache.updateFromLog(log, ticket); }
+    catch (error) { console.error('BOX cache update:', error.message); }
+  }
+  return log;
+}
 const boardingDate = req => String(req.query.flightDate || req.body?.flightDate || operationalDate()).toUpperCase();
 
 const {
@@ -3226,9 +3241,8 @@ app.get('/boarding-box', async (req, res) => {
   const flightDate = String(req.query.flightDate || '').toUpperCase();
   if (!flightNo || flightDate !== operationalDate()) return res.status(400).json({ error: 'Please select today’s flight.' });
   try {
-    const log = await getLatestFlightLog();
-    if (!log) return res.status(503).json({ error: 'Unable to load flight logs.' });
-    const box = require('./syParser').findBoardingBoxInfo(scopedLog(log, flightNo, flightDate), flightNo, flightDate);
+    if (req.query.refresh === '1') await boardingBoxCache.refresh();
+    const box = await boardingBoxCache.read(flightNo, flightDate);
     if (!box) return res.status(404).json({ error: 'No SY found for the selected flight.' });
     return res.json(box);
   } catch (error) {

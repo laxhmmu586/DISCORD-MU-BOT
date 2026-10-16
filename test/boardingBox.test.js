@@ -57,3 +57,21 @@ test('twenty BN ranges flag 19 or fewer, including last partial box; 301 starts 
   assert.equal(groups[0].column,4); assert.equal(groups[0].row,1);
   assert.equal(groupBns([1,2,21]).groups[1].count,1);
 });
+
+test('supplied SY BN312 bounds the final box while 310 passengers and 6 infants reconcile', () => {
+  const supplied = require('node:fs').readFileSync(require('node:path').join(__dirname,'fixtures/boarding-box-sy312.log'),'utf8');
+  const bns = Array.from({length:312},(_,i)=>i+1).filter(bn=>![86,150].includes(bn));
+  const data = parse([supplied,...bns.map(bn=>fb(bn,{infant:bn<=6}))].join('\n'));
+  assert.equal(data.maxBn,312); assert.equal(data.expectedPassengers,310); assert.equal(data.infants,6);
+  assert.equal(data.total,316); assert.equal(data.matched,true);
+  const {groups} = groupBns(data.bns,data.maxBn), last = groups.at(-1);
+  assert.equal(last.start,301); assert.equal(last.end,312); assert.equal(last.count,12);
+  assert.equal(last.low,false); assert.deepEqual(last.absent,[]);
+  assert.deepEqual(groups.find(g=>g.start===81).absent,[86]);
+});
+test('SY upper bound reveals a skipped last BN and never invents 313 through 320', () => {
+  const {groups} = groupBns([301,302,303,304,305,306,307,308,309,310,311],312);
+  assert.deepEqual(groups.at(-1).absent,[312]); assert.equal(groups.at(-1).low,true);
+  assert.equal(groups.at(-1).end,312);
+  assert.deepEqual(groupBns([301,302,304],304).groups.at(-1).absent,[303]);
+});
