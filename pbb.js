@@ -80,7 +80,8 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  const {Readable}=require('node:stream'),{createPbbDrive,driveError}=require('./pbbDrive');
  const drive=providedDrive||createPbbDrive();
  const employees=require('./employeeDatabase').openEmployeeDatabase(store.db,{seed:employeeSeed});
- require('./employeeProfiles').registerProfiles(app,{employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
+ const profiles=require('./employeeProfiles').registerProfiles(app,{employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
+ require('./uniformRequests').registerUniform(app,{employees,profiles,authenticate});
  require('./employees').registerEmployees(app,{store:employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
  app.post('/pbb-api/session',(_req,res)=>{const token='pbb_guest_'+crypto.randomBytes(32).toString('hex'),uid='guest-'+crypto.randomUUID(),expires=Date.now()+86400000;store.db.prepare('DELETE FROM pbb_guest_sessions WHERE expires<?').run(Date.now());store.db.prepare('INSERT INTO pbb_guest_sessions VALUES(?,?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),uid,expires);res.set('Cache-Control','no-store').json({token,uid,expires});});
