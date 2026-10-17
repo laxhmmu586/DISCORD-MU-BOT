@@ -20,7 +20,7 @@
   }
   window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
   auth?.onAuthStateChanged(async user=>{
-    renderProfile(null,user);host.querySelector('#employee-admin-link').hidden=!['lake@mu.com','tamsun@hm.com'].includes(user?.email?.toLowerCase());if(!user)return;
+    renderProfile(null,user);host.querySelector('#employee-admin-link').hidden=!['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com'].includes(user?.email?.toLowerCase());if(!user)return;
     try{
       const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/profile-api',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});const result=await response.json();
       if(!response.ok)throw Error(result.error||'Unable to load account.');

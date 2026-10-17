@@ -1,6 +1,6 @@
 const {StandardFontEmbedder,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
-const ADMIN_EMAILS=new Set(['lake@mu.com','tamsun@hm.com']);
+const ADMIN_EMAILS=new Set(['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com']);
 function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
  db.exec('CREATE TABLE IF NOT EXISTS pbb_employees (singleton INTEGER PRIMARY KEY CHECK(singleton=1), data TEXT NOT NULL)');
  db.prepare('INSERT OR IGNORE INTO pbb_employees(singleton,data) VALUES (1,?)').run(JSON.stringify({revision:1,employees:seed}));
@@ -26,7 +26,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
  });return {get,save,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&e.name&&e[permission]);},options(){return get().employees.filter(e=>e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,eid,attach,detach,spotter})=>({id,name,eid,attach,detach,spotter}));}};
 }
 function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
- app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);if(!ADMIN_EMAILS.has(req.employeeAdmin.email.toLowerCase()))return res.status(403).json({error:'Only lake@mu.com and tamsun@hm.com can access employee records'});next();}catch{res.status(401).json({error:'Sign in required'});}});
+ app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);if(!ADMIN_EMAILS.has(req.employeeAdmin.email.toLowerCase()))return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
  app.get('/employee-admin-api',(_req,res)=>res.json(store.get()));
  app.post('/employee-admin-api',(req,res)=>{try{const saved=store.save(req.body,req.employeeAdmin);res.json(saved);onChange();}catch(e){res.status(e.status||400).json({error:e.message});}});
 }

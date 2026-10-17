@@ -245,6 +245,7 @@
       }
     </style>
     <link rel="stylesheet" href="assets/login-orbit.css?v=20261012-mission-earth" />
+    <link rel="stylesheet" href="/auth-confirm.css?v=20261016-refined" />
   </head>
   <body class="login-orbit">
     <main class="login-card" aria-label="Login">
@@ -367,15 +368,17 @@
           .catch(() => auth.setPersistence(firebase.auth.Auth.Persistence.SESSION))
           .catch(() => {});
         const dialog=document.createElement('dialog');
-        dialog.style.cssText='background:#0d2036;color:#eef5ff;border:1px solid #456787;border-radius:18px;padding:28px;width:min(460px,90vw)';
-        dialog.innerHTML='<form id="link-form"><h2>Confirm your information / 确认资料</h2><p id="link-help"></p><label id="eid-label">Employee ID / EID<input id="link-eid" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}" required style="display:block;width:100%;padding:12px;margin:12px 0"></label><dl id="link-details" style="line-height:1.8;overflow-wrap:anywhere"></dl><p id="link-status" role="status"></p><button class="login-button" id="link-submit" type="submit">Find employee</button><button class="login-button" id="link-cancel" type="button" style="margin-top:10px">Cancel / Sign out</button></form>';
+        dialog.className='auth-confirm';dialog.setAttribute('aria-labelledby','confirm-title');dialog.setAttribute('aria-describedby','link-help');
+        dialog.innerHTML='<form id="link-form"><header class="confirm-heading"><div class="confirm-brand">MUFC<span>GOOGLE SIGN-IN</span></div><span class="confirm-step">01 / ACCOUNT</span></header><div class="confirm-body"><div class="confirm-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8v3H8zM7 5H5v16h14V5h-2M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p class="confirm-eyebrow">YOUR EMPLOYEE RECORD</p><h2 id="confirm-title">Confirm your details</h2><p class="confirm-subtitle">确认员工资料</p><p id="link-help"></p><label id="eid-label">EMPLOYEE ID <span>/ 员工编号</span><input id="link-eid" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}" autocomplete="off" placeholder="Enter your EID" required></label><dl id="link-details"></dl><p id="link-status" role="status" aria-live="polite"></p><div class="confirm-actions"><button id="link-submit" type="submit">Find employee</button><button id="link-cancel" type="button">Sign out<span>退出登录</span></button></div><p class="confirm-footnote">MUFC · Employee access</p></div></form>';
         document.body.append(dialog);let pending,busy=false;
         function showLink(data){
           pending=data;dialog.querySelector('#eid-label').hidden=data.state!=='needs_eid';dialog.querySelector('#link-eid').required=data.state==='needs_eid';
-          dialog.querySelector('#link-help').textContent=data.state==='needs_eid'?'Enter your existing employee ID to link your Google account. If no record is found, please contact an administrator. / 请输入员工 EID；无法匹配请联系管理员。':'Check your employee details before continuing. / 请确认以下员工资料。';
+          dialog.querySelector('#confirm-title').textContent=data.state==='needs_eid'?'Find your employee record':'Confirm your details';
+          dialog.querySelector('.confirm-subtitle').textContent=data.state==='needs_eid'?'关联员工资料':'确认员工资料';
+          dialog.querySelector('#link-help').textContent=data.state==='needs_eid'?'Enter your EID to connect your account. Need help? Contact your administrator. / 请输入 EID，无法匹配请联系管理员。':'Please review the information below to continue. / 请核对以下资料后继续。';
           const details=dialog.querySelector('#link-details');details.replaceChildren();
-          if(data.profile)for(const [label,key] of [['FULL NAME','name'],['昵称 / NICKNAME','nickname'],['EID','eid'],['PHONE NUMBER','phone'],['EMAIL','email']]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=data.profile[key]||'—';details.append(dt,dd);}
-          dialog.querySelector('#link-submit').textContent=data.state==='needs_eid'?'Find employee':'Confirm and continue / 确认';
+          if(data.profile)for(const [label,key] of [['FULL NAME / 姓名','name'],['NICKNAME / 昵称','nickname'],['EMPLOYEE ID / EID','eid'],['PHONE / 电话','phone'],['EMAIL / 邮箱','email']]){const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');row.className='confirm-detail confirm-detail-'+key;dt.textContent=label;dd.textContent=data.profile[key]||'—';row.append(dt,dd);details.append(row);}
+          dialog.querySelector('#link-submit').textContent=data.state==='needs_eid'?'Find employee / 查找员工':'Confirm & continue / 确认并继续';
           if(!dialog.open)dialog.showModal();
         }
         async function finishLogin(user){
