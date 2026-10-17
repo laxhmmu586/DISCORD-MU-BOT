@@ -9245,7 +9245,7 @@
       } else {
         auth.onAuthStateChanged(async (user) => {
           const employeeEntry=document.querySelector("#employee-admin-link");
-          employeeEntry.hidden=!["lake@mu.com","tamsun@hm.com"].includes(user?.email?.toLowerCase());
+          employeeEntry.hidden=!["lake@mu.com","tamsun@hm.com","nextweek1216@gmail.com","tamsun10@gmail.com"].includes(user?.email?.toLowerCase());
           employeeEntry.onclick=()=>location.assign("/admin.html");
           if (!user) {
             window.location.replace(loginUrl());
