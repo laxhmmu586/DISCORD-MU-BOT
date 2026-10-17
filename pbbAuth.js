@@ -11,7 +11,7 @@ async function authenticate(req,{allowUnlinkedGoogle=false}={}){
  if(!certs||Date.now()>expires){const r=await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com',{signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error('Unable to verify sign-in');certs=await r.json();expires=Date.now()+3600000;}
  if(!certs[header.kid]||!crypto.verify('RSA-SHA256',Buffer.from(parts[0]+'.'+parts[1]),certs[header.kid],Buffer.from(parts[2],'base64url')))throw new Error('Invalid sign-in token');
  const user={uid:payload.sub,email:payload.email||'',emailVerified:payload.email_verified===true,provider:payload.firebase?.sign_in_provider||''};
- if(user.provider==='google.com'&&(!user.emailVerified||(!allowUnlinkedGoogle&&!employeeAccess(user))))throw new Error('Employee account must be linked. Contact an administrator.');
+ if(user.provider==='google.com'&&(!user.emailVerified||(!/^[^@\s]+@mu\.com$/i.test(user.email)&&!allowUnlinkedGoogle&&!employeeAccess(user))))throw new Error('Employee account must be linked. Contact an administrator.');
  return user;
 }
 module.exports={authenticate,setEmployeeAccessVerifier};

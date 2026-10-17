@@ -26,6 +26,7 @@ function createProfileStore(employees){
  function status(user){
   const row=linked(user);
   if(row)return {state:'ready',profile:profile(row),revision:employees.get().revision};
+  if(/^[^@\s]+@mu\.com$/i.test(user.email))return {state:'external'};
   if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
   const match=candidate(user);
   return match?{state:'confirm',profile:profile(match),revision:employees.get().revision}:{state:'needs_eid'};

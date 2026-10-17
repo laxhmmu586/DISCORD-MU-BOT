@@ -4,6 +4,11 @@ const seed=[{id:'one',name:'TEST EMPLOYEE',nickname:'Test',eid:'00123',email:'em
 const google={uid:'google-one',email:'Employee@Gmail.com',provider:'google.com',emailVerified:true};
 function fixture(t){const legacy=new Database(':memory:'),employees=openEmployeeDatabase(legacy,{seed}),profiles=createProfileStore(employees);t.after(()=>{employees.close();legacy.close();});return {employees,profiles};}
 function confirm(profiles,user=google){const preview=profiles.status(user);return profiles.link(user,{revision:preview.revision,eid:preview.profile.eid});}
+test('@mu.com external employees do not need an employee record or EID confirmation',t=>{
+ const {profiles,employees}=fixture(t);for(const provider of ['password','google.com'])assert.deepEqual(profiles.status({...google,uid:'external',email:'External@MU.COM',provider}),{state:'external'});
+ assert.equal(employees.db.prepare('SELECT COUNT(*) AS count FROM employee_accounts').get().count,0);
+ assert.equal(profiles.status({...google,email:'external@mu.com.attacker.example'}).state,'needs_eid');
+});
 test('verified email matches case insensitively, requires confirmation and persists UID association after email edits',async t=>{
  const {profiles,employees}=fixture(t);assert.equal(profiles.linked(google),undefined);assert.equal(profiles.status(google).state,'confirm');const ready=confirm(profiles);assert.equal(ready.state,'ready');
  const changed=await profiles.update(google,{revision:ready.revision,nickname:'New nickname',phone:'12345',email:'new@example.com'});assert.equal(changed.profile.nickname,'New nickname');assert.equal(employees.get().employees[0].email,'new@example.com');assert.equal(profiles.status(google).state,'ready');assert.equal(createProfileStore(employees).status(google).profile.email,'new@example.com');

@@ -9,6 +9,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   if(url.hostname==='www.gstatic.com')return route.fulfill({body:'',contentType:'text/javascript'});
   if(pathname==='/__/firebase/init.js')return route.fulfill({contentType:'text/javascript',body:`(()=>{let user=${scenario==='ready'?JSON.stringify(user):'null'},callbacks=[];const state={get currentUser(){return user;},setPersistence:async()=>{},onAuthStateChanged:fn=>{callbacks.push(fn);setTimeout(()=>fn(user),0);return()=>{};},signInWithPopup:async()=>{user=${JSON.stringify(user)};user.getIdToken=async()=>'fixture';callbacks.forEach(fn=>fn(user));return {user};},signOut:async()=>{user=null;callbacks.forEach(fn=>fn(null));},signInWithEmailAndPassword:async()=>{user={...${JSON.stringify(user)},providerData:[{providerId:'password'}],getIdToken:async()=>'fixture'};callbacks.forEach(fn=>fn(user));return {user};}};if(user)user.getIdToken=async()=>'fixture';const auth=()=>state;auth.Auth={Persistence:{LOCAL:'local',SESSION:'session'}};auth.GoogleAuthProvider=function(){this.setCustomParameters=()=>{};};window.firebase={apps:[{}],auth};})();`});
   if(pathname.startsWith('/profile-api')){
+   if(/^[^@\s]+@mu\.com$/i.test(user.email))return route.fulfill({json:{state:'external'}});
    if(pathname.endsWith('/lookup')){const body=route.request().postDataJSON();if(body.eid!=='00123')return route.fulfill({status:403,json:{error:'Employee record not found. Please contact an administrator.'}});return route.fulfill({json:{state:'confirm',profile,revision}});}
    if(pathname.endsWith('/link')){linked=true;return route.fulfill({json:{state:'ready',profile,revision}});}
    if(route.request().method()==='POST'){const body=route.request().postDataJSON();assert.equal(body.revision,revision);for(const key of ['nickname','phone','email','avatar'])if(body[key]!==undefined)profile[key]=body[key];revision++;}
@@ -35,5 +36,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await page.locator('#link-submit').click();await page.waitForURL('**/flights.html');assert.equal(linked,true);
  }
  scenario='match';linked=false;await page.goto('http://localhost/login.html');await page.locator('#google-login:not([disabled])').waitFor();await page.locator('#google-login').click();await page.locator('dialog[open]').waitFor();await page.locator('#link-cancel').click();await page.locator('dialog').waitFor({state:'hidden'});assert.equal(linked,false);assert.equal(new URL(page.url()).pathname,'/login.html');
- assert.deepEqual(errors,[]);await browser.close();console.log('PASS: Profile at 1440/768/390/320px, saved nickname/contact/avatar, reload, Google email match/EID rejection/EID confirmation/cancel.');
+ for(const providerId of ['password','google.com']){
+  user.email='external@mu.com';user.providerData=[{providerId}];scenario='ready';linked=false;
+  await page.goto('http://localhost/login.html');await page.waitForURL('**/flights.html');await page.locator('.flight-empty').waitFor();assert.equal(await page.locator('dialog[open]').count(),0);assert.equal(linked,false);
+  await page.goto('http://localhost/profile.html');await page.locator('#profile-status').filter({hasText:'No employee ID verification is required'}).waitFor();assert.equal(await page.locator('#profile-link').isVisible(),false);
+ }
+ assert.deepEqual(errors,[]);await browser.close();console.log('PASS: Profile at 1440/768/390/320px, saved contact/avatar, Google match/EID/cancel, admin menus, and @mu.com password/Google login without EID.');
 })().catch(error=>{console.error(error);process.exit(1);});

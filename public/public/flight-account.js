@@ -25,8 +25,8 @@
       const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/profile-api',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});const result=await response.json();
       if(!response.ok)throw Error(result.error||'Unable to load account.');
       if(result.state==='ready'||(result.profile&&!user.providerData.some(item=>item.providerId==='google.com')))renderProfile(result.profile,user);
-      else if(user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');
-    }catch(error){if(user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');}
+      else if(!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');
+    }catch(error){if(!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');}
   });
   host.querySelector('#employee-admin-link').onclick=()=>location.assign('/admin.html');
   async function logout(){
