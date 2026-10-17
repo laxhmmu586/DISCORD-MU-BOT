@@ -87,6 +87,7 @@ function createWchcNotifier(client, options = {}) {
     try {
       const active = new Map(Object.values(passengers || {})
         .filter((passenger) => passenger.specialServices?.includes('WCHC'))
+        .filter((passenger) => String(passenger.flight || '').replace(/\s+/g, '').toUpperCase() !== 'MU583')
         .map((passenger) => [passengerKey(passenger), passenger]));
 
       for (const channelId of channelIds) {

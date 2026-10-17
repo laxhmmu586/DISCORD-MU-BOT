@@ -42,6 +42,43 @@ test('reconciler deletes an alert after WCHC changes or is removed', async () =>
   assert.equal(deleted, 1);
 });
 
+test('MU583 WCHC is excluded in both channels while other flights still send', async () => {
+  const sent = [];
+  const client = { user: { id: 'bot' }, channels: { fetch: async (id) => ({
+    isTextBased: () => true,
+    messages: { fetch: async () => new Map() },
+    send: async (payload) => sent.push({ id, key: payload.embeds[0].footer.text })
+  }) } };
+  await createWchcNotifier(client, { channelIds: ['one', 'two'] })({
+    excluded: { ...passenger, flight: 'MU583' },
+    normalized: { ...passenger, flight: ' mu 583 ' },
+    outbound: passenger,
+    other: { ...passenger, flight: 'MU578' }
+  });
+  assert.equal(sent.length, 4);
+  for (const id of ['one', 'two']) {
+    assert.deepEqual(sent.filter(entry => entry.id === id).map(entry => entry.key), [
+      'WCHC Alert • MU586|13SEP|107', 'WCHC Alert • MU578|13SEP|107'
+    ]);
+  }
+});
+
+test('existing MU583 alerts are removed without sending a replacement', async () => {
+  let deleted = 0;
+  const oldMessage = {
+    author: { id: 'bot' }, embeds: [createAlertEmbed({ ...passenger, flight: 'MU583' })],
+    delete: async () => { deleted += 1; },
+    edit: async () => assert.fail('MU583 must not be updated')
+  };
+  const client = { user: { id: 'bot' }, channels: { fetch: async () => ({
+    isTextBased: () => true,
+    messages: { fetch: async () => new Map([['message', oldMessage]]) },
+    send: async () => assert.fail('MU583 must not be sent')
+  }) } };
+  await createWchcNotifier(client, { channelIds: ['one'] })({ 107: { ...passenger, flight: 'MU583' } });
+  assert.equal(deleted, 1);
+});
+
 test('reconciler pages past 100 newer messages to delete an older alert', async () => {
   let deleted = 0;
   const newerMessages = Array.from({ length: 100 }, (_, index) => ({
