@@ -93,6 +93,16 @@ test('mentions use current admin Discord ID, ignoring IDs supplied by the browse
  const s=await server(t,{employees:{get:()=>({employees:[row]})},renderCards:async()=>[{name:'attendance-request.png',attachment:Buffer.from('image')}],client:{channels:{fetch:async()=>({send:async message=>{sent=message;}})}}});
  await s.post({...body,discordId:'999999999999999999'});assert.equal(sent.content,'<@222222222222222222>');assert.deepEqual(sent.allowedMentions,{parse:[],users:['222222222222222222']});
 });
+
+test('Discord cards use the current nickname while stored requests retain the employee name',async t=>{
+ for(const nickname of ['  Vicky  ','   ']){
+  const row={id:'test-one',name:'Test Employee',nickname,discordId:'222222222222222222'};let rendered;
+  const s=await server(t,{employees:{get:()=>({employees:[row]})},renderCards:async record=>{rendered=record;return[{name:'attendance-request.png',attachment:Buffer.from('image')}];},client:{channels:{fetch:async()=>({send:async()=>{}})}}});
+  const response=await s.post(body);const saved=await response.json();
+  assert.equal(rendered.employeeName,nickname.trim()||'Test Employee');
+  assert.equal(saved.record.employeeName,'Test Employee');
+ }
+});
 test('missing or invalid admin Discord IDs produce no content or employee ping',async t=>{
  let sent;const s=await server(t,{employees:{get:()=>({employees:[{id:'test-one',name:'Test Employee',discordId:'@everyone'}]})},client:{channels:{fetch:async()=>({send:async message=>{sent=message;}})}}});
  await s.post(body);assert.equal(sent.content,undefined);assert.deepEqual(sent.allowedMentions,{parse:[],users:[]});
