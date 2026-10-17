@@ -23,6 +23,8 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    if(!['Manager','Supervisor','Lead','Agent'].includes(position))throw new Error('Select a valid employee position');
    const nickname=String(row.nickname??'').trim();
    if(nickname.length>60||/[\x00-\x1f\x7f]/.test(nickname))throw new Error('Check employee nicknames (maximum 60 characters)');
+   const companyEmail=String(row.companyEmail??current.employees.find(old=>old.id===row.id)?.companyEmail??'').trim();
+   if(companyEmail&&(companyEmail.length>254||!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(companyEmail)))throw new Error('Company email must be a valid email address');
    const code=String(row.code??'').trim(),phone=formatEmployeePhone(row.phone),email=String(row.email??'').trim();
    const previousLoginId=normalizeLoginId(current.employees.find(old=>old.id===row.id)?.loginId);
    const loginId=normalizeLoginId(row.loginId??previousLoginId);
@@ -32,7 +34,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    const id=String(row.id||''),name=String(row.name||'').trim(),eid=String(row.eid||'').trim(),discordId=String(row.discordId||'').trim();
    if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||name.length>100||(eid&&!/^\d{1,12}$/.test(eid))||(discordId&&!/^\d{17,20}$/.test(discordId))||(discordId&&discordIds.has(discordId))||(typeof row.attach!=='boolean'||typeof row.detach!=='boolean')||typeof row.spotter!=='boolean'||((row.attach||row.detach||row.spotter)&&!name))throw new Error('Check employee names, EIDs and unique Discord IDs');
    try{employeeFont.encodeText(name);}catch{throw new Error('Use employee names in English spelling for the original PDF');}
-   ids.add(id);if(discordId)discordIds.add(discordId);if(loginId)loginIds.add(loginId);return {id,code,position,name,nickname,eid,phone,email,discordId,loginId,attach:row.attach,detach:row.detach,spotter:row.spotter};
+   ids.add(id);if(discordId)discordIds.add(discordId);if(loginId)loginIds.add(loginId);return {id,code,position,name,nickname,eid,phone,email,companyEmail,discordId,loginId,attach:row.attach,detach:row.detach,spotter:row.spotter};
   });
   const next={revision:current.revision+1,employees,updatedAt:new Date().toISOString(),updatedBy:user.email};db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });return {get,save,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&e.name&&e[permission]);},options(){return get().employees.filter(e=>e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,eid,attach,detach,spotter})=>({id,name,eid,attach,detach,spotter}));}};

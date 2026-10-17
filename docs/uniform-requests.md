@@ -4,21 +4,21 @@ Profile provides a Request card and a sidebar entry to `/uniform.html`. Employee
 
 ## Setup and approvals
 
-In Admin, set each employee's Position to Manager, Supervisor, Lead or Agent and save. Existing records display Agent until assigned. Approvers need linked employee accounts. The final approving Manager needs a valid contact email in the employee record.
+In Admin, set each employee's Position to Manager, Supervisor, Lead or Agent and save. Existing records display Agent until assigned. Approvers need linked employee accounts. The final approving Manager needs a valid company email in the employee record.
 
 The default flow is Employee submits → Supervisor → Manager → Generate PDF → Email approving Manager. Any eligible employee in the current stage's position can review it; later stages cannot see the request before their turn. Self-approval and approval of more than one stage by the same employee are prohibited. Rejection requires a reason and ends the request. Requesters and previous reviewers can see the history.
 
 Admin's Approval Workflow button shows a diagram and an editor for adding, removing and reordering up to five stages. The final stage remains Manager. Workflow changes apply only to future submissions. Configure enough distinct approvers for every stage, including requests submitted by supervisors or managers themselves.
 
-The shared account header checks for pending approvals on authenticated page entry, focus and every minute while visible. It shows a popup with direct links to the relevant requests. The Uniform page already shows the approval inbox, so it does not interrupt that page with another popup.
+Pending approval popups are removed. On submission and after each non-final approval, the server emails the eligible approvers for the current stage at their Admin-maintained Company Email addresses. Self-approval and previous-stage participants are excluded. Missing company addresses are never replaced with personal/contact/sign-in addresses; Admin can add them and the next retry will pick them up. Notification status is stored per request, stage and employee, preventing normal duplicate reminders and supporting retries after failure or restart. The Uniform page retains its approval inbox.
 
 ## PDF and delivery
 
 `assets/uniform/replacement-form.pdf` is the supplied original, preserved as the background. `uniformPdf.js` overlays request values, circles PT, and places the final Manager's full name on Requested By. LAST REPLACEMENT, authorization, issuance and receipt signatures remain blank.
 
-Requests, approval history, workflow versions, PDFs and delivery flags persist in the employee database (`EP.DB`). Final approval queues PDF generation and a MIME email attachment to the approving Manager's employee contact email using the existing Gmail client from `googleDrive.getNextDayInfoGmailClient()`. Failed jobs retry every minute and after restart. A sent flag prevents normal repeated delivery; a crash after Gmail accepts the email and before the flag commits can cause a duplicate. Approved PDFs are also downloadable by the requester and authorized reviewers.
+Requests, approval history, workflow versions, PDFs and delivery flags persist in the employee database (`EP.DB`). Final approval queues PDF generation and a MIME email attachment to the approving Manager's company email using the existing Gmail client from `googleDrive.getNextDayInfoGmailClient()`. Failed jobs retry every minute and after restart. A sent flag prevents normal repeated delivery; a crash after Gmail accepts the email and before the flag commits can cause a duplicate. Approved PDFs are also downloadable by the requester and authorized reviewers.
 
-Deploy backend and Firebase Hosting assets together. This change does not create approval email messages before final approval; pending approval notifications appear inside the app. Local tests stub Gmail and never send real mail.
+Deploy backend and Firebase Hosting assets together. Pending approval email is sent at each active stage; the final PDF is sent only after final approval. A crash after mail acceptance and before the saved sent flag can still cause a duplicate; ordinary retries skip sent notifications. Local tests stub Gmail and never send real mail.
 
 ## Validation
 
@@ -28,3 +28,7 @@ Deploy backend and Firebase Hosting assets together. This change does not create
 - Render and visually inspect a generated PDF against the supplied original.
 
 Use a Node version matching the installed `better-sqlite3` native module (Node 22 in the verification environment).
+
+## Employee Info
+
+`/info.html` follows Profile in the portal sidebar and is linked from the Profile Info card. It provides the supplied Insurance Waiver Google Form link and the BI-WEEKLY CTO INFORMATION table for salaried staff at all CA stations including HOHAS. The five rates/balances are transcribed from the supplied reference. The page requires sign-in and does not submit the Google Form. Company Email is an Admin-only employee field, separate from contact email and Original Login ID.

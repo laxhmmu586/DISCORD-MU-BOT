@@ -16,7 +16,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  await page.goto('http://localhost/admin.html');await page.locator('#employee-panel').waitFor({state:'visible'});
  assert.equal(await page.locator('#profile-admin-nav').isVisible(),true);assert.equal(await page.locator('#profile-admin-nav').getAttribute('aria-current'),'page');
  fs.mkdirSync('.verification/profile',{recursive:true});for(const width of [1920,1440,390]){await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Admin overflow at '+width);if(width>1100){const phone=await page.locator('input[name=phone]').boundingBox(),login=await page.locator('input[name=loginId]').boundingBox();assert(login.width>phone.width*1.5,'Login ID must have more room than phone');assert(login.width>=150,'Login ID width');assert(login.x+login.width<width,'Login ID must be visible without scrolling');}await page.screenshot({path:'.verification/profile/admin-'+width+'.png',fullPage:true});}
- const headers=await page.locator('thead th').allTextContents();assert.equal(headers[7],'DISCORD ID');assert.equal(headers[8],'ORIGINAL LOGIN ID');
+ const headers=await page.locator('thead th').allTextContents();assert.equal(headers[7],'COMPANY EMAIL');assert.equal(headers[9],'ORIGINAL LOGIN ID');
  assert.equal(await page.locator('input[name=loginId]').inputValue(),'legacy@mu.com');
  assert.equal(await page.locator('input[name=email]').inputValue(),'contact@gmail.com');
  assert.equal(await page.locator('input[name=phone]').inputValue(),'626-889-1216');
