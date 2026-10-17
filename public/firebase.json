@@ -6,7 +6,7 @@
     ],
     "headers": [
       {
-        "source": "/{uniform-notifications.js,uniform.html,uniform.css,uniform-client.js,uniform-api.js,uniform-workflow.js,login.html,auth-confirm.css,flight-account.js,employee-profile-api.js,employee-phone.js,profile.html,profile.css,profile.js,dashboard-profile.js}",
+        "source": "/{uniform-notifications.js,uniform.html,uniform.css,uniform-client.js,uniform-api.js,uniform-workflow.js,login.html,auth-confirm.css,flight-account.js,employee-profile-api.js,employee-phone.js,portal-cards.css,info.html,info.js,profile.html,profile.css,profile.js,dashboard-profile.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {

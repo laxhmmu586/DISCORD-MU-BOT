@@ -1,0 +1,12 @@
+/* Preserve the original Personal Information card; align its neighboring column. */
+.profile-modules{grid-template-columns:minmax(0,430px) minmax(0,430px);gap:24px;align-items:start}
+.profile-side-panels{margin:12px 0 0;display:grid;gap:18px;align-content:start;min-width:0}
+.profile-side-panels>.profile-panel{margin:0;width:100%;min-width:0}
+.profile-side-panels .uniform-entry{align-items:center}.profile-side-panels .uniform-entry>span:last-child{flex:none}
+@media(max-width:1000px){.profile-modules{grid-template-columns:1fr}.profile-side-panels{margin-top:0}}
+/* Leave enough room for both email addresses and the original login ID. */
+@media(min-width:1101px){
+.employee-admin-page .employee-table{min-width:1280px}
+.employee-admin-page .employee-table .employee-col-code{width:4%}.employee-admin-page .employee-table .employee-col-position{width:7%}.employee-admin-page .employee-table .employee-col-name{width:9%}.employee-admin-page .employee-table .employee-col-nickname{width:5%}.employee-admin-page .employee-table .employee-col-eid{width:5%}.employee-admin-page .employee-table .employee-col-phone{width:7%}.employee-admin-page .employee-table .employee-col-email{width:12%}.employee-admin-page .employee-table .employee-col-company-email{width:12%}.employee-admin-page .employee-table .employee-col-discord{width:10%}.employee-admin-page .employee-table .employee-col-login{width:13%}.employee-admin-page .employee-table .employee-col-attach,.employee-admin-page .employee-table .employee-col-detach{width:4%}.employee-admin-page .employee-table .employee-col-spotter{width:3%}.employee-admin-page .employee-table .employee-col-order{width:5%}
+}
+@media(max-width:1100px){.employee-admin-page .employee-table td:nth-child(10){grid-column:1/-1}}
