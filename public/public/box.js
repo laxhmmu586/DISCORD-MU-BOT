@@ -39,7 +39,7 @@
   }
   function render(data) {
     text('sy-data', `SY: ${data.expectedPassengers ?? '—'} passengers + ${data.expectedInfants ?? '—'} Infant = ${data.expectedTotal ?? '—'}`);
-    text('fb-data', `FB: ${data.passengers} passengers + ${data.infants} Infant = ${data.total}`);
+    text('fb-data', `${data.source || 'FB'}: ${data.passengers} passengers + ${data.infants} Infant = ${data.total}`);
     text('highest-bn', `Highest BN: ${data.maxBn ?? '—'}`);
     const { groups, columns } = groupBns(data.bns, data.maxBn);
     const boxes = doc.getElementById('boxes');
@@ -115,13 +115,13 @@
       tile(`${group.start}–${group.end}`, group.count, group.low ? 'low' : '', column, row, group.absent);
     });
     const infantRow = occupied.has('1:5') ? Math.ceil(columns / 4) * 5 + 1 : 5;
-    tile('INFANT', data.infants, data.infants === data.expectedInfants ? 'infant' : 'infant low', 1, infantRow);
+    tile('INFANT', data.expectedInfants ?? '—', 'infant', 1, infantRow);
     occupied.add(`1:${infantRow}`);
     for (let row = 1; row <= 5; row++) for (let column = 1; column <= 4; column++) {
       if (occupied.has(`${column}:${row}`)) continue;
       const blank = doc.createElement('div'); blank.className = 'box empty'; blank.style.gridColumn = column; blank.style.gridRow = row; blank.setAttribute('aria-hidden','true'); boxes.append(blank);
     }
-    text('total', `${data.passengers} + ${data.infants} = ${data.total}`);
+    text('total', `${data.expectedPassengers ?? '—'} + ${data.expectedInfants ?? '—'} = ${data.expectedTotal ?? '—'}`);
     status.textContent = '';
     status.hidden = true;
     content.hidden = false;

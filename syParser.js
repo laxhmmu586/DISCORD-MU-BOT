@@ -1986,8 +1986,8 @@ function sortSYMatches(matches, preferredFlightNo = '') {
 
 
 
-// BOX counts only local passenger identities established by individual FB lookups.
-// Never use a connecting flight's BN, the largest BN, or scan rows as a count.
+// BND provides the authoritative BN snapshot; SY supplies the infant count.
+// Individual FB records provide a fallback when BND is unavailable.
 function findBoardingBoxInfo(log, flightNo, flightDate) {
   const sections = splitLogicalSections(log);
   const match = sections.map(section => ({ section, info: parseSYSection(section) }))
@@ -1998,11 +1998,23 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
   const operationDay = getYmdFromTimestamp(match.section.timestamp);
   const latest = new Map();
   const foundByFb = new Set();
+  let bnd = null;
   const chronological = sections.map((section, index) => ({ section, index }))
     .sort((a, b) => parseSectionTimestamp(a.section.timestamp) - parseSectionTimestamp(b.section.timestamp) || a.index - b.index);
   for (const { section } of chronological) {
     const text = section.content || '';
     if (!sectionMatchesFlightOperationDate(section, operationDay, flightNo)) continue;
+    const bndHeader = text.match(/^\s*(?:>\s*)?BND:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})LAX\b/im);
+    if (bndHeader && matchesSyFlightRecord(bndHeader[1], bndHeader[2], { flightNo, flightDate })) {
+      const range = text.match(/BOARDING NUMBER RANGE:\s*(\d{1,3})\s*--?\s*(\d{1,3})\b/i);
+      const deletion = text.match(/(\d+)\s+BOARDING NUMBER\(S\) DELETED:\s*\n((?:[ \t]*\d[^\n]*\n?)*)/i);
+      const removed = deletion ? (deletion[2].match(/\d+/g) || []).map(Number) : [];
+      const start = Number(range?.[1]), end = Number(range?.[2]);
+      if (range && start > 0 && end >= start && deletion && removed.length === Number(deletion[1])
+        && new Set(removed).size === removed.length && removed.every(bn => bn >= start && bn <= end)) {
+        bnd = { start, end, removed, ts: parseSectionTimestamp(section.timestamp) };
+      }
+    }
     const header = text.match(/\bPR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})[^\r\n]*/i);
     if (!header || !matchesSyFlightRecord(header[1], header[2], { flightNo, flightDate })) continue;
     const line = getPassengerRecordLine(text);
@@ -2012,7 +2024,7 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
     const bn = Number(localBn);
     const queryBn = text.match(/^>\s*FB\s*(\d{1,3})\s*$/im)?.[1];
     if (queryBn && Number(queryBn) === bn) foundByFb.add(bn);
-    latest.set(bn, { bn, offloaded: isDeletedPassengerLine(line),
+    latest.set(bn, { bn, ts: parseSectionTimestamp(section.timestamp), offloaded: isDeletedPassengerLine(line),
       infant: /^\s*INF-/im.test(text) || /\bINF1\/\d+\b/i.test(text) || /\bTKNE\/INF\d+/i.test(text) });
   }
   const records = [...latest.values()].filter(row => foundByFb.has(row.bn) && !row.offloaded).sort((a, b) => a.bn - b.bn);
@@ -2020,14 +2032,19 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
   const expectedPassengers = triple?.length === 3 ? triple.reduce((sum, value) => sum + Number(value), 0) : null;
   const expectedInfants = match.info.inf == null ? null : Number(match.info.inf);
   const maxBnMatch = match.section.content.match(/\bPOS\/GATE\s+BN\s*(\d{1,3})\b/i);
-  const maxBn = maxBnMatch ? Number(maxBnMatch[1]) : null;
-  const passengers = records.length;
-  const infants = records.filter(row => row.infant).length;
-  return { flightNo, flightDate, maxBn, bns: records.map(row => row.bn), infantBns: records.filter(row => row.infant).map(row => row.bn),
-    passengers, infants, total: passengers + infants, expectedPassengers, expectedInfants,
+  const maxBn = bnd ? bnd.end : maxBnMatch ? Number(maxBnMatch[1]) : null;
+  const activeBns = new Set(bnd
+    ? Array.from({ length: bnd.end - bnd.start + 1 }, (_, i) => bnd.start + i).filter(bn => !bnd.removed.includes(bn))
+    : records.map(row => row.bn));
+  const bns = [...activeBns].sort((a,b) => a-b);
+  const infantBns = records.filter(row => row.infant && activeBns.has(row.bn)).map(row => row.bn);
+  const passengers = bns.length;
+  const infants = bnd ? expectedInfants : infantBns.length;
+  return { flightNo, flightDate, maxBn, source: bnd ? 'BND' : 'FB', bns, infantBns,
+    passengers, infants, total: infants == null ? null : passengers + infants, expectedPassengers, expectedInfants,
     expectedTotal: expectedPassengers == null || expectedInfants == null ? null : expectedPassengers + expectedInfants,
     matched: expectedPassengers != null && expectedInfants != null && passengers === expectedPassengers && infants === expectedInfants
-      && (maxBn == null || records.every(row => row.bn <= maxBn)) };
+      && (maxBn == null || bns.every(bn => bn <= maxBn)) };
 }
 
 function findSYInfo(log, queryDate, options = {}) {
