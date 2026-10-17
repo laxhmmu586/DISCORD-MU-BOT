@@ -1,6 +1,8 @@
 const sharp=require('sharp');
 const formatEmployeePhone=require('./public/public/employee-phone');
 const normalize=value=>String(value||'').trim().toLowerCase();
+const restricted=user=>/^[^@\s]+@mu\.com$/i.test(normalize(user.email))&&normalize(user.email)!=='lake@mu.com';
+function requireProfileAccess(user){if(restricted(user))fail('Profile access is unavailable for this account.',403);}
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
 function createProfileStore(employees){
  const db=employees.db;
@@ -12,6 +14,7 @@ function createProfileStore(employees){
  const linked=user=>{const link=account(user.uid);return link&&employees.get().employees.find(row=>row.id===link.employee_id);};
  const profile=row=>({id:row.id,name:row.name,nickname:row.nickname||'',eid:row.eid||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
  function candidate(user,eid){
+  requireProfileAccess(user);
   if(user.provider==='google.com'&&!user.emailVerified)fail('A verified Google email is required.',403);
   const rows=employees.get().employees;
   const emailRows=rows.filter(row=>normalize(user.email)&&[normalize(row.email),normalize(row.loginId)].includes(normalize(user.email)));
@@ -25,6 +28,7 @@ function createProfileStore(employees){
   return row;
  }
  function status(user){
+  if(restricted(user))return {state:'external'};
   const row=linked(user);
   if(row)return {state:'ready',profile:profile(row),revision:employees.get().revision};
   const original=employees.get().employees.filter(item=>normalize(item.loginId)&&normalize(item.loginId)===normalize(user.email));
@@ -41,6 +45,7 @@ function createProfileStore(employees){
   db.prepare('INSERT OR REPLACE INTO employee_link_attempts VALUES(?,?,?)').run(user.uid,old&&now-old.started<900000?old.count+1:1,old&&now-old.started<900000?old.started:now);
  }
  const link=db.transaction((user,body)=>{
+  requireProfileAccess(user);
   if(linked(user))return status(user);
   if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
   if(body.revision!==employees.get().revision)fail('Employee details changed. Check your details again.',409);
@@ -49,6 +54,7 @@ function createProfileStore(employees){
   return status(user);
  });
  async function update(user,body){
+  requireProfileAccess(user);
   const row=linked(user);if(!row)fail('Link your employee account first.',403);
   if(Object.keys(body).some(key=>!['revision','nickname','phone','email','avatar'].includes(key)))fail('Only nickname, phone, email and avatar can be changed.');
   let avatar;
