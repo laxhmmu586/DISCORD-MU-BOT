@@ -71,6 +71,8 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
       const job = db.prepare('SELECT * FROM attendance_delivery WHERE reference=?').get(reference);
       if (!job || job.sent) return;
       const { record, history } = JSON.parse(job.data);
+      const employee = employees.get().employees.find(employee => employee.id === record.employeeId);
+      const notificationRecord = { ...record, employeeName: String(employee?.nickname || '').trim() || record.employeeName };
       let stage = 'channel lookup';
       try {
         const channel = await client.channels.fetch(channelId);
@@ -78,12 +80,12 @@ function registerAttendance(app, { employees, client, db, storage = createSheets
         let media;
         stage = 'image rendering';
         try {
-          const files = await renderCards(record, history);
+          const files = await renderCards(notificationRecord, history);
           media = { files };
         }
         catch (error) {
           console.error('Attendance Discord image fallback:', { reference, channelId, error: error.message });
-          media = { embeds: require('./attendanceDiscord').fallbackEmbeds(record, history) };
+          media = { embeds: require('./attendanceDiscord').fallbackEmbeds(notificationRecord, history) };
         }
         stage = 'message send';
         const discordId = String(employees.get().employees.find(employee => employee.id === record.employeeId)?.discordId || '').trim();
