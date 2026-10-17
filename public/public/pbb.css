@@ -48,14 +48,6 @@
 .employee-admin-page .employee-table td{padding:7px 5px}
 .employee-admin-page .employee-table input{min-width:0;box-sizing:border-box;width:100%}
 .employee-admin-page .employee-table input[type=checkbox]{width:20px}
-.employee-admin-page .employee-table th:nth-child(1){width:7%}
-.employee-admin-page .employee-table th:nth-child(2){width:14%}
-.employee-admin-page .employee-table th:nth-child(3){width:8%}
-.employee-admin-page .employee-table th:nth-child(4){width:11%}
-.employee-admin-page .employee-table th:nth-child(5){width:16%}
-.employee-admin-page .employee-table th:nth-child(6){width:13%}
-.employee-admin-page .employee-table th:nth-child(7),.employee-admin-page .employee-table th:nth-child(8),.employee-admin-page .employee-table th:nth-child(9){width:7%}
-.employee-admin-page .employee-table th:nth-child(10){width:10%}
 @media(max-width:1100px){
 .employee-admin-page .employee-table,.employee-admin-page .employee-table tbody{display:block}
 .employee-admin-page .employee-table thead{display:none}
@@ -68,16 +60,28 @@
 .employee-admin-page .employee-table .employee-move{min-width:44px;min-height:44px}
 }
 
-/* Public feedback nickname column. */
-.employee-admin-page .employee-table th:nth-child(1){width:6%}
-.employee-admin-page .employee-table th:nth-child(2){width:12%}
-.employee-admin-page .employee-table th:nth-child(3){width:10%}
-.employee-admin-page .employee-table th:nth-child(4){width:6%}
-.employee-admin-page .employee-table th:nth-child(5){width:10%}
-.employee-admin-page .employee-table th:nth-child(6){width:15%}
-.employee-admin-page .employee-table th:nth-child(7){width:12%}
-.employee-admin-page .employee-table th:nth-child(8),.employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table th:nth-child(10){width:5%}
-.employee-admin-page .employee-table th:nth-child(11){width:14%}
-@media(max-width:1100px){.employee-admin-page .employee-table td:nth-child(5){grid-column:auto}.employee-admin-page .employee-table td:nth-child(3),.employee-admin-page .employee-table td:nth-child(6){grid-column:1/-1}}
-.employee-admin-page .employee-table{min-width:1460px}.employee-admin-page .employee-table th:nth-child(8){width:15%}.employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table th:nth-child(10),.employee-admin-page .employee-table th:nth-child(11){width:5%}.employee-admin-page .employee-table th:nth-child(12){width:10%}@media(max-width:1100px){.employee-admin-page .employee-table{min-width:0}.employee-admin-page .employee-table td:nth-child(8){grid-column:1/-1}}
-.employee-admin-page .employee-table-wrap{overflow-x:auto}.employee-admin-page .employee-admin-shell{min-width:0}.employee-admin-page .employee-toolbar{flex-wrap:wrap}
+/* Named columns keep field widths aligned when employee metadata changes. */
+.employee-admin-page .employee-table{min-width:1200px}
+.employee-admin-page .employee-table .employee-col-code{width:5%}
+.employee-admin-page .employee-table .employee-col-position{width:8%}
+.employee-admin-page .employee-table .employee-col-name{width:10%}
+.employee-admin-page .employee-table .employee-col-nickname{width:6%}
+.employee-admin-page .employee-table .employee-col-eid{width:6%}
+.employee-admin-page .employee-table .employee-col-phone{width:9%}
+.employee-admin-page .employee-table .employee-col-email{width:14%}
+.employee-admin-page .employee-table .employee-col-discord{width:12%}
+.employee-admin-page .employee-table .employee-col-login{width:14%}
+.employee-admin-page .employee-table .employee-col-attach,.employee-admin-page .employee-table .employee-col-detach{width:4%}
+.employee-admin-page .employee-table .employee-col-spotter{width:3%}
+.employee-admin-page .employee-table .employee-col-order{width:5%}
+.employee-admin-page .employee-table-wrap{overflow-x:auto}
+.employee-admin-page .employee-admin-shell{min-width:0}
+.employee-admin-page .employee-toolbar{flex-wrap:wrap}
+.employee-admin-page .employee-table th{white-space:normal;overflow-wrap:anywhere}
+.employee-admin-page .employee-table input{padding:10px 8px}
+@media(max-width:1100px){
+.employee-admin-page .employee-table{min-width:0}
+.employee-admin-page .employee-table colgroup{display:none}
+.employee-admin-page .employee-table td:nth-child(2),.employee-admin-page .employee-table td:nth-child(5){grid-column:auto}
+.employee-admin-page .employee-table td:nth-child(3),.employee-admin-page .employee-table td:nth-child(7),.employee-admin-page .employee-table td:nth-child(8),.employee-admin-page .employee-table td:nth-child(9){grid-column:1/-1}
+}
