@@ -11,7 +11,7 @@
   button.onclick=()=>{menu.hidden=!menu.hidden;button.setAttribute('aria-expanded',String(!menu.hidden));};
   document.addEventListener('click',event=>{if(!host.contains(event.target))close();});
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
-  const profileButton=document.createElement('button');profileButton.type='button';profileButton.textContent='PROFILE';profileButton.onclick=()=>location.assign('/profile.html');host.querySelector('#change-password').before(profileButton);
+  const profileButton=document.createElement('button');profileButton.type='button';profileButton.hidden=true;profileButton.textContent='PROFILE';profileButton.onclick=()=>location.assign('/profile.html');host.querySelector('#change-password').before(profileButton);
   const avatar=document.createElement('span');avatar.className='flight-user-avatar';avatar.setAttribute('aria-hidden','true');host.querySelector('svg').replaceWith(avatar);
   style.textContent+='.flight-user-avatar{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:#254965;color:#fff;font-size:13px;font-weight:700;border:1px solid #84b1d4;overflow:hidden}.flight-user-avatar img{width:100%;height:100%;object-fit:cover}';
   function renderProfile(profile,user=auth?.currentUser){
@@ -20,6 +20,10 @@
   }
   window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
   auth?.onAuthStateChanged(async user=>{
+    const allowed=Boolean(user)&&(!/^[^@\s]+@mu\.com$/i.test(user.email||'')||(user.email||'').trim().toLowerCase()==='lake@mu.com');
+    profileButton.hidden=!allowed;
+    document.querySelectorAll('a[href="/profile.html"]').forEach(link=>{link.hidden=!allowed;});
+    if(user&&!allowed&&location.pathname==='/profile.html'){location.replace('/flights.html');return;}
     renderProfile(null,user);if(!user)return;
     try{
       const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/profile-api',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});const result=await response.json();
