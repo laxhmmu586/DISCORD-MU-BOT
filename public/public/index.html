@@ -4513,7 +4513,6 @@
           </div>
           <button type="button" onclick="location.assign('/profile.html')">Profile</button>
           <button id="change-password" type="button">Change Password</button>
-          <button id="employee-admin-link" type="button" hidden>▤ Employee Records</button>
           <button id="logout" type="button">Logout</button>
         </div>
       </div>
@@ -9244,9 +9243,6 @@
         returnToLogin();
       } else {
         auth.onAuthStateChanged(async (user) => {
-          const employeeEntry=document.querySelector("#employee-admin-link");
-          employeeEntry.hidden=!["lake@mu.com","tamsun@hm.com","nextweek1216@gmail.com","tamsun10@gmail.com"].includes(user?.email?.toLowerCase());
-          employeeEntry.onclick=()=>location.assign("/admin.html");
           if (!user) {
             window.location.replace(loginUrl());
             return;
