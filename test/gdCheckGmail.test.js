@@ -12,11 +12,13 @@ function mailbox(text, subject = 'gd-MU586-11OCT2026', filename = 'crew.pdf', ex
   let query;
   const context = {
     Buffer,
+    xmlDecode: text => text,
     envFirst: () => '', gmailSearchYmd: () => '2026/10/11',
     buildGdCheckDetailText: () => '',
     collectGmailParts: (payload, predicate) => payload.parts.filter(predicate),
     isGdPdfAttachment: name => name.endsWith('.pdf'),
     extractGdPdfText: extractor, compareGdPdfText,
+    isSpreadsheetAttachment: name => /\.(csv|xlsx|xls)$/i.test(name),
     nextDayInfoGmailErrorReason: err => { throw err; },
     getNextDayInfoGmailClient: () => ({ userId: 'me', authMode: 'oauth', gmail: { users: { messages: {
       list: async ({ q }) => { query = q; return { data: { messages: [{ id: 'gd' }] } }; },
@@ -27,6 +29,9 @@ function mailbox(text, subject = 'gd-MU586-11OCT2026', filename = 'crew.pdf', ex
     } } } })
   };
   vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf('function stripSpreadsheetCellText('), source.indexOf('function extractXlsxColumnBText(')), context);
+  context.extractSpreadsheetText = context.extractDelimitedColumnBText;
+  vm.runInContext(source.slice(source.indexOf('function compareGdSpreadsheetCrew('), source.indexOf('function buildGdCheckDetailText(')), context);
   vm.runInContext(source.slice(source.indexOf('async function getGdCheckEmail('), source.indexOf('async function hasNextDayInfoEmail(')), context);
   return { read: () => context.getGdCheckEmail('MU586', '11OCT26', [{ passport: 'E12345678' }], '', expectedFlight), query: () => query };
 }
@@ -46,10 +51,41 @@ test('sender candidate still requires all CWD passport numbers to match', async 
 });
 
 
-test('Excel attachments cannot pass the PDF check', async () => {
-  const result = await mailbox(declaration('E12345678'), 'FYI', 'crew.csv').read();
+test('unidentified spreadsheets cannot pass the fallback check', async () => {
+  const result = await mailbox('1,E12345678', 'FYI', 'crew.csv').read();
   assert.equal(result.complete, false);
   assert.match(result.reason, /no PDF/);
+});
+
+const sheet = passport => ({ filename: 'crew.csv', body: { data: Buffer.from(`1,${passport}`).toString('base64url') } });
+
+test('unreadable PDF falls back to spreadsheet B column', async () => {
+  const result = await mailbox('broken', 'GD for MU586/11OCT26', 'bad.pdf', async () => { throw new Error('no readable text'); }, [sheet('E12345678')]).read();
+  assert.equal(result.complete, true);
+  assert.equal(result.attachmentType, 'Spreadsheet B column');
+  assert.match(result.fallbackReason, /could not be read/);
+  assert.equal(result.checkedAttachments.length, 2);
+});
+
+test('missing PDF falls back to legacy spreadsheet check for the correct flight and date', async () => {
+  const result = await mailbox('1,E12345678', 'gd-MU586-11OCT2026', 'crew.csv').read();
+  assert.equal(result.complete, true);
+  assert.match(result.fallbackReason, /No PDF/);
+  assert.equal((await mailbox('1,E12345678', 'GD for MU578/11OCT26', 'crew.csv').read()).complete, false);
+  assert.equal((await mailbox('1,E12345678', 'GD for MU586/12OCT26', 'crew.csv').read()).complete, false);
+});
+
+test('readable PDF mismatch cannot be overridden by matching Excel', async () => {
+  const result = await mailbox(declaration('E87654321'), 'GD for MU586/11OCT26', 'crew.pdf', async buffer => buffer.toString(), [sheet('E12345678')]).read();
+  assert.equal(result.complete, false);
+  assert.equal(result.attachmentType, 'PDF');
+  assert.equal(result.checkedAttachments.length, 1);
+});
+
+test('fallback requires exact passport tokens in column B', async () => {
+  for (const text of ['1,E123456789', 'E12345678,other', '1,other']) {
+    assert.equal((await mailbox(text, 'GD for MU586/11OCT26', 'crew.csv').read()).complete, false);
+  }
 });
 
 test('matching passports cannot pass a mismatched flight header', async () => {

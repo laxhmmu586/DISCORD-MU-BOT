@@ -2629,10 +2629,23 @@ function isSpreadsheetAttachment(filename = '', mimeType = '') {
 }
 
 
+function compareGdSpreadsheetCrew(crew, text) {
+  const gdPassports = String(text || '').toUpperCase().match(/\b[A-Z]{1,3}\d{5,9}\b/g) || [];
+  const passports = new Set(gdPassports);
+  const missing = crew.filter(row => !row.passport || !passports.has(String(row.passport).trim().toUpperCase()));
+  const expected = crew.map(row => String(row.passport || '').trim().toUpperCase());
+  const duplicateCrew = new Set(expected).size !== expected.length;
+  const complete = crew.length > 0 && !missing.length && !duplicateCrew;
+  return { complete, matched: crew.length - missing.length, total: crew.length, missing,
+    extraPassports: [], gdPassports, fields: [],
+    reason: complete ? '' : 'Spreadsheet B column does not match every unique CWD passport.' };
+}
+
 function buildGdCheckDetailText(result) {
   const lines = [
     `GD Result: ${result.complete ? 'MATCHED' : 'NOT MATCHED'}`,
     `Crew Matched: ${result.matched || 0}/${result.total || 0}`,
+    result.fallbackReason ? `Excel fallback: ${result.fallbackReason}; checks CWD passports in column B only (SY flight header not verified).` : '',
     ...(result.fields || []).map(field => `${field.key}: SY=${field.expected || '(missing)'} | PDF=${field.actual || '(missing)'} | ${field.matched ? 'MATCHED' : 'NOT MATCHED'}`),
     result.reason ? `Reason: ${result.reason}` : '',
     `Expected Subject: ${result.subject || ''}`,
@@ -2717,78 +2730,97 @@ async function getGdCheckEmail(flightNo, subjectDate, crew = [], expectedSubject
     let bestResult = null;
     let latestSentAt = '';
     let messagesWithPdf = 0;
-    for (const message of messages) {
-      const full = await gmail.users.messages.get({
-        userId,
-        id: message.id,
-        format: 'full',
-        fields: 'id,internalDate,payload(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data))))'
-      });
-      const sentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
-      const sentAt = sentAtDate ? sentAtDate.toISOString() : '';
-      if (!latestSentAt && sentAt) latestSentAt = sentAt;
-      const gdAttachmentParts = collectGmailParts(full.data.payload, (part) => (
-        Boolean(part.body?.attachmentId || part.body?.data)
-          && isGdPdfAttachment(part.filename || '', part.mimeType || '')
-      ));
-      if (!gdAttachmentParts.length) continue;
-      messagesWithPdf += 1;
-      for (const part of gdAttachmentParts) {
-        let data = part.body?.data || '';
-        if (part.body?.attachmentId) {
-          const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || message.id, id: part.body.attachmentId });
-          data = attachment.data.data || '';
-        }
-        const attachmentBuffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-        const attachmentType = 'PDF';
-        let comparison;
-        try {
-          const attachmentText = await extractGdPdfText(attachmentBuffer);
-          comparison = compareGdPdfText(attachmentText, crew, expectedFlight);
-        } catch (err) {
-          comparison = { complete: false, matched: 0, total: crew.length, missing: [], extraPassports: [], gdPassports: [], fields: [], reason: `PDF could not be read: ${err.message}` };
-        }
-        checkedAttachments.push({
-          name: part.filename || 'GD PDF attachment',
-          type: attachmentType,
-          matched: comparison.matched,
-          total: comparison.total,
-          complete: comparison.complete,
-          extractedPassports: comparison.gdPassports.length,
-          sentAt
-        });
-        const candidate = {
-          found: true,
-          complete: comparison.complete,
-          subject,
-          detailText: '',
-          reason: comparison.reason,
-          query: q,
-          authMode,
+    let readablePdf = false;
+    const messageCache = new Map();
+    for (const mode of ['PDF', 'Spreadsheet B column']) {
+      if (mode !== 'PDF' && readablePdf) break;
+      for (const message of messages) {
+        const full = messageCache.get(message.id) || await gmail.users.messages.get({
           userId,
-          searchDate,
-          attachmentName: part.filename || `${attachmentType} attachment`,
-          attachmentType,
-          sentAt,
-          checkedAttachments,
-          ...comparison
-        };
-        if (candidate.complete) {
-          candidate.detailText = buildGdCheckDetailText(candidate);
-          return candidate;
+          id: message.id,
+          format: 'full',
+          fields: 'id,internalDate,payload(headers,filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data),parts(filename,mimeType,body(attachmentId,data))))'
+        });
+        messageCache.set(message.id, full);
+        if (mode !== 'PDF') {
+          const emailSubject = full.data.payload?.headers?.find(header => header.name.toLowerCase() === 'subject')?.value || '';
+          const compactSubject = emailSubject.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const dateMatch = normalizedSubjectDate.match(/^(\d{2}[A-Z]{3})(?:20)?(\d{2})$/);
+          const dates = dateMatch ? [`${dateMatch[1]}${dateMatch[2]}`, `${dateMatch[1]}20${dateMatch[2]}`] : [];
+          if (!dates.some(date => new RegExp(`${normalizedFlightNo}${date}(?![0-9])`).test(compactSubject))) continue;
         }
-        if (!bestResult || candidate.matched > bestResult.matched) bestResult = candidate;
+        const sentAtDate = Number(full.data.internalDate) ? new Date(Number(full.data.internalDate)) : null;
+        const sentAt = sentAtDate ? sentAtDate.toISOString() : '';
+        if (!latestSentAt && sentAt) latestSentAt = sentAt;
+        const gdAttachmentParts = collectGmailParts(full.data.payload, (part) => (
+          Boolean(part.body?.attachmentId || part.body?.data)
+            && (mode === 'PDF' ? isGdPdfAttachment : isSpreadsheetAttachment)(part.filename || '', part.mimeType || '')
+        ));
+        if (!gdAttachmentParts.length) continue;
+        if (mode === 'PDF') messagesWithPdf += 1;
+        for (const part of gdAttachmentParts) {
+          const attachmentType = mode;
+          let comparison;
+          try {
+            let data = part.body?.data || '';
+            if (part.body?.attachmentId) {
+              const attachment = await gmail.users.messages.attachments.get({ userId, messageId: full.data.id || message.id, id: part.body.attachmentId });
+              data = attachment.data.data || '';
+            }
+            const attachmentBuffer = Buffer.from(String(data).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+            if (mode === 'PDF') {
+              const attachmentText = await extractGdPdfText(attachmentBuffer);
+              readablePdf = true;
+              comparison = compareGdPdfText(attachmentText, crew, expectedFlight);
+            } else {
+              comparison = compareGdSpreadsheetCrew(crew, extractSpreadsheetText(attachmentBuffer));
+            }
+          } catch (err) {
+            comparison = { complete: false, matched: 0, total: crew.length, missing: [], extraPassports: [], gdPassports: [], fields: [], reason: `${mode} could not be read: ${err.message}` };
+          }
+          checkedAttachments.push({
+            name: part.filename || 'GD PDF attachment',
+            type: attachmentType,
+            matched: comparison.matched,
+            total: comparison.total,
+            complete: comparison.complete,
+            extractedPassports: comparison.gdPassports.length,
+            sentAt
+          });
+          const candidate = {
+            found: true,
+            complete: comparison.complete,
+            subject,
+            detailText: '',
+            reason: comparison.reason,
+            query: q,
+            authMode,
+            userId,
+            searchDate,
+            attachmentName: part.filename || `${attachmentType} attachment`,
+            attachmentType,
+            fallbackReason: mode === 'PDF' ? '' : (messagesWithPdf ? 'PDF attachments could not be read' : 'No PDF attachment found'),
+            sentAt,
+            checkedAttachments,
+            ...comparison
+          };
+          if (candidate.complete) {
+            candidate.detailText = buildGdCheckDetailText(candidate);
+            return candidate;
+          }
+          if (!bestResult || candidate.matched > bestResult.matched) bestResult = candidate;
+        }
       }
     }
     if (bestResult) {
       bestResult.checkedAttachments = checkedAttachments;
       bestResult.reason = checkedAttachments.length > 1
-        ? `No GD PDF matched all required checks; showing the closest attachment. ${bestResult.reason}`
+        ? `No GD attachment matched all required checks; showing the closest attachment. ${bestResult.reason}`
         : bestResult.reason;
       bestResult.detailText = buildGdCheckDetailText(bestResult);
       return bestResult;
     }
-    const result = empty({ reason: messagesWithPdf ? 'GD PDF attachments were found but could not be read.' : 'GD email thread was found, but no PDF attachment was found in the matched messages.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
+    const result = empty({ reason: messagesWithPdf ? 'GD PDF attachments were found but could not be read; no eligible Excel fallback was found.' : 'GD email thread was found, but no PDF attachment or eligible Excel fallback was found in the matched messages.', query: q, authMode, userId, searchDate, sentAt: latestSentAt });
     result.detailText = buildGdCheckDetailText(result);
     return result;
   } catch (err) {
