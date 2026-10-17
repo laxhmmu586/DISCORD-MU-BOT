@@ -1,0 +1,50 @@
+const crypto=require('node:crypto');
+const {ADMIN_EMAILS}=require('./employees');
+const POSITIONS=['Manager','Supervisor','Lead','Agent'];
+const ITEM_NAMES=['Blazer','Blazer/Shirt','Trouser','Skirt','Dress','Name Tag'];
+const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
+const emailOK=value=>typeof value==='string'&&/^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]+$/.test(value);
+const localDate=date=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
+function createUniformStore({employees,profiles,now=()=>new Date()}){
+ const db=employees.db;
+ db.exec(`CREATE TABLE IF NOT EXISTS uniform_workflow(id INTEGER PRIMARY KEY CHECK(id=1),data TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS uniform_requests(id TEXT PRIMARY KEY,data TEXT NOT NULL,pdf BLOB,delivered INTEGER NOT NULL DEFAULT 0);`);
+ db.prepare('INSERT OR IGNORE INTO uniform_workflow VALUES(1,?)').run(JSON.stringify({revision:1,stages:['Supervisor','Manager']}));
+ const workflow=()=>JSON.parse(db.prepare('SELECT data FROM uniform_workflow WHERE id=1').get().data);
+ const employee=user=>{const row=profiles.linked(user);if(!row)fail('Link your employee profile first.',403);return row;};
+ const get=id=>{const row=db.prepare('SELECT data FROM uniform_requests WHERE id=?').get(id);if(!row)fail('Request not found.',404);return JSON.parse(row.data);};
+ const put=r=>{db.prepare('UPDATE uniform_requests SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
+ const canReview=(r,e)=>r.status==='pending'&&r.stages[r.step]===e.position&&r.employee.id!==e.id&&!r.approvals.some(a=>a.employeeId===e.id);
+ const visible=(r,e)=>r.employee.id===e.id||canReview(r,e)||r.approvals.some(a=>a.employeeId===e.id)||r.manager?.id===e.id;
+ const view=(r,e)=>({...r,canReview:canReview(r,e),delivery: r.status==='approved'?(db.prepare('SELECT delivered FROM uniform_requests WHERE id=?').get(r.id).delivered?'sent':'pending'):undefined});
+ return {db,workflow,employee,get,canReview,
+  list(user){const e=employee(user);return {position:e.position||'Agent',workflow:workflow(),requests:db.prepare('SELECT data FROM uniform_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,e)).map(r=>view(r,e))};},
+  read(user,id){const e=employee(user),r=get(id);if(!visible(r,e))fail('Request access denied.',403);return view(r,e);},
+  saveWorkflow:db.transaction((user,body)=>{if(!ADMIN_EMAILS.has(user.email.toLowerCase()))fail('Administrator access required.',403);const current=workflow();if(body.revision!==current.revision)fail('Workflow changed. Reload before saving.',409);const stages=body.stages;if(!Array.isArray(stages)||!stages.length||stages.length>5||stages.at(-1)!=='Manager'||stages.some(s=>!POSITIONS.includes(s))||stages.some((s,i)=>i&&stages[i-1]===s))fail('Choose 1–5 approval stages, ending with Manager, without adjacent duplicate positions.');const next={revision:current.revision+1,stages,updatedAt:now().toISOString(),updatedBy:user.email};db.prepare('UPDATE uniform_workflow SET data=? WHERE id=1').run(JSON.stringify(next));return next;}),
+  create:db.transaction((user,body)=>{const e=employee(user);if(!e.name||!e.eid||!e.phone)fail('Complete your full name, employee ID and phone number in Profile first.');if(!/^[0-9a-f-]{36}$/i.test(body.requestId||''))fail('Invalid request reference.');const prior=db.prepare('SELECT data FROM uniform_requests WHERE id=?').get(body.requestId);if(prior){const r=JSON.parse(prior.data);if(r.employee.id!==e.id)fail('Request reference already used.',409);return view(r,e);}
+   if(!['damage','annual','size','account'].includes(body.reason))fail('Select a replacement reason.');if(!Array.isArray(body.items)||body.items.length!==6)fail('Complete the uniform table.');
+   const items=body.items.map((row,i)=>{const size=String(row.size??'').trim();if(size.length>30||/[^\x20-\x7e]/.test(size))fail('Use a size of up to 30 English characters.');const result={name:ITEM_NAMES[i],size};for(const key of ['pieces','order','reusable','nonReusable']){const value=row[key];if(value===''||value==null)result[key]='';else if(!Number.isInteger(value)||value<0||value>99)fail('Quantities must be whole numbers from 0 to 99.');else result[key]=value;}if(['pieces','order','reusable','nonReusable'].some(k=>result[k]>0)&&!size&&i!==5)fail('Enter a size for each selected garment.');return result;});const accessories={};for(const key of ['tie','scarf']){const value=body[key];if(value===''||value==null)accessories[key]='';else if(!Number.isInteger(value)||value<0||value>99)fail('Tie and scarf quantities must be whole numbers from 0 to 99.');else accessories[key]=value;}if(!items.some(row=>row.pieces>0||row.order>0)&&!accessories.tie&&!accessories.scarf)fail('Request at least one uniform item.');
+   const r={id:body.requestId,date:localDate(now()),submittedAt:now().toISOString(),employee:{id:e.id,name:e.name,eid:e.eid,phone:e.phone},reason:body.reason,items,...accessories,stages:[...workflow().stages],workflowRevision:workflow().revision,step:0,status:'pending',revision:1,approvals:[]};db.prepare('INSERT INTO uniform_requests(id,data) VALUES(?,?)').run(r.id,JSON.stringify(r));return view(r,e);}),
+  decide:db.transaction((user,id,body)=>{const e=employee(user),r=get(id);if(!canReview(r,e))fail('This request is not awaiting your approval, or you already participated.',403);if(body.revision!==r.revision)fail('Request changed. Refresh before approving.',409);if(!['approve','reject'].includes(body.action))fail('Choose approve or reject.');const note=String(body.note||'').trim();if(note.length>1000||body.action==='reject'&&!note)fail('Enter a rejection reason (up to 1,000 characters).');const final=body.action==='approve'&&r.step===r.stages.length-1;if(final&&!emailOK(e.email))fail('Add a valid Manager contact email in Profile before final approval.');r.approvals.push({employeeId:e.id,name:e.name,position:e.position,action:body.action,note,at:now().toISOString()});if(body.action==='reject')r.status='rejected';else if(final){r.status='approved';r.manager={id:e.id,name:e.name,email:e.email};r.approvedAt=now().toISOString();}else r.step++;r.revision++;return view(put(r),e);})
+ };
+}
+async function sendUniformEmail(record,pdf){
+ const {gmail,userId}=require('./googleDrive').getNextDayInfoGmailClient(),boundary='uniform_'+record.id;
+ const raw=[`To: ${record.manager.email}`,'Subject: Approved Uniform Request - '+record.employee.eid,'MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${boundary}"`,'',`--${boundary}`,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',Buffer.from(`Uniform request for ${record.employee.name} (${record.employee.eid}) has been approved. The completed original form is attached.`).toString('base64'),`--${boundary}`,'Content-Type: application/pdf',`Content-Disposition: attachment; filename="Uniform-${record.employee.eid}-${record.date}.pdf"`,'Content-Transfer-Encoding: base64','',pdf.toString('base64').match(/.{1,76}/g).join('\r\n'),`--${boundary}--`].join('\r\n');
+ const sent=await gmail.users.messages.send({userId,requestBody:{raw:Buffer.from(raw).toString('base64url')}},{timeout:30000,retry:false});if(!sent.data.id)throw Error('No Gmail delivery acknowledgement.');
+}
+function registerUniform(app,{employees,profiles,authenticate,send=sendUniformEmail,buildPdf=require('./uniformPdf').buildUniformPdf,now}){
+ const store=createUniformStore({employees,profiles,now}),active=new Map();
+ async function deliver(id){if(active.has(id))return active.get(id);const job=(async()=>{const row=store.db.prepare('SELECT * FROM uniform_requests WHERE id=?').get(id),r=JSON.parse(row.data);if(r.status!=='approved'||row.delivered)return;let pdf=row.pdf;if(!pdf){pdf=await buildPdf(r);store.db.prepare('UPDATE uniform_requests SET pdf=? WHERE id=?').run(pdf,id);}await send(r,pdf);store.db.prepare('UPDATE uniform_requests SET delivered=1 WHERE id=?').run(id);})().finally(()=>active.delete(id));active.set(id,job);return job;}
+ app.use('/uniform-api',require('express').json({limit:'16kb'}),async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.uniformUser=await authenticate(req);next();}catch{res.status(401).json({error:'Sign in required.'});}});
+ const handle=fn=>async(req,res)=>{try{const result=await fn(req,res);if(!res.headersSent)res.json(result);}catch(e){if(!res.headersSent)res.status(e.status||400).json({error:e.message});}};
+ app.get('/uniform-api',handle(req=>store.list(req.uniformUser)));
+ app.get('/uniform-api/workflow',handle(req=>{if(!ADMIN_EMAILS.has(req.uniformUser.email.toLowerCase()))fail('Administrator access required.',403);return store.workflow();}));
+ app.post('/uniform-api/workflow',handle(req=>store.saveWorkflow(req.uniformUser,req.body)));
+ app.post('/uniform-api',handle(req=>store.create(req.uniformUser,req.body)));
+ app.post('/uniform-api/:id/decision',handle(req=>{const r=store.decide(req.uniformUser,req.params.id,req.body);if(r.status==='approved')deliver(r.id).catch(e=>console.error('Uniform PDF delivery pending:',e.message));return r;}));
+ app.get('/uniform-api/:id/pdf',handle(async(req,res)=>{const r=store.read(req.uniformUser,req.params.id);if(r.status!=='approved')fail('PDF is available after Manager approval.',409);let pdf=store.db.prepare('SELECT pdf FROM uniform_requests WHERE id=?').get(r.id).pdf;if(!pdf){pdf=await buildPdf(r);store.db.prepare('UPDATE uniform_requests SET pdf=? WHERE id=?').run(pdf,r.id);}res.type('pdf').set('Content-Disposition',`attachment; filename="Uniform-${r.employee.eid}-${r.date}.pdf"`).send(pdf);}));
+ const retry=async()=>{for(const row of store.db.prepare("SELECT id FROM uniform_requests WHERE delivered=0 AND json_extract(data,'$.status')='approved' LIMIT 10").all())await deliver(row.id).catch(e=>console.error('Uniform delivery retry:',e.message));};
+ const timer=setInterval(retry,60000);timer.unref();retry();return {store,deliver,close:()=>clearInterval(timer)};
+}
+module.exports={createUniformStore,registerUniform,sendUniformEmail,POSITIONS,ITEM_NAMES};

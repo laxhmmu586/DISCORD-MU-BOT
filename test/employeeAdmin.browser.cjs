@@ -16,7 +16,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  await page.goto('http://localhost/admin.html');await page.locator('#employee-panel').waitFor({state:'visible'});
  assert.equal(await page.locator('#profile-admin-nav').isVisible(),true);assert.equal(await page.locator('#profile-admin-nav').getAttribute('aria-current'),'page');
  fs.mkdirSync('.verification/profile',{recursive:true});for(const width of [1440,390]){await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Admin overflow at '+width);await page.screenshot({path:'.verification/profile/admin-'+width+'.png',fullPage:true});}
- const headers=await page.locator('thead th').allTextContents();assert.equal(headers[6],'DISCORD ID');assert.equal(headers[7],'ORIGINAL LOGIN ID');
+ const headers=await page.locator('thead th').allTextContents();assert.equal(headers[7],'DISCORD ID');assert.equal(headers[8],'ORIGINAL LOGIN ID');
  assert.equal(await page.locator('input[name=loginId]').inputValue(),'legacy@mu.com');
  assert.equal(await page.locator('input[name=email]').inputValue(),'contact@gmail.com');
  assert.equal(await page.locator('input[name=phone]').inputValue(),'626-889-1216');

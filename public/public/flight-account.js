@@ -1,6 +1,7 @@
 (() => {
   const host=document.querySelector('#flight-account');
   if(!host) return;
+  const uniformNotifications=document.createElement('script');uniformNotifications.src='/uniform-notifications.js';document.head.append(uniformNotifications);
   const auth=window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
   host.innerHTML=`<button class="login-button" type="button" aria-label="Open login menu" aria-expanded="false" aria-controls="flight-login-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.5a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z"/><path d="M4.25 20.25a8.25 8.25 0 0 1 15.5 0"/></svg><span class="flight-account-name">Account</span><span aria-hidden="true">⌄</span></button><div class="login-menu" id="flight-login-menu" hidden><div class="login-user"><span>LOGGED IN AS</span><strong id="current-user">Checking session…</strong></div><button id="change-password" type="button">CHANGE PASSWORD</button><button id="logout" type="button">LOGOUT</button></div>`;
   const style=document.createElement('style');
