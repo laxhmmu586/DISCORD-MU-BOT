@@ -7,7 +7,7 @@
  }
  window.loadDashboardProfile=async user=>{
   render(null,user);
-  try{const result=await employeeProfileApi();if(result.state!=='ready'&&user.providerData.some(item=>item.providerId==='google.com')){location.replace('/login.html');return false;}if(result.profile)render(result.profile,user);return true;}
-  catch{if(user.providerData.some(item=>item.providerId==='google.com')){location.replace('/login.html');return false;}return true;}
+  try{const result=await employeeProfileApi();if(result.state!=='ready'&&!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')){location.replace('/login.html');return false;}if(result.profile)render(result.profile,user);return true;}
+  catch{if(!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')){location.replace('/login.html');return false;}return true;}
  };
 })();

@@ -384,7 +384,7 @@
         async function finishLogin(user){
           if(busy||!user)return;busy=true;
           try{
-            if(user.providerData.some(item=>item.providerId==='google.com')){
+            if(!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')){
               const data=await employeeProfileApi();if(data.state!=='ready'){showLink(data);return;}
             }
             allowAppEntry();window.location.replace(getRedirectTarget());
