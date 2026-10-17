@@ -11,7 +11,23 @@
   button.onclick=()=>{menu.hidden=!menu.hidden;button.setAttribute('aria-expanded',String(!menu.hidden));};
   document.addEventListener('click',event=>{if(!host.contains(event.target))close();});
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
-  auth?.onAuthStateChanged(user=>{const label=user?.email||'Account';host.querySelector('#current-user').textContent=label;host.querySelector('.flight-account-name').textContent=label;host.querySelector('#employee-admin-link').hidden=!['lake@mu.com','tamsun@hm.com'].includes(user?.email?.toLowerCase());});
+  const profileButton=document.createElement('button');profileButton.type='button';profileButton.textContent='PROFILE';profileButton.onclick=()=>location.assign('/profile.html');host.querySelector('#change-password').before(profileButton);
+  const avatar=document.createElement('span');avatar.className='flight-user-avatar';avatar.setAttribute('aria-hidden','true');host.querySelector('svg').replaceWith(avatar);
+  style.textContent+='.flight-user-avatar{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:#254965;color:#fff;font-size:13px;font-weight:700;border:1px solid #84b1d4;overflow:hidden}.flight-user-avatar img{width:100%;height:100%;object-fit:cover}';
+  function renderProfile(profile,user=auth?.currentUser){
+    const label=profile?.nickname||profile?.name||user?.displayName||'Account';host.querySelector('#current-user').textContent=label;host.querySelector('.flight-account-name').textContent=label;
+    avatar.replaceChildren();if(profile?.avatar){const img=document.createElement('img');img.alt='';img.src=profile.avatar;avatar.append(img);}else avatar.textContent=label.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
+  }
+  window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
+  auth?.onAuthStateChanged(async user=>{
+    renderProfile(null,user);host.querySelector('#employee-admin-link').hidden=!['lake@mu.com','tamsun@hm.com'].includes(user?.email?.toLowerCase());if(!user)return;
+    try{
+      const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/profile-api',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});const result=await response.json();
+      if(!response.ok)throw Error(result.error||'Unable to load account.');
+      if(result.state==='ready'||(result.profile&&!user.providerData.some(item=>item.providerId==='google.com')))renderProfile(result.profile,user);
+      else if(user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');
+    }catch(error){if(user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');}
+  });
   host.querySelector('#employee-admin-link').onclick=()=>location.assign('/admin.html');
   async function logout(){
     window.setMufcFlight?.(null);

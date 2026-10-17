@@ -267,6 +267,7 @@
           </button>
         </label>
         <button class="login-button" type="submit">Login</button>
+        <button class="login-button" id="google-login" type="button" style="margin-top:12px;background:#fff;color:#172b46" disabled>Continue with Google</button>
         <p class="login-status is-info" role="status" aria-live="polite">Connecting to Firebase...</p>
       </form>
       <div class="login-signature" aria-hidden="true"><b>MUFC</b><span>OPERATION<br>SAFETY<br>EFFICIENCY<br>TEAMWORK</span></div>
@@ -275,6 +276,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
+    <script src="/employee-profile-api.js"></script>
     <script>
       const form = document.querySelector("#login-form");
       const emailInput = document.querySelector("#email");
@@ -352,6 +354,7 @@
 
       function enableForm() {
         submitButton.disabled = false;
+        document.querySelector('#google-login').disabled = false;
         setStatus("Ready to sign in.");
       }
 
@@ -363,31 +366,67 @@
         const persistenceReady = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
           .catch(() => auth.setPersistence(firebase.auth.Auth.Persistence.SESSION))
           .catch(() => {});
-        auth.onAuthStateChanged((user) => {
-          if (user) {
-            allowAppEntry();
-            window.location.replace(getRedirectTarget());
-            return;
-          }
-          enableForm();
-        });
+        const dialog=document.createElement('dialog');
+        dialog.style.cssText='background:#0d2036;color:#eef5ff;border:1px solid #456787;border-radius:18px;padding:28px;width:min(460px,90vw)';
+        dialog.innerHTML='<form id="link-form"><h2>Confirm your information / 确认资料</h2><p id="link-help"></p><label id="eid-label">Employee ID / EID<input id="link-eid" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}" required style="display:block;width:100%;padding:12px;margin:12px 0"></label><dl id="link-details" style="line-height:1.8;overflow-wrap:anywhere"></dl><p id="link-status" role="status"></p><button class="login-button" id="link-submit" type="submit">Find employee</button><button class="login-button" id="link-cancel" type="button" style="margin-top:10px">Cancel / Sign out</button></form>';
+        document.body.append(dialog);let pending,busy=false;
+        function showLink(data){
+          pending=data;dialog.querySelector('#eid-label').hidden=data.state!=='needs_eid';dialog.querySelector('#link-eid').required=data.state==='needs_eid';
+          dialog.querySelector('#link-help').textContent=data.state==='needs_eid'?'Enter your existing employee ID to link your Google account. If no record is found, please contact an administrator. / 请输入员工 EID；无法匹配请联系管理员。':'Check your employee details before continuing. / 请确认以下员工资料。';
+          const details=dialog.querySelector('#link-details');details.replaceChildren();
+          if(data.profile)for(const [label,key] of [['FULL NAME','name'],['昵称 / NICKNAME','nickname'],['EID','eid'],['PHONE NUMBER','phone'],['EMAIL','email']]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=data.profile[key]||'—';details.append(dt,dd);}
+          dialog.querySelector('#link-submit').textContent=data.state==='needs_eid'?'Find employee':'Confirm and continue / 确认';
+          if(!dialog.open)dialog.showModal();
+        }
+        async function finishLogin(user){
+          if(busy||!user)return;busy=true;
+          try{
+            if(user.providerData.some(item=>item.providerId==='google.com')){
+              const data=await employeeProfileApi();if(data.state!=='ready'){showLink(data);return;}
+            }
+            allowAppEntry();window.location.replace(getRedirectTarget());
+          }catch(error){setStatus(error.message,true);await auth.signOut();}
+          finally{busy=false;}
+        }
+        let signingPassword=false;
+        auth.onAuthStateChanged(user=>{if(user&&!signingPassword)finishLogin(user);else if(!user)enableForm();});
+        async function cancelLink(){dialog.close();pending=null;await auth.signOut();setStatus('Sign-in cancelled.');}
+        dialog.querySelector('#link-cancel').onclick=cancelLink;
+        dialog.oncancel=event=>{event.preventDefault();cancelLink();};
+        dialog.querySelector('form').onsubmit=async event=>{
+          event.preventDefault();const button=dialog.querySelector('#link-submit'),status=dialog.querySelector('#link-status');button.disabled=true;status.textContent='Checking…';
+          try{
+            if(pending.state==='needs_eid'){showLink(await employeeProfileApi('/lookup',{eid:dialog.querySelector('#link-eid').value.trim()}));status.textContent='';}
+            else{await employeeProfileApi('/link',{eid:pending.profile.eid,revision:pending.revision});dialog.close();await finishLogin(auth.currentUser);}
+          }catch(error){status.textContent=error.message;if(error.status===409){try{showLink(await employeeProfileApi());}catch{}}}
+          finally{button.disabled=false;}
+        };
+        let pendingGoogleCredential;
+        document.querySelector('#google-login').onclick=async()=>{
+          const button=document.querySelector('#google-login');button.disabled=true;setStatus('Opening Google sign-in…');
+          try{await persistenceReady;const provider=new firebase.auth.GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await auth.signInWithPopup(provider);}
+          catch(error){
+            if(error.code==='auth/account-exists-with-different-credential'){pendingGoogleCredential=error.credential;emailInput.value=error.email||'';setStatus('Sign in with your existing password to link this Google account.',true);}
+            else setStatus(error.code==='auth/operation-not-allowed'?'Google sign-in needs to be enabled by the administrator.':friendlyAuthError(error),true);
+          }finally{button.disabled=false;}
+        };
 
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           submitButton.disabled = true;
           setStatus("Signing in...");
+          signingPassword=true;
           try {
             await persistenceReady;
             const credential = await auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value);
+            if(pendingGoogleCredential&&credential?.user){const googleCredential=pendingGoogleCredential;await credential.user.linkWithCredential(googleCredential);const linked=await auth.signInWithCredential(googleCredential);pendingGoogleCredential=null;await finishLogin(linked.user);return;}
             if (credential?.user) {
-              allowAppEntry();
-              setStatus("Login successful. Opening flight selection...");
-              window.location.replace(getRedirectTarget());
+              await finishLogin(credential.user);
             }
           } catch (error) {
             submitButton.disabled = false;
             setStatus(friendlyAuthError(error), true);
-          }
+          } finally {signingPassword=false;}
         });
       }
     </script>

@@ -6,6 +6,10 @@
     ],
     "headers": [
       {
+        "source": "/{login.html,flight-account.js,employee-profile-api.js,profile.html,profile.css,profile.js,dashboard-profile.js}",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
         "source": "/{feedback.html,feedback.css,feedback-client.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },

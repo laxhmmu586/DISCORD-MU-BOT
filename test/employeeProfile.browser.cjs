@@ -1,0 +1,34 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+(async()=>{
+ const browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ let scenario='ready',linked=true,revision=1,profile={id:'one',name:'TEST EMPLOYEE',nickname:'Lake',eid:'00123',phone:'555-0100',email:'employee@gmail.com',avatar:''};
+ const user={uid:'fixture',email:'employee@gmail.com',providerData:[{providerId:'google.com'}]};
+ await page.route('**/*',async route=>{
+  const url=new URL(route.request().url()),pathname=url.pathname;
+  if(url.hostname==='www.gstatic.com')return route.fulfill({body:'',contentType:'text/javascript'});
+  if(pathname==='/__/firebase/init.js')return route.fulfill({contentType:'text/javascript',body:`(()=>{let user=${scenario==='ready'?JSON.stringify(user):'null'},callbacks=[];const state={get currentUser(){return user;},setPersistence:async()=>{},onAuthStateChanged:fn=>{callbacks.push(fn);setTimeout(()=>fn(user),0);return()=>{};},signInWithPopup:async()=>{user=${JSON.stringify(user)};user.getIdToken=async()=>'fixture';callbacks.forEach(fn=>fn(user));return {user};},signOut:async()=>{user=null;callbacks.forEach(fn=>fn(null));},signInWithEmailAndPassword:async()=>{user={...${JSON.stringify(user)},providerData:[{providerId:'password'}],getIdToken:async()=>'fixture'};callbacks.forEach(fn=>fn(user));return {user};}};if(user)user.getIdToken=async()=>'fixture';const auth=()=>state;auth.Auth={Persistence:{LOCAL:'local',SESSION:'session'}};auth.GoogleAuthProvider=function(){this.setCustomParameters=()=>{};};window.firebase={apps:[{}],auth};})();`});
+  if(pathname.startsWith('/profile-api')){
+   if(pathname.endsWith('/lookup')){const body=route.request().postDataJSON();if(body.eid!=='00123')return route.fulfill({status:403,json:{error:'Employee record not found. Please contact an administrator.'}});return route.fulfill({json:{state:'confirm',profile,revision}});}
+   if(pathname.endsWith('/link')){linked=true;return route.fulfill({json:{state:'ready',profile,revision}});}
+   if(route.request().method()==='POST'){const body=route.request().postDataJSON();assert.equal(body.revision,revision);for(const key of ['nickname','phone','email','avatar'])if(body[key]!==undefined)profile[key]=body[key];revision++;}
+   return route.fulfill({json:linked?{state:'ready',profile,revision}:scenario==='eid'?{state:'needs_eid'}:{state:'confirm',profile,revision}});
+  }
+  if(url.hostname==='api.mufcapp.net')return route.fulfill({json:{flights:[]}});
+  const file=path.join(process.cwd(),'public/public',pathname);if(fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});return route.fulfill({status:404,body:''});
+ });
+ fs.mkdirSync('.verification/profile',{recursive:true});
+ for(const width of [1440,768,390,320]){
+  await page.setViewportSize({width,height:900});await page.goto('http://localhost/profile.html');await page.locator('#profile-content').waitFor({state:'visible'});assert.equal(await page.locator('.flight-account-name').textContent(),'Lake');assert(await page.locator('#full-name').getAttribute('readonly')!==null);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'overflow at '+width);await page.screenshot({path:'.verification/profile/profile-'+width+'.png',fullPage:true});
+ }
+ await page.locator('#nickname').fill('New nickname');await page.locator('#phone').fill('555-0200');await page.locator('#contact-email').fill('new@example.com');await page.locator('#save-profile').click();await page.locator('#profile-status').filter({hasText:'Profile saved'}).waitFor();assert.equal(profile.nickname,'New nickname');assert.equal(await page.locator('.flight-account-name').textContent(),'New nickname');
+ await page.locator('#avatar-file').setInputFiles({name:'avatar.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});await page.locator('#profile-status').filter({hasText:'Photo selected'}).waitFor();await page.locator('#save-profile').click();await page.locator('#profile-status').filter({hasText:'Profile saved'}).waitFor();assert(profile.avatar.startsWith('data:image/png'));
+ await page.reload();await page.locator('#profile-content').waitFor({state:'visible'});assert.equal(await page.locator('#nickname').inputValue(),'New nickname');await page.locator('#remove-avatar').click();await page.locator('#save-profile').click();await page.locator('#profile-status').filter({hasText:'Profile saved'}).waitFor();assert.equal(profile.avatar,'');
+ for(const flow of ['match','eid']){
+  scenario=flow;linked=false;await page.goto('http://localhost/login.html');await page.locator('#google-login:not([disabled])').waitFor();await page.locator('#google-login').click();await page.locator('dialog[open]').waitFor();assert.equal(new URL(page.url()).pathname,'/login.html');
+  if(flow==='eid'){await page.locator('#link-eid').fill('999');await page.locator('#link-submit').click();await page.locator('#link-status').filter({hasText:'contact an administrator'}).waitFor();assert.equal(linked,false);await page.locator('#link-eid').fill('00123');await page.locator('#link-submit').click();}
+  await page.locator('#link-details').filter({hasText:'TEST EMPLOYEE'}).waitFor();assert.equal(linked,false);await page.locator('#link-submit').click();await page.waitForURL('**/flights.html');assert.equal(linked,true);
+ }
+ scenario='match';linked=false;await page.goto('http://localhost/login.html');await page.locator('#google-login:not([disabled])').waitFor();await page.locator('#google-login').click();await page.locator('dialog[open]').waitFor();await page.locator('#link-cancel').click();await page.locator('dialog').waitFor({state:'hidden'});assert.equal(linked,false);assert.equal(new URL(page.url()).pathname,'/login.html');
+ assert.deepEqual(errors,[]);await browser.close();console.log('PASS: Profile at 1440/768/390/320px, saved nickname/contact/avatar, reload, Google email match/EID rejection/EID confirmation/cancel.');
+})().catch(error=>{console.error(error);process.exit(1);});
