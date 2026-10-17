@@ -6,7 +6,7 @@
     ],
     "headers": [
       {
-        "source": "/{box.html,box.css,box.js,box-live.js,flight-session.js}",
+        "source": "/{login.html,flight-account.js,employee-profile-api.js,profile.html,profile.css,profile.js,dashboard-profile.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {

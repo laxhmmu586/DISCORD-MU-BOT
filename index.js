@@ -1017,6 +1017,7 @@ app.use((req, res, next) => {
 });
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
+app.use('/profile-api', express.json({limit:'3mb'}));
 app.use('/feedback-api', express.json({limit:'24kb'}));
 
 const visaStore = new (require('./visaStore').VisaStore)(process.env.VISA_DB_PATH);
@@ -1100,6 +1101,7 @@ app.use('/assets/feedback', express.static(path.join(__dirname,'public','public'
 app.get(['/feedback.html','/feedback.css','/feedback-client.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.use('/assets/pbb', express.static(path.join(__dirname,'public','public','assets','pbb')));
 app.use('/assets/attendance', express.static(path.join(__dirname,'public','public','assets','attendance')));
+app.get(['/profile.html','/profile.css','/profile.js','/employee-profile-api.js','/flight-account.js','/dashboard-profile.js'],(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.get('/assets/mission-earth.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','mission-earth.png')));
 app.get('/assets/boarding-aurora-c.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','boarding-aurora-c.png')));
 app.get(['/request.html','/request.css','/request.js','/pbb.html','/pbb.css','/pbb-light.css','/pbb-client.js','/pbb-data.js','/pbb-signals.js','/flights.css','/flight-session.js','/service-common.js','/admin.html','/employees-client.js'], (req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
