@@ -14,7 +14,7 @@ function createProfileStore(employees){
  function candidate(user,eid){
   if(user.provider==='google.com'&&!user.emailVerified)fail('A verified Google email is required.',403);
   const rows=employees.get().employees;
-  const emailRows=rows.filter(row=>normalize(row.email)&&normalize(row.email)===normalize(user.email));
+  const emailRows=rows.filter(row=>normalize(user.email)&&[normalize(row.email),normalize(row.loginId)].includes(normalize(user.email)));
   const matches=emailRows.length?emailRows:(eid?rows.filter(row=>row.eid&&row.eid===String(eid).trim()):[]);
   if(matches.length!==1){if(!eid&&!emailRows.length)return null;fail('Employee record not found or ambiguous. Please contact an administrator.',403);}
   const row=matches[0];
@@ -27,6 +27,9 @@ function createProfileStore(employees){
  function status(user){
   const row=linked(user);
   if(row)return {state:'ready',profile:profile(row),revision:employees.get().revision};
+  const original=employees.get().employees.filter(item=>normalize(item.loginId)&&normalize(item.loginId)===normalize(user.email));
+  if(original.length>1)fail('Original Login ID is ambiguous. Please contact an administrator.',403);
+  if(original.length===1&&(user.provider==='password'||!user.provider||/^[^@\s]+@mu\.com$/i.test(user.email))){candidate(user);return link(user,{revision:employees.get().revision,eid:original[0].eid});}
   if(/^[^@\s]+@mu\.com$/i.test(user.email))return {state:'external'};
   if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
   const match=candidate(user);

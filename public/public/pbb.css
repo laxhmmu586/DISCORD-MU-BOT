@@ -79,3 +79,5 @@
 .employee-admin-page .employee-table th:nth-child(8),.employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table th:nth-child(10){width:5%}
 .employee-admin-page .employee-table th:nth-child(11){width:14%}
 @media(max-width:1100px){.employee-admin-page .employee-table td:nth-child(5){grid-column:auto}.employee-admin-page .employee-table td:nth-child(3),.employee-admin-page .employee-table td:nth-child(6){grid-column:1/-1}}
+.employee-admin-page .employee-table{min-width:1460px}.employee-admin-page .employee-table th:nth-child(8){width:15%}.employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table th:nth-child(10),.employee-admin-page .employee-table th:nth-child(11){width:5%}.employee-admin-page .employee-table th:nth-child(12){width:10%}@media(max-width:1100px){.employee-admin-page .employee-table{min-width:0}.employee-admin-page .employee-table td:nth-child(8){grid-column:1/-1}}
+.employee-admin-page .employee-table-wrap{overflow-x:auto}.employee-admin-page .employee-admin-shell{min-width:0}.employee-admin-page .employee-toolbar{flex-wrap:wrap}
