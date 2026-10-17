@@ -1,4 +1,4 @@
-// Explicit operator-only test delivery. A separate per-channel state prevents test retries from duplicating a pair.
+// Explicit operator-only test delivery. A separate per-channel state prevents duplicate test advisories.
 const path=require('node:path');
 require('dotenv').config({quiet:true});
 async function main(){
@@ -15,12 +15,12 @@ async function main(){
   const store=createStateStore(stateDb);let failed=false;
   const service=createAdvisoryService({getClient:gd.getNextDayInfoGmailClient,readSchedule:gd.readEtabSchedule,nonceScope:testTba?'test-tba':'test-original',
    getEmployees:()=>JSON.parse(employeeDb.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data).employees,
-   channel:async()=>({id:channelId,send:payload=>rest.post(Routes.channelMessages(channelId),{body:{content:payload.content,nonce:payload.nonce,enforce_nonce:payload.enforceNonce,allowed_mentions:payload.allowedMentions},files:payload.files?.map(f=>({name:f.name,data:f.attachment}))})}),
-   render:advisory=>require('../etabImage').renderAdvisory(testTba?{...advisory,arrival:{...advisory.arrival,gate:'TBA'}}:advisory),store,log:{info:console.log,error:(...a)=>{failed=true;console.error(...a);}}
+   channel:async()=>({id:channelId,send:payload=>rest.post(Routes.channelMessages(channelId),{body:{content:testTba?payload.content.replace(/(ETAB ADVISORY - GATE:)\S+/,'$1TBA').replace(/\n# 🚨 MSC GATE OPERATION$/,''):payload.content,nonce:payload.nonce,enforce_nonce:payload.enforceNonce,allowed_mentions:payload.allowedMentions}})}),
+   store,log:{info:console.log,error:(...a)=>{failed=true;console.error(...a);}}
   });
   await service.tick();if(failed)throw Error('ETAB test failed; partial delivery state retained for retry');
-  const state=store.get();if(!state.lastImageId||!state.lastTeamId)throw Error('No completed ETAB pair in test state');
-  for(const id of [state.lastImageId,state.lastTeamId]){
+  const state=store.get();if(!state.lastAdvisoryId)throw Error('No completed ETAB text advisory in test state');
+  for(const id of [state.lastAdvisoryId]){
    const message=await rest.get(Routes.channelMessage(channelId,id));
    console.log(JSON.stringify({messageId:id,channelId:message.channel_id,content:message.content,attachments:message.attachments?.map(a=>({filename:a.filename,width:a.width,height:a.height})),mentionCount:message.mentions?.length}));
   }
