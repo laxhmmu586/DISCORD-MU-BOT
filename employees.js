@@ -1,5 +1,6 @@
 const {StandardFontEmbedder,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
+const formatEmployeePhone=require('./public/public/employee-phone');
 const ADMIN_EMAILS=new Set(['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com']);
 function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
  db.exec('CREATE TABLE IF NOT EXISTS pbb_employees (singleton INTEGER PRIMARY KEY CHECK(singleton=1), data TEXT NOT NULL)');
@@ -15,7 +16,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    const row={...input,...permissions(input)};
    const nickname=String(row.nickname??'').trim();
    if(nickname.length>60||/[\x00-\x1f\x7f]/.test(nickname))throw new Error('Check employee nicknames (maximum 60 characters)');
-   const code=String(row.code??'').trim(),phone=String(row.phone??'').trim(),email=String(row.email??'').trim();
+   const code=String(row.code??'').trim(),phone=formatEmployeePhone(row.phone),email=String(row.email??'').trim();
    if(code.length>40||phone.length>40||email.length>254||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw new Error('Check employee codes, phone numbers and email addresses');
    const id=String(row.id||''),name=String(row.name||'').trim(),eid=String(row.eid||'').trim(),discordId=String(row.discordId||'').trim();
    if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||name.length>100||(eid&&!/^\d{1,12}$/.test(eid))||(discordId&&!/^\d{17,20}$/.test(discordId))||(discordId&&discordIds.has(discordId))||(typeof row.attach!=='boolean'||typeof row.detach!=='boolean')||typeof row.spotter!=='boolean'||((row.attach||row.detach||row.spotter)&&!name))throw new Error('Check employee names, EIDs and unique Discord IDs');

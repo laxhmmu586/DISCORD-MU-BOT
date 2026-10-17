@@ -1,4 +1,5 @@
 const sharp=require('sharp');
+const formatEmployeePhone=require('./public/public/employee-phone');
 const normalize=value=>String(value||'').trim().toLowerCase();
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
 function createProfileStore(employees){
@@ -9,7 +10,7 @@ function createProfileStore(employees){
  CREATE TABLE IF NOT EXISTS employee_link_attempts(uid TEXT PRIMARY KEY,count INTEGER NOT NULL,started INTEGER NOT NULL);`);
  const account=uid=>db.prepare('SELECT * FROM employee_accounts WHERE uid=?').get(uid);
  const linked=user=>{const link=account(user.uid);return link&&employees.get().employees.find(row=>row.id===link.employee_id);};
- const profile=row=>({id:row.id,name:row.name,nickname:row.nickname||'',eid:row.eid||'',phone:row.phone||'',email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
+ const profile=row=>({id:row.id,name:row.name,nickname:row.nickname||'',eid:row.eid||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
  function candidate(user,eid){
   if(user.provider==='google.com'&&!user.emailVerified)fail('A verified Google email is required.',403);
   const rows=employees.get().employees;
