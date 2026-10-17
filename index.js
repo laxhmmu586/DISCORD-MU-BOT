@@ -1338,7 +1338,6 @@ const etabService = etabAdvisory.createAdvisoryService({
   readSchedule: require('./googleDrive').readEtabSchedule,
   getEmployees: () => pbbService.employees.get().employees,
   channel: () => client.channels.fetch(process.env.ETAB_DISCORD_CHANNEL_ID || '1252026975720046655'),
-  render: data => require('./etabImage').renderAdvisory(data),
   store: etabAdvisory.createStateStore(pbbService.store.db)
 });
 

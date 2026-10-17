@@ -1,11 +1,11 @@
 # ETAB advisory integration
 
-ETAB email parsing, image rendering and ordered Discord delivery run in the MUFC bot. The Apps Script is not required after cutover. Use `node scripts/send-etab-test.cjs <authorized-test-channel-id>` only when an operator explicitly requests real test delivery; it uses separate persistent state and verifies both posted messages without changing production deduplication state.
+ETAB email parsing and text Discord delivery run in the MUFC bot. Messages match the original Apps Script headings, emoji, field order and blank lines; no images are sent. The Apps Script is not required after cutover. Use `node scripts/send-etab-test.cjs <authorized-test-channel-id>` only when an operator explicitly requests real test delivery; it uses separate persistent state and verifies the posted text without changing production deduplication state.
 
 ## Polling and workload
 
 - America/Los_Angeles, including daylight saving: 21:00–12:00 every 5 minutes; 12:00–21:00 every 15 minutes. Approximately 216 mailbox list requests per day, with full bodies cached (up to 50 messages). No Sheets read or rendering for unchanged content.
-- Each cycle finishes before the next timer starts. Google requests have 15 second timeouts, and body requests run sequentially. Background image work uses asynchronous sharp operations; no synchronous sleeps are added to the bot's request handlers.
+- Each cycle finishes before the next timer starts. Google requests have 15 second timeouts, and body requests run sequentially. Delivery does not require image rendering.
 - Search the existing authenticated Gmail mailbox for the original two senders, `subject:ETAB newer_than:3d`, inspect up to 15 messages and select the newest valid advisory by Gmail internal timestamp. Startup can publish the latest advisory from this window; it does not replay the full history.
 - Deduplicate on the full parsed flight/date/data, so a passenger or registration correction can also produce a new advisory. Durable state in the existing PBB SQLite database survives restart. Use one enabled bot instance for this channel.
 
@@ -14,9 +14,9 @@ ETAB email parsing, image rendering and ordered Discord delivery run in the MUFC
 - Schedule remains `12NH3eQTx6GuOWHWgi4kxI0UsKgaJXW_ceKDnMGF3Zlo`, `Live Schedule`. Read the second row as dates, names in column B, and shift exactly `A`. Dates use Sheets serial values to avoid server locale ambiguity.
 - Match names to the server's employee database (`EP.DB`, the same store as employee administration), ignoring case, punctuation, whitespace and parenthesized nicknames/account suffixes. For example `TAN, CHUYANG(Tamsun)` matches `TAN, CHUYANG`, and `George(CZ)` matches `George`. Missing, ambiguous or invalid mappings stop delivery with a diagnostic, allowing correction before a later retry. Employee IDs are not read from the old employee Sheet. Only a cell equal to `A` after trimming and uppercasing qualifies; `A/B`, `OFF`, other shifts and blanks do not.
 - Clock-in retains every minute boundary of the supplied Apps Script, including midnight rollover. STD still takes precedence over ETD.
-- Send the PNG first, then a separate ordinary Discord message with `## 👥 Arrival Team`, `## 🕒 Clock-in　**0830L**`, and one `<@id>` per line. Only resolved employee IDs can be mentioned. Discord supplies each member's current display name.
-- Persist the image message ID before sending the team message. If the team message fails, retry only that second part on the next cycle. Deterministic Discord nonces reduce duplicate sends after an ambiguous network response; Discord's nonce deduplication has a limited time window, so this is not an absolute exactly-once guarantee across a crash immediately after sending.
-- TBA: night/yellow. Ordinary gate: day/green. Gates 201–225 (including suffixes): red sunset/red, with MSC operation notice. Arrival/Departure show flight numbers without appended dates; the top date remains. STD/ETD is one line with the same numeric font as ETA.
+- Send one ordinary Discord message: `## ✈️ ETAB ADVISORY - GATE:134`, `### Arrival - MU583/14OCT`, REG/ETA/PAX/CREW with `🔸`, `👥 Clock-in: 0830L`, `👥 Arrival Team:` with space-separated mentions, then `### Departure - MU586/14OCT` and `🔹 STD: 1230L`. IDs continue to come from the server employee database. Discord supplies each member's current display name.
+- Persist the text message ID after delivery. Failed work remains pending for retry; pending work from the former image workflow completes as one text message. Deterministic Discord nonces reduce duplicate sends after an ambiguous network response; Discord's nonce deduplication has a limited time window, so this is not an absolute exactly-once guarantee across a crash immediately after sending.
+- Gates whose numeric prefix is 201–225 (including suffixes) append `# 🚨 MSC GATE OPERATION`. Missing gates display TBA. STD takes precedence over ETD; missing departure times display TBA.
 
 ## Cutover
 
@@ -24,7 +24,7 @@ The service is disabled by default to keep previews from posting alongside the o
 
 Optional environment variables: `ETAB_DISCORD_CHANNEL_ID` (default `1252026975720046655`), `ETAB_SCHEDULE_SHEET_ID` (default above). Database location follows the existing `PBB_DB_PATH`; employee store follows `PBB_EMPLOYEE_DB_PATH`.
 
-## Preview and verification
+## Archived image previews and verification
 
 `node scripts/preview-etab.cjs` writes three PNGs and a comparison to `.verification/etab/`. Render on a 900×900 canvas, then trim the exterior and outer luminous frame to 850×840. All three themes use five separate rounded opaque regions: the airport banner above a two-by-two grid of information cards. The exterior, banner-to-card gap and card gutters have true PNG alpha transparency, exposing the viewer's chat background. Internal information-card lighting remains. These are visual information cards within one PNG, with no interactive buttons. The preview includes dark and light chat-background comparisons. Production rendering uses `assets/etab/{day,night,msc}-template.png` and the bundled OFL-licensed Archivo Black font. The source triptych is an imagegen edit of the supplied original artwork, preserving its heading, runway and soft neon glass. All three templates have dedicated high-resolution masters, rendered through the same downsampling and sharpening pipeline. Gate, date and lower cards include subtle aviation textures; ETA keeps its clock dial. The lower cards show right-aligned flight numbers without Arrival/Departure labels, alongside separate arrival/departure aircraft cutouts derived from the supplied China Eastern material. The arrival aircraft has deployed gear and a shallow descending attitude; departure climbs with gear retracted. Operational text and circle-plane gate icons are composited deterministically. STD/ETD labels have a 22-pixel gap before the time, and the complete group is centered.
 

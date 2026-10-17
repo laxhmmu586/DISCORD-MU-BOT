@@ -52,30 +52,45 @@ function fixture(channelId='fixture-channel',nonceScope=''){
   readSchedule:async()=>{reads++;return [[],['','','','10/14/2026'],['','Terry','','A']];},getEmployees:()=>[{name:'Terry',discordId:'123456789012345678'}],
   channel:async()=>({id:channelId,send:async payload=>{if(payload.content&&failTeam)throw Error('network failure');sends.push(payload);return {id:'sent'+sends.length};}}),
   render:async()=>Buffer.from('image'),store:{get:()=>structuredClone(state),put:s=>{state=structuredClone(s);}},log:{error:(...a)=>errors.push(a)}
- });return {service,sends,errors,state:()=>state,reads:()=>reads,fail:()=>{failTeam=true;},recover:()=>{failTeam=false;},change:()=>{id='m2';body=sample('203');}};
+ });return {service,sends,errors,state:()=>state,seed:value=>{state=value;},reads:()=>reads,fail:()=>{failTeam=true;},recover:()=>{failTeam=false;},change:()=>{id='m2';body=sample('203');}};
 }
-test('image first then real mentions, unchanged mail does not read Sheet or resend',async()=>{
- const f=fixture();await f.service.tick();assert.equal(f.sends.length,2);assert.ok(f.sends[0].files);
- assert.equal(f.sends[1].content,'## 👥 Arrival Team\n## 🕒 Clock-in　**0830L**\n<@123456789012345678>');
- assert.deepEqual(f.sends[1].allowedMentions,{parse:[],users:['123456789012345678']});
- await f.service.tick();assert.equal(f.sends.length,2);assert.equal(f.reads(),1);
- f.change();await f.service.tick();assert.equal(f.sends.length,4);
+
+test('MSC warnings match script boundaries and optional text fields remain optional',()=>{
+ const {buildDiscordPayload}=require('../etabAdvisory');
+ for(const gate of ['201','203','225','225A'])assert.ok(buildDiscordPayload(parseAdvisory(sample(gate))).endsWith('\n# 🚨 MSC GATE OPERATION'));
+ for(const gate of ['134','TBA','200','226'])assert.doesNotMatch(buildDiscordPayload(parseAdvisory(sample(gate))),/MSC GATE OPERATION/);
+ const text=buildDiscordPayload({date:'2026-10-14',arrival:{flight:'MU583'},departure:{flight:'MU586'}});
+ assert.equal(text,'## ✈️ ETAB ADVISORY - GATE:TBA\n### Arrival - MU583/14OCT\n\n\n### Departure - MU586/14OCT\n🔹 ETD: TBA\n');
+ const nextDay=parseAdvisory(sample().replace('MU586/14OCT.  STD 1230L.','MU586/15OCT. ETD 0130L.'));
+ assert.match(buildDiscordPayload(nextDay),/Departure - MU586\/15OCT\n🔹 ETD: 0130L/);
 });
-test('partial delivery resumes without another image and overlap is skipped',async()=>{
- const f=fixture();f.fail();await Promise.all([f.service.tick(),f.service.tick()]);assert.equal(f.sends.length,1);assert.ok(f.state().pending.imageId);
- f.recover();await f.service.tick();assert.equal(f.sends.length,2);assert.equal(f.state().pending,undefined);assert.equal(f.reads(),1);
+
+test('pending legacy image delivery resumes as one text message',async()=>{
+ const f=fixture();f.seed({pending:{messageId:'legacy',received:1791973080000,hash:'old',ids:['123456789012345678'],advisory:parseAdvisory(sample()),imageId:'old-image'}});
+ await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.sends[0].files,undefined);
+ assert.match(f.sends[0].content,/👥 Arrival Team: <@123456789012345678>/);
+ assert.equal(f.state().pending,undefined);assert.equal(f.reads(),0);
+});
+test('one text advisory includes database mentions and unchanged mail does not resend',async()=>{
+ const f=fixture();await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.sends[0].files,undefined);
+ assert.equal(f.sends[0].content,'## ✈️ ETAB ADVISORY - GATE:134\n### Arrival - MU583/14OCT\n🔸 REG: B-7343\n🔸 ETA: 0922L\n🔸 PAX: 279/0\n🔸 CREW: 04/17\n\n👥 Clock-in: 0830L\n👥 Arrival Team: <@123456789012345678>\n\n### Departure - MU586/14OCT\n🔹 STD: 1230L\n');
+ assert.deepEqual(f.sends[0].allowedMentions,{parse:[],users:['123456789012345678']});
+ await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.reads(),1);
+ f.change();await f.service.tick();assert.equal(f.sends.length,2);assert.match(f.sends[1].content,/\n# 🚨 MSC GATE OPERATION$/);
+});
+test('failed text delivery retries and overlap is skipped',async()=>{
+ const f=fixture();f.fail();await Promise.all([f.service.tick(),f.service.tick()]);assert.equal(f.sends.length,0);assert.ok(f.state().pending);
+ f.recover();await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.state().pending,undefined);assert.equal(f.reads(),1);
 });
 test('test and production channel nonces cannot collide for the same Gmail message',async()=>{
  const testChannel=fixture('test'),production=fixture('production');
  await testChannel.service.tick();await production.service.tick();
  assert.notEqual(testChannel.sends[0].nonce,production.sends[0].nonce);
- assert.notEqual(testChannel.sends[1].nonce,production.sends[1].nonce);
 });
 test('TBA and ordinary test variants have different nonces in the same destination',async()=>{
  const original=fixture('logging','test-original'),tba=fixture('logging','test-tba');
  await original.service.tick();await tba.service.tick();
  assert.notEqual(original.sends[0].nonce,tba.sends[0].nonce);
- assert.notEqual(original.sends[1].nonce,tba.sends[1].nonce);
 });
 test('SQLite advisory state preserves partial delivery through store recreation',()=>{
  const Database=require('better-sqlite3'),{createStateStore}=require('../etabAdvisory');

@@ -34,9 +34,30 @@ function parseAdvisory(text, received = new Date()) {
   const gate=a.match(/\bGATE\s*[:\-]?\s*(TBA|\d{1,3}[A-Z]?|[A-Z]\d{1,3})\b/)?.[1] || 'TBA';
   const std=time(d,'STD'), etd=time(d,'ETD');
   const date=flightDate(arrival[2],arrival[3],received);if(!date)return null;
-  return {date,arrival:{flight:arrival[1],gate,eta,clockIn:clockIn(eta.slice(0,4)),reg:a.match(/\bB-\d{3,4}\b/)?.[0] || '',pax:a.match(/\bPAX\s*[:\-]?\s*(\d+\/\d+)\b/)?.[1] || '',crew:a.match(/\bCREW\s*[:\-]?\s*(\d+\/\d+)\b/)?.[1] || ''},departure:{flight:departure?.[1] || '',time:std || etd,timeType:std?'STD':'ETD'}};
+  const departureDate = departure && `${departure[2]}${departure[3]}`;
+  return {date,arrival:{flight:arrival[1],gate,eta,clockIn:clockIn(eta.slice(0,4)),reg:a.match(/\bB-\d{3,4}\b/)?.[0] || '',pax:a.match(/\bPAX\s*[:\-]?\s*(\d+\/\d+)\b/)?.[1] || '',crew:a.match(/\bCREW\s*[:\-]?\s*(\d+\/\d+)\b/)?.[1] || ''},departure:{flight:departure?.[1] || '',time:std || etd,timeType:std?'STD':'ETD',...(departureDate && departureDate !== `${arrival[2]}${arrival[3]}` ? {flightDate:departureDate} : {})}};
 }
 function theme(gate) { return gate === 'TBA' ? 'night' : /^2(?:0\d|1\d|2[0-5])[A-Z]?$/.test(gate) && parseInt(gate,10)>=201 ? 'msc' : 'day'; }
+function buildDiscordPayload(advisory, mentions = '') {
+  const { arrival, departure } = advisory;
+  const gate = arrival.gate || 'TBA';
+  const date = advisory.date.slice(8,10) + MONTHS[Number(advisory.date.slice(5,7))-1];
+  let content = `## ✈️ ETAB ADVISORY - GATE:${gate}\n`;
+  content += `### Arrival - ${arrival.flight}/${date}\n`;
+  for (const [key, label] of [['reg','REG'], ['eta','ETA'], ['pax','PAX'], ['crew','CREW']]) {
+    if (arrival[key]) content += `🔸 ${label}: ${arrival[key]}\n`;
+  }
+  content += '\n';
+  if (arrival.clockIn) content += `👥 Clock-in: ${arrival.clockIn}\n`;
+  if (mentions) content += `👥 Arrival Team: ${mentions}\n`;
+  if (departure.flight) {
+    content += `\n### Departure - ${departure.flight}/${departure.flightDate || date}\n`;
+    content += `🔹 ${departure.timeType || 'ETD'}: ${departure.time || 'TBA'}\n`;
+  }
+  const gateNumber = parseInt(gate,10);
+  if (!Number.isNaN(gateNumber) && gateNumber >= 201 && gateNumber <= 225) content += '\n# 🚨 MSC GATE OPERATION';
+  return content;
+}
 function scheduleDate(value) {
   if(typeof value === 'number') return new Date(Date.UTC(1899,11,30)+Math.floor(value)*86400000).toISOString().slice(0,10);
   const s=String(value || '').trim();
@@ -68,7 +89,7 @@ function createStateStore(db) {
   db.exec('CREATE TABLE IF NOT EXISTS etab_advisory_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL)');
   return {get:()=>JSON.parse(db.prepare('SELECT data FROM etab_advisory_state WHERE id=1').get()?.data || '{}'),put:state=>db.prepare('INSERT INTO etab_advisory_state VALUES(1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(JSON.stringify(state))};
 }
-function createAdvisoryService({getClient,readSchedule,getEmployees,channel,render,store,now=()=>new Date(),log=console,nonceScope=''}) {
+function createAdvisoryService({getClient,readSchedule,getEmployees,channel,store,now=()=>new Date(),log=console,nonceScope=''}) {
   let busy=false,stopped=false,timer;
   const messageCache=new Map();
   async function latest(state) {
@@ -90,7 +111,6 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,rend
     if(busy)return; busy=true;
     try {
       let state=store.get();
-      // Complete an interrupted pair before looking for another advisory.
       if(!state.pending) {
         const item=await latest(state);if(!item)return;
         const hash=crypto.createHash('sha256').update(JSON.stringify(item.advisory)).digest('hex');
@@ -101,19 +121,14 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,rend
       const p=state.pending, target=await channel();
       // Deterministic Discord nonces also protect retries after an ambiguous network response.
       const nonce=kind=>crypto.createHash('sha256').update(String(target.id||'default')+'|'+nonceScope+'|'+p.messageId+'|'+kind).digest('hex').slice(0,24);
-      if(!p.imageId) {
-        const attachment=await render(p.advisory);
-        const sent=await target.send({files:[{attachment,name:'ETAB-'+p.advisory.date+'.png'}],nonce:nonce('image'),enforceNonce:true,allowedMentions:{parse:[]}});
-        p.imageId=sent.id;store.put(state);
-      }
-      const content=`## 👥 Arrival Team\n## 🕒 Clock-in　**${p.advisory.arrival.clockIn}**`+(p.ids.length?'\n'+p.ids.map(id=>`<@${id}>`).join('\n'):'');
-      const team=await target.send({content,nonce:nonce('team'),enforceNonce:true,allowedMentions:{parse:[],users:p.ids}});
-      store.put({lastMessageId:p.messageId,lastReceived:p.received,lastHash:p.hash,lastImageId:p.imageId,lastTeamId:team.id,lastFlightDate:p.advisory.date});
-      log.info?.('ETAB advisory sent:',p.advisory.arrival.flight,p.advisory.date,'image='+p.imageId,'team='+team.id);
+      const content=buildDiscordPayload(p.advisory,p.ids.map(id=>`<@${id}>`).join(' '));
+      const sent=await target.send({content,nonce:nonce('text'),enforceNonce:true,allowedMentions:{parse:[],users:p.ids}});
+      store.put({lastMessageId:p.messageId,lastReceived:p.received,lastHash:p.hash,lastAdvisoryId:sent.id,lastFlightDate:p.advisory.date});
+      log.info?.('ETAB advisory sent:',p.advisory.arrival.flight,p.advisory.date,'message='+sent.id);
     } catch(error) { log.error('ETAB advisory failed; retry on next check:',error.message); }
     finally {busy=false;}
   }
   async function cycle(){await tick();if(!stopped){timer=setTimeout(cycle,intervalMs(now()));timer.unref?.();}}
   return {tick,start(){stopped=false;void cycle();},stop(){stopped=true;clearTimeout(timer);}};
 }
-module.exports={clockIn,localDate,intervalMs,parseAdvisory,theme,scheduleDate,normalizeScheduleName,isLegacyEtabRequest,arrivalTeam,createStateStore,createAdvisoryService};
+module.exports={clockIn,localDate,intervalMs,parseAdvisory,theme,buildDiscordPayload,scheduleDate,normalizeScheduleName,isLegacyEtabRequest,arrivalTeam,createStateStore,createAdvisoryService};

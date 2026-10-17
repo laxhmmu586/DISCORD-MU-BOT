@@ -1,8 +1,8 @@
 // Read-only deployment preflight. Uses existing server credentials, never prints tokens or mail bodies.
-const path=require('node:path'),fs=require('node:fs');
+const path=require('node:path');
 require('dotenv').config({quiet:true});
 const root=path.resolve(__dirname,'..');
-const {parseAdvisory,arrivalTeam,localDate}=require('../etabAdvisory');
+const {parseAdvisory,arrivalTeam,localDate,buildDiscordPayload}=require('../etabAdvisory');
 const {mailBody}=require('../pbbEtab');
 async function main(){
  const gd=require('../googleDrive'),{gmail,userId,authMode}=gd.getNextDayInfoGmailClient();
@@ -31,11 +31,8 @@ async function main(){
  const channel=await fetch('https://discord.com/api/v10/channels/'+channelId,{headers:{Authorization:'Bot '+process.env.DISCORD_TOKEN},signal:AbortSignal.timeout(15000)});
  if(!channel.ok)throw Error('Discord channel lookup failed: '+channel.status);
  const info=await channel.json();console.log(JSON.stringify({check:'discord-channel',id:info.id,name:info.name,type:info.type}));
- const rendered=await require('../etabImage').renderAdvisory(latest);
- const meta=await require('sharp')(rendered).metadata();
- const {IMAGE_BOUNDS}=require('../etabImage');
- if(meta.width!==IMAGE_BOUNDS.width||meta.height!==IMAGE_BOUNDS.height)throw Error('Unexpected ETAB image dimensions');
- if(process.env.ETAB_PREFLIGHT_IMAGE)fs.writeFileSync(process.env.ETAB_PREFLIGHT_IMAGE,rendered);
- console.log(JSON.stringify({check:'renderer',width:meta.width,height:meta.height,bytes:rendered.length}));
+ const content=buildDiscordPayload(latest,ids.map(id=>`<@${id}>`).join(' '));
+ if(content.length>2000)throw Error('ETAB text exceeds the Discord message limit');
+ console.log(JSON.stringify({check:'text-format',characters:content.length,arrivalTeamCount:ids.length,mscWarning:content.includes('# 🚨 MSC GATE OPERATION')}));
 }
 main().catch(e=>{console.error('ETAB preflight failed:',e.message);process.exitCode=1;});
