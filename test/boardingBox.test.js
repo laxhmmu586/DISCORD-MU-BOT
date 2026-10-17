@@ -15,6 +15,39 @@ const fb = (bn, { time='14:01:00', infant=false, deleted=false, flight='MU586', 
  ${infant ? 'INF-TEST/BABY INF1/0\n ET TKNE/INF1234567890123/1' : ''}
  O/DL389/17OCT BN999 30A JFK`;
 const parse = log => findBoardingBoxInfo(scopedLog(log, 'MU586', '16OCT26'), 'MU586', '16OCT26');
+const bnd = (end=303, removed=[8,28,63,65,73], flight='MU586') => `2026 October 16, Friday, 14:02:00
+>BND:
+ BND: ${flight}/16OCT26LAX
+ BOARDING NUMBER RANGE: 1--${end}
+ ${removed.length} BOARDING NUMBER(S) DELETED:
+ ${removed.join('  ')}
+ NONLAX: 1-7 9-10 91 93-94 98 106-157
+`;
+
+test('BND supplies the full range excluding only deleted numbers, retaining NONLAX', () => {
+  const data = parse([sy(298,0),bnd()].join('\n'));
+  assert.equal(data.source,'BND'); assert.equal(data.maxBn,303);
+  assert.equal(data.passengers,298); assert.equal(data.matched,true);
+  assert.deepEqual(Array.from({length:303},(_,i)=>i+1).filter(bn=>!data.bns.includes(bn)),[8,28,63,65,73]);
+  const last = groupBns(data.bns,data.maxBn).groups.at(-1);
+  assert.equal(last.end,303); assert.equal(last.count,3);
+});
+
+test('BND selects latest valid matching flight snapshot and rejects incomplete deletion lists', () => {
+  for (const reverse of [false,true]) {
+    const parts = [sy(298,0),bnd(),bnd(304).replace('14:02:00','14:03:00'),bnd(400,[],'MU578')];
+    const data = parse((reverse ? parts.reverse() : parts).join('\n'));
+    assert.equal(data.maxBn,304); assert.equal(data.passengers,299);
+  }
+  assert.equal(parse([sy(1,0),fb(1),bnd().replace('5 BOARDING','6 BOARDING')].join('\n')).source,'FB');
+  assert.equal(parse([sy(3,0),bnd(3,[])].join('\n')).passengers,3);
+});
+
+test('BND remains authoritative over FB and uses SY infants without infant FB lookups', () => {
+  const data = parse([sy(3,2),fb(1,{deleted:true}),bnd(3,[]),fb(2,{deleted:true,time:'14:03:00'})].join('\n'));
+  assert.deepEqual(data.bns,[1,2,3]);
+  assert.equal(data.infants,2); assert.equal(data.total,5); assert.equal(data.matched,true);
+});
 
 test('FB unique local BN count matches SY C cabin sum; infant is separate and added to total', () => {
   const data = parse([sy(), fb(1,{infant:true}), fb(3), fb(3,{time:'14:02:00'})].join('\n'));
