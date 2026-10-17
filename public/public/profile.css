@@ -39,3 +39,15 @@
 @media(max-width:760px){.profile-brand>span{font-size:21px}.profile-brand img{width:28px;height:28px}.profile-avatar-wrap{width:108px;height:108px}.profile-identity h1{font-size:29px}.profile-identity>p:not(.profile-eyebrow){font-size:12px}.profile-identity>p.profile-affiliation{font-size:10px}.profile-information dt{font-size:11px}}
 @media(max-width:360px){.profile-avatar-wrap{width:86px;height:86px}.profile-identity h1{font-size:26px}.profile-information dt{font-size:10px}}
 .sidebar-airport{isolation:isolate;background:none}.sidebar-airport:before{content:'';position:absolute;inset:0;z-index:-1;background:url('/assets/profile-tail-night-v1.webp') center 46%/cover no-repeat;mask-image:linear-gradient(180deg,transparent 0%,#0000 8%,#0008 30%,#000 55%,#000d 78%,transparent 100%);pointer-events:none}
+
+/* Reference palette and panel finish. Keep the fade on the actual image bounds. */
+body.profile-page{background:#000a18;color:#e5eefb;--profile-border:#294b6c70;--profile-muted:#8ba9cb}
+.profile-topbar{background:linear-gradient(100deg,#021322,#031b32 68%,#03172a);border-bottom-color:#1e3e5a70;box-shadow:0 1px 18px #0003}
+.profile-sidebar{background:linear-gradient(160deg,#061b30,#031326 68%);border-right-color:#23456470}
+.profile-hero{background:radial-gradient(ellipse at 30% 0,#09223b,#020d1b 76%);border-color:#24435f80;border-radius:13px;box-shadow:inset 0 1px 0 #93bded0a,0 10px 28px #0003}
+.profile-hero:after{inset:0 0 auto auto;width:auto;height:100%;max-width:none;aspect-ratio:2060/763;background:url('/assets/profile-ce777-night-v10.webp') center/100% 100% no-repeat;mask-image:linear-gradient(90deg,transparent 0%,#0000 2%,#0002 13%,#0008 28%,#000e 43%,#000 60%);-webkit-mask-image:linear-gradient(90deg,transparent 0%,#0000 2%,#0002 13%,#0008 28%,#000e 43%,#000 60%)}
+.profile-hero:before{background:linear-gradient(158deg,transparent 0 20%,#486a9820 20.2% 33%,transparent 33.2%),linear-gradient(23deg,#0d23402b,transparent 55%);opacity:.65}
+.personal-panel{border:1px solid #2e527b91;border-radius:8px;background:radial-gradient(ellipse at 15% 0,#254d7c30,transparent 57%),linear-gradient(145deg,#0b2441ed,#04162af5);box-shadow:inset 0 1px 0 #81b4ed17,inset 1px 0 0 #638dc40a,0 8px 25px #0003;backdrop-filter:blur(16px)}
+.personal-panel .profile-panel-title{border-bottom-color:#2d4c704a}.personal-panel .panel-icon{background:linear-gradient(140deg,#285989,#163c69);border-color:#79a7df2b;box-shadow:inset 0 1px 0 #b0d7ff20,0 0 12px #2b77da19}
+.profile-information>div{border-bottom-color:#29466959}.profile-information dt{color:#9fb9d7}.profile-information dd{color:#e0eaf9}
+@media(max-width:760px){.profile-hero:after{width:100%;height:100%;aspect-ratio:auto;background-size:cover;background-position:72% center;mask-image:linear-gradient(90deg,#0002,#0009);-webkit-mask-image:linear-gradient(90deg,#0002,#0009)}}
