@@ -184,7 +184,8 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
         const flights = mode === "outbound" ? ["MU586", "MU578"] : ["MU583", "MU577"];
         const flight = flights.includes(entry.flight) ? entry.flight : (mode === "outbound" ? "MU578" : "MU583");
         const flightInput = `<label class="test-field"><span>Flight</span><select name="flight" required>${flights.map(value => `<option value="${value}"${selected(flight, value)}>${value}</option>`).join("")}</select></label>`;
-        const bagTagInput = `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" title="Use MU123456, B6123456, or 3U515289 format" autocomplete="off" required /></label>`;
+        const noTag = mode === "inbound" && entry.noTag === true;
+        const bagTagInput = noTag ? `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="No Tag" readonly /></label>` : `<label class="test-field"><span>Bag tag number</span><input name="bagTag" value="${escapeHtml(entry.bagTag || "")}" maxlength="8" pattern="[A-Z0-9]{2}[0-9]{6}" title="Use MU123456, B6123456, or 3U515289 format" autocomplete="off" required /></label>`;
         if (mode === "outbound") {
           const status = entry.status || "Not load bags";
           return `<fieldset class="test-create-entry" data-test-bag-entry>
@@ -208,8 +209,9 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
           <legend><span>Inbound bag</span></legend>
           <div class="test-form-grid">${flightInput}${bagTagInput}
             <label class="test-field"><span>Date</span><input name="date" type="date" value="${escapeHtml(entry.date || today)}" required /></label>
-            <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option><option${selected(bagType, "Co-mail")}>Co-mail</option></select></label>
-            <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(location)}" list="test-location-options" required /></label>
+            <label class="test-field"><span>Bag type</span><select name="bagType" required><option${selected(bagType, "Passenger bag")}>Passenger bag</option><option${selected(bagType, "Inbound rush")}>Inbound rush</option>${noTag ? "" : `<option${selected(bagType, "Co-mail")}>Co-mail</option>`}</select></label>
+            <label class="test-field"><span>Current location</span><input name="location" value="${escapeHtml(location)}" list="test-location-options" ${noTag ? "readonly" : ""} required /></label>
+            ${noTag ? BaggageIdentificationPicker.fields() : ""}
           </div>
         </fieldset>`;
       }
@@ -229,6 +231,9 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
         }
         return [...form.querySelectorAll("[data-test-bag-entry]")].map((entry) => ({
           bagTag: normalizeTestBagTag(formValue(entry, "bagTag")),
+          color: formValue(entry, "color"),
+          type: formValue(entry, "type"),
+          descriptors: formValue(entry, "descriptors"),
           flight: formValue(entry, "flight"),
           date: formValue(entry, "date"),
           bagType: formValue(entry, "bagType"),
@@ -247,7 +252,7 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
         const bag = entries?.length ? entries[0] : { bagTag };
         if (testOutput) testOutput._record = null;
         testOutput.innerHTML = `<article class="test-report-card">
-          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bagTag || "New bag")}</strong><span class="panel-muted">No matching bag found.</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button></div></div>
+          <div class="test-report-head"><div class="test-report-title"><strong>${escapeHtml(bag.noTag ? "NO TAG BAGS" : bagTag || "New bag")}</strong><span class="panel-muted">${bag.noTag ? "Register an inbound bag without a tag." : "No matching bag found."}</span></div><div class="test-form-actions"><button class="test-back-button" type="button" data-test-back-choice>Back</button></div></div>
           <datalist id="test-location-options"><option value="Office"></option><option value="Transfer"></option><option value="CBS"></option></datalist>
           <datalist id="test-outbound-comments">
             <option value="Expected"></option>
@@ -257,7 +262,7 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
             <option value="Bag Delete and Add back"></option>
             <option value="Passenger Showed Up, but baggage not received"></option>
           </datalist>
-          <form class="test-create-form" id="test-create-form" data-test-create-form data-create-mode="${escapeHtml(activeMode)}">
+          <form class="test-create-form" id="test-create-form" data-test-create-form data-create-mode="${escapeHtml(activeMode)}" data-no-tag="${bag.noTag === true}">
             <div data-test-entry-list>${renderTestBagEntry(activeMode, bag, 0)}</div>
             <div class="test-form-actions"><button class="test-submit" type="submit">Submit</button><span class="panel-muted">${escapeHtml(message)}</span></div>
           </form>
@@ -314,14 +319,17 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
         const mode = form.dataset.createMode === "outbound" ? "outbound" : "inbound";
         const entries = collectCreateEntries(form);
         if (!entries.length) throw new Error("Please add at least one bag.");
+        const noTag = form.dataset.noTag === "true" && mode === "inbound";
         const saved = [];
         for (const entry of entries) {
           const bagTag = normalizeTestBagTag(entry.bagTag);
-          if (!isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456, B6123456, or 3U515289 format.");
+          if (!noTag && !isValidTestBagTag(bagTag)) throw new Error("Each bag tag must match MU123456, B6123456, or 3U515289 format.");
           const isRush = mode === "outbound" && entry.status === "Outbound rush";
           const payload = {
             direction: mode,
-            bagTag,
+            noTag,
+            ...(noTag ? {bagIdentification:{color:entry.color, type:entry.type, descriptors:entry.descriptors}} : {}),
+            bagTag: noTag ? "No Tag" : bagTag,
             flight: entry.flight,
             date: entry.date,
             bagType: mode === "inbound" ? entry.bagType : "",
@@ -340,6 +348,10 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
             body: JSON.stringify(payload),
           });
           if (data?.record) saved.push(data.record);
+        }
+        if (noTag && saved.length) {
+          testOutput.innerHTML = `<article class="test-report-card"><div class="test-report-title"><strong>No Tag</strong><span class="status-ok">Saved to CBS On Hand.</span></div><div class="test-form-actions"><button class="test-add-button" type="button" data-test-new-no-tag>Register another No Tag bag</button></div></article>`;
+          return;
         }
         if (saved.length) renderTestRecord(saved[saved.length - 1], "", `Saved ${saved.length} bag${saved.length === 1 ? "" : "s"}.`);
       }
@@ -381,11 +393,17 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
         });
         if (data?.record) renderTestRecord(data.record, "", "Updated.");
       }
+      function openNoTagForm() {
+        if (testBagSearchPending) return;
+        renderTestAddForm("No Tag", "inbound", [{ bagTag:"No Tag", noTag:true }]);
+      }
+      document.querySelector("#test-no-tag")?.addEventListener("click", openNoTagForm);
       testSearchForm?.addEventListener("submit", searchTestBag);
       testBagSearchInput?.addEventListener("input", () => {
         testBagSearchInput.value = normalizeTestBagTag(testBagSearchInput.value);
       });
       testOutput?.addEventListener("click", (event) => {
+        if (event.target.closest("[data-test-new-no-tag]")) { openNoTagForm(); return; }
         const addBagTagButton = event.target.closest("[data-test-add-bag-tag]");
         if (addBagTagButton) {
           const list = addBagTagButton.closest("[data-test-outbound-bag-tags]");
@@ -413,6 +431,10 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
         }
         const backChoiceButton = event.target.closest("[data-test-back-choice]");
         if (backChoiceButton) {
+          if (testOutput.querySelector('[data-no-tag="true"]')) {
+            testOutput.innerHTML = '<p class="panel-muted test-search-hint">Enter a bag tag number to search</p>';
+            return;
+          }
           renderTestAddChoice(normalizeTestBagTag(testBagSearchInput?.value)).catch((error) => {
             testOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Open On-hand lookup failed.")}</p>`;
           });
@@ -449,6 +471,10 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
         if (!createForm && !updateForm && !exchangeForm) return;
         event.preventDefault();
         const form = createForm || updateForm || exchangeForm;
+        if (form.dataset.submitting === "true") return;
+        form.dataset.submitting = "true";
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
         const statusEl = form.querySelector(".test-form-actions .panel-muted");
         if (statusEl) statusEl.textContent = exchangeForm ? "Exchanging..." : createForm ? "Saving..." : "Updating...";
         try {
@@ -457,6 +483,9 @@ function currentUserName() { return reviewerDisplayName(auth?.currentUser?.email
           else await submitTestUpdate(updateForm);
         } catch (error) {
           if (statusEl) statusEl.textContent = error?.message || "Save failed.";
+        } finally {
+          delete form.dataset.submitting;
+          if (submitButton) submitButton.disabled = false;
         }
       });
 

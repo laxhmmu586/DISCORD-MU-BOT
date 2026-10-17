@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BOX</title>
+  <script src="/flight-session.js?v=20261016-box-sse"></script>
+  <link rel="stylesheet" href="/box.css?v=20261016-confirmed">
+</head>
+<body>
+  <main>
+    <header><a class="brand" href="/flights.html"><img class="brand-icon" src="/assets/box-brand.png" width="50" height="50" alt=""><span>MUFC<small>Boarding Pass Box</small></span></a><nav aria-label="Boarding"><a href="/scan.html">Boarding</a><a href="/m-board.html">BAB</a></nav></header>
+    <div class="flight-line"><span data-selected-flight></span><button id="refresh" type="button">Refresh</button></div>
+    <p id="status" role="status" aria-live="polite">Loading FB and SY…</p>
+    <div id="box-content" hidden>
+      <section class="total" aria-label="Total passengers"><span>Passengers + Infant = Total Passengers</span><strong id="total">—</strong></section>
+      <section class="boxes" id="boxes" aria-label="Boarding pass boxes"></section>
+      <section class="bn-details" id="bn-details" aria-labelledby="bn-details-title" hidden>
+        <h2 id="bn-details-title">Boarding Pass Details</h2>
+        <div id="bn-detail-rows"></div>
+      </section>
+      <footer class="data-summary" aria-label="SY and FB data">
+        <p id="sy-data"></p>
+        <p id="fb-data"></p>
+        <p id="highest-bn"></p>
+      </footer>
+    </div>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="/__/firebase/init.js"></script>
+  <script src="/box-live.js?v=20261016-sse"></script>
+  <script src="/box.js?v=20261016-sse"></script>
+</body>
+</html>

@@ -8,6 +8,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const PirDelivery = require('./public/public/pir-delivery');
 const CbsReport = require('./cbsReport');
+const BaggageGuide = require('./public/public/baggage-guide');
 const { BoardingSqliteLive } = require('./boardingSqliteLive');
 const { createNbrdConfirmationStore } = require('./nbrdConfirmation');
 const { nbrdEntriesFromFb, nbrdEntriesFromPd } = require('./boardingNbrd');
@@ -44,7 +45,7 @@ const {
 
 const {
 
-  getLatestFlightLog,
+  getLatestFlightLog: downloadLatestFlightLog,
 
   getFlightLogByDate,
   get240InfoByBnAndFlightDate,
@@ -77,6 +78,7 @@ const {
   extractFscExchangeRate,
   updateSyBookingCounts,
   appendCbsCase,
+  getCbsDamageImage,
   appendWrongBaggageSubmission,
   getWrongBaggageSubmissions,
   updateWrongBaggageSubmission,
@@ -121,9 +123,24 @@ const {
 } = require('./googleDrive');
 
 const nbrdConfirmations = createNbrdConfirmationStore();
-const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => scope
-  ? nbrdConfirmations.clearScope(scope.flight, scope.date) : nbrdConfirmations.clear() });
+let boardingBoxCache;
+const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => {
+  if (scope) nbrdConfirmations.clearScope(scope.flight, scope.date);
+  else { nbrdConfirmations.clear(); boardingBoxCache?.invalidate(); }
+} });
 boardingLive.startCleanup();
+boardingBoxCache = new (require('./boardingBoxCache').BoardingBoxCache)({ db:require('./db'),
+  loadLog:downloadLatestFlightLog, beforeAccess:() => boardingLive.cleanupIfDue() });
+boardingBoxCache.start();
+async function getLatestFlightLog() {
+  const ticket = boardingBoxCache.beginUpdate();
+  const log = await downloadLatestFlightLog();
+  if (log) {
+    try { boardingBoxCache.updateFromLog(log, ticket); }
+    catch (error) { console.error('BOX cache update:', error.message); }
+  }
+  return log;
+}
 const boardingDate = req => String(req.query.flightDate || req.body?.flightDate || operationalDate()).toUpperCase();
 
 const {
@@ -1701,7 +1718,6 @@ function createPirPdf(record) {
   coded('DB', 'Destination on Bags', record.destinationOnBags, 52, 424, 500, 26);
   coded('BD', 'Baggage Details', record.ahlBagDescription || record.dprBagInfo, 52, 350, 500, 74);
   if (String(record.caseType).toUpperCase() === 'DPR') {
-    coded('DL', 'Damage Level', record.dprDamageLevel, 52, 324, 500, 26);
     coded('ID', 'Inner Damage', record.dprInnerDamage, 52, 286, 500, 38);
     if (damageImage) {
       box(52, 170, 500, 104, 'Damage Sketch', 8);
@@ -2197,7 +2213,6 @@ function cbsPdfLines(record) {
     ...PirDelivery.fields(record, record.language),
     ['Bag description', record.ahlBagDescription || record.dprBagInfo],
     ['Bag type', record.ahlBagType || record.dprBagType],
-    ['Damage level', record.dprDamageLevel],
     ['Contents / inner damage', record.ahlContents || record.dprInnerDamage]
   ];
 }
@@ -3222,6 +3237,24 @@ app.get('/flights', async (_req, res) => {
   catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
 });
 
+app.get('/boarding-box', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const flightNo = normalizeSupportedFlight(req.query.flightNo);
+  const flightDate = String(req.query.flightDate || '').toUpperCase();
+  if (!flightNo || flightDate !== operationalDate()) return res.status(400).json({ error: 'Please select today’s flight.' });
+  try {
+    if (req.query.refresh === '1') await boardingBoxCache.refresh();
+    const box = await boardingBoxCache.read(flightNo, flightDate);
+    if (!box) return res.status(404).json({ error: 'No SY found for the selected flight.' });
+    return res.json(box);
+  } catch (error) {
+    console.error('Boarding BOX failed:', error);
+    return res.status(503).json({ error: 'Unable to load BOX. Please refresh.' });
+  }
+});
+
+require('./boardingBoxStream').registerBoardingBoxStream(app, {cache:boardingBoxCache});
+
 app.get('/cbs-scan/live-state', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try { return res.json(await boardingLive.records(require('./boardingContext').boardingFlight(), boardingDate(req))); }
@@ -3500,6 +3533,18 @@ async function handleCbsScanNbrdDelete(req, res) {
 
 app.post('/cbs-scan/nbrd-bns/:rowNumber/delete', handleCbsScanNbrdDelete);
 app.delete('/cbs-scan/nbrd-bns/:rowNumber', handleCbsScanNbrdDelete);
+
+app.get('/cbs-damage-images/:ref', async (req, res) => {
+  try {
+    const image = await getCbsDamageImage(req.params.ref);
+    if (!image) return res.status(404).json({error:'Marked image not found'});
+    res.set('Cache-Control','private, max-age=86400');
+    return res.type('image/jpeg').send(image);
+  } catch (error) {
+    console.error('CBS damage image read failed:', error);
+    return res.status(503).json({error:'Marked image temporarily unavailable'});
+  }
+});
 
 app.get('/cbs-cases', async (req, res) => {
   try {
@@ -4449,17 +4494,38 @@ app.get('/test-baggage/:bagTag', async (req, res) => {
 
 app.post('/test-baggage', async (req, res) => {
   try {
-    const bagTag = normalizeTestBagTag(req.body?.bagTag);
-    if (!isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
+    const noTag = req.body?.noTag === true;
+    const bagTag = noTag ? "No Tag" : normalizeTestBagTag(req.body?.bagTag);
+    if (!noTag && !isValidTestBagTag(bagTag)) return res.status(400).json({ error: 'Bag tag must match MU123456, B6123456, or 3U515289 format' });
     const direction = cleanBodyText(req.body?.direction, 20).toLowerCase();
     if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: 'Direction must be inbound or outbound' });
+    if (noTag && (direction !== 'inbound' || !['Passenger bag', 'Inbound rush'].includes(req.body?.bagType) || String(req.body?.location || '').trim().toLowerCase() !== 'office')) {
+      return res.status(400).json({ error: 'No Tag bags must be inbound Passenger bag or Inbound rush at Office' });
+    }
     const date = cleanBodyText(req.body?.date, 20);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Missing or invalid date' });
     const flight = cleanBodyText(req.body?.flight, 20).toUpperCase();
     if (!/^[A-Z]{2}\d{1,4}[A-Z]?$/.test(flight)) return res.status(400).json({ error: 'Missing or invalid flight number' });
     const rushTagNumber = cleanBodyText(req.body?.rushTagNumber, 80).toUpperCase();
     if (rushTagNumber && !isValidRushBagTag(rushTagNumber)) return res.status(400).json({ error: 'RUSH tag must use an airline code followed by 6 digits, for example DL123456, B6123456, or 3U515289' });
-    const result = await appendTestBaggageRecord({
+    let bagIdentification;
+    if (noTag) {
+      const input = req.body?.bagIdentification || {};
+      bagIdentification = {color:cleanBodyText(input.color, 10).toUpperCase(), type:cleanBodyText(input.type, 10).toUpperCase(), descriptors:cleanBodyText(input.descriptors, 80).toUpperCase()};
+      const elements = bagIdentification.descriptors.split(',').map(value => value.trim()).filter(Boolean);
+      if ((bagIdentification.color && !BaggageGuide.colors.some(item => item[0] === bagIdentification.color))
+        || (bagIdentification.type && !BaggageGuide.types.some(item => item[0] === bagIdentification.type))
+        || elements.length > 3 || new Set(elements).size !== elements.length
+        || elements.some(code => !BaggageGuide.descriptors.some(item => item[0] === code))
+        || (elements.includes('X-M') && elements.some(code => code !== 'X-M' && BaggageGuide.descriptors.find(item => item[0] === code)?.[5] === 'material'))
+        || (elements.includes('X-E') && elements.some(code => code !== 'X-E' && BaggageGuide.descriptors.find(item => item[0] === code)?.[5] === 'external'))) {
+        return res.status(400).json({error:'Select valid baggage color, type, and up to 3 compatible descriptive elements'});
+      }
+      bagIdentification.descriptors = elements.join(',');
+    }
+    const saveRecord = noTag ? appendCbsUnresolvedBaggageCase : appendTestBaggageRecord;
+    const result = await saveRecord({
+      bagIdentification,
       bagTag,
       direction,
       flight,

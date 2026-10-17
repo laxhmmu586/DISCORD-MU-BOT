@@ -14,14 +14,14 @@
     if (value) sessionStorage.setItem(key, JSON.stringify(value)); else sessionStorage.removeItem(key);
   };
   if (location.pathname === '/login.html') window.setMufcFlight(null);
-  const guarded = ['/','/index.html','/scan.html','/scan2.html','/m-board.html','/m-board2.html'];
+  const guarded = ['/','/index.html','/scan.html','/scan2.html','/m-board.html','/m-board2.html','/box.html'];
   if (guarded.includes(location.pathname) && !selected) location.replace('/flights.html?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
   const nativeFetch = window.fetch.bind(window);
   window.fetch = (resource, init) => {
     const url = new URL(resource instanceof Request ? resource.url : resource, location.href);
     const apiOrigin = new URL(window.MU_API_BASE || 'https://api.mufcapp.net').origin;
     const flight = window.mufcFlight;
-    if (url.origin === apiOrigin && (url.pathname === '/search' || /^\/cbs-scan2?(?:\/|$)/.test(url.pathname)) && flight) {
+    if (url.origin === apiOrigin && (url.pathname === '/search' || /^\/boarding-box(?:\/|$)/.test(url.pathname) || /^\/cbs-scan2?(?:\/|$)/.test(url.pathname)) && flight) {
       if (flight.flightDate !== today()) {
         window.setMufcFlight(null); location.replace('/flights.html');
         return Promise.reject(new Error('Please select today’s flight.'));

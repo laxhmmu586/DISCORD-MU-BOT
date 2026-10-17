@@ -350,6 +350,11 @@
     .full-file { display:grid; gap:18px; }
     .full-file-section { padding:16px; border:1px solid #d8e4f1; border-radius:14px; background:#fff; }
     .full-file-section h3 { margin:0 0 12px; color:var(--brand); }
+    .dpr-marked-images { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)); gap:16px; margin-top:16px; }
+    .dpr-marked-image { min-width:0; margin:0; padding:12px; border:1px solid #dce7f6; border-radius:12px; background:#f8fbff; }
+    .dpr-marked-image figcaption { color:var(--brand); font-weight:600; margin-bottom:10px; overflow-wrap:anywhere; }
+    .dpr-marked-image img { display:block; width:100%; max-height:420px; object-fit:contain; background:white; border-radius:8px; }
+    .dpr-marked-image img[hidden] { display:none; }
     .full-file-section.delivery-information { background:#fff3e6; border-color:#f4cda4; }
     .add-baggage-search { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:12px; max-width:900px; margin:28px auto; align-items:end; }
     .add-baggage-search label,.add-baggage-form label { display:grid; gap:7px; color:#475467; font-size:12px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
@@ -941,8 +946,9 @@
       rows.forEach((row) => {
         const tag = String(row.bagTag || '').trim().toUpperCase();
         if (!tag) return;
-        if (!rowsByTag.has(tag)) rowsByTag.set(tag, []);
-        rowsByTag.get(tag).push(row);
+        const key = tag === "NO TAG" ? `no-tag-row-${row.rowNumber}` : tag;
+        if (!rowsByTag.has(key)) rowsByTag.set(key, []);
+        rowsByTag.get(key).push(row);
       });
       rows = [...rowsByTag.values()].map((history) => {
         history.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
@@ -1004,7 +1010,7 @@
         const flightColor = ({MU586:'blue', MU578:'purple', MU9586:'teal', MU583:'green', MU577:'orange'})[flight] || 'unknown';
         const flightCell = isBagRoomGroup ? `<td class="sheet-meta"><span class="unload-flight unload-flight-${flightColor}">${escapeHtml(flight || 'Not recorded')}</span></td>` : '';
         const dateBand = dateBands.get(String(row.flightDate || '').trim() || 'unknown') === 0 ? 'date-band-a' : 'date-band-b';
-        return `<tr class="case-summary-row ${dateBand}" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}${flightCell}<td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
+        return `<tr class="case-summary-row ${dateBand}" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}${flightCell}<td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${row.bagIdentifications?.length ? BaggageGuide.cards(row.bagIdentifications, document.documentElement.lang) : ""}${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -1295,10 +1301,8 @@
         [label('AHL Features', 'AHL特征'), row.ahlFeatures],
         [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures],
         [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
-        [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel],
         [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
         [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType],
-        [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
         [label('Contents Details', '包内物品详情'), row.contentsDetails],
         [label('Issue Date', '填写日期'), row.issueDate],
         [label('Passenger Signature', '旅客签字'), row.passengerSignature],
@@ -1345,10 +1349,8 @@
         [label('AHL Features', 'AHL特征'), row.ahlFeatures],
         [label('AHL Other Features', 'AHL其他特征'), row.ahlOtherFeatures],
         [label('AHL Contents', 'AHL包内物品'), row.ahlContents],
-        [label('DPR Damage Level', 'DPR破损程度'), row.dprDamageLevel],
         [label('DPR Bag Info', 'DPR行李信息'), row.dprBagInfo],
         [label('DPR Bag Type', 'DPR行李类型'), row.dprBagType],
-        [label('DPR Inner Damage', 'DPR内物破损'), row.dprInnerDamage],
         [label('Contents Details', '包内物品详情'), row.contentsDetails],
         [label('Issue Date', '填写日期'), row.issueDate],
         [label('Passenger Signature', '旅客签字'), row.passengerSignature]
@@ -1372,8 +1374,6 @@
       const summaryFields=[[label('Case Type','类型'),caseType],[label('Bag Tag','行李牌'),row.bagTag||bags.map(bag=>bag.tag).filter(Boolean).join(' / ')],[label('Quantity','件数'),bags.length||'']];
       const details=[[label('Other useful information','其他有用信息'),row.additionalInformation]];
       if(caseType==='DPR'){
-        for(const damage of row.damagedBags||[])details.push([`${label('Damaged bag','损坏行李')} ${damage.tag}`,[damage.damageLevel,damage.innerDamage,(damage.damageAreas||[]).join(', ')].filter(Boolean).join(' · ')]);
-        details.push([label('Damage level','破损程度'),row.dprDamageLevel],[label('Inner damage','内物破损'),row.dprInnerDamage]);
         const raw=String(row.baggageDetails||row.dprBagInfo||'').trim();
         if(raw&&!bags.length)details.push([label('Baggage Details','行李详情'),raw]);
         else if(raw&&!/IATA identification:/i.test(raw)&&!bags.some(bag=>String(bag.description||'').trim()))details.push([label('Damage description','破损描述'),raw]);
@@ -1386,7 +1386,12 @@
       const unique=[],values=new Set();for(const [key,value]of details){if(!hasValue(value))continue;const signature=String(value).trim();if(values.has(signature))continue;values.add(signature);unique.push([key,value]);}
       const deliveryFields=PirDelivery.fields(row,document.documentElement.lang).filter(([key])=>key!==label('Instructions','提示'));
       const deliverySection=caseType==='DPR'?'':`<section class="full-file-section delivery-information"><h3>${label('Delivery Information','配送信息')}</h3>${fieldGrid(deliveryFields)}</section>`;
-      return `<div class="full-file">${deliverySection}<section class="full-file-section passenger-info-section"><div class="case-section-heading"><h3>${label('Passenger information','旅客资料')}</h3>${edit('passenger')}</div>${requiredFieldGrid(passengerFields)}</section><section class="full-file-section baggage-info-section"><div class="case-section-heading"><h3>${label('Baggage information','行李资料')}</h3>${edit('baggage')}</div><div class="baggage-summary">${fieldGrid(summaryFields)}</div>${bags.length?BaggageGuide.cards(bags,document.documentElement.lang,{caseType}):''}${fieldGrid(unique)}</section></div>`;
+      const damageImages=caseType==='DPR'?`<div class="dpr-marked-images">${(row.damagedBags?.length?row.damagedBags:[{tag:row.bagTag,damageSketch:row.damageSketch,damageSketchRef:row.damageSketchRef}]).map(damage=>{
+        const ref=String(damage.damageSketchRef||''),inline=String(damage.damageSketch||'');
+        const src=/^[1-9]\d{0,7}-[1-9]\d{0,2}-[a-f0-9]{64}$/.test(ref)?`${apiBase}/cbs-damage-images/${ref}`:/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(inline)?inline:'';
+        return `<figure class="dpr-marked-image"><figcaption>${label('Marked damage view','损坏部位标记图')} · ${escapeHtml(damage.tag||'')}</figcaption>${src?`<a href="${escapeHtml(src)}" target="_blank" rel="noopener"><img loading="lazy" src="${escapeHtml(src)}" alt="${escapeHtml(label('Marked damage view','损坏部位标记图'))}" onerror="this.hidden=true;this.parentElement.nextElementSibling.hidden=false"></a><p hidden>${label('Image unavailable. Please reopen this record to retry.','图片暂不可用，请重新打开记录重试。')}</p>`:`<p>${label('No saved marked image for this record.','此记录未保存标记图。')}</p>`}</figure>`;
+      }).join('')}</div>`:'';
+      return `<div class="full-file">${deliverySection}<section class="full-file-section passenger-info-section"><div class="case-section-heading"><h3>${label('Passenger information','旅客资料')}</h3>${edit('passenger')}</div>${requiredFieldGrid(passengerFields)}</section><section class="full-file-section baggage-info-section"><div class="case-section-heading"><h3>${label('Baggage information','行李资料')}</h3>${edit('baggage')}</div><div class="baggage-summary">${fieldGrid(summaryFields)}</div>${bags.length?BaggageGuide.cards(bags,document.documentElement.lang,{caseType}):''}${fieldGrid(unique)}${damageImages}</section></div>`;
     }
     function updateFormHtml(row, mode = 'worldtracer') {
       if (!row.rowNumber) return `<p class="status err">${label('A saved row is required before this case can be updated.', '案件保存后才能更新。')}</p>`;

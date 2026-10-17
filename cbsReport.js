@@ -29,7 +29,7 @@ function validateBagTagPhotos(bags, attachments) {
 }
 function normalizeDamagedBags(value,bags){
   if(!Array.isArray(value)||!value.length||value.length>bags.length)throw new Error('Select the damaged bag tag number.');
-  const seen=new Set();return value.map(item=>{const tag=clean(item?.tag,20).toUpperCase().replace(/\s+/g,'');if(!bags.some(bag=>bag.tag===tag)||seen.has(tag))throw new Error('Select each damaged bag once from the entered tags.');seen.add(tag);if(!['Minor','Major','Total'].includes(item.damageLevel))throw new Error('Choose a valid damage level.');const sketch=String(item.damageSketch||'');if(sketch&&(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(sketch)||sketch.length>4000000))throw new Error('Invalid damage sketch.');return {tag,damageLevel:item.damageLevel,...(item.sketchLayout==='six-face-3d'?{sketchLayout:'six-face-3d'}:{}),innerDamage:clean(item.innerDamage,1000),damageAreas:(item.damageAreas||[]).filter(key=>['front','back','left','right','top','bottom'].includes(key)),damageSketch:sketch};});
+  const seen=new Set();return value.map(item=>{const tag=clean(item?.tag,20).toUpperCase().replace(/\s+/g,'');if(!bags.some(bag=>bag.tag===tag)||seen.has(tag))throw new Error('Select each damaged bag once from the entered tags.');seen.add(tag);if(item.damageLevel&&!['Minor','Major','Total'].includes(item.damageLevel))throw new Error('Choose a valid damage level.');const sketch=String(item.damageSketch||'');if(sketch&&(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(sketch)||sketch.length>4000000))throw new Error('Invalid damage sketch.');return {tag,...(item.damageLevel?{damageLevel:item.damageLevel}:{}),...(item.sketchLayout==='six-face-3d'?{sketchLayout:'six-face-3d'}:{}),innerDamage:clean(item.innerDamage,1000),damageAreas:(item.damageAreas||[]).filter(key=>['front','back','left','right','top','bottom'].includes(key)),damageSketch:sketch};});
 }
 function emailSummary(record){
   const zh=record.language==='zh',label=(en,cn)=>zh?cn:en;
@@ -54,7 +54,6 @@ function emailShell({subject='',html='',text='',record={}}) {
   for(const flight of record.formVersion>=3?[]:record.flightRows||[])rows.push([pick('Flight Number','航班号'),flight.flightNo],[pick('Travel Date','出行日期'),flight.flightDate]);
   if(!(record.flightRows||[]).length&&record.formVersion<3)rows.push([pick('Flight','航班'),record.flightRoute]);
   if(record.destinationOnBags)rows.push([pick('Final Destination','最终目的地'),record.destinationOnBags]);
-  if(received&&record.caseType==='DPR')rows.push([pick('Damage Level','破损程度'),zh?({Minor:'轻微',Major:'严重',Total:'完全损坏'}[record.dprDamageLevel]||record.dprDamageLevel):record.dprDamageLevel]);
   const table=rows.filter(([,v])=>v!==undefined&&v!==null&&String(v).trim()).length?`<table role="presentation" width="100%" cellspacing="0" cellpadding="10" style="border-collapse:collapse;border:1px solid #dce7f6;margin:20px 0">${rows.filter(([,v])=>v!==undefined&&v!==null&&String(v).trim()).map(([k,v])=>`<tr><td style="width:42%;background:#f1f6fd;border:1px solid #e0eaf7;color:#6b83a4;font-size:13px">${escape(k)}</td><td style="background:#fff;border:1px solid #e0eaf7;color:#153565;font-size:13px">${escape(v)}</td></tr>`).join('')}</table>`:'';
   let content=html||String(text).split(/\n\n+/).map(p=>`<p>${escape(p).replace(/\n/g,'<br>')}</p>`).join('');
   content=content.replace(/<h2>([\s\S]*?)<\/h2>/gi,'<p style="margin:0 0 16px">$1</p>');
@@ -155,9 +154,9 @@ function createPdf(record,{pdfText,pdfHelveticaTextWidth,jpegFromDataUrl}) {
     const damageRecords=record.damagedBags?.length?record.damagedBags:[{tag:record.bagIdentifications?.[0]?.tag,damageLevel:record.dprDamageLevel,innerDamage:record.dprInnerDamage,damageAreas:record.damageAreas,damageSketch:record.damageSketch}];
     for(const damage of damageRecords){
       ensure(60);field(label('Damaged bag tag','损坏行李牌号码'),damage.tag);
-      grid([[label('Damage level','破损程度'),zh?({Minor:'轻微',Major:'严重',Total:'完全损坏'}[damage.damageLevel]||damage.damageLevel):damage.damageLevel],[label('Marked views','标记视角'),(damage.damageAreas||[]).map(key=>({front:'正面 / Front',back:'背面 / Back',left:'左侧 / Left',right:'右侧 / Right',top:'顶部 / Top',bottom:'底部 / Bottom'})[key]).join(', ')]]);
+      grid([[label('Marked views','标记视角'),(damage.damageAreas||[]).map(key=>({front:'正面 / Front',back:'背面 / Back',left:'左侧 / Left',right:'右侧 / Right',top:'顶部 / Top',bottom:'底部 / Bottom'})[key]).join(', ')]]);
       if(record.formVersion<3)field(label('Damage location','破损位置'),record.dprBagInfo);
-      field(label('Inner damage','内物破损'),damage.innerDamage);
+      if(damage.innerDamage)field(label('Inner damage','内物破损'),damage.innerDamage);
       if(damage.damageSketch){ensure(155);drawPicture(damage.damageSketch,40,y,532,145);y-=153;}
     }
   }
