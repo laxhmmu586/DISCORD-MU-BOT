@@ -77,3 +77,16 @@ body.profile-page{background:#000a18;color:#e5eefb;--profile-border:#294b6c70;--
 .profile-hero{background:radial-gradient(ellipse at 30% -35%,#15365770,transparent 62%),linear-gradient(150deg,#041525,#010910 78%)}
 .profile-hero:before{z-index:0;background:linear-gradient(90deg,transparent,#3b8fd2 32%,#a6dfff 50%,#348ae3 68%,transparent) 18% 0/220px 1px no-repeat,radial-gradient(ellipse 160px 12px at 24% 0,#206ad24d,transparent),url('/assets/profile-glass-layers.svg') left top/83% 100% no-repeat,linear-gradient(18deg,#0009 0%,transparent 54%);box-shadow:inset 0 1px #c4e5ff0a,inset 0 -25px 50px #0003;opacity:1}
 @media(max-width:760px){.profile-hero:before{background-size:150px 1px,auto,155% 100%,auto}}
+
+/* Match the reference's identity scale and softly lit glass planes. */
+@media(min-width:761px){
+ .profile-hero{height:clamp(280px,20vw,390px);min-height:0;max-height:none;aspect-ratio:auto;padding:clamp(26px,2.4vw,46px);gap:clamp(24px,2vw,40px);background:radial-gradient(ellipse at 32% -30%,#16385b70,transparent 58%),linear-gradient(145deg,#061726,#010a13 80%)}
+ .profile-avatar-wrap{width:clamp(160px,10vw,196px);height:clamp(160px,10vw,196px)}
+ .profile-identity h1{font-size:clamp(36px,2.5vw,48px);line-height:1.12;letter-spacing:-.8px;margin-bottom:12px}
+ .profile-identity>p:not(.profile-eyebrow){font-size:15px;line-height:1.5}
+ .profile-identity>p.profile-affiliation{font-size:13px}
+ .profile-meta{margin-top:24px}
+ .profile-hero:after{inset:0 0 0 auto;width:auto;max-width:none;height:100%;aspect-ratio:2060/763;background-size:100% 100%;background-position:right center;mask-image:linear-gradient(90deg,transparent,#0005 15%,#000c 35%,#000 60%);-webkit-mask-image:linear-gradient(90deg,transparent,#0005 15%,#000c 35%,#000 60%)}
+}
+.profile-hero:before{background:linear-gradient(90deg,transparent,#3388d0 32%,#a4dcff 50%,#287cd2 68%,transparent) 20% 0/200px 1px no-repeat,radial-gradient(ellipse 130px 10px at 25% 0,#287ad044,transparent),url('/assets/profile-glass-layers.svg?v=2') left top/72% 100% no-repeat,linear-gradient(20deg,#0008,transparent 58%);box-shadow:inset 0 1px #a0c8e510,inset 0 -24px 40px #0002}
+@media(max-width:760px){.profile-hero:before{background-size:140px 1px,auto,140% 100%,auto}}
