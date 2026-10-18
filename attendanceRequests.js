@@ -29,7 +29,7 @@ function createSheetsStorage({ sheets, spreadsheetId = SPREADSHEET_ID, sheetId =
   }
   let tail = Promise.resolve();
   const serial = fn => { const result = tail.then(fn); tail = result.catch(() => {}); return result; };
-  async function read() {
+  async function read(initialize = true) {
     const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets.properties' });
     const tab = meta.data.sheets.find(s => s.properties.sheetId === sheetId);
     if (!tab) throw new Error('The attendance worksheet was not found');
@@ -38,13 +38,16 @@ function createSheetsStorage({ sheets, spreadsheetId = SPREADSHEET_ID, sheetId =
     const values = (await sheets.spreadsheets.values.get({ spreadsheetId, range: title + '!A:' + columnName(Math.min(columnCount, 52) - 1) })).data.values || [];
     const headers = [...(values[0] || [])];
     // Preserve the original Google Form response columns, including unknown columns.
-    for (const name of HEADERS) if (!headers.some(h => normalizeHeader(h) === normalizeHeader(name))) headers.push(name);
+    if (initialize) for (const name of HEADERS) if (!headers.some(h => normalizeHeader(h) === normalizeHeader(name))) headers.push(name);
     if (headers.length > 52) throw new Error('The attendance worksheet has too many columns');
     if (headers.length > columnCount) await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: [{ appendDimension: { sheetId, dimension: 'COLUMNS', length: headers.length - columnCount } }] } });
-    if (JSON.stringify(headers) !== JSON.stringify(values[0] || [])) await sheets.spreadsheets.values.update({ spreadsheetId, range: title + '!A1:' + columnName(headers.length - 1) + '1', valueInputOption: 'RAW', requestBody: { values: [headers] } });
+    if (initialize && JSON.stringify(headers) !== JSON.stringify(values[0] || [])) await sheets.spreadsheets.values.update({ spreadsheetId, range: title + '!A1:' + columnName(headers.length - 1) + '1', valueInputOption: 'RAW', requestBody: { values: [headers] } });
     return { title, headers, rows: values.slice(1), index: name => headers.findIndex(h => normalizeHeader(h) === normalizeHeader(name)) };
   }
-  return { save: record => serial(async () => {
+  return { list: employeeId => serial(async () => {
+    const data = await read(false);
+    return data.rows.filter(row => String(row[data.index('Employee ID')] || '') === employeeId).map(row => ({reference:row[data.index('Reference')]||'',submittedAt:row[data.index('Timestamp')]||'',type:row[data.index('Call Type')]==='COMING LATE'?'late':'sick',date:row[data.index('Request Date')]||row[data.index('Which day do you want to call off / report sick?')]||'',arrivalTime:row[data.index('When will you be at the office?')]||'',reason:row[data.index('Why?')]||row[data.index('Why you need call off/sick')]||'',note:row[data.index('Note')]||''})).reverse();
+  }), save: record => serial(async () => {
     const data = await read();
     const prior = data.rows.find(row => String(row[data.index('Reference')] || '').endsWith(record.id.toUpperCase()));
     if (prior) {
@@ -62,9 +65,18 @@ function createSheetsStorage({ sheets, spreadsheetId = SPREADSHEET_ID, sheetId =
 function history(data, record) {
   return data.rows.filter(row => row[data.index('Employee ID')] === record.employeeId && String(row[data.index('Request Date')]).startsWith(record.date.slice(0, 7))).map(row => ({ date: row[data.index('Request Date')], type: row[data.index('Call Type')] === 'COMING LATE' ? 'late' : 'sick' })).sort((a,b) => a.date.localeCompare(b.date));
 }
-function registerAttendance(app, { employees, client, db, storage = createSheetsStorage(), renderCards = (...args) => require('./attendanceCards').renderCards(...args), channelId = process.env.ATTENDANCE_DISCORD_CHANNEL_ID || '1365021189998903418', now = () => new Date() }) {
+function registerAttendance(app, { employees, client, db, profiles, authenticate = require('./pbbAuth').authenticate, storage = createSheetsStorage(), renderCards = (...args) => require('./attendanceCards').renderCards(...args), channelId = process.env.ATTENDANCE_DISCORD_CHANNEL_ID || '1365021189998903418', now = () => new Date() }) {
   db.exec('CREATE TABLE IF NOT EXISTS attendance_delivery (reference TEXT PRIMARY KEY, data TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0)');
   const active = new Map();
+  app.get('/attendance-api/history', async (req,res) => {
+    res.set('Cache-Control','private, no-store');
+    let user;
+    try { user=await authenticate(req); } catch { return res.status(401).json({error:'Sign in required.'}); }
+    const employee=profiles?.linked(user);
+    if(!employee?.name)return res.status(403).json({error:'Link your employee profile first.'});
+    try { res.json({records:await storage.list(employee.id)}); }
+    catch { res.status(503).json({error:'Could not load attendance records from Google Sheets. Please retry.'}); }
+  });
   async function deliver(reference) {
     if (active.has(reference)) return active.get(reference);
     const work = (async () => {

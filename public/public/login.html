@@ -333,6 +333,8 @@
       }
 
       function getRedirectTarget() {
+        const next = new URLSearchParams(location.search).get('next');
+        if(next && /^\/(read-sign|uniform|attendance)\.html(?:[?#]|$)/.test(next)) return new URL(next, location.origin).href;
         return new URL("flights.html", window.location.href).href;
       }
 
