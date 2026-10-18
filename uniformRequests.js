@@ -16,7 +16,7 @@ function createUniformStore({employees,profiles,now=()=>new Date()}){
  const put=r=>{db.prepare('UPDATE uniform_requests SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
  const canReview=(r,e)=>r.status==='pending'&&r.stages[r.step]===e.position&&r.employee.id!==e.id&&!r.approvals.some(a=>a.employeeId===e.id);
  const visible=(r,e)=>r.employee.id===e.id||canReview(r,e)||r.approvals.some(a=>a.employeeId===e.id)||r.manager?.id===e.id;
- const view=(r,e)=>({...r,canReview:canReview(r,e),delivery: r.status==='approved'?(db.prepare('SELECT delivered FROM uniform_requests WHERE id=?').get(r.id).delivered?'sent':'pending'):undefined});
+ const view=(r,e)=>({...r,nextApprovers:r.status==='pending'?employees.get().employees.filter(person=>canReview(r,person)).map(({id,name,position})=>({id,name,position})):[],canReview:canReview(r,e),delivery: r.status==='approved'?(db.prepare('SELECT delivered FROM uniform_requests WHERE id=?').get(r.id).delivered?'sent':'pending'):undefined});
  return {db,workflow,employee,get,canReview,
   list(user){const e=employee(user);return {position:e.position||'Agent',workflow:workflow(),requests:db.prepare('SELECT data FROM uniform_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,e)).map(r=>view(r,e))};},
   read(user,id){const e=employee(user),r=get(id);if(!visible(r,e))fail('Request access denied.',403);return view(r,e);},

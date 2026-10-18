@@ -1018,6 +1018,7 @@ app.use((req, res, next) => {
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
 app.use('/profile-api', express.json({limit:'3mb'}));
+app.use('/read-sign-api', express.json({limit:'15mb'}));
 app.use('/feedback-api', express.json({limit:'24kb'}));
 
 const visaStore = new (require('./visaStore').VisaStore)(process.env.VISA_DB_PATH);
@@ -1101,7 +1102,7 @@ app.use('/assets/feedback', express.static(path.join(__dirname,'public','public'
 app.get(['/feedback.html','/feedback.css','/feedback-client.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.use('/assets/pbb', express.static(path.join(__dirname,'public','public','assets','pbb')));
 app.use('/assets/attendance', express.static(path.join(__dirname,'public','public','assets','attendance')));
-app.get(['/portal-cards.css','/info.html','/info.js','/uniform-notifications.js','/uniform.html','/uniform.css','/uniform-client.js','/uniform-api.js','/uniform-workflow.js','/profile.html','/profile.css','/profile.js','/employee-profile-api.js','/employee-phone.js','/flight-account.js','/dashboard-profile.js','/auth-confirm.css'],(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
+app.get(['/attendance-calendar.js','/read-sign.html','/read-sign.css','/read-sign.js','/people-api.js','/profile-modules.js','/attendance.html','/attendance-history.js','/portal-cards.css','/info.html','/info.js','/uniform-notifications.js','/uniform.html','/uniform.css','/uniform-client.js','/uniform-api.js','/uniform-workflow.js','/profile.html','/profile.css','/profile.js','/employee-profile-api.js','/employee-phone.js','/flight-account.js','/dashboard-profile.js','/auth-confirm.css'],(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.get('/assets/mission-earth.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','mission-earth.png')));
 app.get('/assets/boarding-aurora-c.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','boarding-aurora-c.png')));
 app.get(['/request.html','/request.css','/request.js','/pbb.html','/pbb.css','/pbb-light.css','/pbb-client.js','/pbb-data.js','/pbb-signals.js','/flights.css','/flight-session.js','/service-common.js','/admin.html','/employees-client.js'], (req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
@@ -1331,7 +1332,7 @@ const client =
 // Jet Bridge checklist and restricted employee administration
 const pbbService = require('./pbb').registerPbb(app, { client });
 require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
-require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, db: pbbService.store.db });
+require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, profiles:pbbService.profiles, db: pbbService.store.db });
 const etabAdvisory = require('./etabAdvisory');
 const etabService = etabAdvisory.createAdvisoryService({
   getClient: require('./googleDrive').getNextDayInfoGmailClient,
