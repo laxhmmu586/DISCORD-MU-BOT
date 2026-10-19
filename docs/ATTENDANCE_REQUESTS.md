@@ -1,10 +1,10 @@
 # Attendance requests
 
-`/request.html` is a public employee form. It intentionally does not require login. It obtains the current full employee list from EP.DB through `/attendance-api/employees`, returning only selection IDs and names (no EIDs, phone numbers, email addresses, or Discord IDs). This is self-reported attendance; choosing a name does not verify the submitter's identity.
+`/attendance-request.html` is a public employee form. It intentionally does not require login. It obtains the current full employee list from EP.DB through `/attendance-api/employees`, returning only selection IDs and names (no EIDs, phone numbers, email addresses, or Discord IDs). This is self-reported attendance; choosing a name does not verify the submitter's identity.
 
 ## Storage and deployment
 
-- Frontend: `public/public/request.html`, `request.css`, and `request.js`, served by the existing Firebase Hosting configuration and Express routes.
+- Frontend: `public/public/attendance-request.html`, `request.css`, and `request.js`, served by the existing Firebase Hosting configuration and Express routes.
 - Backend: `/attendance-api/requests`, mounted with the existing employee store in `index.js`.
 - Destination: [attendance spreadsheet](https://docs.google.com/spreadsheets/d/12tZLWvQin1bhbWvALdnlAxkR0iD_6ScUVWEnL6IziDY/edit?gid=580541604#gid=580541604), worksheet ID `580541604`. The worksheet title is resolved by ID rather than hard-coded.
 - Google authentication: existing `GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY`; grant this service account editor access to the destination spreadsheet. Credentials remain on the backend.

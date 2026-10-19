@@ -6,14 +6,24 @@
  el('uniform-items').innerHTML=names.map((name,i)=>`<tr><th>${name}<small>${hints[i]}</small></th>${['size','pieces','order','reusable','nonReusable'].map((key,j)=>`<td><label><span class="sr-only">${name} ${key}</span><input data-key="${key}" ${j?'type="number" min="0" max="99" step="1"':'maxlength="30"'}></label></td>`).join('')}</tr>`).join('');
  const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n;};
  function flow(r){return ['Employee',...r.stages,'PDF → Manager email'].join(' → ');}
- function progress(r){const wrap=node('div','','uniform-progress');wrap.append(node('p',r.status==='draft'?'Current step: Complete and submit your request':r.status==='pending'?'Current step: '+r.stages[r.step]+' review':r.status==='approved'?'Completed · Approved':'Completed · Rejected','uniform-progress-state'));
-   const track=node('ol','','oa-track');
-   const submitted=node('li','',r.status==='draft'?'oa-current':'oa-complete');submitted.append(node('span',r.status==='draft'?'1':'✓','oa-dot'),node('strong',r.status==='draft'?'Employee · Submit request':'Employee · Submitted'),node('small',r.employee.name),node('small',r.submittedAt?new Date(r.submittedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles'})+' PT':'Not submitted yet'));track.append(submitted);
-   r.stages.forEach((stage,i)=>{const a=r.approvals[i],current=r.status==='pending'&&r.step===i,step=node('li','',a?(a.action==='reject'?'oa-rejected':'oa-complete'):current?'oa-current':'');step.append(node('span',a?(a.action==='reject'?'×':'✓'):String(i+2),'oa-dot'),node('strong',stage+' · '+(a?(a.action==='reject'?'Rejected':'Approved'):current?'Awaiting approval':r.status==='rejected'?'Not reached':'Upcoming')));if(a){step.append(node('small',a.name),node('small',new Date(a.at).toLocaleString('en-US',{timeZone:'America/Los_Angeles'})+' PT'),node('p',a.note||'No comment provided.','oa-reason'));}else{const reviewers=current?r.nextApprovers:r.approvalRoute?.[i]?.reviewers;step.append(node('small',reviewers?.length?reviewers.map(p=>p.name).join(' / '):'No eligible approver. Contact an administrator.'));}track.append(step);});
-   wrap.append(track);
-   if(r.status==='draft')wrap.append(node('p','Next: '+r.stages[0]+' · '+(r.approvalRoute?.[0]?.reviewers.map(p=>p.name).join(' / ')||'No eligible approver configured'),'oa-next'));
-   if(r.status==='pending')wrap.append(node('p','Next: '+r.stages[r.step]+' · '+(r.nextApprovers?.map(p=>p.name).join(' / ')||'No eligible approver configured'),'oa-next'));
-  return wrap;
+ function progress(r){
+  const wrap=node('div','','uniform-progress'),track=node('ol','','oa-track');
+  const draft=r.status==='draft',pending=r.status==='pending';
+  const people=i=>(r.approvalRoute?.[i]?.reviewers||[]).map(p=>p.name).join(' / ');
+  function step(role,name,state,label,index,detail){
+   const item=node('li','','oa-'+state),dot=node('span',state==='complete'?'✓':state==='rejected'?'×':String(index),'oa-dot');
+   if(state==='current')item.setAttribute('aria-current','step');
+   item.append(dot,node('strong',role),node('small',name||'No eligible approver configured'),node('span',label,'oa-badge'));
+   if(detail)item.append(node('p',detail,'oa-reason'));track.append(item);
+  }
+  step('Employee',r.employee.name,draft?'current':'complete',draft?'Not submitted':'Submitted',1);
+  r.stages.forEach((stage,i)=>{const a=r.approvals[i],current=pending&&r.step===i;step(stage,a?.name||(current?r.nextApprovers?.map(p=>p.name).join(' / '):people(i)),a?(a.action==='reject'?'rejected':'complete'):current?'current':'upcoming',a?(a.action==='reject'?'Rejected':'Approved'):current?'In review':r.status==='rejected'?'Not reached':'Upcoming',i+2,a?.note);});
+  wrap.append(track);
+  const current=node('div','','oa-current-card'),icon=node('span','▤','oa-current-icon'),copy=node('div','','oa-current-copy');icon.setAttribute('aria-hidden','true');
+  const title=draft?'Complete and submit your request':pending?r.stages[r.step]+' review':r.status==='approved'?'Request approved':'Request rejected';
+  const reviewer=r.nextApprovers?.map(p=>p.name).join(' / ');
+  const description=draft?'Complete the form below to start the approval flow.':pending?(reviewer?'Waiting for '+reviewer+' to review this request.':'No eligible approver. Contact an administrator.'):r.status==='approved'?'All approval stages are complete. PDF email '+(r.delivery==='sent'?'sent.':'pending delivery.'):r.approvals.find(a=>a.action==='reject')?.note||'Please check the review details below.';
+  copy.append(node('span',pending||draft?'CURRENT STEP':'REQUEST STATUS','oa-current-label'),node('h3',title),node('p',description));current.append(icon,copy);wrap.append(current);return wrap;
  }
  function renderFormProgress(){const host=el('uniform-form-progress');host.replaceChildren();if(!lastData||el('request-type').value!=='uniform')return;const r=lastData.requests.find(r=>r.id===trackedId)||lastData.requests.find(r=>r.employee.id===currentEmployee?.id);if(r){trackedId=r.id;host.append(node('p','Tracking submitted request · '+r.employee.name+' · '+r.date,'info-note'),progress(r));}else{host.append(progress({status:'draft',employee:currentEmployee,stages:lastData.workflow.stages,approvalRoute:lastData.approvalRoute,approvals:[],step:-1}));}}
  async function load(){
