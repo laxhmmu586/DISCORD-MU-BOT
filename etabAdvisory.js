@@ -48,10 +48,10 @@ function buildDiscordPayload(advisory, mentions = '') {
   for (const [key, label] of [['reg','REG'], ['eta','ETA'], ['pax','PAX'], ['crew','CREW']]) {
     if (arrival[key]) content += `🔸 ${label}: ${arrival[key]}\n`;
   }
-  if (arrival.clockIn) content += `\n## 🕒 Clock-in: ${arrival.clockIn}\n`;
+  if (arrival.clockIn) content += `### 🕒 Clock-in: ${arrival.clockIn}\n`;
   if (mentions) content += `👥 Arrival Team:\n${mentions.trim().split(/\s+/).join('\n')}\n`;
   if (departure.flight) {
-    content += `\n### Departure - ${departure.flight}\n`;
+    content += `### Departure - ${departure.flight}\n`;
     content += `🔹 ${departure.timeType || 'ETD'}: ${departure.time || 'TBA'}\n`;
   }
   if (!Number.isNaN(gateNumber) && gateNumber >= 201 && gateNumber <= 225) content += '\n# 🚨 MSC GATE OPERATION';
