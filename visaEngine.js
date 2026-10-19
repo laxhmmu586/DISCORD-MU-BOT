@@ -2,7 +2,7 @@ const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV',
 const {validDate}=require('./visaStore');
 const {countryCodes,countryForAirport}=require('./visaDestinations');
 function visaIssuer(line){
-  const text=line.replace(/\bBY\b.*$/,'');
+  const text=line.replace(/\bBY\b.*$/,'').replace(/\bCAMBODIA\b/g,'KHM');
   const following=text.match(/\b(?:VISA\d*|VS|V)\s*([A-Z]{3})(?=\b|20\d{2}|EXP)/)?.[1];
   if(countryCodes.has(following))return following;
   const preceding=text.match(/^CKIN\s+([A-Z]{3})\s+(?:VISA|VS|V)\b/)?.[1];
@@ -38,8 +38,8 @@ function ckinFacts(lines=[]) {
     if(/\bTDAC\b/.test(line)){facts.otherEntryClaim=true;if(!negative)facts.tdac=true;}
     const alternate=line.match(/\b(?:DUAL|DURAL)\s+CITIZENSHIP\b.*?\b([A-Z]{3})\s+(?:PPT|PASSPORT)\b/);
     if(alternate){facts.otherEntryClaim=true;facts.alternatePassports.push({nationality:alternate[1],...expiryFacts(line),negative});}
-    const doc=line.match(/\b(?:RESIDENT\s*CARD|PR\s*CARD|PINK\s*CARD|APEC\s*CARD|TBZ|TRVL\s*(?:DCMNT|DOMENT|DOC(?:UMENT)?)|(?:TRAVEL\s*|TRA\s+)DOC(?:UMENT)?)(?=\b|20\d{2})/);
-    if(doc){const expiry=/\b(?:VISA\d*|VS|V)\b/.test(line)?{expiry:null,expiryYear:null}:expiryFacts(line);facts.documents.push({type:/TRAVEL|TRVL|TRA\s/.test(doc[0])?'TRAVELDOC':/RESIDENT/.test(doc[0])?'PRCARD':doc[0].replace(/\s/g,''),issuer:visaIssuer(line)||(/RESIDENT|PINK|TRVL|TRA\s/.test(doc[0])?'CHN':null),...expiry,negative});continue;}
+    const doc=line.match(/\b(?:GREEN\s*CARD|RESIDENT\s*CARD|PR\s*CARD|PINK\s*CARD|APEC\s*CARD|TBZ|TRVL\s*(?:DCMNT|DOMENT|DOC(?:UMENT)?)|(?:TRAVEL\s*|TRA\s+)DOC(?:UMENT)?)(?=\b|20\d{2})/);
+    if(doc){const expiry=/\b(?:VISA\d*|VS|V)\b/.test(line)?{expiry:null,expiryYear:null}:expiryFacts(line);facts.documents.push({type:/TRAVEL|TRVL|TRA\s/.test(doc[0])?'TRAVELDOC':/RESIDENT|GREEN/.test(doc[0])?'PRCARD':doc[0].replace(/\s/g,''),issuer:visaIssuer(line)||(/GREEN/.test(doc[0])?'USA':/RESIDENT|PINK|TRVL|TRA\s/.test(doc[0])?'CHN':null),...expiry,negative});continue;}
     if(/\b(?:TWOV|TRANSIT|APEC)\b/.test(line))facts.otherEntryClaim=true;
     if(!/\b(?:VISA\d*|VS|V|TRAVEL\s*DOC(?:UMENT)?)\b/.test(line))continue;
     if(/\bFREE\b/.test(line)){facts.visaFreeClaim=true;const days=line.match(/\b(?:(?:VISA|VS|V)\s+FREE\s+(?:FOR\s+)?(\d{1,3})(?=\s*DAYS?\b|\b)|(?:(\d{1,3})\s*DAYS?\s+(?:VISA|VS|V)\s+FREE\b)|(?:(?:VISA|VS|V)\s+(\d{1,3})\s*DAYS?\s+FREE\b))/);facts.exemptionClaims.push({days:days?Number(days[1]||days[2]||days[3]):null,negative,nationality:alternate?.[1]||line.match(/^CKIN\s+([A-Z]{3})\s+(?:PPT|PASSPORT)\b/)?.[1]||null});continue;}
@@ -121,9 +121,10 @@ function evaluateVisa(input,store,{now=new Date()}={}){
     return decision('pass','GOVERNMENT_EXEMPTION',`${policyNationality} → ${input.destinationCountry}: current ordinary-passport exemption (${c.maxStayDays}-day policy) — VISA PASS`,{...policyDetails,requirement:'exempt',inspection:'not_needed',policyNationality});
   }
   if(facts.visaEvidence.length&&!(input.nationality==='TWN'&&input.destinationCountry==='CHN')) {
-    // In the current China-bound workflow, unqualified VISA notes refer to China.
-    // Do not infer an issuer for other destinations or combine separate remarks.
-    const usable=facts.visaEvidence.filter(d=>!d.negative&&(d.issuer===input.destinationCountry||(!d.issuer&&input.destinationCountry==='CHN'&&input.allowImplicitChinaVisa!==false))&&(d.expiry||d.expiryYear));
+    // SGN/HAN/DAD through-checks use unqualified V/VS for the final Vietnam visa.
+    // The parser supplies this context only after resolving the checked outbound.
+    const implicitDestination=input.destinationCountry==='CHN'&&input.allowImplicitChinaVisa!==false||input.destinationCountry==='VNM'&&input.allowImplicitDestinationVisa===true;
+    const usable=facts.visaEvidence.filter(d=>!d.negative&&(d.issuer===input.destinationCountry||(!d.issuer&&implicitDestination))&&(d.expiry||d.expiryYear));
     if(usable.length){
       const valid=usable.find(d=>d.expiry?d.expiry>=latestEntryDate:d.expiryYear>Number(latestEntryDate.slice(0,4)));
       if(valid)return decision('pass','CKIN_VISA_CHECKED',`${input.nationality} → ${input.destinationCountry}: agent visa check recorded; ${valid.expiry?'expiry '+valid.expiry:'expiry year '+valid.expiryYear} — VISA PASS`,{...policyDetails,requirement,inspection:'recorded'});
