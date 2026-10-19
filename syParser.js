@@ -2006,9 +2006,17 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
     if (bndHeader && matchesSyFlightRecord(bndHeader[1], bndHeader[2], { flightNo, flightDate })) {
       const range = text.match(/BOARDING NUMBER RANGE:\s*(\d{1,3})\s*--?\s*(\d{1,3})\b/i);
       const deletion = text.match(/(\d+)\s+BOARDING NUMBER\(S\) DELETED:\s*\n((?:[ \t]*\d[^\n]*\n?)*)/i);
-      const removed = deletion ? (deletion[2].match(/\d+/g) || []).map(Number) : [];
+      const removed = [];
+      let validDeletion = Boolean(deletion);
+      // BND compresses consecutive deleted BNs, e.g. 72-76 means five passes.
+      for (const token of (deletion?.[2] || '').trim().split(/\s+/).filter(Boolean)) {
+        const numbers = token.match(/^(\d{1,3})(?:-(\d{1,3}))?$/);
+        const first = Number(numbers?.[1]), last = Number(numbers?.[2] ?? numbers?.[1]);
+        if (!numbers || last < first) { validDeletion = false; break; }
+        for (let bn = first; bn <= last; bn++) removed.push(bn);
+      }
       const start = Number(range?.[1]), end = Number(range?.[2]);
-      if (range && start > 0 && end >= start && deletion && removed.length === Number(deletion[1])
+      if (range && start > 0 && end >= start && validDeletion && removed.length === Number(deletion[1])
         && new Set(removed).size === removed.length && removed.every(bn => bn >= start && bn <= end)) {
         bnd = { start, end, removed, ts: parseSectionTimestamp(section.timestamp) };
       }
