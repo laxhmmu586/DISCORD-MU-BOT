@@ -37,3 +37,25 @@
 @media(max-width:700px){.attendance-month-chart{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.attendance-month-bars{height:58px}.attendance-monthly-heading{gap:10px}.attendance-monthly-heading h2{font-size:14px}.attendance-chart-legend small{margin:0;width:100%;line-height:1.7}.attendance-record-summary{grid-template-columns:85px minmax(0,1fr) 16px;gap:8px;padding:15px 0}.attendance-row-date{font-size:10px}.attendance-row-type{font-size:11px}.attendance-row-reason{grid-column:1 / 3;grid-row:2;font-size:11px}.attendance-row-arrival{grid-column:1 / 3;grid-row:3;font-size:10px}.attendance-row-chevron{grid-column:3;grid-row:1 / 4}.attendance-history-record dl{grid-template-columns:1fr;gap:4px}}
 @media print{body.profile-page{background:#fff!important;color:#000!important}.profile-topbar,.profile-sidebar,.rs-heading,.rs-stats,.rs-toolbar,.rs-list,#rs-status,.rs-body,.rs-files,.rs-sign-box,.rs-register-title button,.rs-subtitle,.rs-meta{display:none!important}.profile-shell{margin:0!important;padding:0!important;max-width:none;width:100%!important}.rs-layout{display:block}.rs-detail.profile-panel{border:2px solid #000;background:#fff!important;box-shadow:none;color:#000;padding:20px;width:100%;max-width:none}.rs-detail h2{color:#000}.rs-print-heading{display:block;border-bottom:1px solid #000;padding:10px 0;line-height:1.8;font-size:12px}.rs-table th,.rs-table td{color:#000;border:1px solid #000;padding:8px}.rs-table th{background:#eee}.rs-table small{color:#333}.rs-table tr{break-inside:avoid}.rs-badge{color:#000!important;background:none!important}.rs-signature{background:#fff}.rs-table-wrap{overflow:visible}.rs-register-title{margin-top:15px}.rs-print-instructions{display:block!important;color:#000;font-size:11px;line-height:1.7}.rs-detail>span.rs-badge,#rs-detail-badge,#rs-signed-receipt{display:none!important}}
 @media print{.rs-print-brand{display:flex;align-items:center;justify-content:space-between;gap:30px;border:1px solid #000;padding:15px}.rs-print-brand img{width:140px;height:100px;object-fit:contain}.rs-print-brand strong{font-size:18px;margin-right:12%}.rs-shell>.profile-eyebrow,.rs-detail h2,.rs-register-title{display:none!important}.rs-table{margin-top:18px}.rs-table td{padding:5px 8px}.rs-print-instructions{margin-top:20px}}
+
+/* Compact calendars and records follow their content instead of filling the viewport. */
+.attendance-workspace{grid-template-columns:350px minmax(0,720px);max-width:1090px;gap:18px}
+.attendance-workspace>.profile-panel{padding:18px}
+.attendance-workspace .attendance-monthly-heading h2{font-size:15px;margin:0 0 8px;gap:9px}
+.attendance-workspace #attendance-year-total{margin:0}
+.attendance-workspace .attendance-chart-legend{margin:12px 0;gap:8px 12px;font-size:10px}
+.attendance-workspace .attendance-monthly .attendance-calendar{max-width:none;margin:14px 0 0}
+.attendance-workspace .attendance-monthly .attendance-calendar-day{min-height:34px;padding:3px;font-size:11px}
+.attendance-workspace .attendance-monthly .attendance-calendar-header{margin-bottom:8px}
+.attendance-workspace .attendance-monthly .attendance-calendar-header strong{font-size:14px}
+.attendance-workspace .attendance-monthly .attendance-calendar-header button{height:28px;width:28px;padding:0}
+.attendance-workspace .attendance-monthly .attendance-calendar-header .calendar-today-button{width:auto;padding:0 8px}
+.attendance-workspace .attendance-calendar-weekdays{font-size:10px;margin-bottom:5px}
+.attendance-workspace .attendance-filters{margin:16px 0 12px;gap:8px}
+.attendance-workspace .attendance-record-summary{grid-template-columns:76px 100px minmax(0,1fr) 82px 12px;gap:8px;padding:12px 0}
+.attendance-workspace .attendance-history-record{padding:0}
+.rs-file-label{font-size:11px;color:#9bb6d1;padding:8px 0}
+@media(max-width:1200px){.attendance-workspace{grid-template-columns:320px minmax(0,1fr)}.attendance-workspace .attendance-record-summary{grid-template-columns:76px 100px minmax(0,1fr) 12px}.attendance-workspace .attendance-row-reason{grid-column:auto;grid-row:auto}.attendance-workspace .attendance-row-arrival{grid-column:2/4;grid-row:2}.attendance-workspace .attendance-row-chevron{grid-column:4;grid-row:1/3}}
+@media(max-width:1000px){.attendance-workspace{grid-template-columns:minmax(0,1fr);max-width:720px}.attendance-workspace .attendance-monthly{max-width:350px}}
+@media(max-width:600px){.attendance-workspace .attendance-record-summary{grid-template-columns:76px minmax(0,1fr) 12px}.attendance-workspace .attendance-row-reason{grid-column:1/3;grid-row:2}.attendance-workspace .attendance-row-arrival{grid-column:1/3;grid-row:3}.attendance-workspace .attendance-row-chevron{grid-column:3;grid-row:1/4}}
+@media print{.rs-detail:not(.can-manage) .rs-print-heading,.rs-detail:not(.can-manage) #rs-register-section{display:none!important}}
