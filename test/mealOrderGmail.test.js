@@ -64,16 +64,16 @@ test('subject-only, booking-only and incomplete orders are not accepted', async 
   }
 });
 
-test('meal-order search includes messages sent from the monitored mailbox to itself', () => {
+test('meal-order search includes both China Eastern senders and the monitored mailbox', () => {
   assert.equal(
     buildMealOrderGmailQuery('MU586', '12SEP26'),
-    '{from:laxapmu@chinaeastern-usa.com from:laxhmmu@gmail.com} subject:"Meal Order for MU586/12SEP26" newer_than:7d'
+    '{from:laxapmu@chinaeastern-usa.com from:laxllmu@chinaeastern-usa.com from:laxhmmu@gmail.com} subject:"Meal Order for MU586/12SEP26" newer_than:7d'
   );
 });
 
 test('meal-order search strips quotes from subject components', () => {
   assert.equal(
     buildMealOrderGmailQuery('MU"586', '12SEP"26'),
-    '{from:laxapmu@chinaeastern-usa.com from:laxhmmu@gmail.com} subject:"Meal Order for MU586/12SEP26" newer_than:7d'
+    '{from:laxapmu@chinaeastern-usa.com from:laxllmu@chinaeastern-usa.com from:laxhmmu@gmail.com} subject:"Meal Order for MU586/12SEP26" newer_than:7d'
   );
 });
