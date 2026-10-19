@@ -60,9 +60,9 @@ test('MSC warnings match script boundaries and optional text fields remain optio
  for(const gate of ['201','203','225','225A'])assert.ok(buildDiscordPayload(parseAdvisory(sample(gate))).endsWith('\n# 🚨 MSC GATE OPERATION'));
  for(const gate of ['134','TBA','200','226'])assert.doesNotMatch(buildDiscordPayload(parseAdvisory(sample(gate))),/MSC GATE OPERATION/);
  const text=buildDiscordPayload({date:'2026-10-14',arrival:{flight:'MU583'},departure:{flight:'MU586'}});
- assert.equal(text,'# <a:breathing_yellow:1561759193294442508>ETAB · 14 OCT - GATE:TBA\n### Arrival - MU583\n### Departure - MU586\n<:DashBlue:1529741453058768996> ETD: TBA\n');
+ assert.equal(text,'## ✈️ ETAB · 14 OCT - GATE:TBA\n### Arrival - MU583\n\n### Departure - MU586\n🔹 ETD: TBA\n');
  const nextDay=parseAdvisory(sample().replace('MU586/14OCT.  STD 1230L.','MU586/15OCT. ETD 0130L.'));
- assert.match(buildDiscordPayload(nextDay),/Departure - MU586\n<:DashBlue:1529741453058768996> ETD: 0130L/);
+ assert.match(buildDiscordPayload(nextDay),/Departure - MU586\n🔹 ETD: 0130L/);
 });
 
 test('pending legacy image delivery resumes as one text message',async()=>{
@@ -73,7 +73,7 @@ test('pending legacy image delivery resumes as one text message',async()=>{
 });
 test('one text advisory includes database mentions and unchanged mail does not resend',async()=>{
  const f=fixture();await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.sends[0].files,undefined);
- assert.equal(f.sends[0].content,'# <a:breathing_green:1561759188785303623>ETAB · 14 OCT - GATE:134\n### Arrival - MU583\n<:dashgreen:1560485262931529848>  REG: B-7343\n<:dashgreen:1560485262931529848>  ETA: 0922L\n<:dashgreen:1560485262931529848>  PAX: 279/0\n<:dashgreen:1560485262931529848>  CREW: 04/17\n### 🕒 Clock-in: 0830L\n👥 Arrival Team:\n<@123456789012345678>\n### Departure - MU586\n<:DashBlue:1529741453058768996> STD: 1230L\n');
+ assert.equal(f.sends[0].content,'## ✈️ ETAB · 14 OCT - GATE:134\n### Arrival - MU583\n🔸 REG: B-7343\n🔸 ETA: 0922L\n🔸 PAX: 279/0\n🔸 CREW: 04/17\n\n## 🕒 Clock-in: 0830L\n👥 Arrival Team:\n<@123456789012345678>\n\n### Departure - MU586\n🔹 STD: 1230L\n');
  assert.deepEqual(f.sends[0].allowedMentions,{parse:[],users:['123456789012345678']});
  await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.reads(),1);
  f.change();await f.service.tick();assert.equal(f.sends.length,2);assert.match(f.sends[1].content,/\n# 🚨 MSC GATE OPERATION$/);
@@ -102,11 +102,12 @@ test('SQLite advisory state preserves partial delivery through store recreation'
  }finally{db.close();}
 });
 
-test('title indicator follows TBA, ordinary gates and MSC boundaries',()=>{
+test('standard airplane title is used for all gate categories',()=>{
  const {buildDiscordPayload}=require('../etabAdvisory');
- for(const [gate,color] of [['TBA','yellow'],['156','green'],['200','green'],['201','red'],['225','red'],['225A','red'],['226','green']]) {
+ for(const [gate] of [['TBA','yellow'],['156','green'],['200','green'],['201','red'],['225','red'],['225A','red'],['226','green']]) {
   const content=buildDiscordPayload(parseAdvisory(sample(gate)));
-  assert.ok(content.startsWith('# <a:breathing_'+color+':'),gate);
+  assert.ok(content.startsWith('## ✈️ ETAB · '),gate);
+  assert.doesNotMatch(content,/<a?:\w+:\d+>/);
   assert.ok(content.includes('ETAB · 14 OCT - GATE:'+gate));
  }
 });

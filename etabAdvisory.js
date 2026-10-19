@@ -43,19 +43,16 @@ function buildDiscordPayload(advisory, mentions = '') {
   const gate = arrival.gate || 'TBA';
   const date = advisory.date.slice(8,10) + ' ' + MONTHS[Number(advisory.date.slice(5,7))-1];
   const gateNumber = parseInt(gate,10);
-  const indicator = gate === 'TBA' ? '<a:breathing_yellow:1561759193294442508>'
-    : gateNumber >= 201 && gateNumber <= 225 ? '<a:breathing_red:1561759616608632935>'
-    : '<a:breathing_green:1561759188785303623>';
-  let content = `# ${indicator}ETAB · ${date} - GATE:${gate}\n`;
+  let content = `## ✈️ ETAB · ${date} - GATE:${gate}\n`;
   content += `### Arrival - ${arrival.flight}\n`;
   for (const [key, label] of [['reg','REG'], ['eta','ETA'], ['pax','PAX'], ['crew','CREW']]) {
-    if (arrival[key]) content += `<:dashgreen:1560485262931529848>  ${label}: ${arrival[key]}\n`;
+    if (arrival[key]) content += `🔸 ${label}: ${arrival[key]}\n`;
   }
-  if (arrival.clockIn) content += `### 🕒 Clock-in: ${arrival.clockIn}\n`;
+  if (arrival.clockIn) content += `\n## 🕒 Clock-in: ${arrival.clockIn}\n`;
   if (mentions) content += `👥 Arrival Team:\n${mentions.trim().split(/\s+/).join('\n')}\n`;
   if (departure.flight) {
-    content += `### Departure - ${departure.flight}\n`;
-    content += `<:DashBlue:1529741453058768996> ${departure.timeType || 'ETD'}: ${departure.time || 'TBA'}\n`;
+    content += `\n### Departure - ${departure.flight}\n`;
+    content += `🔹 ${departure.timeType || 'ETD'}: ${departure.time || 'TBA'}\n`;
   }
   if (!Number.isNaN(gateNumber) && gateNumber >= 201 && gateNumber <= 225) content += '\n# 🚨 MSC GATE OPERATION';
   return content;
