@@ -67,3 +67,6 @@ html.pbb-theme{background:#e9edff url('/assets/china-eastern-777-mobile-small.pn
 .bridge-done-summary{min-width:0}.bridge-done-summary strong{display:block}.bridge-done-summary small{display:inline-block;margin-left:10px}.bridge-done-badge{display:block;width:max-content;margin:12px 0 8px;padding:5px 26px;border-radius:11px;background:#d9f2e4;color:#087f45;font-size:18px;font-weight:700}.bridge-done-summary p{margin:0;color:#586b9e;font-size:12px}
 .bridge-done-actions .bridge-people{margin:0 0 14px;justify-content:flex-end}.bridge-done-actions .bridge-join button{background:#e5e9f3;color:#586b9e;border-color:transparent;min-width:210px}.bridge-done-actions button span{margin-left:12px}
 @media(max-width:600px){.bridge-completed{grid-template-columns:40px minmax(0,1fr);gap:12px;padding:16px 12px}.bridge-done-check{width:40px;height:40px}.bridge-done-summary small{display:block;margin:5px 0 0}.bridge-done-actions{grid-column:1/-1}.bridge-done-actions .bridge-people{justify-content:flex-start;margin-bottom:10px}.bridge-done-actions .bridge-join button{min-width:0}.bridge-done-badge{margin-top:10px}}
+
+/* Keep the floor visible in Departure question 10's reference image. */
+.pbb-page .check-illustration.full-reference{height:auto}.pbb-page .check-illustration.full-reference img{display:block;height:auto;object-fit:contain}
