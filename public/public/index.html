@@ -2636,6 +2636,19 @@
         color: rgba(222, 230, 240, 0.52);
       }
 
+      .security-grid .bn-button.is-visa-warning {
+        border: 3px solid #df96ff;
+        background: #6625a3;
+        color: #ffffff;
+        box-shadow: 0 0 0 2px rgba(195, 96, 255, 0.3), 0 0 16px rgba(195, 96, 255, 0.65);
+      }
+
+      .security-grid .bn-button.is-visa-warning:hover,
+      .security-grid .bn-button.is-visa-warning:focus-visible {
+        background: #8235c4;
+        border-color: #f2ccff;
+      }
+
       .security-check-list {
         display: grid;
         gap: 8px;
@@ -8544,6 +8557,11 @@
         return "pass";
       }
 
+      function securityCircleTone(row) {
+        if (!row?.review?.status && row?.visaStatus === "review") return "visa-warning";
+        return securityTone(row);
+      }
+
       function securityCard(row) {
         if (!row) return passengerRecordCard({}, "Passenger Record");
         if (row.missing) return `<article class="record-card is-warning"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">NO RECORD</span></div><p class="panel-muted">No passenger record found for this BN.</p></article>`;
@@ -8657,7 +8675,7 @@
           const bn = String(index + 1).padStart(3, "0");
           return byBn.get(bn) || { bn, missing: true };
         });
-        const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.missing || row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityTone(row)}`}" type="button" data-security-index="${index}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
+        const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.missing || row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityCircleTone(row)}`}" type="button" data-security-index="${index}" aria-label="BN ${escapeHtml(row.bn)}${securityCircleTone(row) === "visa-warning" ? ": VISA warning" : ""}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
         const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
         renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="security-bn-list">${buttons}</div>`, { panelClass: "is-full-page" });
         setPanelPassengerRows(allRows);

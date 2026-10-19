@@ -1770,7 +1770,7 @@ ${section}`,
     const visaDecision = checkVisa({nationality:passportNat,destinationCountry,travelDate:departureDateText,entryDate,
       entryDateConflict:entryDates.length>1||entryDates.includes(null)||Boolean(departureDate&&origin==='LAX'&&toChinaDomestic&&entryDate&&entryDate<addDays(1)),...arrivalRange,
       passportType:/^[^/]+\/P\//i.test(passportRawLine)?'ordinary':'unknown',ckinLines:visaRelevantCkinLineList,
-      allowImplicitChinaVisa:toChinaDomestic});
+      allowImplicitChinaVisa:toChinaDomestic,allowImplicitDestinationVisa:hasCheckedOutbound&&destinationCountry==='VNM'});
     Object.assign(visaDecision,{nationality:passportNat||'UNK',destination:visaDest,destinationCountry});
     let visaStatus = visaDecision.status;
     let visaReason = visaDecision.reason;
