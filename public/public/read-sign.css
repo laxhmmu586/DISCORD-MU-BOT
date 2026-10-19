@@ -100,3 +100,22 @@
 @media(max-width:600px){.attendance-workspace .attendance-record-summary{display:grid;grid-template-columns:74px minmax(0,1fr) 12px;gap:6px}.attendance-workspace .attendance-row-type{width:auto}.attendance-workspace .attendance-row-reason{max-width:none;grid-column:1/3;grid-row:2}.attendance-workspace .attendance-row-arrival{grid-column:1/3;grid-row:3}.attendance-workspace .attendance-row-chevron{grid-column:3;grid-row:1/4}}
 @media(max-width:600px){.attendance-overview .overview-heading>strong{font-size:13px}.overview-year-controls{gap:4px}.attendance-overview .overview-year-controls button{width:20px}.overview-columns{gap:2px}.attendance-overview .overview-month{font-size:8px}}
 .attendance-overview{background:linear-gradient(180deg,#05163330 0%,#071b3ba6 27%,#071b3bf5 48%,#06142a 100%),url('/assets/profile-ce777-night-v10.webp') right top/100% auto no-repeat,#06142a}
+
+/* Larger overview and record frames follow the desktop reference proportions. */
+@media(min-width:1251px){
+ .attendance-workspace{grid-template-columns:minmax(0,650px) minmax(0,760px);max-width:1440px;gap:30px;align-items:stretch}
+ .attendance-workspace>.profile-panel{min-height:570px;padding:24px}
+ .attendance-workspace .attendance-monthly{max-width:none;display:flex;flex-direction:column}
+ .attendance-workspace .attendance-monthly-heading h2{font-size:18px}
+ .attendance-workspace .attendance-overview{flex:1;display:flex;flex-direction:column;padding:20px 18px 16px;margin-top:20px}
+ .attendance-workspace .overview-heading>strong{font-size:22px}
+ .attendance-workspace .overview-legend{font-size:12px;margin:16px 0 30px;gap:22px}
+ .attendance-workspace .overview-plot{margin-top:auto}
+ .attendance-workspace .overview-axis,.attendance-workspace .overview-track{height:300px}
+ .attendance-workspace .overview-month{font-size:12px}
+ .attendance-workspace .overview-columns{gap:10px}
+ .attendance-workspace .overview-stack{max-width:36px}
+ .attendance-workspace .overview-bar-total{font-size:12px}
+ .attendance-workspace .attendance-record-summary{padding:16px 0;font-size:12px}
+ .attendance-workspace .attendance-row-reason{max-width:280px}
+}
