@@ -1,0 +1,46 @@
+/* Approved 3D artwork; all copy and navigation remain live, bilingual HTML. */
+.aviation-baggage main > .card::before { content:none }
+.aviation-baggage .service-hero {
+  display:flex;flex-direction:column;justify-content:center;
+  min-height:290px;margin-bottom:20px;padding:32px;
+  border:1px solid #53c7ff;border-radius:26px;overflow:hidden;
+  background:linear-gradient(90deg,#020c2c99,transparent 70%),url('/assets/cbs-3d-hero.webp') center / cover;
+  box-shadow:0 0 20px #169dff30;
+}
+.aviation-baggage .service-hero h1 {margin:0 0 16px;color:#fff;text-shadow:0 2px 12px #020b30}
+.aviation-baggage .service-hero h1::after {background:#56cfff}
+.aviation-baggage .service-hero .intro {max-width:43%;margin:0;color:#e1ecff;font-size:16px;text-shadow:0 1px 8px #020b30}
+.aviation-baggage .choices {padding:0;gap:18px}
+.aviation-baggage .choice {width:100%;min-width:0;aspect-ratio:2.8;min-height:160px;max-height:none;padding:24px;border-radius:22px}
+.aviation-baggage .choice--delayed {--choice-base:#071b52;--choice-accent:#44dcff}
+.aviation-baggage .choice--damaged {--choice-base:#201047;--choice-accent:#cb75ff}
+.aviation-baggage .choice-art {object-position:center}
+.aviation-baggage .choice::after {background:linear-gradient(90deg,#050c2d99,transparent 85%);opacity:1}
+.aviation-baggage .choice strong {max-width:58%;font-size:clamp(20px,2.8vw,28px);line-height:1.25}
+.aviation-baggage .choice strong .en {font-size:inherit}
+.aviation-baggage .go {margin-top:12px;font-size:15px}
+.aviation-pir .page-title {
+  display:grid;grid-template-columns:minmax(0,1fr) 210px;align-items:center;gap:0 16px;
+  min-height:210px;padding:26px 24px;
+}
+.aviation-pir .page-title h1 {grid-column:1;grid-row:1;margin:0;align-self:end}
+.aviation-pir .page-title p {grid-column:1;grid-row:2;max-width:none;align-self:start;overflow-wrap:anywhere}
+.aviation-pir .report-heading-baggage,
+.aviation-pir .report-heading-baggage[data-kind="damaged"] {
+  position:static;grid-column:2;grid-row:1 / 3;z-index:0;
+  width:100%;height:170px;object-fit:contain;transform:none;opacity:1;
+}
+@media(min-width:901px) {.aviation-baggage .choices {grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px) {
+  .aviation-baggage .service-hero {min-height:240px;padding:22px 18px;background-position:58% center}
+  .aviation-baggage .service-hero h1 .baggage-title-en {font-size:28px}
+  .aviation-baggage .service-hero .intro {max-width:53%;font-size:13px}
+  .aviation-baggage .choice {min-height:140px;padding:18px;aspect-ratio:2.7}
+  .aviation-baggage .choice strong {font-size:23px}
+  .aviation-baggage .choice strong .en {font-size:22px}
+  .aviation-pir .page-title {grid-template-columns:minmax(0,1fr) 110px;gap:0 6px;padding:22px 16px;min-height:240px}
+  .aviation-pir .page-title h1 {grid-column:1 / -1;grid-row:1;font-size:clamp(22px,6vw,26px)}
+  .aviation-pir .page-title p {grid-column:1;grid-row:2;max-width:none}
+  .aviation-pir .report-heading-baggage,
+  .aviation-pir .report-heading-baggage[data-kind="damaged"] {grid-row:2;height:120px}
+}
