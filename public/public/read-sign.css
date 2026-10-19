@@ -59,3 +59,44 @@
 @media(max-width:1000px){.attendance-workspace{grid-template-columns:minmax(0,1fr);max-width:720px}.attendance-workspace .attendance-monthly{max-width:350px}}
 @media(max-width:600px){.attendance-workspace .attendance-record-summary{grid-template-columns:76px minmax(0,1fr) 12px}.attendance-workspace .attendance-row-reason{grid-column:1/3;grid-row:2}.attendance-workspace .attendance-row-arrival{grid-column:1/3;grid-row:3}.attendance-workspace .attendance-row-chevron{grid-column:3;grid-row:1/4}}
 @media print{.rs-detail:not(.can-manage) .rs-print-heading,.rs-detail:not(.can-manage) #rs-register-section{display:none!important}}
+
+/* Monthly Overview: real annual totals, illuminated stacked bars and an airport backdrop. */
+.attendance-overview{position:relative;isolation:isolate;min-width:0;overflow:hidden;border:1px solid #5687c8;border-radius:13px;padding:13px 12px 10px;background:linear-gradient(180deg,#05163340,#071b3bed 42%,#06142a 100%),url('/assets/profile-ce777-night-v10.webp') center 27%/cover;box-shadow:inset 0 1px 2px #c9d7ff77,inset 0 -1px 3px #38b4ff88,0 0 14px #1473d31f}
+.attendance-overview:before{content:'';position:absolute;z-index:-1;inset:0;pointer-events:none;background:radial-gradient(ellipse at 0 100%,#fa6fa32e,transparent 30%),radial-gradient(ellipse at 100% 100%,#22c5ff33,transparent 40%)}
+.overview-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#eef4ff;text-shadow:0 0 8px #a1c7ff66}
+.overview-heading>strong{font-size:15px;letter-spacing:-.3px}
+.overview-year-controls{display:flex;align-items:center;gap:6px;font-size:11px;color:#c1d8f6}
+.attendance-overview .overview-year-controls button{width:22px;height:23px;display:grid;place-items:center;padding:0;border:1px solid #6899cd55;background:#071b36aa;border-radius:5px;color:#bbd9ff;cursor:pointer;font-size:18px}
+.overview-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:9px;color:#d7e6ff;margin:10px 0 25px}
+.overview-legend>span{display:flex;align-items:center;gap:6px}.overview-legend i{width:14px;height:6px;border-radius:3px;box-shadow:0 0 8px currentColor}
+.overview-legend .sick{background:#ff6b92;color:#ff5284}.overview-legend .late{background:#49bfff;color:#2f9fff}
+.overview-plot{position:relative;display:grid;grid-template-columns:18px minmax(0,1fr);gap:5px;font-size:9px;color:#a7bfdf}
+.overview-axis{display:flex;flex-direction:column;justify-content:space-between;height:110px;transform:translateY(-5px);text-align:right}
+.overview-grid{position:absolute;pointer-events:none;inset:0 0 19px 23px;display:flex;flex-direction:column;justify-content:space-between;border-left:1px solid #779bc67a;border-bottom:1px solid #779bc67a}
+.overview-grid i{width:100%;border-top:1px solid #74a5e31c}
+.overview-columns{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px}
+.attendance-overview .overview-month{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0;border:0;border-radius:3px;background:transparent;color:#bacdec;font:inherit;font-size:9px;cursor:pointer;box-shadow:none}
+.overview-track{display:flex;align-items:flex-end;justify-content:center;height:110px;min-width:0;background:linear-gradient(90deg,transparent,#739fff05,transparent)}
+.overview-stack{position:relative;display:flex;flex-direction:column;width:100%;max-width:24px;min-width:0}
+.overview-bar{display:block;min-height:0;border:1px solid #b8d9ff70;border-top-color:#f1f6ffb3;box-sizing:border-box;box-shadow:0 0 9px #458cff77,inset 2px 0 3px #e0edff55}
+.overview-bar.sick{background:linear-gradient(90deg,#e93675,#ff728f 65%,#ffb28d);box-shadow:0 0 9px #fa608366,inset 2px 0 3px #ffd2d655;border-color:#ffacc2aa}
+.overview-bar.late{background:linear-gradient(90deg,#244fe6,#318dfd 65%,#49c8ff)}
+.overview-bar[hidden]{display:none}.overview-bar:first-child{border-radius:2px 2px 0 0}
+.overview-bar-total{position:absolute;bottom:calc(100% + 5px);left:0;right:0;text-align:center;font-size:9px;color:#eef5ff;text-shadow:0 0 5px #65aaff}
+.overview-month-label{text-align:center;line-height:13px;white-space:nowrap}
+.overview-month[aria-pressed=true] .overview-month-label{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.overview-month:hover .overview-track{background:#508ad01a}.attendance-overview button:focus-visible{outline:2px solid #91d7ff;outline-offset:2px}
+.overview-empty{margin:10px 0 0;font-size:10px;color:#b2c8e1;line-height:1.6}.overview-empty[hidden]{display:none}
+.attendance-workspace{grid-template-columns:430px minmax(0,550px);max-width:998px}
+.attendance-workspace .attendance-monthly{padding:16px}
+.attendance-workspace .attendance-overview{margin-top:14px}
+.attendance-workspace .attendance-record-summary{display:flex;align-items:center;gap:10px;font-size:11px}
+.attendance-workspace .attendance-row-date{flex:none;width:74px}
+.attendance-workspace .attendance-row-type{flex:none;width:96px}
+.attendance-workspace .attendance-row-reason{flex:0 1 auto;max-width:180px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attendance-workspace .attendance-row-arrival{flex:none;font-size:10px}
+.attendance-workspace .attendance-row-chevron{flex:none;margin-left:2px}
+@media(max-width:1250px){.attendance-workspace{grid-template-columns:minmax(0,1fr);max-width:550px}.attendance-workspace .attendance-monthly{max-width:430px}}
+@media(max-width:600px){.attendance-workspace .attendance-record-summary{display:grid;grid-template-columns:74px minmax(0,1fr) 12px;gap:6px}.attendance-workspace .attendance-row-type{width:auto}.attendance-workspace .attendance-row-reason{max-width:none;grid-column:1/3;grid-row:2}.attendance-workspace .attendance-row-arrival{grid-column:1/3;grid-row:3}.attendance-workspace .attendance-row-chevron{grid-column:3;grid-row:1/4}}
+@media(max-width:600px){.attendance-overview .overview-heading>strong{font-size:13px}.overview-year-controls{gap:4px}.attendance-overview .overview-year-controls button{width:20px}.overview-columns{gap:2px}.attendance-overview .overview-month{font-size:8px}}
+.attendance-overview{background:linear-gradient(180deg,#05163330 0%,#071b3ba6 27%,#071b3bf5 48%,#06142a 100%),url('/assets/profile-ce777-night-v10.webp') right top/100% auto no-repeat,#06142a}

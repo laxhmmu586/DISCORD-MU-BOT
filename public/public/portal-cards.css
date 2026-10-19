@@ -59,3 +59,11 @@
 .profile-dashboard .attendance-card .profile-panel-title{padding-bottom:10px}
 .profile-dashboard .attendance-card .attendance-mini-legend{padding-top:8px;margin:8px 0}
 .profile-dashboard .attendance-card .attendance-new{padding-top:10px;margin-top:10px}
+
+.profile-dashboard .attendance-overview{margin-top:8px;padding:11px 9px 9px}
+.profile-dashboard .overview-heading>strong{font-size:14px}
+.profile-dashboard .overview-columns{gap:3px}
+.profile-dashboard .overview-month{font-size:8px}
+.profile-dashboard .overview-axis,.profile-dashboard .overview-track{height:95px}
+.profile-dashboard .overview-legend{margin-bottom:20px;font-size:8px;gap:10px}
+.profile-dashboard .attendance-card .attendance-new{margin-top:12px}

@@ -1,16 +1,16 @@
 (()=>{
- const $=id=>document.getElementById(id),status=$('attendance-status');let records=[],selectedDay='',calendar;
+ const $=id=>document.getElementById(id),status=$('attendance-status');let records=[],selectedDay='',overview;
  const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n;};
- function renderCalendar(){
-  if(!calendar)calendar=attendanceCalendar.create($('attendance-month-chart'),{records,month:$('attendance-month').value||attendanceCalendar.today().slice(0,7),onSelect:date=>{selectedDay=date;$('attendance-month').value=date.slice(0,7);$('attendance-filter').value='all';render();},onMonthChange:month=>{selectedDay='';$('attendance-month').value=month;render();}});
-  calendar.setRecords(records);if($('attendance-month').value)calendar.setMonth($('attendance-month').value);calendar.setSelectedDate(selectedDay);
-  const month=calendar.getMonth(),rows=records.filter(r=>String(r.date).startsWith(month));$('attendance-year-total').textContent=`${rows.filter(r=>r.type==='sick').length} Call Off / Sick · ${rows.filter(r=>r.type==='late').length} Coming Late`;
+ function renderOverview(){
+  if(!overview)overview=attendanceOverview.create($('attendance-month-chart'),{records,month:$('attendance-month').value||attendanceOverview.today().slice(0,7),onSelect:month=>{selectedDay='';$('attendance-month').value=month;render();},onYearChange:year=>{selectedDay='';$('attendance-month').value=year+'-01';render();}});
+  overview.setRecords(records);overview.setMonth($('attendance-month').value);
+  const year=overview.getYear(),rows=records.filter(r=>String(r.date).startsWith(year+'-'));$('attendance-year-total').textContent=`${year} · ${rows.filter(r=>r.type==='sick').length} Call Off / Sick · ${rows.filter(r=>r.type==='late').length} Coming Late`;
  }
  function render(){
   const shown=records.filter(r=>(!selectedDay||r.date===selectedDay)&&($('attendance-filter').value==='all'||r.type===$('attendance-filter').value)&&(!$('attendance-month').value||String(r.date).startsWith($('attendance-month').value)));
   $('attendance-summary').replaceChildren(...[`${shown.length} records`,`${shown.filter(r=>r.type==='sick').length} Call Off / Sick`,`${shown.filter(r=>r.type==='late').length} Coming Late`].map(v=>node('strong',v)));
   if(selectedDay){const clear=node('button',selectedDay+' ×','attendance-clear-day');clear.type='button';clear.setAttribute('aria-label','Clear selected day');clear.onclick=()=>{selectedDay='';render();};$('attendance-summary').prepend(clear);}
-  renderCalendar();
+  renderOverview();
   $('attendance-records').replaceChildren();
   if(!shown.length){$('attendance-records').append(node('p','No attendance records for this selection.','rs-empty'));return;}
   for(const r of shown){
@@ -25,6 +25,6 @@
  async function load(){status.textContent='Loading your records…';try{records=(await peopleApi('/attendance-api/history')).records;render();status.textContent='';}catch(e){status.textContent=e.message;}}
  $('attendance-filter').onchange=render;$('attendance-month').onchange=()=>{selectedDay='';render();};$('attendance-clear').onclick=()=>{$('attendance-month').value='';selectedDay='';render();};$('attendance-refresh').onclick=load;
  const initial=new URLSearchParams(location.search),date=initial.get('date'),month=initial.get('month');
- if(attendanceCalendar.validDate(date)){selectedDay=date;$('attendance-month').value=date.slice(0,7);}else $('attendance-month').value=attendanceCalendar.validMonth(month)?month:attendanceCalendar.today().slice(0,7);
+ if(attendanceOverview.validDate(date)){selectedDay=date;$('attendance-month').value=date.slice(0,7);}else $('attendance-month').value=attendanceOverview.validMonth(month)?month:attendanceOverview.today().slice(0,7);
  firebase.auth().onAuthStateChanged(user=>user?load():peopleSignIn());
 })();
