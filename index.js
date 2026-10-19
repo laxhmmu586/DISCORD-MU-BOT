@@ -3245,7 +3245,7 @@ app.get('/boarding-box', async (req, res) => {
   try {
     if (req.query.refresh === '1') await boardingBoxCache.refresh();
     const box = await boardingBoxCache.read(flightNo, flightDate);
-    if (!box) return res.status(404).json({ error: 'No SY found for the selected flight.' });
+    if (!box) return res.status(404).json({ error: 'No SY and BND found for the selected flight.' });
     return res.json(box);
   } catch (error) {
     console.error('Boarding BOX failed:', error);

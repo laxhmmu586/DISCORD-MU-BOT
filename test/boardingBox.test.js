@@ -39,7 +39,7 @@ test('BND selects latest valid matching flight snapshot and rejects incomplete d
     const data = parse((reverse ? parts.reverse() : parts).join('\n'));
     assert.equal(data.maxBn,304); assert.equal(data.passengers,299);
   }
-  assert.equal(parse([sy(1,0),fb(1),bnd().replace('5 BOARDING','6 BOARDING')].join('\n')).source,'FB');
+  assert.equal(parse([sy(1,0),fb(1),bnd().replace('5 BOARDING','6 BOARDING')].join('\n')),null);
   assert.equal(parse([sy(3,0),bnd(3,[])].join('\n')).passengers,3);
 });
 
@@ -49,34 +49,20 @@ test('BND remains authoritative over FB and uses SY infants without infant FB lo
   assert.equal(data.infants,2); assert.equal(data.total,5); assert.equal(data.matched,true);
 });
 
-test('FB unique local BN count matches SY C cabin sum; infant is separate and added to total', () => {
-  const data = parse([sy(), fb(1,{infant:true}), fb(3), fb(3,{time:'14:02:00'})].join('\n'));
-  assert.deepEqual(data.bns,[1,3]);
-  assert.deepEqual(data.infantBns,[1]);
-  assert.equal(data.passengers,2); assert.equal(data.infants,1); assert.equal(data.total,3);
-  assert.equal(data.expectedPassengers,2); assert.equal(data.expectedTotal,3); assert.equal(data.matched,true);
+test('BOX requires SY and valid BND; FB alone or with SY cannot supply numbers', () => {
+  assert.equal(parse([sy(),fb(1),fb(3)].join('\n')),null);
+  assert.equal(parse([fb(1),bnd()].join('\n')),null);
+  assert.equal(parse([sy(),bnd(3,[],'MU578')].join('\n')),null);
+  assert.equal(parse([sy(),bnd().replace('16OCT26LAX','15OCT26LAX')].join('\n')),null);
 });
-test('count gaps are real gaps, never inferred from max BN; mismatches in either total fail', () => {
-  const data = parse([sy(3,0),fb(1),fb(320)].join('\n'));
-  assert.equal(data.passengers,2); assert.equal(data.matched,false);
-  assert.equal(parse([sy(2,1),fb(1),fb(2)].join('\n')).matched,false);
+
+test('latest SY counts win and incomplete SY totals cannot claim a match', () => {
+  const data = parse([sy(2,0),bnd(3,[]),sy(3,0).replace('14:00:00','14:05:00')].join('\n'));
+  assert.equal(data.matched,true);
+  assert.equal(parse([sy(0,0).replace('C000/000/000',''),bnd(3,[])].join('\n')).matched,false);
+  assert.equal(parse([sy(0,0).replace('I00',''),bnd(3,[])].join('\n')).expectedInfants,null);
 });
-for (const reverse of [false,true]) test(`empty FB invalidation, deleted passengers and other flight/date isolation (${reverse})`, () => {
-  const parts = [sy(1,0),fb(1),fb(2),fb(2,{deleted:true,time:'14:02:00'}),fb(3),
-    '2026 October 16, Friday, 14:03:00\n>fb 3\nPSGR ID',
-    fb(4,{flight:'MU578'}),fb(5,{date:'15OCT26'}),fb(6,{command:'pr1pd'})];
-  const data = parse((reverse ? parts.reverse() : parts).join('\n'));
-  assert.deepEqual(data.bns,[1]); assert.equal(data.matched,true);
-});
-test('new successful FB restores an empty lookup and latest SY counts win', () => {
-  const log = [sy(2,0),fb(1),'2026 October 16, Friday, 14:03:00\n>fb 1\nPSGR ID',fb(1,{time:'14:04:00'}),sy(1,0).replace('14:00:00','14:05:00')].join('\n');
-  assert.equal(parse(log).matched,true);
-});
-test('unknown SY counts cannot claim a match; no SY stays unavailable', () => {
-  assert.equal(parse(sy(0,0).replace('C000/000/000','')).matched,false);
-  assert.equal(parse(sy(0,0).replace('I00','')).expectedInfants,null);
-  assert.equal(parse(fb(1)),null);
-});
+
 test('twenty BN ranges flag 19 or fewer, including last partial box; 301 starts a new range', () => {
   const values = Array.from({length:320},(_,i) => i+1).filter(bn => bn !== 157);
   const {groups} = groupBns([...values,1]);
@@ -94,7 +80,7 @@ test('twenty BN ranges flag 19 or fewer, including last partial box; 301 starts 
 test('supplied SY BN312 bounds the final box while 310 passengers and 6 infants reconcile', () => {
   const supplied = require('node:fs').readFileSync(require('node:path').join(__dirname,'fixtures/boarding-box-sy312.log'),'utf8');
   const bns = Array.from({length:312},(_,i)=>i+1).filter(bn=>![86,150].includes(bn));
-  const data = parse([supplied,...bns.map(bn=>fb(bn,{infant:bn<=6}))].join('\n'));
+  const data = parse([supplied,bnd(312,[86,150]),...bns.map(bn=>fb(bn,{infant:bn<=6}))].join('\n'));
   assert.equal(data.maxBn,312); assert.equal(data.expectedPassengers,310); assert.equal(data.infants,6);
   assert.equal(data.total,316); assert.equal(data.matched,true);
   const {groups} = groupBns(data.bns,data.maxBn), last = groups.at(-1);

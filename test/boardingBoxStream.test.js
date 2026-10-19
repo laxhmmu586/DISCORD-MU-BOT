@@ -13,7 +13,14 @@ const log=(count=1,flight='MU586')=>`2026 October 16, Friday, 14:56:04
 2026 October 16, Friday, 14:57:00
 >fb 1
  PR: ${flight}/16OCT26*LAX,BN1
- 1. TEST/PASSENGER BN1 20A Y PVG`;
+ 1. TEST/PASSENGER BN1 20A Y PVG
+2026 October 16, Friday, 14:58:00
+>BND:
+ BND: ${flight}/16OCT26LAX
+ BOARDING NUMBER RANGE: 1--312
+ ${312-count} BOARDING NUMBER(S) DELETED:
+ ${Array.from({length:312-count},(_,i)=>i+count+1).join(' ')}
+`;
 async function harness(t) {
   const db=new Database(':memory:');db.exec(schema);let downloads=0;
   const cache=new BoardingBoxCache({db,now:()=>Date.parse('2026-10-16T22:00:00Z'),loadLog:async()=>{downloads++;return log();}});
@@ -110,4 +117,22 @@ test('BOX rendering rejects older HTTP snapshots and clears all viewers on reset
   ctx.applySnapshot(snapshot(13));assert.equal(content.hidden,true);
   ctx.applySnapshot(snapshot(15,4));assert.equal(content.hidden,false);
   ctx.applySnapshot({...snapshot(99),flightNo:'MU578'});assert.equal(rendered.at(-1).passengers,4);
+});
+
+test('manual number endpoint commits before both SSE viewers update and stays flight scoped',async t=>{
+  const h=await harness(t),a=await h.connect(),b=await h.connect();await a.next();await b.next();
+  let otherEvents=0;h.cache.subscribe('MU578','16OCT26',()=>otherEvents++);
+  async function save(bn,present,query='flightNo=MU586&flightDate=16OCT26') {
+    const res=await fetch(`${h.base}/boarding-box/number?${query}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bn,present})});
+    return {status:res.status,data:await res.json()};
+  }
+  const deleted=await save('0001',false);assert.equal(deleted.status,200);assert.deepEqual(deleted.data.bns,[]);
+  assert.deepEqual((await a.next()).bns,[]);assert.deepEqual((await b.next()).bns,[]);
+  const restored=await save('0094',true);assert.equal(restored.status,200);
+  assert.deepEqual((await a.next()).bns,[94]);assert.deepEqual((await b.next()).bns,[94]);
+  const reconnect=await h.connect();assert.deepEqual((await reconnect.next()).bns,[94]);
+  assert.equal((await save('313',true)).status,422);
+  assert.equal((await save('1',true,'flightNo=MU578&flightDate=15OCT26')).status,400);
+  assert.equal((await save('1',true,'flightNo=MU583&flightDate=16OCT26')).status,400);
+  assert.equal(otherEvents,0);
 });

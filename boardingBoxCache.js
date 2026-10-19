@@ -14,6 +14,11 @@ class BoardingBoxCache {
       flight_date TEXT NOT NULL, flight_no TEXT NOT NULL, box_id TEXT NOT NULL,
       PRIMARY KEY(flight_date,flight_no,box_id)
     )`);
+    db.exec(`CREATE TABLE IF NOT EXISTS boarding_box_numbers (
+      flight_date TEXT NOT NULL, flight_no TEXT NOT NULL, bn INTEGER NOT NULL, present INTEGER NOT NULL,
+      PRIMARY KEY(flight_date,flight_no,bn)
+    )`);
+    this.numbers = db.prepare('SELECT bn,present FROM boarding_box_numbers WHERE flight_no=? AND flight_date=?');
     this.confirmed = db.prepare('SELECT box_id FROM boarding_box_confirmations WHERE flight_no=? AND flight_date=? ORDER BY box_id');
     this.select = db.prepare('SELECT payload,updated_at FROM boarding_box_cache WHERE flight_no=? AND flight_date=?');
     this.touch = db.prepare('UPDATE boarding_box_cache SET updated_at=? WHERE flight_date=? AND source_hash=?');
@@ -32,7 +37,20 @@ class BoardingBoxCache {
   snapshot(flight, date) {
     this.beforeAccess();
     const row = this.select.get(flight, date);
-    return row ? { ...JSON.parse(row.payload), confirmedBoxes:this.confirmed.all(flight,date).map(item => item.box_id), cached:true, updatedAt:row.updated_at } : null;
+    if (!row) return null;
+    const data = JSON.parse(row.payload);
+    // Ignore persisted legacy FB snapshots until SY+BND have been loaded.
+    if (data.source !== 'BND') return null;
+    const bns = new Set(data.bns);
+    for (const {bn,present} of this.numbers.all(flight,date)) {
+      if (bn <= data.maxBn) { if (present) bns.add(bn); else bns.delete(bn); }
+    }
+    data.bns = [...bns].sort((a,b) => a-b);
+    data.passengers = data.bns.length;
+    data.total = data.infants == null ? null : data.passengers + data.infants;
+    data.matched = data.expectedPassengers != null && data.expectedInfants != null
+      && data.passengers === data.expectedPassengers && data.infants === data.expectedInfants;
+    return { ...data, confirmedBoxes:this.confirmed.all(flight,date).map(item => item.box_id), cached:true, updatedAt:row.updated_at };
   }
   confirm(flight, date, boxId, confirmed) {
     this.beforeAccess();
@@ -49,6 +67,25 @@ class BoardingBoxCache {
     this.db.transaction(() => {
       if (confirmed) this.db.prepare('INSERT OR IGNORE INTO boarding_box_confirmations VALUES (?,?,?)').run(date,flight,boxId);
       else this.db.prepare('DELETE FROM boarding_box_confirmations WHERE flight_date=? AND flight_no=? AND box_id=?').run(date,flight,boxId);
+      this.db.prepare('UPDATE boarding_box_cache SET updated_at=? WHERE flight_date=? AND flight_no=?').run(this.nextRevision(),date,flight);
+    })();
+    const next = this.snapshot(flight,date); this.publish(flight,date,next); return next;
+  }
+  setNumber(flight, date, value, present) {
+    this.beforeAccess();
+    if (date !== operationalDate(new Date(this.now()))) throw Object.assign(new Error('Please select today’s flight.'),{status:400});
+    const snapshot = this.snapshot(flight,date);
+    if (!snapshot) throw Object.assign(new Error('BOX data unavailable. Please refresh.'),{status:404});
+    const bn = Number(value);
+    if (!['string','number'].includes(typeof value) || !/^[0-9]{1,4}$/.test(String(value))
+      || !Number.isInteger(bn) || bn < 1 || bn > snapshot.maxBn || typeof present !== 'boolean') {
+      throw Object.assign(new Error(`Enter a BN between 1 and ${snapshot.maxBn}.`),{status:422});
+    }
+    const previous = this.numbers.all(flight,date).find(row => row.bn === bn);
+    if (previous?.present === Number(present)) return snapshot;
+    this.db.transaction(() => {
+      this.db.prepare(`INSERT INTO boarding_box_numbers VALUES (?,?,?,?)
+        ON CONFLICT(flight_date,flight_no,bn) DO UPDATE SET present=excluded.present`).run(date,flight,bn,Number(present));
       this.db.prepare('UPDATE boarding_box_cache SET updated_at=? WHERE flight_date=? AND flight_no=?').run(this.nextRevision(),date,flight);
     })();
     const next = this.snapshot(flight,date); this.publish(flight,date,next); return next;
@@ -100,7 +137,7 @@ class BoardingBoxCache {
     this.beforeAccess();
     if (date !== operationalDate(new Date(this.now()))) throw new Error('Please select today’s flight.');
     let row = this.select.get(flight, date);
-    if (row) {
+    if (row && this.snapshot(flight,date)) {
       if (this.now() - row.updated_at >= this.interval) this.refresh().catch(error => this.report('BOX refresh:', error.message));
       return this.snapshot(flight,date);
     }

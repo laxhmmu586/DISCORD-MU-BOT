@@ -21,6 +21,7 @@
   const content = doc.getElementById('box-content');
   const apiBase = (root.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '');
   let loading = false, stopped = false, stopLive, authenticated = false;
+  let numberSaving = false;
   let lastRevision = -1, lastSignature = '';
   const pendingBoxes = new Set();
   function text(id, value) { doc.getElementById(id).textContent = value; }
@@ -39,7 +40,7 @@
   }
   function render(data) {
     text('sy-data', `SY: ${data.expectedPassengers ?? '—'} passengers + ${data.expectedInfants ?? '—'} Infant = ${data.expectedTotal ?? '—'}`);
-    text('fb-data', `${data.source || 'FB'}: ${data.passengers} passengers + ${data.infants} Infant = ${data.total}`);
+    text('bnd-data', `BND: ${data.passengers} passengers + ${data.infants} Infant = ${data.total}`);
     text('highest-bn', `Highest BN: ${data.maxBn ?? '—'}`);
     const { groups, columns } = groupBns(data.bns, data.maxBn);
     const boxes = doc.getElementById('boxes');
@@ -140,11 +141,41 @@
     } catch (error) {
       if (stopped || lastRevision > startedAtRevision) return;
       content.hidden = true;
-      ['sy-data','fb-data','highest-bn'].forEach(id => text(id,''));
+      ['sy-data','bnd-data','highest-bn'].forEach(id => text(id,''));
       status.textContent = error.message + ' Totals are unavailable. Please refresh.';
       status.hidden = false;
     } finally { loading = false; refresh.disabled = false; }
   }
+  function numberForm(id, present) {
+    const form = doc.getElementById(id);
+    const input = form.querySelector('input');
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (numberSaving || stopped) return;
+      const bn = input.value.trim();
+      const message = doc.getElementById('number-status');
+      if (!/^[0-9]{1,4}$/.test(bn) || Number(bn) < 1 || Number(bn) > 999) {
+        message.textContent = 'Enter a BN between 1 and 999.'; return;
+      }
+      numberSaving = true;
+      const buttons = [...doc.querySelectorAll('.number-control button')];
+      buttons.forEach(button => { button.disabled = true; });
+      message.textContent = 'Saving…';
+      const flight = {...root.mufcFlight};
+      try {
+        const response = await fetch(`${apiBase}/boarding-box/number`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bn,present})});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Unable to save BOX number. Please retry.');
+        if (stopped || flight.flightNo !== root.mufcFlight?.flightNo || flight.flightDate !== root.mufcFlight?.flightDate) return;
+        applySnapshot(data);
+        input.value = '';
+        message.textContent = `BN ${String(Number(bn)).padStart(3,'0')} ${present ? 'restored to' : 'deleted from'} Box.`;
+      } catch (error) { message.textContent = error.message; }
+      finally { numberSaving = false; buttons.forEach(button => { button.disabled = false; }); }
+    });
+  }
+  numberForm('delete-number-form', false);
+  numberForm('restore-number-form', true);
   refresh.addEventListener('click',() => load(true));
   function startLive() {
     stopLive?.();
