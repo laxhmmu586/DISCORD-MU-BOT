@@ -67,3 +67,21 @@
 .profile-dashboard .overview-axis,.profile-dashboard .overview-track{height:95px}
 .profile-dashboard .overview-legend{margin-bottom:20px;font-size:8px;gap:10px}
 .profile-dashboard .attendance-card .attendance-new{margin-top:12px}
+
+/* Scale the Profile attendance panel to the supplied wide desktop frame. */
+@media(min-width:1351px){
+ .profile-dashboard.profile-modules{max-width:1544px;grid-template-columns:minmax(0,430px) minmax(0,430px) minmax(0,640px);align-items:stretch}
+ .profile-dashboard .profile-activity-panels{display:flex;align-items:stretch}
+ .profile-dashboard .attendance-card{display:flex;flex:1;flex-direction:column;min-height:530px}
+ .profile-dashboard .attendance-overview{flex:1;display:flex;flex-direction:column;padding:18px 18px 12px;margin-top:12px}
+ .profile-dashboard .overview-heading>strong{font-size:20px}
+ .profile-dashboard .overview-legend{font-size:11px;margin:14px 0 26px;gap:20px}
+ .profile-dashboard .overview-axis,.profile-dashboard .overview-track{height:205px}
+ .profile-dashboard .overview-columns{gap:9px}
+ .profile-dashboard .overview-month{font-size:11px}
+ .profile-dashboard .overview-stack{max-width:34px}
+ .profile-dashboard .overview-bar-total{font-size:12px}
+ .profile-dashboard .attendance-card .attendance-new{margin-top:16px}
+}
+@media(min-width:851px) and (max-width:1350px){.profile-dashboard .profile-activity-panels{max-width:640px}.profile-dashboard .overview-axis,.profile-dashboard .overview-track{height:170px}}
+@media(min-width:1351px){.profile-dashboard .attendance-overview .overview-empty{position:absolute;top:58px;right:18px;margin:0;font-size:10px}}
