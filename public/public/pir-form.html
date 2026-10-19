@@ -141,6 +141,7 @@
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
 <link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane"><link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><link rel="stylesheet" href="/assets/cbs-reference.css?v=20261016-five-home-modes">
 <link rel="stylesheet" href="/assets/damage-report-update.css?v=20261016-six-face-report">
+<link rel="stylesheet" href="/assets/cbs-3d-artwork.css?v=20261018-3d">
 </head>
 <body class="aviation-page aviation-pir">
   <header><a class="back-link" href="/cbs-form.html"><span class="en">‹ Baggage assistance</span><span class="zh">‹ 行李服务</span></a>
@@ -148,7 +149,7 @@
   <div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
   <main class="wrap">
     <section class="page-title">
-      <img class="report-heading-baggage" src="/assets/cbs-delayed-header.png" alt="" aria-hidden="true"><h1><span class="en">Property Irregularity Report</span><span class="zh">行李运输事故记录单</span></h1>
+      <img class="report-heading-baggage" src="/assets/cbs-3d-delayed-header.webp" alt="" aria-hidden="true"><h1><span class="en">Property Irregularity Report</span><span class="zh">行李运输事故记录单</span></h1>
       <p><span class="en">If you encounter any difficulties while completing the form, please email us directly at <a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>, and we will be happy to assist you.</span><span class="zh">如果您在填写过程中遇到任何困难，请直接发送邮件至：<a href="mailto:laxhmmu@gmail.com">laxhmmu@gmail.com</a>，我们将尽快为您提供协助。</span></p>
     </section>
 
@@ -446,7 +447,7 @@
 
     async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
     function syncEvidenceSlots(){const dpr=typeSelect.value==='DPR';document.querySelector('#dpr-address-field').hidden=!dpr;form.elements.dprAddress.disabled=!dpr;document.querySelectorAll('.bag-upload-grid [data-attachment-group]').forEach(group=>{const type=group.dataset.attachmentType;const special=['damagePhoto','tagOnBag'].includes(type);if(!special)return;group.dataset.requiredAttachment=String(dpr);group.querySelector('input').accept=dpr?'image/*':'image/*,.pdf';group.querySelector('.attachment-title').innerHTML=dpr?(type==='damagePhoto'?'<span class="en">Damage photo *</span><span class="zh">破损照片 *</span>':'<span class="en">Tag on this bag *</span><span class="zh">行李牌在此行李上 *</span>'):'<span class="en">Other</span><span class="zh">其他</span>';});}
-    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; syncEvidenceSlots(); const artwork = document.querySelector('.report-heading-baggage'); artwork.src = isAhl ? '/assets/cbs-delayed-header.png' : '/assets/cbs-damaged-header.png'; artwork.dataset.kind = isAhl ? 'delayed' : 'damaged'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); document.querySelector('#delivery-fields').hidden = !isAhl; }
+    function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; syncEvidenceSlots(); const artwork = document.querySelector('.report-heading-baggage'); artwork.src = isAhl ? '/assets/cbs-3d-delayed-header.webp' : '/assets/cbs-3d-damaged-header.webp'; artwork.dataset.kind = isAhl ? 'delayed' : 'damaged'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); document.querySelector('#delivery-fields').hidden = !isAhl; }
     function setAddressFields() {
       const isAhl = typeSelect.value === 'AHL';
       deliveryPreference.closest('label').hidden = !isAhl;

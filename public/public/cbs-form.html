@@ -18,13 +18,14 @@
   <link rel="stylesheet" href="/assets/boarding-aurora.css?v=20261013-ce777-mobile-small">
 <link rel="stylesheet" href="/assets/mobile-cloud-layout.css?v=20261013-safe-plane">
   <link rel="stylesheet" href="/assets/cbs-service-cards.css?v=20261014-clean-corners">
-<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015"></head>
+<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015"><link rel="stylesheet" href="/assets/cbs-3d-artwork.css?v=20261018-3d">
+</head>
 <body class="aviation-page aviation-baggage">
   <header><button class="language-toggle" id="language-toggle" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 7h14M5 17h14"/></svg><span id="language-label">English</span></button><div class="mobile-aircraft-sky" aria-hidden="true"></div></header>
-  <main><section class="card"><h1><span class="baggage-title-zh">行李服务</span><span class="baggage-title-en" lang="en">Baggage Assistance</span></h1><p class="intro"><span class="zh">我们随时为您提供帮助。请选择行李问题类型，开始填写报告。</span><span class="en">We're here to help. Choose the issue with your baggage to get started.</span></p>
-    <nav class="choices" aria-label="Baggage assistance options">
-      <a class="choice choice--delayed" href="pir-form.html?type=AHL"><img class="choice-art" src="/assets/cbs-delayed-scene.webp" width="1040" height="640" alt=""><strong><span class="zh">行李延误／遗失</span><span class="en">Delayed / Lost</span></strong><span class="go"><span class="zh">填写报告</span><span class="en">Open a report</span></span></a>
-      <a class="choice choice--damaged" href="pir-form.html?type=DPR"><img class="choice-art" src="/assets/cbs-damaged-scene.webp" width="1040" height="640" alt=""><strong><span class="zh">行李损坏</span><span class="en">Damaged</span></strong><span class="go"><span class="zh">填写报告</span><span class="en">Open a report</span></span></a>
+  <main><section class="card"><div class="service-hero"><h1><span class="baggage-title-zh">行李服务</span><span class="baggage-title-en" lang="en">Baggage Assistance</span></h1><p class="intro"><span class="zh">我们随时为您提供帮助。请选择行李问题类型，开始填写报告。</span><span class="en">We're here to help. Choose the issue with your baggage to get started.</span></p>
+    </div><nav class="choices" aria-label="Baggage assistance options">
+      <a class="choice choice--delayed" href="pir-form.html?type=AHL"><img class="choice-art" src="/assets/cbs-3d-delayed.webp" width="1536" height="512" alt=""><strong><span class="zh">行李延误／遗失</span><span class="en">Delayed / Lost</span></strong><span class="go"><span class="zh">填写报告</span><span class="en">Open a report</span></span></a>
+      <a class="choice choice--damaged" href="pir-form.html?type=DPR"><img class="choice-art" src="/assets/cbs-3d-damaged.webp" width="1536" height="512" alt=""><strong><span class="zh">行李损坏</span><span class="en">Damaged</span></strong><span class="go"><span class="zh">填写报告</span><span class="en">Open a report</span></span></a>
     </nav>
   </section></main>
   <script>const toggle=document.querySelector('#language-toggle');function setLanguage(lang){document.documentElement.lang=lang;document.querySelectorAll('.choice').forEach(link=>{const url=new URL(link.href);url.searchParams.set('lang',lang==='en'?'en':'zh');link.href=url.href});document.querySelector('#language-label').textContent=lang==='zh-CN'?'English':'中文'}toggle.addEventListener('click',()=>setLanguage(document.documentElement.lang==='zh-CN'?'en':'zh-CN'));setLanguage(new URLSearchParams(location.search).get('lang')==='en'?'en':'zh-CN');</script>
