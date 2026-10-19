@@ -29,14 +29,15 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
   const summary = (r,e) => {
     const signatures = db.prepare('SELECT employee_id,signed_at FROM read_sign_signatures WHERE memo_id=?').all(r.id);
     const mine = signatures.find(s => s.employee_id === e.id), required = r.roster.some(p => p.id === e.id);
-    return {...r,roster:undefined,body:undefined,attachments:undefined,required,total:r.roster.length,signed:signatures.length,mySignedAt:mine?.signed_at||null,myStatus:mine?'signed':!required?'not-required':new Date(r.deadline)<now()?'overdue':'pending'};
+    const {roster,body,attachments,publishHash,...memo}=r;
+    return {...memo,required,...(publishRole(e)?{total:roster.length,signed:signatures.length}:{}),mySignedAt:mine?.signed_at||null,myStatus:mine?'signed':!required?'not-required':new Date(r.deadline)<now()?'overdue':'pending'};
   };
   const read = (user,id) => {
     const e=employee(user),r=get(id),signatures=db.prepare('SELECT * FROM read_sign_signatures WHERE memo_id=?').all(id);
     const delivery=db.prepare('SELECT employee_id,status FROM read_sign_mail WHERE memo_id=?').all(id);
-    return {...r,...summary(r,e),body:r.body,attachments:r.attachments,canPublish:publishRole(e),roster:r.roster.map(p=>{
+    return {...summary(r,e),body:r.body,attachments:r.attachments,canPublish:publishRole(e),canManage:publishRole(e),canDownload:publishRole(e),...(publishRole(e)?{roster:r.roster.map(p=>{
       const s=signatures.find(s=>s.employee_id===p.id);return {...p,signedAt:s?.signed_at||null,signature:s?'data:image/svg+xml;base64,'+Buffer.from(s.svg).toString('base64'):null,late:s?new Date(s.signed_at)>new Date(r.deadline):false,emailStatus:delivery.find(d=>d.employee_id===p.id)?.status||'missing-email'};
-    })};
+    })}:{})};
   };
   const publish = db.transaction((user,body) => {
     const e=employee(user);if(!publishRole(e))fail('Only Supervisors and Managers can publish Read & Sign.',403);
@@ -65,7 +66,7 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
   });
   return {db,employee,get,read,publish,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position||'Agent'},canPublish:publishRole(e),memos:db.prepare('SELECT data FROM read_sign_memos ORDER BY rowid DESC').all().map(row=>summary(JSON.parse(row.data),e))};},
     sign:db.transaction((user,id,body)=>{const e=employee(user),r=get(id);if(!r.roster.some(p=>p.id===e.id))fail('You were not assigned to this memo.',403);if(body.acknowledged!==true)fail('Confirm that you have read and understood this memo.');if(db.prepare('SELECT 1 FROM read_sign_signatures WHERE memo_id=? AND employee_id=?').get(id,e.id))return read(user,id);const svg=signatureSVG(body.strokes);db.prepare('INSERT INTO read_sign_signatures VALUES(?,?,?,?,?)').run(id,e.id,r.roster.find(p=>p.id===e.id).name,now().toISOString(),svg);return read(user,id);}),
-    attachment(user,id,fileId){employee(user);get(id);const f=db.prepare('SELECT * FROM read_sign_attachments WHERE memo_id=? AND id=?').get(id,fileId);if(!f)fail('Attachment not found.',404);return f;}
+    attachment(user,id,fileId){if(!publishRole(employee(user)))fail('Only Supervisors and Managers can download attachments.',403);get(id);const f=db.prepare('SELECT * FROM read_sign_attachments WHERE memo_id=? AND id=?').get(id,fileId);if(!f)fail('Attachment not found.',404);return f;}
   };
 }
 function emailHTML(memo){

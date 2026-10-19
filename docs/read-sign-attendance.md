@@ -5,10 +5,10 @@ Read & Sign is available at `/read-sign.html`. The Profile module links to all m
 ## Publishing and signing
 
 - Only employees whose current server-side position is Supervisor or Manager may publish. Admin email membership alone does not grant publishing rights.
-- A publication contains a subject, optional memo number, message, mandatory future deadline, and up to five attachments totaling 10 MB. Supported files: PDF, PNG, JPEG, WebP, TXT, DOCX and XLSX. Attachments download through an authenticated API.
+- A publication contains a subject, optional memo number, message, mandatory future deadline, and up to five attachments totaling 10 MB. Supported files: PDF, PNG, JPEG, WebP, TXT, DOCX and XLSX. Attachment downloads require an authenticated Supervisor or Manager.
 - Publication atomically snapshots all named employees and queues a reminder for each. Employee names, published content and the required roster remain fixed for the record. Employees added later can read but are not assigned to earlier memos.
 - Employees must check the acknowledgement and draw a handwritten signature. The server validates normalized strokes and constructs the stored signature image. A unique memo/employee key prevents duplicate signatures. Retries retain the first acknowledgement timestamp. Late signatures are accepted and explicitly marked.
-- Every linked employee can inspect the roster, signatures and acknowledgement dates. Filters distinguish all memos, items to sign, and the employee's signed history. Print / Save PDF produces a Hallmark register with Employee Name, Signature / Initials and Date of Ack columns.
+- Only Supervisors and Managers can inspect the roster, signatures and acknowledgement dates. Other employees can inspect only their own signing status and date. Filters distinguish all memos, items to sign, and the employee's signed history. Print / Save PDF produces a Hallmark register with Employee Name, Signature / Initials and Date of Ack columns.
 
 ## Email and deployment
 
@@ -37,3 +37,10 @@ Email reminders include both a plain-text fallback and a styled HTML version wit
 Browser validation uses an isolated in-memory database, sanitized example employees, a test authentication adapter and stubbed external delivery. It covers publisher permissions, publication review and attachment upload, real pointer handwriting, reload persistence, attachment download, print layout, named approval routing and rejection reasons, Profile modules, attendance filters, and widths 1680 / 390 / 320. Screenshots are generated under `.verification/people/`. No production mail, Google Sheets edits or deployment is performed by these tests.
 
 The pre-existing Uniform test fixture used `@mu.com` accounts that the current production profile policy classifies as external. All seven tests failed against unchanged `origin/main` for this reason. The fixture now uses employee login addresses under `@login.example.com`, retaining the production access policy.
+
+
+## Read & Sign privacy and compact layouts
+
+Only the current stored Supervisor or Manager role can view the full acknowledgement register, aggregate signing counts, signatures and delivery statuses, print/save the register, or download attachments. Other positions receive only their own acknowledgement state and date, alongside the memo content and attachment filenames. Roster and aggregate counts are omitted from list, detail and sign responses; direct attachment requests return 403. Changing a stored role takes effect on the next request. Employees can still sign and review their personal history.
+
+Profile attendance uses a compact calendar card without stretching to match neighboring columns. Attendance details place a bounded calendar next to a readable-width record panel with compact expandable rows; smaller screens stack these panels. Info resource cards and the CTO table have a bounded width, with existing CTO data preserved.

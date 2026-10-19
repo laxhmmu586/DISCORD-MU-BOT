@@ -35,3 +35,27 @@
 }
 @media(max-width:1350px){.profile-dashboard.profile-modules{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-dashboard .profile-activity-panels{grid-column:1/-1}}
 @media(max-width:850px){.profile-dashboard.profile-modules{grid-template-columns:1fr}.profile-dashboard .profile-activity-panels{grid-column:auto}}
+
+/* Keep resource columns readable on wide monitors, without stretching cards to match neighbors. */
+.profile-dashboard.profile-modules{max-width:1260px;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,340px);align-items:start}
+.profile-dashboard .profile-personal-column,.profile-dashboard .profile-side-panels{grid-template-rows:auto;align-content:start}
+.profile-dashboard .profile-activity-panels{display:grid;align-items:start}
+.profile-dashboard .attendance-card{display:block}
+.profile-dashboard .attendance-calendar{margin-top:10px}
+.profile-dashboard .attendance-calendar-header{margin-bottom:8px}
+.profile-dashboard .attendance-calendar-day{min-height:30px;padding:3px;font-size:11px}
+.profile-dashboard .attendance-card .attendance-new{margin-top:12px}
+.profile-dashboard .attendance-mini-legend{margin:10px 0;font-size:10px;gap:10px}
+.profile-dashboard .attendance-monthly-entry{padding:10px 0}
+.info-shell #insurance,.info-shell #cto{max-width:900px;width:100%;box-sizing:border-box}
+.info-shell .cto-table{table-layout:fixed;min-width:500px}
+.info-shell .cto-table th,.info-shell .cto-table td{padding:12px 14px}
+.info-shell .cto-table thead th:first-child{width:30%}
+.info-shell .cto-table thead th:nth-child(2){width:38%}
+@media(max-width:1350px){.profile-dashboard.profile-modules{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-dashboard .profile-activity-panels{grid-column:1/-1;max-width:340px;width:100%}}
+@media(max-width:850px){.profile-dashboard.profile-modules{grid-template-columns:minmax(0,1fr)}.profile-dashboard .profile-activity-panels{grid-column:auto}}
+.profile-dashboard .attendance-calendar-day{box-sizing:border-box;height:32px;min-height:32px;gap:2px}
+.profile-dashboard .attendance-calendar-header{margin-bottom:6px}
+.profile-dashboard .attendance-card .profile-panel-title{padding-bottom:10px}
+.profile-dashboard .attendance-card .attendance-mini-legend{padding-top:8px;margin:8px 0}
+.profile-dashboard .attendance-card .attendance-new{padding-top:10px;margin-top:10px}
