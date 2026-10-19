@@ -32,6 +32,10 @@ class BoardingSqliteLive {
       flight_date TEXT NOT NULL, flight_no TEXT NOT NULL, box_id TEXT NOT NULL,
       PRIMARY KEY(flight_date,flight_no,box_id)
     );
+    CREATE TABLE IF NOT EXISTS boarding_box_numbers (
+      flight_date TEXT NOT NULL, flight_no TEXT NOT NULL, bn INTEGER NOT NULL, present INTEGER NOT NULL,
+      PRIMARY KEY(flight_date,flight_no,bn)
+    );
     CREATE TABLE IF NOT EXISTS boarding_scan_requests (
       request_id TEXT PRIMARY KEY, scan_id INTEGER NOT NULL REFERENCES scans(id) ON DELETE CASCADE
     );`);
@@ -71,7 +75,7 @@ class BoardingSqliteLive {
     if (!previous) this.saveCleanupAt.run(now());
     this.nextCleanupAt = nextBoardingCleanup(previous?.value ?? now());
     this.clearData = db.transaction(() => {
-      db.exec('DELETE FROM boarding_scan_details; DELETE FROM scans; DELETE FROM boarding_nbrd; DELETE FROM boarding_nbrd_versions; DELETE FROM boarding_box_cache; DELETE FROM boarding_box_confirmations;');
+      db.exec('DELETE FROM boarding_scan_details; DELETE FROM scans; DELETE FROM boarding_nbrd; DELETE FROM boarding_nbrd_versions; DELETE FROM boarding_box_cache; DELETE FROM boarding_box_confirmations; DELETE FROM boarding_box_numbers;');
       this.saveCleanupAt.run(this.now());
     });
     this.cleanupIfDue();

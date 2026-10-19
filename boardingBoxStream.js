@@ -8,6 +8,14 @@ function registerBoardingBoxStream(app, { cache, date = operationalDate, timers 
     try { return res.json(cache.confirm(flightNo,flightDate,req.body?.boxId,req.body?.confirmed)); }
     catch (error) { return res.status(error.status || 503).json({error:error.status ? error.message : 'Unable to save BOX selection. Please retry.'}); }
   });
+  app.post('/boarding-box/number', (req,res) => {
+    res.setHeader('Cache-Control','no-store');
+    const flightNo = normalizeSupportedFlight(req.query.flightNo);
+    const flightDate = String(req.query.flightDate || '').toUpperCase();
+    if (!flightNo || flightDate !== date()) return res.status(400).json({error:'Please select today’s flight.'});
+    try { return res.json(cache.setNumber(flightNo,flightDate,req.body?.bn,req.body?.present)); }
+    catch (error) { return res.status(error.status || 503).json({error:error.status ? error.message : 'Unable to save BOX number. Please retry.'}); }
+  });
   app.get('/boarding-box/live-stream', async (req,res) => {
     const flightNo = normalizeSupportedFlight(req.query.flightNo);
     const flightDate = String(req.query.flightDate || '').toUpperCase();
