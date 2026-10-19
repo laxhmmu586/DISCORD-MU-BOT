@@ -17,7 +17,7 @@ async function main(){
   const store=createStateStore(stateDb);let failed=false;
   const service=createAdvisoryService({getClient:gd.getNextDayInfoGmailClient,readSchedule:gd.readEtabSchedule,nonceScope:(testTba?'test-tba':'test-original')+(revision?':'+revision:''),
    getEmployees:()=>JSON.parse(employeeDb.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data).employees,
-   channel:async()=>({id:channelId,send:payload=>rest.post(Routes.channelMessages(channelId),{body:{content:testTba?payload.content.replace(/^(# )<a:breathing_\w+:\d+>/,'$1<a:breathing_yellow:1561759193294442508>').replace(/(GATE:)\S+/,'$1TBA').replace(/\n# 🚨 MSC GATE OPERATION$/,''):payload.content,nonce:payload.nonce,enforce_nonce:payload.enforceNonce,allowed_mentions:payload.allowedMentions}})}),
+   channel:async()=>({id:channelId,send:payload=>rest.post(Routes.channelMessages(channelId),{body:{content:testTba?payload.content.replace(/(GATE:)\S+/,'$1TBA').replace(/\n# 🚨 MSC GATE OPERATION$/,''):payload.content,nonce:payload.nonce,enforce_nonce:payload.enforceNonce,allowed_mentions:payload.allowedMentions}})}),
    store,log:{info:console.log,error:(...a)=>{failed=true;console.error(...a);}}
   });
   await service.tick();if(failed)throw Error('ETAB test failed; partial delivery state retained for retry');
