@@ -2010,6 +2010,7 @@ function normalizeGmailText(value = '') {
 
 const MEAL_ORDER_EMAIL_SENDERS = [
   'laxapmu@chinaeastern-usa.com',
+  'laxllmu@chinaeastern-usa.com',
   'laxhmmu@gmail.com'
 ];
 
