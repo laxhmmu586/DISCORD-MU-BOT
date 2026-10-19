@@ -41,20 +41,22 @@ function theme(gate) { return gate === 'TBA' ? 'night' : /^2(?:0\d|1\d|2[0-5])[A
 function buildDiscordPayload(advisory, mentions = '') {
   const { arrival, departure } = advisory;
   const gate = arrival.gate || 'TBA';
-  const date = advisory.date.slice(8,10) + MONTHS[Number(advisory.date.slice(5,7))-1];
-  let content = `## ✈️ ETAB ADVISORY - GATE:${gate}\n`;
-  content += `### Arrival - ${arrival.flight}/${date}\n`;
-  for (const [key, label] of [['reg','REG'], ['eta','ETA'], ['pax','PAX'], ['crew','CREW']]) {
-    if (arrival[key]) content += `🔸 ${label}: ${arrival[key]}\n`;
-  }
-  content += '\n';
-  if (arrival.clockIn) content += `👥 Clock-in: ${arrival.clockIn}\n`;
-  if (mentions) content += `👥 Arrival Team: ${mentions}\n`;
-  if (departure.flight) {
-    content += `\n### Departure - ${departure.flight}/${departure.flightDate || date}\n`;
-    content += `🔹 ${departure.timeType || 'ETD'}: ${departure.time || 'TBA'}\n`;
-  }
+  const date = advisory.date.slice(8,10) + ' ' + MONTHS[Number(advisory.date.slice(5,7))-1];
   const gateNumber = parseInt(gate,10);
+  const indicator = gate === 'TBA' ? '<a:breathing_yellow:1561759193294442508>'
+    : gateNumber >= 201 && gateNumber <= 225 ? '<a:breathing_red:1561759616608632935>'
+    : '<a:breathing_green:1561759188785303623>';
+  let content = `# ${indicator}ETAB · ${date} - GATE:${gate}\n`;
+  content += `### Arrival - ${arrival.flight}\n`;
+  for (const [key, label] of [['reg','REG'], ['eta','ETA'], ['pax','PAX'], ['crew','CREW']]) {
+    if (arrival[key]) content += `<:dashgreen:1560485262931529848>  ${label}: ${arrival[key]}\n`;
+  }
+  if (arrival.clockIn) content += `### 🕒 Clock-in: ${arrival.clockIn}\n`;
+  if (mentions) content += `👥 Arrival Team:\n${mentions.trim().split(/\s+/).join('\n')}\n`;
+  if (departure.flight) {
+    content += `### Departure - ${departure.flight}\n`;
+    content += `<:DashBlue:1529741453058768996> ${departure.timeType || 'ETD'}: ${departure.time || 'TBA'}\n`;
+  }
   if (!Number.isNaN(gateNumber) && gateNumber >= 201 && gateNumber <= 225) content += '\n# 🚨 MSC GATE OPERATION';
   return content;
 }
