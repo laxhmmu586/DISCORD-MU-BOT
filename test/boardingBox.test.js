@@ -15,6 +15,29 @@ const fb = (bn, { time='14:01:00', infant=false, deleted=false, flight='MU586', 
  ${infant ? 'INF-TEST/BABY INF1/0\n ET TKNE/INF1234567890123/1' : ''}
  O/DL389/17OCT BN999 30A JFK`;
 const parse = log => findBoardingBoxInfo(scopedLog(log, 'MU586', '16OCT26'), 'MU586', '16OCT26');
+const rangeFixture = require('node:fs').readFileSync(require('node:path').join(__dirname,'fixtures/boarding-box-bnd-ranges.log'),'utf8');
+const parseRanges = log => findBoardingBoxInfo(scopedLog(log,'MU586','19OCT26'),'MU586','19OCT26');
+
+test('supplied October 19 BND expands deleted ranges and preserves NONLAX numbers', () => {
+  for (const log of [rangeFixture, rangeFixture.replace('48  72-76  82','48  72-76\n    82')]) {
+    const data = parseRanges(log);
+    assert.ok(data); assert.equal(data.source,'BND'); assert.equal(data.maxBn,308);
+    assert.equal(data.expectedPassengers,298); assert.equal(data.passengers,298);
+    assert.equal(data.infants,2); assert.equal(data.total,300); assert.equal(data.matched,true);
+    const {groups} = groupBns(data.bns,data.maxBn);
+    assert.deepEqual(groups.flatMap(group=>group.absent),[48,72,73,74,75,76,82,85,104,132]);
+    assert.deepEqual(groups.find(group=>group.start===61).absent,[72,73,74,75,76]);
+    for (const bn of [1,14,62,65,68,70,77,78,81,88,91,103,105,131,133,141]) assert.ok(data.bns.includes(bn));
+    assert.equal(groups.at(-1).end,308); assert.equal(groups.at(-1).count,8);
+  }
+});
+
+test('BND deletion ranges reject wrong counts, reversed, overlapping, malformed and out-of-range values', () => {
+  for (const list of ['48 72-75 82 85 104 132','48 76-72 82 85 104 132',
+    '48 72-76 76 85 104 132','48 72-76x 82 85 104 132','48 72-76 82 85 104 309']) {
+    assert.equal(parseRanges(rangeFixture.replace('48  72-76  82  85  104  132',list)),null,list);
+  }
+});
 const bnd = (end=303, removed=[8,28,63,65,73], flight='MU586') => `2026 October 16, Friday, 14:02:00
 >BND:
  BND: ${flight}/16OCT26LAX

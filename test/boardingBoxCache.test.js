@@ -36,6 +36,18 @@ test('warm snapshot survives a new cache instance and opens without waiting for 
   assert.equal(result.maxBn,312);assert.equal(result.passengers,1);assert.equal(result.matched,true);assert.equal(calls,1);
   assert.equal(db.prepare('SELECT payload FROM boarding_box_cache WHERE flight_no=?').get('MU578'),undefined);
 });
+
+test('supplied ranged BND loads a cold BOX and supports manual delete/restore', async t => {
+  const supplied=fs.readFileSync(require('node:path').join(__dirname,'fixtures/boarding-box-bnd-ranges.log'),'utf8');
+  const {cache}=setup(t,async()=>supplied,{now:()=>Date.parse('2026-10-19T22:40:00Z')});
+  const data=await cache.read('MU586','19OCT26');
+  assert.ok(data);assert.equal(data.passengers,298);assert.equal(data.total,300);assert.equal(data.matched,true);
+  const deleted=cache.setNumber('MU586','19OCT26','94',false);
+  assert.equal(deleted.passengers,297);assert.ok(!deleted.bns.includes(94));
+  const restored=cache.setNumber('MU586','19OCT26','0073',true);
+  assert.equal(restored.passengers,298);assert.ok(restored.bns.includes(73));
+  await cache.refresh();assert.deepEqual(cache.snapshot('MU586','19OCT26').bns,restored.bns);
+});
 test('concurrent cold viewers share one log download and flights stay isolated', async t => {
   let calls=0,release;
   const {cache} = setup(t,()=>{calls++;return new Promise(resolve=>{release=resolve;});});
