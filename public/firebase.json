@@ -14,7 +14,7 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
-        "source": "/{request.html,request.css,request.js}",
+        "source": "/{attendance-request.html,request.html,request.css,request.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {

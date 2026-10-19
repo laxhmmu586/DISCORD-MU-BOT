@@ -1,6 +1,6 @@
 # Uniform requests
 
-Profile provides a Request card and a sidebar entry to `/uniform.html`. Employees submit replacement reasons, the six original garment rows, and TIE / SCARF quantities. The server takes the employee's full name, EID and phone from the linked employee record and dates the request in America/Los_Angeles. Account MU, location LAX and status PT are fixed on the PDF and do not require inputs.
+Profile provides a Request card and a sidebar entry to `/request.html`. Employees submit replacement reasons, the six original garment rows, and TIE / SCARF quantities. The server takes the employee's full name, EID and phone from the linked employee record and dates the request in America/Los_Angeles. Account MU, location LAX and status PT are fixed on the PDF and do not require inputs.
 
 ## Setup and approvals
 

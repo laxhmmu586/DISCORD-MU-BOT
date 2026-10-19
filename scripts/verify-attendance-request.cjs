@@ -33,7 +33,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       ['2026-10-15T06:55:00Z','00:10'], // Cross midnight.
     ]){
       await clockPage.clock.setSystemTime(new Date(instant));
-      await clockPage.goto(`http://127.0.0.1:${server.address().port}/request.html`);
+      await clockPage.goto(`http://127.0.0.1:${server.address().port}/attendance-request.html`);
       await clockPage.click('[data-type=late]');
       assert.equal(await clockPage.inputValue('#arrival'),expected);
       const [hour,minute]=expected.split(':').map(Number);
@@ -48,7 +48,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await clockPage.close();
     const out = path.resolve(process.env.ATTENDANCE_QA_DIR || path.join(__dirname, '../output/attendance-ui'));
     fs.mkdirSync(out, { recursive:true });
-    await page.goto(`http://127.0.0.1:${server.address().port}/request.html`);
+    await page.goto(`http://127.0.0.1:${server.address().port}/attendance-request.html`);
     await page.locator('#employee:not([disabled])').waitFor({ state:'attached' });
     assert.equal(await page.locator('.brand').textContent(), 'EMPLOYEE SERVICES');
     assert.equal(await page.locator('.brand-mark').count(), 0);
@@ -57,7 +57,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await page.locator('[data-type=sick]').evaluate(el => document.activeElement === el && getComputedStyle(el).outlineStyle === 'solid'), true);
     const outagePage=await browser.newPage({viewport:{width:390,height:844}});
     await outagePage.route('**/attendance-api/employees',route=>route.fulfill({status:502,contentType:'text/html',body:'<h1>Bad Gateway</h1>'}));
-    await outagePage.goto(`http://127.0.0.1:${server.address().port}/request.html`);
+    await outagePage.goto(`http://127.0.0.1:${server.address().port}/attendance-request.html`);
     await outagePage.locator('#status').filter({hasText:'temporarily unavailable'}).waitFor();
     await outagePage.click('[data-type=late]');
     assert.equal(await outagePage.locator('#continue').isDisabled(),true);

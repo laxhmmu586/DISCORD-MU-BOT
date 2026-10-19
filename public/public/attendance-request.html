@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#080f18"><title>Attendance Request · Employee Services</title><link rel="stylesheet" href="/request.css?v=20261015-art-offset18"><script src="/request.js?v=20261015-arrival-default" defer></script></head>
+<body>
+<main class="app">
+ <header><a class="brand" href="/attendance-request.html" aria-label="Attendance home">EMPLOYEE SERVICES</a></header>
+ <div class="workspace">
+ <aside><span class="eyebrow">HERE FOR YOUR EVERYDAY</span><h1>A little heads-up.<br>A smoother day.</h1><p>Let your team know when plans change.</p><div class="aside-art" aria-hidden="true"><div class="orbit"></div><img src="/assets/attendance/coming-late.png" alt=""><i></i></div><p class="aside-note">Keep your supervisor informed.<br>We’ll take care of the record.</p></aside>
+ <section class="panel" aria-label="Attendance request">
+ <nav class="step-header"><button id="back" class="back" aria-label="Go back" hidden>←</button><span id="step-caption">ATTENDANCE</span><div id="progress" class="progress" aria-label="Request progress"><i class="active"></i><i></i><i></i></div></nav>
+ <section id="choose" class="screen">
+  <h2><span class="desktop-intro">Attendance</span><span class="mobile-intro">A little heads-up.<br>A smoother day.</span></h2><p class="subheading"><span class="desktop-intro">Let us know if you won’t be able to make it or will be arriving late.</span><span class="mobile-intro">Let your team know when plans change.</span></p>
+  <button class="type-card sick" data-type="sick"><span class="illustration bed" aria-hidden="true"><img src="/assets/attendance/call-off-sick.png" alt=""></span><span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m9 5 7 7-7 7"/></svg></span><strong>Call Off / Sick</strong><span>I will not be able to work<br>my scheduled shift.</span></button>
+  <button class="type-card late" data-type="late"><span class="illustration running" aria-hidden="true"><img src="/assets/attendance/coming-late.png" alt=""></span><span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m9 5 7 7-7 7"/></svg></span><strong>Coming Late</strong><span>I will be arriving later<br>than my scheduled time.</span></button>
+  <div class="notice"><span aria-hidden="true">ⓘ</span><p>Please notify your supervisor <strong>at least 2 hours before your shift.</strong> You must speak directly with your supervisor. Notifying a coworker or leaving a message is not sufficient.</p></div>
+ </section>
+ <section id="details" class="screen" hidden>
+  <div class="section-title"><span id="type-icon" class="type-icon" aria-hidden="true">◷</span><div><h2 id="detail-title">Coming Late</h2></div></div>
+  <form id="details-form">
+   <div class="employee-field">
+    <div class="employee-picker">
+     <svg class="employee-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="9" r="5.5"/><path d="M5 27v-2a8 8 0 0 1 8-8h6a8 8 0 0 1 8 8v2Z"/></svg>
+     <span class="employee-kicker" aria-hidden="true">EMPLOYEE</span>
+     <select id="employee" aria-label="Employee" required disabled><option value="">Loading employees…</option></select>
+     <span class="employee-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6"/></svg></span>
+    </div>
+   </div><button id="retry-employees" class="text-button" type="button" hidden>Retry loading employees</button>
+   <div id="date-field" class="date-picker"><span class="date-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><rect x="6" y="8" width="20" height="20" rx="2"/><path d="M11 4v8M21 4v8M6 15h20"/></svg></span><input id="date" aria-label="Date you will be absent" type="date" required></div>
+   <div id="late-fields" hidden>
+    <div class="time-slider arrival-card">
+     <div class="arrival-heading"><span class="arrival-clock" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11"/><path d="M16 9v8l5 3"/></svg></span><div><label for="arrival">Expected Arrival Time</label></div></div>
+     <div class="arrival-value"><strong id="time-display" aria-hidden="true">10:00 <small>AM</small></strong><input id="arrival" type="time" step="60" aria-label="Expected Arrival Time"></div>
+     <img class="runner" src="/assets/attendance/coming-late.png" alt="">
+     <input id="arrival-slider" type="range" min="0" max="1439" step="1" value="600" aria-label="Quick arrival time selection"><div class="range-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+    </div>
+   </div>
+   <label class="reason-field"><span id="reason-label">Reason</span> <small>(required)</small><span class="reason-box"><span class="reason-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v13H9l-5 4Z"/><path d="M8 8h8M8 12h5"/></svg></span><textarea id="reason" required maxlength="1000" rows="3" placeholder="Anything you’d like your supervisor to know…"></textarea><span id="reason-count" aria-hidden="true">0/1000</span></span></label>
+   <button class="primary" id="continue" type="submit" disabled>Continue <span>→</span></button>
+  </form>
+ </section>
+ <section id="review" class="screen" hidden>
+  <h2>Review &amp; Confirm</h2><p class="subheading">Please confirm your information before submitting.</p>
+  <div class="summary"><h3 id="review-type"></h3><dl id="review-fields"></dl><label class="note-label">Add a note <small>(optional)</small><textarea id="note" maxlength="1000" rows="2" placeholder="Additional details…"></textarea></label></div>
+  <div class="notice"><span aria-hidden="true">ⓘ</span><p>Please notify your supervisor <strong>at least 2 hours before your shift.</strong> You must speak directly with your supervisor. This form records your request.</p></div>
+  <button id="submit" class="primary green">Submit Request <span>→</span></button>
+ </section>
+ <section id="success" class="screen success" hidden>
+  <div class="celebration" aria-hidden="true">
+   <svg class="success-art" viewBox="0 0 280 190" fill="none">
+    <defs>
+     <radialGradient id="success-halo"><stop stop-color="#00e89c" stop-opacity=".38"/><stop offset="1" stop-color="#00e89c" stop-opacity="0"/></radialGradient>
+     <linearGradient id="success-face" x1="107" y1="53" x2="175" y2="137" gradientUnits="userSpaceOnUse"><stop stop-color="#36eaa8"/><stop offset=".48" stop-color="#079f6b"/><stop offset="1" stop-color="#03513e"/></linearGradient>
+     <linearGradient id="success-ring" x1="108" y1="54" x2="173" y2="136" gradientUnits="userSpaceOnUse"><stop stop-color="#adffcf"/><stop offset=".25" stop-color="#43ffb3"/><stop offset=".65" stop-color="#13e899"/><stop offset="1" stop-color="#00be7c"/></linearGradient>
+     <linearGradient id="success-tick" x1="124" y1="82" x2="157" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#b0ffd8"/><stop offset="1" stop-color="#38ffb4"/></linearGradient>
+     <filter id="success-glow" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="9"/></filter>
+    </defs>
+    <ellipse cx="140" cy="100" rx="95" ry="85" fill="url(#success-halo)"/>
+    <g class="success-confetti">
+     <rect x="36" y="49" width="8" height="15" rx="2" transform="rotate(-40 36 49)" fill="#ffd23b"/>
+     <rect x="73" y="21" width="9" height="9" rx="3" transform="rotate(27 73 21)" fill="#ffca29"/>
+     <rect x="220" y="60" width="10" height="10" rx="3" transform="rotate(29 220 60)" fill="#ffc52b"/>
+     <rect x="190" y="19" width="8" height="8" rx="2" transform="rotate(29 190 19)" fill="#578fff"/>
+     <rect x="44" y="121" width="8" height="16" rx="2" transform="rotate(40 44 121)" fill="#ff5879"/>
+     <rect x="232" y="111" width="8" height="8" rx="3" transform="rotate(30 232 111)" fill="#598bff"/>
+     <rect x="205" y="142" width="9" height="9" rx="2" transform="rotate(35 205 142)" fill="#19df98"/>
+     <circle cx="64" cy="144" r="3" fill="#08bfa2"/><circle cx="61" cy="153" r="2" fill="#078e86"/>
+     <circle cx="207" cy="87" r="2.5" fill="#159b7d"/><circle cx="67" cy="88" r="2.5" fill="#107e70"/>
+    </g>
+    <g class="success-medallion">
+     <circle cx="140" cy="99" r="42" stroke="#10f4a2" stroke-width="9" opacity=".5" filter="url(#success-glow)"/>
+     <circle cx="140" cy="102" r="42" fill="#003d30"/>
+     <circle cx="140" cy="96" r="41" fill="url(#success-face)" stroke="url(#success-ring)" stroke-width="7"/>
+     <path d="M108 80a36 36 0 0 1 46-18" stroke="#d5ffe6" stroke-width="2" stroke-linecap="round" opacity=".28"/>
+     <path d="m124 97 11 12 23-27" stroke="#006a47" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".55" transform="translate(0 2)"/>
+     <path d="m124 95 11 12 23-27" stroke="url(#success-tick)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+   </svg>
+  </div><h2>Request Submitted!</h2><p class="subheading">Your attendance request has been successfully saved.</p><div class="summary"><dl id="receipt"></dl></div><p id="notification-status" class="notification-status"></p><button id="home" class="secondary">Back to Home</button>
+ </section>
+ <p id="status" class="error" role="alert"></p><div id="sending" class="sending" role="status" aria-live="polite" hidden>
+  <svg class="sending-art" viewBox="0 0 280 250" fill="none" aria-hidden="true">
+   <defs>
+    <radialGradient id="plane-halo"><stop stop-color="#3662ff" stop-opacity=".45"/><stop offset="1" stop-color="#3662ff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="plane-face" x1="96" y1="83" x2="211" y2="150" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset=".5" stop-color="#c7e5ff"/><stop offset="1" stop-color="#738dff"/></linearGradient>
+    <linearGradient id="plane-fold" x1="132" y1="116" x2="169" y2="167" gradientUnits="userSpaceOnUse"><stop stop-color="#71c8ff"/><stop offset="1" stop-color="#3155e6"/></linearGradient>
+    <linearGradient id="plane-trail" x1="41" y1="214" x2="107" y2="155" gradientUnits="userSpaceOnUse"><stop stop-color="#2654ff" stop-opacity="0"/><stop offset=".5" stop-color="#3977ff"/><stop offset="1" stop-color="#72e7ff"/></linearGradient>
+    <filter id="plane-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="6"/></filter>
+   </defs>
+   <ellipse cx="141" cy="127" rx="121" ry="117" fill="url(#plane-halo)"/>
+   <g class="plane-orbit" stroke="#3659c4"><path d="M65 166a94 94 0 1 1 161-58" stroke-width="2.5" opacity=".65"/><path d="M82 191a94 94 0 0 0 72 24" stroke-width="2" opacity=".4"/></g>
+   <g class="plane-trail"><path d="M37 221Q67 171 106 155" stroke="#315bff" stroke-width="18" stroke-linecap="round" filter="url(#plane-glow)"/><path d="M37 221Q67 171 106 155" stroke="url(#plane-trail)" stroke-width="11" stroke-linecap="round"/><path d="m57 166 10-10m25-17 9-6m18 51 9-4" stroke="#477cff" stroke-width="4" stroke-linecap="round"/></g>
+   <g class="paper-plane"><path d="m103 92 117-32-33 112-37-33-25 30-5-48Z" fill="#497dff" opacity=".6" filter="url(#plane-glow)"/><path d="M103 92 220 60 187 172 150 139 125 169 120 121Z" fill="url(#plane-face)" stroke="#c3e3ff" stroke-width="1.5" stroke-linejoin="round"/><path d="m120 121 70-40-40 58-25 30Z" fill="url(#plane-fold)"/><path d="m125 169 25-30-11-10Z" fill="#9ccfff"/><path d="m120 121 70-40" stroke="#effaff" stroke-width="2" stroke-linecap="round"/></g>
+   <g class="plane-stars" fill="#b9f1ff"><path d="m63 48 5 12 12 5-12 5-5 12-5-12-12-5 12-5Z"/><path d="m178 191 4 8 8 4-8 4-4 9-4-9-8-4 8-4Z" fill="#76ddff"/><path d="m231 153 4 7-4 7-4-7Zm-198-43 3 4-3 4-3-4Z"/></g>
+  </svg><strong>Submitting…</strong><p>Saving your attendance request</p>
+ </div>
+ </section></div><footer>EMPLOYEE SERVICES · ATTENDANCE</footer>
+</main>
+</body></html>
