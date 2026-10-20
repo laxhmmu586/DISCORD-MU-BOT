@@ -123,3 +123,17 @@ test('persisted legacy FB cache is never returned and is replaced by SY+BND', as
   assert.equal(cache.snapshot('MU586','16OCT26'),null);
   const next=await cache.read('MU586','16OCT26');assert.equal(next.source,'BND');assert.deepEqual(next.bns,[1,2,3]);
 });
+
+test('manual deletion count survives refresh and restore cancels only its deduction', async t => {
+  const {cache}=setup(t,async()=>log(290).replace('I00','I02'));
+  await cache.refresh();
+  assert.equal(cache.snapshot('MU586','16OCT26').manualDeletedCount,0);
+  const deleted=cache.setNumber('MU586','16OCT26',1,false);
+  assert.equal(deleted.expectedTotal,292); assert.equal(deleted.manualDeletedCount,1);
+  assert.equal(cache.setNumber('MU586','16OCT26',1,false).manualDeletedCount,1);
+  assert.equal(cache.setNumber('MU586','16OCT26',2,false).manualDeletedCount,2);
+  await cache.refresh(); assert.equal(cache.snapshot('MU586','16OCT26').manualDeletedCount,2);
+  assert.equal(cache.setNumber('MU586','16OCT26',1,true).manualDeletedCount,1);
+  assert.equal(cache.setNumber('MU586','16OCT26',2,true).manualDeletedCount,0);
+  assert.equal(cache.snapshot('MU586','16OCT26').expectedTotal,292);
+});

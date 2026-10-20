@@ -13,3 +13,5 @@
 .number-control label{display:block;margin-bottom:10px;font-size:15px;font-weight:700}
 .number-fields{display:flex;gap:10px}.number-fields input{flex:1;min-width:0;width:100%;border:1px solid #315878;border-radius:10px;padding:12px;background:#041b31;color:#edf6ff;font:inherit;font-size:16px}.number-fields input::placeholder{color:#94b7d8}.number-fields input:focus-visible{outline:2px solid #8edbff;outline-offset:2px}
 .number-fields button{min-width:90px;border-radius:10px;background:#076be0;color:white;font-size:14px}#number-status{font-size:13px;color:#b6d8ff;line-height:1.5}#number-status:empty{display:none}
+
+.total-deleted{color:#ff6578}

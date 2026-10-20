@@ -42,7 +42,9 @@ class BoardingBoxCache {
     // Ignore persisted legacy FB snapshots until SY+BND have been loaded.
     if (data.source !== 'BND') return null;
     const bns = new Set(data.bns);
+    data.manualDeletedCount = 0;
     for (const {bn,present} of this.numbers.all(flight,date)) {
+      if (bn <= data.maxBn && !present) data.manualDeletedCount++;
       if (bn <= data.maxBn) { if (present) bns.add(bn); else bns.delete(bn); }
     }
     data.bns = [...bns].sort((a,b) => a-b);

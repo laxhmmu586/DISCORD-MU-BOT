@@ -14,7 +14,22 @@
     }
     return { groups, columns };
   }
-  if (typeof module === 'object' && module.exports) { module.exports = { groupBns }; return; }
+  function renderTotal(doc, data) {
+    const total = doc.getElementById('total');
+    const deleted = data.manualDeletedCount || 0;
+    total.replaceChildren();
+    const original = doc.createElement('span');
+    original.textContent = `${data.expectedPassengers ?? '—'} + ${data.expectedInfants ?? '—'} = ${data.expectedTotal ?? '—'}`;
+    total.append(original);
+    if (deleted) {
+      const adjustment = doc.createElement('span'); adjustment.className = 'total-deleted';
+      adjustment.textContent = ` -${deleted}`;
+      const result = doc.createElement('span');
+      result.textContent = ` = ${data.expectedTotal == null ? '—' : data.expectedTotal - deleted}`;
+      total.append(adjustment, result);
+    }
+  }
+  if (typeof module === 'object' && module.exports) { module.exports = { groupBns, renderTotal }; return; }
   const doc = root.document;
   const status = doc.getElementById('status');
   const refresh = doc.getElementById('refresh');
@@ -122,7 +137,7 @@
       if (occupied.has(`${column}:${row}`)) continue;
       const blank = doc.createElement('div'); blank.className = 'box empty'; blank.style.gridColumn = column; blank.style.gridRow = row; blank.setAttribute('aria-hidden','true'); boxes.append(blank);
     }
-    text('total', `${data.expectedPassengers ?? '—'} + ${data.expectedInfants ?? '—'} = ${data.expectedTotal ?? '—'}`);
+    renderTotal(doc, data);
     status.textContent = '';
     status.hidden = true;
     content.hidden = false;
