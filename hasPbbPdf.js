@@ -22,7 +22,7 @@ async function buildHasPbbPdf(r){
  const section=title=>{box(top,15,shade);text(title,42,top+2,9.5,italic);top+=15;};
  const row=(label,yes,height=18)=>{box(top,height);check(43,top+5,yes);text(label,56,top+4,9,font,512);top+=height;};
  const answer=id=>{const q=items.find(q=>q.id===id);return r.answers[q.role]?.[id]===true;};
- const question=id=>row(items.find(q=>q.id===id).text,answer(id));
+ const question=id=>{const q=items.find(q=>q.id===id);return row(q.pdfText||q.text,answer(id));};
  section('PRE-MOVEMENT VERIFICATION');
  row(`Gate number confirmed: ${r.gate}. Driver and Spotter reported for the operation.`,!!r.signatures.driver&&!!r.signatures.spotter);
  for(const id of ['serviceable','controls','equipment','cables','stand'])question(id);

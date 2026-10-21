@@ -95,3 +95,18 @@ test('Drive failures keep submitted records and stable upload IDs for retry and 
  let stats=(await f.request('lake','/dashboard')).data.daily.at(-1);assert.equal(stats.submittedChecklists,1);assert.equal(stats.driveSaved,0);
  f.recover();await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');stats=(await f.request('lake','/dashboard')).data.daily.at(-1);assert.equal(stats.driveSaved,1);
 });
+
+test('combined stopped/chocks question atomically saves both checks and NO blocks Ready',async t=>{
+ const f=await fixture(t);let r=(await f.create('spotter')).data;
+ const change=async body=>{const result=await f.change('spotter',r,body);assert.equal(result.status,200);r=result.data;};
+ assert.equal(items.filter(q=>q.role==='spotter'&&q.phase==='pre'&&!q.hidden).length,4);
+ assert.equal(items.find(q=>q.id==='stopped').photo,'aircraft-chocks-lax-v2.webp');
+ for(const q of items.filter(q=>q.role==='spotter'&&q.phase==='pre'&&!q.hidden))await change({action:'answer',itemId:q.id,value:true});
+ assert.equal(r.answers.spotter.stopped,true);assert.equal(r.answers.spotter.chocks,true);
+ await change({action:'ready',value:true});
+ await change({action:'answer',itemId:'stopped',value:false});
+ assert.equal(r.answers.spotter.stopped,false);assert.equal(r.answers.spotter.chocks,false);assert.equal(r.ready.spotter,null);
+ assert.equal((await f.change('spotter',r,{action:'ready',value:true})).status,400);
+ await change({action:'answer',itemId:'stopped',value:true});await change({action:'ready',value:true});
+ assert.equal(r.ready.spotter,true);
+});
