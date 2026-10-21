@@ -87,13 +87,14 @@ test('daily 07:00 cleanup deletes BOX with scans and prevents in-flight pre-clea
   await assert.rejects(cache.read('MU586','16OCT26'),/today/);
 });
 
-test('manual delete/restore persists over log refresh and restart, including a BND-deleted BN', async t => {
+test('manual delete/restore persists over refresh, BND-only updates and restart within the same SY', async t => {
   const {cache,db,now}=setup(t,async()=>log(3)); cache.updateFromLog(log(3));
   cache.setNumber('MU586','16OCT26','0002',false);
   cache.setNumber('MU586','16OCT26','0094',true);
   assert.deepEqual(cache.snapshot('MU586','16OCT26').bns,[1,3,94]);
-  cache.updateFromLog(log(4));
-  const reopened=new BoardingBoxCache({db,now,loadLog:async()=>log(4)});
+  const bndUpdate=log(4).replace('C000/000/004','C000/000/003');
+  cache.updateFromLog(bndUpdate);
+  const reopened=new BoardingBoxCache({db,now,loadLog:async()=>bndUpdate});
   assert.deepEqual((await reopened.read('MU586','16OCT26')).bns,[1,3,4,94]);
   const restored=cache.setNumber('MU586','16OCT26','2',true);
   assert.deepEqual(restored.bns,[1,2,3,4,94]); assert.equal(restored.passengers,5);assert.equal(restored.total,5);
@@ -101,6 +102,64 @@ test('manual delete/restore persists over log refresh and restart, including a B
   cache.updateFromLog(log(1,'MU578'));
   assert.deepEqual(cache.snapshot('MU578','16OCT26').bns,[1]);
   assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_box_numbers WHERE flight_date=?').get('15OCT26').n,0);
+});
+
+test('new SY clears old manual changes, publishes reset counts and preserves other flights and confirmations', t => {
+  const {cache,db,now}=setup(t,async()=>log(4));
+  cache.updateFromLog(log(3)+'\n'+log(2,'MU578'));
+  cache.setNumber('MU586','16OCT26',2,false);
+  cache.setNumber('MU586','16OCT26',94,true);
+  cache.setNumber('MU578','16OCT26',1,false);
+  cache.confirm('MU586','16OCT26','1',true);
+  const events=[]; cache.subscribe('MU586','16OCT26',data=>events.push(data));
+  cache.updateFromLog(log(4)+'\n'+log(2,'MU578'));
+  assert.equal(events.length,1);
+  assert.deepEqual(events[0].bns,[1,2,3,4]);
+  assert.equal(events[0].total,4); assert.equal(events[0].matched,true);
+  assert.equal(events[0].manualDeletedCount,0);
+  assert.deepEqual(events[0].confirmedBoxes,['1']);
+  assert.deepEqual(cache.snapshot('MU578','16OCT26').bns,[2]);
+  const reopened=new BoardingBoxCache({db,now,loadLog:async()=>log(4)});
+  assert.deepEqual(reopened.snapshot('MU586','16OCT26').bns,[1,2,3,4]);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM boarding_box_numbers WHERE flight_no=?').get('MU586').n,0);
+  assert.equal(reopened.setNumber('MU586','16OCT26',3,false).total,3);
+  assert.equal(reopened.snapshot('MU586','16OCT26').manualDeletedCount,1);
+});
+
+test('a newer SY with unchanged counts resets manual changes while repeated reads preserve them', async t => {
+  const {cache}=setup(t,async()=>log(3)); cache.updateFromLog(log(3));
+  cache.setNumber('MU586','16OCT26',2,false);
+  await cache.refresh(); assert.equal(cache.snapshot('MU586','16OCT26').total,2);
+  const newSy=log(3)+'\n'+log(3).split('2026 October 16, Friday, 14:57:00')[0].replace('14:56:04','14:59:04');
+  cache.updateFromLog(newSy);
+  assert.equal(cache.snapshot('MU586','16OCT26').total,3);
+  cache.setNumber('MU586','16OCT26',1,false);
+  cache.updateFromLog(newSy+'\n2026 October 16, Friday, 15:00:00\n>fb 1\nUnrelated log update');
+  assert.equal(cache.snapshot('MU586','16OCT26').total,2);
+});
+
+test('existing snapshots without SY revision reset stale manual changes on the first current SY load', t => {
+  const {cache,db,now}=setup(t,async()=>log(3)); cache.updateFromLog(log(3));
+  cache.setNumber('MU586','16OCT26',2,false);
+  const payload=JSON.parse(db.prepare('SELECT payload FROM boarding_box_cache').get().payload);
+  delete payload.syRevision;
+  db.prepare('UPDATE boarding_box_cache SET payload=?').run(JSON.stringify(payload));
+  const reopened=new BoardingBoxCache({db,now,loadLog:async()=>log(3)});
+  reopened.updateFromLog(log(3));
+  assert.equal(reopened.snapshot('MU586','16OCT26').total,3);
+  reopened.setNumber('MU586','16OCT26',1,false);
+  reopened.updateFromLog(log(3));
+  assert.equal(reopened.snapshot('MU586','16OCT26').total,2);
+});
+
+test('failed new SY save rolls back manual reset and does not publish it', t => {
+  const {cache,db}=setup(t,async()=>log(3)); cache.updateFromLog(log(3));
+  cache.setNumber('MU586','16OCT26',2,false);
+  let events=0; cache.subscribe('MU586','16OCT26',()=>events++);
+  db.exec(`CREATE TRIGGER fail_sy_update BEFORE UPDATE ON boarding_box_cache BEGIN SELECT RAISE(ABORT,'disk full'); END;`);
+  assert.throws(()=>cache.updateFromLog(log(4)),/disk full/);
+  assert.deepEqual(cache.snapshot('MU586','16OCT26').bns,[1,3]);
+  assert.equal(events,0);
 });
 
 test('invalid numbers and failed writes cannot publish success or change BOX', t => {
