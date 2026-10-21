@@ -3,7 +3,7 @@ const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('..
 const items=require('../public/public/has-pbb-data'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
 async function fixture(t,{failUpload=false}={}){
  const db=new Database(':memory:');let now=new Date('2026-10-21T17:00:00Z'),uploads=0;
- const seed=[['driver','LAX','MU'],['spotter','LAX','MU'],['other','SFO','MU'],['account','LAX','XX'],['expired','LAX','MU'],['missing','LAX','MU']].map(([id,station,account])=>({id,name:'TEST '+id.toUpperCase(),eid:'123',station,account,attach:true,detach:true,spotter:true,pbbId:id==='missing'?'':'PBB-'+id,pbbExpiry:id==='missing'?'':id==='expired'?'2026-10-20':'2026-10-21'}));
+ const seed=[['driver','LAX','MU'],['spotter','LAX','MU'],['other','SFO','MU'],['account','LAX','XX'],['expired','LAX','MU'],['missing','LAX','MU']].map(([id,station,account])=>({id,position:['driver','other','account'].includes(id)?'Manager':'Agent',name:'TEST '+id.toUpperCase(),eid:'123',station,account,attach:true,detach:true,spotter:true,pbbId:id==='missing'?'':'PBB-'+id,pbbExpiry:id==='missing'?'':id==='expired'?'2026-10-20':'2026-10-21'}));
  const employees=createEmployeeStore(db,{seed});const profiles={status:()=>{},linked:u=>employees.get().employees.find(e=>e.id===u.uid)};
  const app=express();app.use(express.json());const service=registerHasPbb(app,{store:{db,now:()=>now},employees,profiles,authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!uid)throw Error('Sign in required');return {uid,email:uid==='lake'?'lake@mu.com':uid+'@test.invalid'};},drive:{files:{generateIds:async()=>({data:{ids:['fake-id']}}),get:async()=>{throw {code:404};},create:async()=>{uploads++;if(failUpload)throw Error('fixture upload failure');return {data:{id:'fake-id'}};}}}});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
@@ -13,6 +13,26 @@ async function fixture(t,{failUpload=false}={}){
  const change=async(user,r,body)=>request(user,'/records/'+r.id,{role:user==='spotter'?'spotter':'driver',revision:r.revision,...body});
  return {db,employees,service,base,request,create,change,uploads:()=>uploads,setTime:date=>{now=new Date(date);},recover:()=>{failUpload=false;}};
 }
+test('default flights persist per station/account, and only current Managers can add or delete',async t=>{
+ const f=await fixture(t);
+ assert.equal((await f.request('spotter','/flights',{flightNo:'MU583',position:'Manager'})).status,403);
+ assert.equal((await f.request('driver','/flights',{flightNo:'not valid'})).status,400);
+ assert.deepEqual((await f.request('driver','/flights',{flightNo:' mu583 '})).data,['MU583']);
+ assert.deepEqual((await f.request('driver','/flights',{flightNo:'MU583'})).data,['MU583']);
+ assert.deepEqual((await f.request('spotter','/flights')).data,['MU583']);
+ for(const user of ['other','account'])assert.deepEqual((await f.request(user,'/flights')).data,[]);
+ assert.deepEqual((await f.request('account','/flights',{flightNo:'XX123'})).data,['XX123']);
+ assert.equal((await f.request('spotter','/flights/MU583/delete',{})).status,403);
+ assert.deepEqual((await f.request('account','/flights/MU583/delete',{})).data,['XX123']);
+ assert.deepEqual((await f.request('driver','/flights')).data,['MU583']);
+ assert.equal((await f.request('driver','/context')).data.canManageFlights,true);
+ assert.equal((await f.request('spotter','/context')).data.canManageFlights,false);
+ const r=(await f.create()).data;assert.deepEqual((await f.request('driver','/flights/MU583/delete',{})).data,[]);
+ assert.equal((await f.request('driver','/records/'+r.id)).data.flightNo,'MU583');
+ const data=f.employees.get();data.employees.find(e=>e.id==='driver').position='Agent';f.employees.save(data,{email:'lake@mu.com'});
+ assert.equal((await f.request('driver','/flights',{flightNo:'MU588'})).status,403);
+ assert.equal((await f.request('driver','/flights/MU583/delete',{})).status,403);
+});
 test('HAS scopes every record read/write/stream and daily uniqueness by station/account/flight/bridge',async t=>{
  const f=await fixture(t),a=await f.create(),same=await f.create('spotter'),other=await f.create('other'),account=await f.create('account');
  assert.equal(a.status,201);assert.equal(a.data.id,same.data.id);assert.notEqual(a.data.id,other.data.id);assert.notEqual(a.data.id,account.data.id);

@@ -3,7 +3,7 @@
  const data=[
   q('serviceable','driver','pre','The jet bridge is operational and serviceable.','cab-docking-lax-v2.webp'),
   q('controls','driver','pre','The control panel is functioning properly.','control-console.jpg'),
-  q('equipment','driver','pre','The canopy, bumpers, roller door, safety shoe, and safety chain are serviceable.','has-equipment-realistic-v3.webp'),
+  q('equipment','driver','pre','The canopy, bumpers, roller door, safety shoe, and safety chain are serviceable.','has-equipment-yellow-bumper-v4.webp'),
   q('cables','spotter','pre','Power cables are properly stowed and secured.','has-cables.svg'),
   q('stand','spotter','pre','The aircraft stand is free of FOD and obstructions.','safe-area-check-lax-v2.webp'),
   q('stopped','spotter','pre','The aircraft has come to a complete stop.','has-stopped.svg'),
