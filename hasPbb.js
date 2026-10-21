@@ -76,7 +76,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   if(b.action==='answer'){
    const item=items.find(x=>x.id===b.itemId&&x.role===role);if(!item||typeof b.value!=='boolean')fail('Invalid checklist answer');
    if(item.phase==='after'&&!r.dockedAt||item.phase==='pre'&&r.movingAt||item.phase==='movement'&&(!r.movingAt||r.dockedAt))fail('This checklist phase is locked.',409);
-   r.answers[role][item.id]=b.value;
+   for(const id of [item.id,...(item.linkedAnswers||[])])r.answers[role][id]=b.value;
    if(item.phase==='pre'){r.ready[role]=null;delete r.signatures[role];}
   }else if(b.action==='ready'){
    if(r.movingAt)fail('Movement has started. Ready state is locked.',409);

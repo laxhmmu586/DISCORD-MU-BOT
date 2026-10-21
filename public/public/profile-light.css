@@ -1,0 +1,92 @@
+/* Profile-only light theme; shared administrative and operational pages retain their themes. */
+:root{color-scheme:light}
+body.profile-page{background:#f6f9fd;color:#12284b;--profile-border:#e1eaf5;--profile-muted:#7186a3}
+.profile-topbar{background:#fff;border-bottom-color:#e3ebf5;box-shadow:none}
+.profile-brand{gap:14px;min-width:0}
+.profile-brand img{width:76px;height:52px;object-fit:contain;object-position:center}
+.profile-brand>span{font-size:18px;letter-spacing:0;color:#123a61}
+.profile-brand small{color:#7b91aa;font-size:8px;letter-spacing:1.3px}
+.profile-sidebar{background:#fff;border-right-color:#e3ebf5}
+.sidebar-caption{color:#8194af}
+.profile-sidebar nav a{color:#637a99}
+.profile-sidebar nav svg{color:#6c85a4}
+.profile-sidebar nav a:hover{color:#005cde;background:#f2f7fe}
+.profile-sidebar nav a.is-active{color:#0065ee;background:#eaf3ff;border-color:transparent}
+.profile-sidebar nav a.is-active:before{background:#2589ff;box-shadow:none}
+.profile-sidebar nav a.is-active svg{color:#0065ee;filter:none}
+.sidebar-airport{background:none;color:#7187a2;min-height:100px;padding:25px 24px;border-top:1px solid #e5edf7;margin: auto 0 0}
+.sidebar-airport:before{display:none}
+.sidebar-airport p{color:#315273}
+.profile-hero{background:#eff7ff url('/assets/profile-tbit-daylight-v2.webp') center/cover no-repeat;border-color:#fff;box-shadow:0 6px 24px #3155800a}
+.profile-hero:before{background:linear-gradient(90deg,#ffffffb5 0%,#ffffff75 37%,transparent 75%);opacity:1;box-shadow:none}
+.profile-hero:after{display:none}
+.profile-avatar-wrap{border-color:#fff;background:#e8f3ff;box-shadow:0 4px 20px #2d5b8c12}
+#profile-initials{color:#2d74b6}
+.avatar-edit{background:#087cff;color:#fff;border-color:#fff}
+.profile-identity h1{color:#112a54;text-shadow:none}
+.profile-identity>p:not(.profile-eyebrow){color:#243e62}
+.profile-identity>p.profile-affiliation,.profile-meta>span>span{color:#647f9e}
+.profile-meta strong{color:#19385c}
+.profile-meta svg{color:#6788aa}
+.profile-edit-link{background:#fff;color:#24456a;border-color:#e0eaf5;border-radius:9px;box-shadow:0 3px 12px #264c7410}
+.profile-edit-link:hover{background:#edf5ff}
+.profile-panel,.personal-panel,.profile-modules .personal-panel{background:#fff;border-color:#e3ebf6;border-radius:12px;box-shadow:0 5px 24px #1c456508;backdrop-filter:none}
+.personal-panel .profile-panel-title,.profile-panel-title{border-bottom-color:#e7eef7}
+.panel-icon,.personal-panel .panel-icon{background:linear-gradient(135deg,#e7f3ff,#dceaff);border-color:#e7f1ff;box-shadow:none}
+.panel-icon svg,.personal-panel .panel-icon svg{color:#006bff}
+.profile-panel h2{color:#173354}
+.profile-text-button,.module-view-all,.attendance-new{color:#006bff}
+.profile-information>div{border-bottom-color:#e8eef6}
+.profile-information dt,.profile-information dt svg{color:#7186a2}
+.profile-information dd{color:#213b60}
+.uniform-entry,.activity-row,.attendance-monthly-entry{color:#203d61}
+.uniform-entry small,.activity-row small,.attendance-monthly-entry small{color:#7b8fa9}
+.info-card .uniform-entry+.uniform-entry,.activity-row,.attendance-card .attendance-new{border-color:#e8eef7}
+.activity-icon{color:#627e9f;border-color:#e6edf5;background:#f2f6fb}
+.activity-chevron,.portal-link-chevron,.attendance-monthly-entry>span:last-child{color:#718aa5}
+.attendance-monthly-heading h2 svg,.attendance-monthly-entry svg{stroke:#668caf}
+.attendance-mini-month,.attendance-mini-legend{color:#6e86a2;border-color:#e3ecf6}
+.attendance-mini-month strong{color:#234c75}
+.attendance-mini-month:hover,.attendance-mini-month.is-current{background:#edf5ff;border-color:#bddcff}
+.attendance-mini-bars{border-bottom-color:#d9e5f2}
+.profile-edit-dialog{color:#223b5d;background:#fff;border-color:#dce7f4;box-shadow:0 25px 90px #29415b35}
+.profile-edit-dialog::backdrop{background:#2b425b44}
+.edit-dialog-heading button,.profile-fields label,#profile-link label{color:#647e9b}
+.profile-fields input,#profile-link input{color:#203b5c;background:#fff;border-color:#ccdced}
+.profile-fields input[readonly]{background:#f2f6fa;color:#70849a}
+.profile-fields small,.profile-photo-note{color:#748ba5}
+.profile-actions{border-top-color:#e0e9f4}
+.profile-actions button,#profile-link button{color:#315678;background:#f6faff;border-color:#d1e0f0}
+.profile-actions .profile-primary,#profile-link .profile-primary{color:#fff;background:#007aff;border-color:#007aff}
+#profile-status,#profile-edit-status{color:#44749c}
+.profile-page-footnote,.profile-page-footnote span,.personal-footer{color:#7b91aa}
+body.profile-page .flight-account,body.profile-page .flight-account .login-button{color:#173959}
+body.profile-page .flight-account .login-button{background:#fff;border-color:#e0eaf5}
+body.profile-page .flight-account .login-menu{background:#fff;color:#173959;border-color:#dce7f2;box-shadow:0 8px 30px #1f45651c}
+body.profile-page .login-menu button{color:#315678;border-top-color:#e3ecf5}
+body.profile-page .login-menu button:hover{background:#edf5ff}
+body.profile-page .flight-password{color:#203c60;background:#fff;border-color:#c9daeb}
+body.profile-page .flight-password input{background:#fff;color:#203c60;border-color:#c9daeb}
+body.profile-page .flight-password button{color:#fff;background:#087cff;border-color:#087cff}
+.profile-page .attendance-overview{background:#f8fbff;color:#24476d;border-color:#dce9f6;box-shadow:none}
+.profile-page .attendance-overview:before,.profile-page .attendance-overview:after{display:none}
+.profile-page .overview-heading>strong{color:#21476c;text-shadow:none}
+.profile-page .overview-year-controls,.profile-page .overview-year-controls button{color:#38618c;background:#fff;border-color:#dce8f5}
+.profile-page .overview-legend,.profile-page .overview-axis,.profile-page .overview-empty{color:#6e86a2}
+.profile-page .overview-grid{border-color:#d9e6f4}
+.profile-page .overview-grid i{border-color:#e7eef7}
+.profile-page .attendance-overview .overview-month{color:#6a85a2}
+.profile-page .overview-month[aria-pressed=true] .overview-month-label{color:#006bff}
+.profile-page .overview-bar-total{color:#315d87;text-shadow:none}
+:focus-visible{outline-color:#087cff}
+@media(max-width:760px){
+ .profile-brand img{width:58px;height:44px}
+ .profile-brand>span{font-size:15px}
+ .profile-brand small{font-size:7px;letter-spacing:.4px}
+ .profile-topbar{padding-left:12px;padding-right:12px;gap:8px}
+ .profile-sidebar{background:#fff}
+ .profile-hero{background-position:65% center}
+ .profile-hero:before{background:#ffffffb8}
+}
+
+.has-warning{color:#8a5a00!important;background:#fff7d6!important;border-left:4px solid #e5b600;border-radius:8px;padding:10px 12px}
