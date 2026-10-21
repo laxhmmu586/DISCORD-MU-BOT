@@ -1,0 +1,5 @@
+Reference: C:\Users\casua\Downloads\ARR TEST JB CHECKLIST 2026 rev2.docx
+SHA256: 6c4f55c59dda2e7ac5fec3acea3c66401cc2c7b18da1c3b67b92284265823e3d
+Letter portrait, 612 x 792 pt, 36 pt margins; one page. Hallmark logo upper left; centered Arrival Jet Bridge Checklist title. Five-column flight/date/gate/block-time/bridge metadata; shaded full-width section headings and thin gray table rules. Ordered PRE-MOVEMENT, READY, SAFE, GO, JET BRIDGE MOVEMENT, POST-DOCKING, remarks, incident notice, Driver and Spotter names and signatures. Footer HAS-SAF-JBA-004 and EFFECTIVE 11/01/2026 AUTHOR Q&A.
+Reference render: output/has-pbb/reference-render/reference-1.png. Source exported by installed Word after the packaged LibreOffice renderer was unavailable.
+Intentional changes: shorter screen wording, roller door correction, actual saved app responses, station/account and Driver qualification, movement timestamps. Do not infer an answer that was not captured. Block Time stays blank because the app does not collect it. Original source is retained unchanged.

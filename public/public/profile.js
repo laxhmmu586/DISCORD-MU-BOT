@@ -14,6 +14,9 @@
   const p=data.profile;p.phone=window.formatEmployeePhone(p.phone);field('profile-content').hidden=false;field('profile-link').hidden=true;
   field('full-name').value=p.name;field('employee-id').value=p.eid;field('nickname').value=p.nickname;field('phone').value=p.phone;field('contact-email').value=p.email;
   for(const [id,key] of [['view-full-name','name'],['view-employee-id','eid'],['view-nickname','nickname'],['view-phone','phone'],['view-email','email']])field(id).textContent=p[key]||'—';
+  for(const key of ['station','account','pbbId','pbbExpiry']){field(key).value=p[key]||'';field('view-'+key).textContent=p[key]||'—';}
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),expired=Boolean(p.pbbExpiry&&p.pbbExpiry<today);field('view-pbbExpiry').classList.toggle('has-expired',expired);field('pbbExpiry').classList.toggle('has-expired',expired);field('profile-pbb-warning').hidden=!expired;
+  field('profile-has-dashboard').hidden=(auth.currentUser?.email||'').trim().toLowerCase()!=='lake@mu.com';
   field('profile-display-name').textContent=p.nickname||p.name;field('profile-full-name').textContent=p.name;field('profile-employee-id').textContent=p.eid||'—';field('profile-initials').textContent=(p.nickname||p.name||'?').split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();photo(p.avatar);
   window.dispatchEvent(new CustomEvent('employee-profile-updated',{detail:p}));
  }

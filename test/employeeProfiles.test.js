@@ -4,6 +4,13 @@ const seed=[{id:'one',name:'TEST EMPLOYEE',nickname:'Test',eid:'00123',email:'em
 const google={uid:'google-one',email:'Employee@Gmail.com',provider:'google.com',emailVerified:true};
 function fixture(t){const legacy=new Database(':memory:'),employees=openEmployeeDatabase(legacy,{seed}),profiles=createProfileStore(employees);t.after(()=>{employees.close();legacy.close();});return {employees,profiles};}
 function confirm(profiles,user=google){const preview=profiles.status(user);return profiles.link(user,{revision:preview.revision,eid:preview.profile.eid});}
+
+test('profile displays affiliation and PBB credentials but cannot self-grant or change them',async t=>{
+ const {profiles,employees}=fixture(t),ready=confirm(profiles);assert.equal(ready.profile.station,'LAX');assert.equal(ready.profile.account,'MU');
+ for(const [key,value] of Object.entries({station:'SFO',account:'XX',pbbId:'PBB-123',pbbExpiry:'2099-12-31'}))await assert.rejects(profiles.update(google,{revision:ready.revision,[key]:value}),/Only nickname/);
+ const list=employees.get();list.employees[0].pbbId='TEST-PBB';list.employees[0].pbbExpiry='2026-10-20';list.employees[0].station='SFO';list.employees[0].account='XX';employees.save(list,{email:'lake@mu.com'});
+ const p=profiles.status(google).profile;assert.equal(p.station,'SFO');assert.equal(p.account,'XX');assert.equal(p.pbbId,'TEST-PBB');assert.equal(p.pbbExpiry,'2026-10-20');
+});
 test('Profile saves a normalized US phone number to the shared employee database',async t=>{
  const {profiles,employees}=fixture(t),ready=confirm(profiles);const saved=await profiles.update(google,{revision:ready.revision,phone:'+1 (626) 889 1216'});assert.equal(saved.profile.phone,'626-889-1216');assert.equal(employees.get().employees[0].phone,'626-889-1216');
 });
