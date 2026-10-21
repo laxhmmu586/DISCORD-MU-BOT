@@ -29,5 +29,7 @@ The final edit uses the user's supplied TBIT architectural reference, including 
 
 ## Validation
 
-59 focused HAS/employee/PBB tests; real Express/SQLite browser workflow with simulated Google Drive, sequential answer save failure/recovery, NO/back/edit/reload, four visible Spotter checks, combined check photo, shared readiness/signatures, automatic submission, 320/390/1440 layouts. Profile browser checks cover 320 through 2560px and save/cancel/avatar/access flows. Admin checks cover 390/1440/1920/2560px. No production deployment or real Drive upload performed.
+61 focused HAS/employee/PBB tests; real Express/SQLite browser workflow with simulated Google Drive, sequential answer save failure/recovery, NO/back/edit/reload, four visible Spotter checks, combined check photo, shared readiness/signatures, automatic submission, 320/390/1440 layouts. Profile browser checks cover 320 through 2560px and save/cancel/avatar/access flows. Admin checks cover 390/1440/1920/2560px. No production deployment or real Drive upload performed.
 
+
+PBB expiry is yellow strictly below one calendar month (month-end clamped), including the valid final day. Expired qualifications remain red and Driver permissions remain enforced by the existing server rules. Profile and HAS share the warning helper; boundary tests include leap years and year rollover.

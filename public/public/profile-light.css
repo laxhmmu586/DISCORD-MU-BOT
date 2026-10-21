@@ -88,3 +88,5 @@ body.profile-page .flight-password button{color:#fff;background:#087cff;border-c
  .profile-hero{background-position:65% center}
  .profile-hero:before{background:#ffffffb8}
 }
+
+.has-warning{color:#8a5a00!important;background:#fff7d6!important;border-left:4px solid #e5b600;border-radius:8px;padding:10px 12px}

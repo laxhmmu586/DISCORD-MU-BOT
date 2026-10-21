@@ -59,3 +59,5 @@ html.has-theme{background:#fff;color-scheme:light}
 
 .has-question-nav{display:flex;justify-content:space-between;gap:14px;margin-top:20px}.has-question-progress{font-size:13px;color:#607e99}.has-question-summary{padding:12px 0}
 @media(max-width:760px){.has-assigned-gate{padding-bottom:160px}.has-gate-card{background-size:auto 400px}}
+
+.has-warning{color:#8a5a00!important;background:#fff7d6!important;border-left:4px solid #e5b600;border-radius:8px;padding:10px 12px}
