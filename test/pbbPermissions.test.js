@@ -21,11 +21,12 @@ test('signature API uses saved checklist type, rejects opposite permission and i
  const api=(url,body)=>fetch(base+url,{method:'POST',headers:{Authorization:'Bearer admin','Content-Type':'application/json'},body:JSON.stringify(body)});
  try{
   for(const [type,allowed,denied] of [['arrival','attach','detach'],['departure','detach','attach']]){
+   integration.employees.db.prepare('INSERT OR REPLACE INTO employee_accounts VALUES(?,?,?,?)').run(admin.uid,allowed,'password',new Date().toISOString());
    const r=store.create({type,flightNo:'MU583',gate:'132',bridges:['L2'],blockTime:'09:05'},admin);
    for(const role of ['driver','spotter']){store.mutate(r.id,admin,{action:'claim',role});for(const item of items[type].filter(x=>!x.hidden&&x.roles.includes(role)))store.mutate(r.id,admin,{action:'answer',role,itemId:item.id,value:'Y'});}
    for(const [phase,role] of [['ready','driver'],['safe','spotter'],['go','driver']])if(type==='departure'||phase!=='ready')store.mutate(r.id,admin,{action:'signal',role,phase});
    const sign=employeeId=>api('/pbb-api/records/'+r.id,{action:'sign',role:'driver',employeeId,type:type==='arrival'?'departure':'arrival',strokes:[[[.1,.2],[.3,.5],[.6,.1]]]});
-   assert.equal((await sign(denied)).status,400);assert.equal(store.get(r.id).signatures.driver,undefined);
+   assert.equal((await sign(denied)).status,403);assert.equal(store.get(r.id).signatures.driver,undefined);
    let data=await(await fetch(base+'/employee-admin-api',{headers:{Authorization:'Bearer admin'}})).json();data.employees.find(e=>e.id===allowed)[type==='arrival'?'attach':'detach']=false;
    assert.equal((await api('/employee-admin-api',data)).status,200);assert.equal((await sign(allowed)).status,400);
    data=await(await fetch(base+'/employee-admin-api',{headers:{Authorization:'Bearer admin'}})).json();data.employees.find(e=>e.id===allowed)[type==='arrival'?'attach':'detach']=true;
