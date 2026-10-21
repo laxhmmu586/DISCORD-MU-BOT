@@ -29,7 +29,14 @@ class BoardingBoxCache {
     this.revision = Math.max(now(), db.prepare('SELECT MAX(updated_at) AS value FROM boarding_box_cache').get().value || 0);
     this.write = db.transaction((rows, date, hash) => {
       const revision = this.nextRevision();
-      for (const row of rows) this.upsert.run(date, row.flightNo, JSON.stringify(row), hash, revision);
+      for (const row of rows) {
+        const previous = this.select.get(row.flightNo, date);
+        if (previous && JSON.parse(previous.payload).syRevision !== row.syRevision) {
+          // A new SY starts a fresh baseline; old manual changes must not carry over.
+          db.prepare('DELETE FROM boarding_box_numbers WHERE flight_date=? AND flight_no=?').run(date, row.flightNo);
+        }
+        this.upsert.run(date, row.flightNo, JSON.stringify(row), hash, revision);
+      }
     });
   }
   beginUpdate() { return { sequence:++this.sequence, generation:this.generation, date:operationalDate(new Date(this.now())) }; }

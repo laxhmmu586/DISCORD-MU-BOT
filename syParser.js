@@ -2030,7 +2030,10 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
   const bns = Array.from({ length: bnd.end - bnd.start + 1 }, (_, i) => bnd.start + i).filter(bn => !bnd.removed.includes(bn));
   const passengers = bns.length;
   const infants = expectedInfants;
-  return { flightNo, flightDate, maxBn, source: 'BND', bns, infantBns: [],
+  // Identify each SY capture, including a newer capture with unchanged counts.
+  const syRevision = require('node:crypto').createHash('sha256')
+    .update(`${match.section.timestamp}\n${match.section.content}`).digest('hex');
+  return { flightNo, flightDate, maxBn, source: 'BND', syRevision, bns, infantBns: [],
     passengers, infants, total: infants == null ? null : passengers + infants, expectedPassengers, expectedInfants,
     expectedTotal: expectedPassengers == null || expectedInfants == null ? null : expectedPassengers + expectedInfants,
     matched: expectedPassengers != null && expectedInfants != null && passengers === expectedPassengers && infants === expectedInfants
