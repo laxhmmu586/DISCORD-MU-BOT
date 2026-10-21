@@ -26,6 +26,10 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
+        "source": "/{has-pbb.html,has-pbb.css,has-pbb-client.js,has-pbb-data.js,has-pbb-dashboard.html,has-pbb-dashboard.js}",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
         "source": "/scan.html",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
