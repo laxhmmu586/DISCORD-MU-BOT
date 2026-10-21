@@ -128,11 +128,28 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }));
  app.get('/pbb-api/gate',route(async(req,res)=>{const flightNo=String(req.query.flightNo||'').toUpperCase(),date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());if(!/^[A-Z]{2}\d{1,4}$/.test(flightNo)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date)))fail('Valid flight and date required');res.json(await gateService.read(flightNo,date));}));
  app.get('/pbb-api/today',route(async(req,res)=>{const type=String(req.query.type||'');if(!['arrival','departure'].includes(type))fail('Select checklist type');res.set('Cache-Control','no-store').json(await gateService.today(currentDate(),type));}));
+ const accountEmployee=user=>{profiles.status(user);return profiles.linked(user);};
+ app.get('/pbb-api/signing-employee',route((req,res)=>{const employee=accountEmployee(req.pbbUser);res.set('Cache-Control','private, no-store').json(employee?{id:employee.id}:null);}));
  app.get('/pbb-api/employees',(_req,res)=>res.json(employees.options()));
  app.get('/pbb-api/records',route((req,res)=>res.json(store.list())));
  app.post('/pbb-api/records',route(async(req,res)=>{if(!['arrival','departure'].includes(req.body.type))fail('Select checklist type');if(req.body.role&&!roles.includes(req.body.role))fail('Select driver or spotter');const today=await gateService.today(currentDate(),req.body.type);const flight=today.flights?.find(f=>f.flightNo===String(req.body.flightNo||'').toUpperCase());if(!flight||!flight.gate)fail('Today’s flight or gate is unavailable. Refresh the flight list.',409);let r=store.create({...req.body,flightNo:flight.flightNo,gate:flight.gate},req.pbbUser);if(req.body.role&&!r.completedAt&&!r.signatures[req.body.role])r=store.mutate(r.id,req.pbbUser,{action:'claim',role:req.body.role});publish(r);res.status(201).json(r);}));
  app.get('/pbb-api/records/:id',route((req,res)=>res.json(store.get(req.params.id))));
- app.post('/pbb-api/records/:id',route(async(req,res)=>{const body={...req.body};if(body.action==='sign'){const existing=store.get(req.params.id);const employee=employees.eligible(body.role,body.employeeId,existing.type);if(!employee)fail('Select an employee authorized for this role');if(Object.values(existing.signatures).some(s=>s.employeeId===employee.id))fail('Driver and spotter must be different employees');body.name=employee.name;body.eid=employee.eid;}const r=store.mutate(req.params.id,req.pbbUser,body);publish(r);res.json(r);if(r.completedAt)void deliver(r.id);}));
+ app.post('/pbb-api/records/:id',route(async(req,res)=>{
+  const body={...req.body};
+  if(body.action==='sign'){
+   const existing=store.get(req.params.id),arrivalSpotter=existing.type==='arrival'&&body.role==='spotter';
+   const linked=arrivalSpotter?null:accountEmployee(req.pbbUser);
+   if(!arrivalSpotter&&!linked)fail('Link your employee account in My Profile before signing.',403);
+   const employee=arrivalSpotter&&body.employeeId==='has-ops-ramp'
+    ?{id:'has-ops-ramp',name:'HAS OPS RAMP',eid:''}
+    :employees.eligible(body.role,arrivalSpotter?body.employeeId:linked.id,existing.type);
+   if(!employee)fail('Your account is not authorized for this role');
+   if(!arrivalSpotter&&body.employeeId&&body.employeeId!==employee.id)fail('Sign using your current account.',403);
+   if(Object.values(existing.signatures).some(s=>s.employeeId===employee.id))fail('Driver and spotter must be different employees');
+   body.employeeId=employee.id;body.name=employee.name;body.eid=employee.eid;
+  }
+  const r=store.mutate(req.params.id,req.pbbUser,body);publish(r);res.json(r);if(r.completedAt)void deliver(r.id);
+ }));
  app.post('/pbb-api/records/:id/reset',route((req,res)=>{
   const selected=store.get(req.params.id),bridge=String(req.body.bridge||'');if(!['L1','L2','L3'].includes(bridge))fail('Select a valid bridge');
   if(store.day(currentDate(),selected.type).some(r=>r.bridges.includes(bridge)&&jobs.has(r.id)))fail('PDF delivery is still running. Try restarting again shortly.',409);

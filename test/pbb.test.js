@@ -30,6 +30,7 @@ test('employee seed, exact string IDs, qualified-only options and concurrent adm
 test('API protects employee data, SSE publishes snapshots, two-role PDF triggers and retries skip successful targets',async()=>{
  const app=express();app.use(express.json());const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});let driveWrites=0,discordWrites=0,discordFail=true;
  const integration=registerPbb(app,{store,employeeSeed,authenticate:async req=>{if(req.headers.authorization==='Bearer admin')return admin;if(req.headers.authorization==='Bearer spotter')return spotter;if(req.headers.authorization==='Bearer driver')return driver;throw Error('Unauthenticated');},buildPdf:async()=>Buffer.from('%PDF fixture'),gateService:{read:async()=>({status:'unavailable'}),today:async(date,type)=>({flights:[{flightNo:'MU583',date,gate:'132'}]})},drive:{files:{generateIds:async()=>({data:{ids:['file-id']}}),get:async()=>{throw Object.assign(Error('missing'),{code:404});},create:async payload=>{assert.equal(payload.requestBody.name,'JetBridge-arrival-MU583-2026-10-13-L2.pdf');driveWrites++;return {data:{id:'file-id'}};}}},client:{channels:{fetch:async()=>({isTextBased:()=>true,send:async payload=>{assert.doesNotMatch(payload.content,/(?:^|\n)Record:/);assert.equal(payload.content,'Jet Bridge ARRIVAL | MU583 | 2026-10-13 |\nGate 132 | L2\nDriver: TEST DRIVER ✓\nSpotter: TEST SPOTTER ✓');assert.equal(payload.files[0].name,'JetBridge-arrival-MU583-2026-10-13-L2.pdf');discordWrites++;if(discordFail)throw Error('test failure');return {id:'message-id'};}})}}});
+ integration.employees.db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run(driver.uid,'staff-4','password',new Date().toISOString());
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.on('listening',resolve));const base='http://127.0.0.1:'+server.address().port;
  const api=async(path,who='admin',body)=>fetch(base+path,{headers:{Authorization:'Bearer '+who,'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
  try{
@@ -44,7 +45,7 @@ test('API protects employee data, SSE publishes snapshots, two-role PDF triggers
  let observed='';for(let i=0;i<10&&!observed.includes('"a1":"Y"');i++){const update=await reader.read();observed+=new TextDecoder().decode(update.value);}assert.match(observed,/"a1":"Y"/);await reader.cancel();
  assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'signal',role:'driver',phase:'go'})).status,409);
  await api('/pbb-api/records/'+r.id,'spotter',{action:'signal',role:'spotter',phase:'safe'});await api('/pbb-api/records/'+r.id,'driver',{action:'signal',role:'driver',phase:'go'});
- assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'sign',role:'driver',employeeId:'staff-5',strokes})).status,400);
+ assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'sign',role:'driver',employeeId:'staff-5',strokes})).status,403);
  assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'sign',role:'driver',employeeId:'staff-4',name:'Forged',eid:'bad',strokes})).status,200);
  assert.equal(store.get(r.id).signatures.driver.name,'TEST DRIVER');assert.equal(store.get(r.id).signatures.driver.eid,'123456');
  assert.equal((await api('/pbb-api/records/'+r.id,'spotter',{action:'sign',role:'spotter',employeeId:'staff-4',strokes})).status,400);
