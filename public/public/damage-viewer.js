@@ -17,11 +17,22 @@ scene.add(new THREE.HemisphereLight(0xffffff,0x7c899c,.8));
 const hdr=await new HDRLoader().loadAsync('/assets/studio_small_08_1k.hdr');hdr.mapping=THREE.EquirectangularReflectionMapping;const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentRotation.y=.65;hdr.dispose();pmrem.dispose();
 for(const [x,y,z,power] of [[-3,5,6,2.5],[4,2,3,1.2]]){const light=new THREE.DirectionalLight(0xffffff,power);light.position.set(x,y,z);if(power===2.5){light.castShadow=true;light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-3,right:3,top:3,bottom:-3,near:.1,far:15});light.shadow.bias=-.0003;light.shadow.normalBias=.015;light.shadow.radius=3;}scene.add(light);}
 const {bag}=await createSuitcase(THREE);scene.add(bag);const shadowCanvas=document.createElement('canvas');shadowCanvas.width=128;shadowCanvas.height=128;const sc=shadowCanvas.getContext('2d'),sg=sc.createRadialGradient(64,64,0,64,64,64);sg.addColorStop(0,'rgba(12,24,40,.22)');sg.addColorStop(.4,'rgba(12,24,40,.12)');sg.addColorStop(1,'rgba(12,24,40,0)');sc.fillStyle=sg;sc.fillRect(0,0,128,128);const floor=new THREE.Mesh(new THREE.PlaneGeometry(2.5,1.15),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false}));floor.rotation.x=-Math.PI/2;floor.position.y=-1.59;scene.add(floor);
+// Frame only physical suitcase meshes. Ink belongs to the bag for rotation,
+// but even invisible strokes outside its silhouette must never change its scale.
+const framingMeshes=[];bag.traverse(object=>{if(object.isMesh)framingMeshes.push(object);});
+function suitcaseBounds(){
+ const bounds=new THREE.Box3(),part=new THREE.Box3();
+ for(const mesh of framingMeshes){
+  if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+  bounds.union(part.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld));
+ }
+ return bounds;
+}
 const annotations=createDamageMarks({bag,canvas,getCamera:()=>camera});
 let tool='rotate',yaw=-.23,pitch=.04,zoom=1;
 const pointers=new Map();
 let rotationGesture=false;
-function render(){bag.rotation.set(pitch,yaw,0,'YXZ');bag.updateMatrixWorld(true);camera.zoom=1;camera.updateProjectionMatrix();camera.updateMatrixWorld();const bounds=new THREE.Box3().setFromObject(bag);let ex=0,ey=0;for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){const p=new THREE.Vector3(x,y,z).project(camera);ex=Math.max(ex,Math.abs(p.x));ey=Math.max(ey,Math.abs(p.y));}camera.zoom=camera.isOrthographicCamera?zoom:Math.min(.86/ex,.91/ey)*zoom;camera.updateProjectionMatrix();bag.updateMatrixWorld(true);annotations.updateVisibility();renderer.render(scene,camera);}
+function render(){bag.rotation.set(pitch,yaw,0,'YXZ');bag.updateMatrixWorld(true);camera.zoom=1;camera.updateProjectionMatrix();camera.updateMatrixWorld();const bounds=suitcaseBounds();let ex=0,ey=0;for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){const p=new THREE.Vector3(x,y,z).project(camera);ex=Math.max(ex,Math.abs(p.x));ey=Math.max(ey,Math.abs(p.y));}camera.zoom=camera.isOrthographicCamera?zoom:Math.min(.86/ex,.91/ey)*zoom;camera.updateProjectionMatrix();bag.updateMatrixWorld(true);annotations.updateVisibility();renderer.render(scene,camera);}
 function resize(){const r=canvas.parentElement.getBoundingClientRect();if(!r.width||!r.height)return;renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;render();}
 new ResizeObserver(resize).observe(canvas.parentElement);
 function view(key){[pitch,yaw]=angles[key];document.querySelectorAll('[data-damage-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.damageView===key)));render();}
