@@ -14,3 +14,16 @@ test('HTTP auth, premature PDF protection, durable retry and approved original P
 test('tie and scarf can be requested without garments and accept only bounded whole quantities',t=>{const {store,users}=fixture(t);const b=body();b.items[0]={size:'',pieces:'',order:'',reusable:'',nonReusable:''};b.tie=1;b.scarf=2;const r=store.create(users[0],b);assert.equal(r.tie,1);assert.equal(r.scarf,2);for(const value of [-1,100,1.5,'2'])assert.throws(()=>store.create(users[0],{...b,requestId:crypto.randomUUID(),tie:value}),/Tie and scarf/);});
 
 test('Manager can approve own request only after Supervisor review and appears in the route',t=>{const {store,users}=fixture(t);let r=store.create(users[2],body());assert.equal(r.canReview,false);assert.ok(r.approvalRoute[1].reviewers.some(p=>p.id==='e2'));assert.throws(()=>store.decide(users[2],r.id,{revision:1,action:'approve'}),e=>e.status===403);r=store.decide(users[1],r.id,{revision:1,action:'approve',note:'Supervisor checked'});const own=store.read(users[2],r.id);assert.equal(own.canReview,true);assert.ok(own.nextApprovers.some(p=>p.id==='e2'));r=store.decide(users[2],r.id,{revision:2,action:'approve',note:'Manager self approval'});assert.equal(r.status,'approved');assert.equal(r.manager.id,r.employee.id);assert.deepEqual(r.approvals.map(a=>a.note),['Supervisor checked','Manager self approval']);});
+
+test('requester withdraws to durable draft, resubmits same ID and deletes without stale resurrection',t=>{
+ const {store,users}=fixture(t),b=body();let r=store.create(users[0],b);
+ assert.equal(r.canWithdraw,true);assert.equal(store.read(users[1],r.id).canDelete,false);
+ for(const action of ['withdraw','delete'])assert.throws(()=>store.lifecycle(users[1],r.id,{revision:r.revision,action}),e=>e.status===403);
+ assert.throws(()=>store.lifecycle(users[0],r.id,{revision:0,action:'withdraw'}),e=>e.status===409);
+ r=store.decide(users[1],r.id,{revision:r.revision,action:'approve'});const old=r;
+ r=store.lifecycle(users[0],r.id,{revision:r.revision,action:'withdraw'});assert.equal(r.status,'draft');assert.deepEqual(r.items,old.items);assert.deepEqual(r.approvals,[]);assert.equal(r.history.at(-1).approvals.length,1);assert.equal(store.list(users[2]).requests.length,0);
+ assert.throws(()=>store.decide(users[2],r.id,{revision:old.revision,action:'approve'}),e=>e.status===403);
+ assert.throws(()=>store.create(users[0],b),e=>e.status===409);
+ r=store.create(users[0],{...b,revision:r.revision});assert.equal(r.status,'pending');assert.equal(r.step,0);assert.ok(r.revision>old.revision);
+ assert.equal(store.lifecycle(users[0],r.id,{revision:r.revision,action:'delete'}).deleted,true);assert.equal(store.list(users[0]).requests.length,0);assert.throws(()=>store.read(users[0],r.id),e=>e.status===404);assert.throws(()=>store.create(users[0],b),e=>e.status===409);
+});

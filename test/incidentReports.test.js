@@ -8,3 +8,18 @@ test('incident follows all five approved positions in order and preserves audit 
 test('rejection requires remarks and locks the rejected report',t=>{const {store,users}=fixture(t);let r=store.save(users[2],{...body(),action:'submit'});assert.throws(()=>store.decide(users[3],r.id,{revision:r.revision,action:'reject'}),/rejection reason/);r=store.decide(users[3],r.id,{revision:r.revision,action:'reject',note:'Missing supporting facts'});assert.equal(r.status,'rejected');assert.equal(store.list(users[2]).reports[0].approvals[0].note,'Missing supporting facts');assert.equal(store.list(users[4]).reports.length,0);});
 
 test('incident identity fields come from the linked account and reference is omitted',t=>{const {store,users}=fixture(t);const b=body();b.fields.preparedBy='FORGED';b.fields.title='CEO';b.fields.station='FORGED';b.fields.reference='FORGED';const r=store.save(users[2],b);assert.equal(r.fields.preparedBy,'TEST 2');assert.equal(r.fields.title,'Supervisor');assert.notEqual(r.fields.station,'FORGED');assert.equal(r.fields.reference,undefined);});
+
+test('requester can withdraw, edit, resubmit and delete; stale and other-user actions are denied',t=>{
+ const {store,users}=fixture(t),b=body();let r=store.save(users[2],{...b,action:'submit'});
+ assert.equal(r.canWithdraw,true);assert.equal(r.canDelete,true);
+ assert.equal(store.list(users[3]).reports[0].canWithdraw,false);
+ assert.throws(()=>store.lifecycle(users[3],r.id,{revision:r.revision,action:'withdraw'}),e=>e.status===403);
+ assert.throws(()=>store.lifecycle(users[3],r.id,{revision:r.revision,action:'delete'}),e=>e.status===403);
+ assert.throws(()=>store.lifecycle(users[2],r.id,{revision:0,action:'delete'}),e=>e.status===409);
+ r=store.decide(users[3],r.id,{revision:r.revision,action:'approve'});const oldRevision=r.revision,original=r.fields;
+ r=store.lifecycle(users[2],r.id,{revision:r.revision,action:'withdraw'});
+ assert.equal(r.status,'draft');assert.deepEqual(r.fields,original);assert.deepEqual(r.approvals,[]);assert.equal(r.step,0);assert.equal(r.submittedAt,undefined);assert.equal(r.history.at(-1).approvals.length,1);
+ assert.equal(store.list(users[3]).reports.length,0);assert.throws(()=>store.decide(users[4],r.id,{revision:oldRevision,action:'approve'}),e=>e.status===403);
+ r=store.save(users[2],{...b,revision:r.revision,action:'save'});r=store.save(users[2],{...b,revision:r.revision,action:'submit'});assert.equal(r.status,'pending');assert.equal(r.step,0);
+ const result=store.lifecycle(users[2],r.id,{revision:r.revision,action:'delete'});assert.equal(result.deleted,true);assert.equal(store.list(users[2]).reports.length,0);assert.throws(()=>store.read(users[2],r.id),e=>e.status===404);assert.throws(()=>store.save(users[2],{...b,revision:r.revision,action:'submit'}),e=>e.status===403);
+});
