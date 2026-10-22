@@ -82,6 +82,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  const employees=require('./employeeDatabase').openEmployeeDatabase(store.db,{seed:employeeSeed});
  const profiles=require('./employeeProfiles').registerProfiles(app,{employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  require('./uniformRequests').registerUniform(app,{employees,profiles,authenticate});
+ require('./incidentReports').registerIncidentReports(app,{employees,profiles,authenticate});
  const readSignService=require('./readSign').registerReadSign(app,{employees,profiles,authenticate});
  require('./employees').registerEmployees(app,{store:employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
