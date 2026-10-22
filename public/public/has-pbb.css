@@ -187,3 +187,5 @@ html.has-theme{background:#fff;color-scheme:light}
 /* Keep a white inset below the Account card on every screen size. */
 .has-page .has-gate-first-row{padding-bottom:24px;border-radius:15px}
 @media(max-width:760px){.has-page .has-gate-first-row{padding-bottom:18px}}
+
+.has-spotter-title>div{min-width:0;flex:1}.has-page .has-spotter-title h2{white-space:nowrap;font-size:clamp(22px,4.8vw,58px)}@media(max-width:760px){.has-spotter-title .has-moving-chevrons i{width:9px;height:22px}.has-page .has-spotter-title h2{font-size:clamp(20px,6vw,32px);letter-spacing:-.7px}}
