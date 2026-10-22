@@ -43,7 +43,7 @@ function emailShell({subject='',html='',text='',record={}}) {
   title=title.replace(/\s*[–—-]\s*(?:WorldTracer|世界行李)[\s\S]*$/i,'').replace(/\s*[–—-]\s*中国东方航空公司$/,'');
   if(received)title=pick('Property Irregularity Report Received','已收到您的行李事故报告');
   if(transfer)title=pick('Baggage Transfer Status Update','行李转运状态更新');
-  if(pickup)title=pick('Your Baggage Is Available for Pick-Up at LAX','您的行李已可在洛杉矶机场领取');
+  if(pickup)title=pick('Your Baggage Is Ready for Pick-Up','您的行李已可领取');
   const subtitle=received?(record.caseType==='DPR'?pick('DPR – Damaged Baggage','DPR – 行李损坏'):pick('AHL – Delayed / Lost Baggage','AHL – 行李延误／遗失')):record.worldTracerFileNumber?`${pick('WorldTracer Case','WorldTracer 案件编号')}: ${record.worldTracerFileNumber}`:'';
   const rows=[];
   if(received)rows.push([pick('Report Type','报告类型'),record.caseType==='DPR'?pick('DPR – Damaged Baggage','DPR – 行李损坏'):pick('AHL – Delayed / Lost Baggage','AHL – 行李延误／遗失')]);
@@ -57,6 +57,10 @@ function emailShell({subject='',html='',text='',record={}}) {
   const table=rows.filter(([,v])=>v!==undefined&&v!==null&&String(v).trim()).length?`<table role="presentation" width="100%" cellspacing="0" cellpadding="10" style="border-collapse:collapse;border:1px solid #dce7f6;margin:20px 0">${rows.filter(([,v])=>v!==undefined&&v!==null&&String(v).trim()).map(([k,v])=>`<tr><td style="width:42%;background:#f1f6fd;border:1px solid #e0eaf7;color:#6b83a4;font-size:13px">${escape(k)}</td><td style="background:#fff;border:1px solid #e0eaf7;color:#153565;font-size:13px">${escape(v)}</td></tr>`).join('')}</table>`:'';
   let content=html||String(text).split(/\n\n+/).map(p=>`<p>${escape(p).replace(/\n/g,'<br>')}</p>`).join('');
   content=content.replace(/<h2>([\s\S]*?)<\/h2>/gi,'<p style="margin:0 0 16px">$1</p>');
+  if(pickup||future)content=content.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi,(whole,body)=>/^(?:请您在以下工作时间内前来领取|领取地点[：:]|Please come to collect your baggage during the following office hours|Pick-up Location:)/i.test(body.replace(/<[^>]*>/g,'').trim())?'':whole);
+  // Size each heading for the narrowest supported email card (320px viewport).
+  const titleUnits=Array.from(title).reduce((sum,c)=>sum+(/[^\u0000-\u007f]/.test(c)?1:0.58),0);
+  const titleSize=Math.min(20,Math.floor(256/Math.max(titleUnits,1)));
   // Insert the detail table after the introduction, preserving all existing wording and links.
   let inserted=false;
   content=content.replace(/<p\b([^>]*)>([\s\S]*?)<\/p>/gi,(whole,attrs,body)=>{
@@ -68,7 +72,7 @@ function emailShell({subject='',html='',text='',record={}}) {
     return paragraph;
   });
   if(!inserted)content+=table;
-  return `<html><body style="margin:0;background:#f3f6fa;color:#1d355f;font-family:Arial,'Microsoft YaHei',sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed"><tr><td style="padding:24px 12px"><table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;margin:auto;background:#fff;table-layout:fixed"><tr><td style="padding:26px 28px 14px;color:#aa8b50;font-size:11px;letter-spacing:3px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="color:#aa8b50;font-size:11px;letter-spacing:3px">${pick('BAGGAGE SERVICE','行李服务')}</td><td align="right" width="144" style="width:144px"><img src="https://www.mufcapp.net/assets/ceair-email-logo.png" width="144" alt="China Eastern Airlines" style="display:block;width:144px;max-width:144px;height:auto;border:0"></td></tr></table></td></tr><tr><td style="padding:0 28px 22px;color:#102c58"><h1 style="margin:0;font-size:25px;line-height:1.3">${escape(title)}</h1>${subtitle?`<p style="margin:6px 0 0;font-size:16px">${escape(subtitle)}</p>`:''}</td></tr><tr><td style="padding:0 28px 28px;font-size:14px;line-height:1.75;overflow-wrap:anywhere;word-break:break-word">${content}</td></tr></table></td></tr></table></body></html>`;
+  return `<html><body style="margin:0;background:#f3f6fa;color:#1d355f;font-family:Arial,'Microsoft YaHei',sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed"><tr><td style="padding:24px 12px"><table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;margin:auto;background:#fff;table-layout:fixed"><tr><td style="padding:22px 20px 14px;color:#aa8b50;font-size:11px;letter-spacing:3px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="color:#aa8b50;font-size:11px;letter-spacing:3px">${pick('BAGGAGE SERVICE','行李服务')}</td><td align="right" width="144" style="width:144px"><img src="https://www.mufcapp.net/assets/ceair-email-logo.png" width="144" alt="China Eastern Airlines" style="display:block;width:144px;max-width:144px;height:auto;border:0"></td></tr></table></td></tr><tr><td style="padding:0 20px 22px;color:#102c58"><h1 style="margin:0;font-size:${titleSize}px;line-height:1.35;white-space:nowrap">${escape(title)}</h1>${subtitle?`<p style="margin:6px 0 0;font-size:12px">${escape(subtitle)}</p>`:''}</td></tr><tr><td style="padding:0 20px 28px;font-size:14px;line-height:1.75;overflow-wrap:anywhere;word-break:break-word">${content}</td></tr></table></td></tr></table></body></html>`;
 }
 // Embed smaller photo previews in the PDF; the original files remain separate mail/Discord attachments.
 async function prepareReportAttachments(attachments){
