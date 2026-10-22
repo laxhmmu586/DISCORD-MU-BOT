@@ -119,3 +119,9 @@
  .attendance-workspace .attendance-record-summary{padding:16px 0;font-size:12px}
  .attendance-workspace .attendance-row-reason{max-width:280px}
 }
+
+#rs-recipient-editor{margin:24px 0;padding:18px;border:1px solid var(--profile-border);border-radius:10px;min-width:0}
+#rs-recipient-editor h3{font-size:15px;margin:0 0 10px}
+#rs-recipient-editor p,#rs-recipient-editor label{font-size:12px;line-height:1.7}
+#rs-add-recipients{display:block;width:100%;max-width:100%;min-width:0;margin:10px 0 16px;padding:8px;border:1px solid var(--profile-border);border-radius:7px;background:transparent;color:inherit;font:inherit}
+@media print{#rs-recipient-editor{display:none!important}}
