@@ -31,3 +31,14 @@ test('October 19 agent syntax passes through BN route resolution',()=>{
   assert.equal(row.visaStatus,'pass',bn);assert.equal(row.visaDecision.destinationCountry,country,bn);
  }
 });
+
+test('October 19 destination visa survives PN1 continuation and a China passenger header',()=>{
+ for(const [bn,dest,line,expiry] of [['162','SGN','CKIN V EXP 2030',2030],['121','KTI','CKIN VS TO CAMBODIA 20 APR 2035','2035-04-20']]){
+  const log=['2026 October 19, Monday, 16:02:46','>SY','SY: MU586/19OCT26 LAX/0 CI1145/NAM','777/773L/B7367 GTD/130 POS/GATE BN300 AK00000 CD00000','BDT1145 SD1230 ED1230 CI1145',`>FB ${bn}`,`PR: MU586/19OCT26*LAX,BN${bn} PNR RL TESTXX`,`1. EXAMPLE/PASSENGER BN${bn} *34H S PVG BAG2/38/0 FBA/2PC`,'PSPT-EXAMPLE/USA/01MAY54/F/','PASSPORT :EXAMPLE/P/NAT/USA//350420/USA/N/A','SEC TXT-CHN OK TO BOARD','CKIN HK1 LKCK/EXAMPLE/CHKLEG','CKIN GE',line,`BAGTAG/0000000001/${dest}`,`O/MU999/20OCT BN023 32J B ${dest}`,'RES AUTO 17OCT1230 +','2026 October 19, Monday, 16:02:48','>PN1',`PR: MU586/19OCT26*LAX,BN${bn} PNR RL TESTXX -`,'MOD LAX00000 AGT00000/19OCT1056/CKIN'].join('\n');
+  const row=findSYInfo(log,'19OCT26',{preferredFlightNo:'MU586'}).bnAudit[0];
+  assert.equal(row.visaStatus,'pass',dest);
+  assert.equal(row.visaDecision.destinationCountry,dest==='SGN'?'VNM':'KHM');
+  const evidence=ckinFacts([line]).visaEvidence[0];
+  assert.equal(evidence.expiry||evidence.expiryYear,expiry);
+ }
+});
