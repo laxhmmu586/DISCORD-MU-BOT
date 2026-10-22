@@ -1,6 +1,6 @@
 /* Position titles only; never import names from the organizational chart.
  * Source: Organizational Chart 2026.xlsx, 2026 station sheets and HQ 2026.
- * CSA is the existing Agent position. Legacy Manager/Lead remain supported.
+ * CSA is the existing Agent position. Legacy Manager is treated as Business Manager.
  */
 (function(root,factory){
  const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.employeePositions=api;
@@ -11,10 +11,10 @@
  ];
  const selectablePositions=groups.flatMap(group=>group.positions);
  const positions=[...selectablePositions,'Manager'];
- const choices=current=>current==='Manager'?[...selectablePositions,'Manager']:selectablePositions;
- const readSignPublishers=['Regional Manager','General Manager','Interim General Manager','Airport Manager','Airport Operations Manager','Business Manager','Duty Manager','Senior Supervisor','Supervisor','President','CFO','Senior Vice President Commercial','Vice President of Operations','Senior Vice President Human Resources','Director of Cash Management & Internal Control','Director of Sales & Marketing','Director Training & Compliance','Senior Manager Airport Services','Quality Assurance Manager & Project Coordinator','HQ Safety & Security Manager','HR Director','HR Manager','Manager'];
- const canPublishReadSign=position=>readSignPublishers.includes(position);
- const normalize=value=>value==='CSA'?'Agent':value;
+ const normalize=value=>value==='CSA'?'Agent':value==='Manager'?'Business Manager':value;
+ const choices=current=>selectablePositions;
+ const readSignPublishers=['Regional Manager','General Manager','Interim General Manager','Airport Manager','Airport Operations Manager','Business Manager','Duty Manager','Senior Supervisor','Supervisor','President','CFO','Senior Vice President Commercial','Vice President of Operations','Senior Vice President Human Resources','Director of Cash Management & Internal Control','Director of Sales & Marketing','Director Training & Compliance','Senior Manager Airport Services','Quality Assurance Manager & Project Coordinator','HQ Safety & Security Manager','HR Director','HR Manager'];
+ const canPublishReadSign=position=>readSignPublishers.includes(normalize(position));
  const valid=value=>positions.includes(normalize(value));
  const same=(left,right)=>normalize(left)===normalize(right);
  const finalApprover=valid;
