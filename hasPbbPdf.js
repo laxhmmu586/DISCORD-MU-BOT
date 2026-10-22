@@ -39,10 +39,19 @@ async function buildHasPbbPdf(r){
   text(`Jet Bridge ${role==='driver'?'Driver':'Spotter'} (Name):`,43,top+2,8);text(s.name,43,top+14,10,bold,274);text('(Signature):',332,top+2,8);
   for(const stroke of s.strokes)for(let i=1;i<stroke.length;i++)page.drawLine({start:{x:395+stroke[i-1][0]*170,y:792-top-4-stroke[i-1][1]*22},end:{x:395+stroke[i][0]*170,y:792-top-4-stroke[i][1]*22},thickness:.8,color:ink});top+=30;
  }
- text(`Station / Account: ${r.station} / ${r.account}    Driver PBB ID: ${r.signatures.driver.pbbId}    Valid through: ${r.signatures.driver.pbbExpiry}`,36,top+7,8,bold,540);
+ text(`Station / Account: ${r.station} / ${r.account}    Driver ${r.signatures.driver.pbbTerminal||''} PBB ID: ${r.signatures.driver.pbbId}    Valid through: ${r.signatures.driver.pbbExpiry}`,36,top+7,8,bold,540);
  text(`Moving: ${r.movingAt}    Docked: ${r.dockedAt}`,36,top+20,7,font,540);
  text(`Submitted: ${r.completedAt}    Record: ${r.id}`,36,top+31,7,font,540);
  text('HAS-SAF-JBA-004     EFFECTIVE 11/01/2026     AUTHOR: Q&A',36,770,7);
+ for(const [role,reports] of Object.entries(r.evidence||{}))for(const [itemId,report] of Object.entries(reports)){
+  const detail=doc.addPage([612,792]),photo=await doc.embedJpg(Buffer.from(report.photo.split(',')[1],'base64')),size=photo.scaleToFit(520,500),safe=value=>String(value).replace(/[^\x20-\x7e]/g,'?');
+  detail.drawText('NO answer - problem report',{x:36,y:750,size:17,font:bold});detail.drawText(`${role} / ${itemId} / ${report.at}`,{x:36,y:725,size:9,font});
+  detail.drawText(safe(items.find(q=>q.id===itemId)?.text||itemId),{x:36,y:700,size:9,font,maxWidth:540});
+  detail.drawImage(photo,{x:36+(520-size.width)/2,y:175+(500-size.height)/2,width:size.width,height:size.height});
+  const reason=/[^\x20-\x7e\r\n]/.test(report.reason)?'Reason: see attached UTF-8 problem report.':'Reason: '+report.reason;const lines=reason.match(/.{1,88}/g)||[];lines.slice(0,6).forEach((line,i)=>detail.drawText(line,{x:36,y:150-i*13,size:9,font}));
+  detail.drawText(report.resolvedAt?'Resolved: '+report.resolvedAt:'Unresolved',{x:36,y:45,size:9,font});
+  await doc.attach(Buffer.from(report.reason,'utf8'),`problem-${role}-${itemId}.txt`,{mimeType:'text/plain',description:'Original problem explanation (UTF-8)'});
+ }
  await doc.attach(Buffer.from(JSON.stringify(r,null,2)),`HAS-PBB-${r.id}-audit.json`,{mimeType:'application/json',description:'Scoped checklist, qualification, readiness and signature audit'});
  doc.setTitle(`HAS PBB ${r.station} ${r.account} ${r.date} ${r.flightNo} ${r.bridge}`);return Buffer.from(await doc.save());
 }
