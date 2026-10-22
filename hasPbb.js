@@ -45,7 +45,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
     const fileId=r.delivery.fileId;let exists=false;
     try{await drive.files.get({fileId,fields:'id',supportsAllDrives:true});exists=true;}catch(e){if(Number(e.code)!==404&&Number(e.response?.status)!==404)throw e;}
     if(!current())return;
-    if(!exists)await drive.files.create({requestBody:{id:fileId,name:`HAS-PBB-${r.station}-${r.account}-${r.date}-${r.flightNo}-${r.bridge}.pdf`,parents:[folderId]},media:{mimeType:'application/pdf',body:require('node:stream').Readable.from(pdf)},fields:'id',supportsAllDrives:true});
+    if(!exists)await drive.files.create({requestBody:{id:fileId,name:`HAS-PBB-${r.type}-${r.station}-${r.account}-${r.date}-${r.flightNo}-${r.bridge}.pdf`,parents:[folderId]},media:{mimeType:'application/pdf',body:require('node:stream').Readable.from(pdf)},fields:'id',supportsAllDrives:true});
     r.delivery={status:'sent',fileId,url:`https://drive.google.com/file/d/${fileId}/view`};
    }catch(e){r.delivery={...r.delivery,status:'failed',error:require('./pbbDrive').driveError(e)};}
    if(!current())return;
@@ -86,15 +86,15 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  app.get('/has-pbb-api/records',route((req,res)=>res.json(list(req.hasEmployee))));
  app.post('/has-pbb-api/records',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);
-  const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase(),bridge=req.body.bridge,date=today();
+  const type=req.body.type||'arrival';if(!['arrival','departure'].includes(type))fail('Invalid operation');const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),flightKey=flightNo+(type==='departure'?'|departure':''),gate=String(req.body.gate||'').trim().toUpperCase(),bridge=req.body.bridge,date=today();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate)||!['L1','L2','L3'].includes(bridge))fail('Confirm flight, gate number and L1/L2/L3.');
   roleCheck(e,req.body.role,date,gate);
   const heldGate=gateLocks(e).find(g=>g.flightNo===flightNo);if(heldGate&&heldGate.gate!==gate)fail('Gate number is locked. Clear gate number before changing it.',409);
-  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightNo,bridge);if(old){const previous=get(old.id);if(previous.gate===gate)return previous;
-    const r={id:previous.id,station:e.station,account:e.account,date,flightNo,gate,bridge,type:'arrival',revision:previous.revision+1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,resetAt:stamp(),resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
+  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightKey,bridge);if(old){const previous=get(old.id);if(previous.gate===gate)return previous;
+    const r={id:previous.id,station:e.station,account:e.account,date,flightNo,gate,bridge,type,revision:previous.revision+1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,resetAt:stamp(),resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
     db.prepare('UPDATE has_pbb_records SET data=?,pdf=NULL WHERE id=?').run(JSON.stringify(r),r.id);return r;}
-   const r={id:crypto.randomUUID(),station:e.station,account:e.account,date,flightNo,gate,bridge,type:'arrival',revision:1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
-   db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(r.id,e.station,e.account,date,flightNo,bridge,JSON.stringify(r));return r;
+   const r={id:crypto.randomUUID(),station:e.station,account:e.account,date,flightNo,gate,bridge,type,revision:1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
+   db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(r.id,e.station,e.account,date,flightKey,bridge,JSON.stringify(r));return r;
   });const r=create();publish(r);res.status(201).json(r);
  }));
  app.get('/has-pbb-api/records/:id',route((req,res)=>res.json(authorized(req,req.params.id))));
@@ -115,7 +115,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   if(r.owners[role==='driver'?'spotter':'driver']===e.id)fail('Driver and Spotter must be different employees.',403);
   if(r.signatures[role]&&b.action!=='ready')fail('Your signed section is locked.',409);
   if(b.action==='answer'){
-   const item=items.find(x=>x.id===b.itemId&&x.role===role);if(!item||typeof b.value!=='boolean')fail('Invalid checklist answer');
+   const item=items.find(x=>x.id===b.itemId&&x.role===role&&(x.type||'arrival')===r.type);if(!item||typeof b.value!=='boolean')fail('Invalid checklist answer');
    if(item.phase==='after'&&!r.dockedAt||item.phase==='pre'&&r.movingAt||item.phase==='movement'&&(!r.movingAt||r.dockedAt))fail('This checklist phase is locked.',409);
    if(!b.value){if(!b.evidence||typeof b.evidence.reason!=='string'||!b.evidence.reason.trim()||b.evidence.reason.length>2000||!b.evidence.photo)fail('Photo and reason are required for a NO answer.');r.evidence||={};r.evidence[role]||={};if(b.evidence.reportId!==undefined&&!/^[a-zA-Z0-9-]{1,80}$/.test(b.evidence.reportId))fail('Invalid problem report.');r.evidence[role][item.id]={reportId:b.evidence.reportId||crypto.randomUUID(),reason:b.evidence.reason.trim(),photo:b.evidence.photo,employeeId:e.id,name:e.name,at:stamp()};}
    else if(r.evidence?.[role]?.[item.id])r.evidence[role][item.id].resolvedAt=stamp();
@@ -124,16 +124,16 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   }else if(b.action==='ready'){
    if(r.movingAt)fail('Movement has started. Ready state is locked.',409);
    if(typeof b.value!=='boolean')fail('Select Ready or Not ready');
-   if(b.value&&items.some(x=>x.role===role&&x.phase==='pre'&&!r.answers[role][x.id]))fail('Complete pre-movement checks first.');
+   if(b.value&&items.some(x=>(x.type||'arrival')===r.type&&x.role===role&&x.phase==='pre'&&!r.answers[role][x.id]))fail('Complete pre-movement checks first.');
    r.ready[role]=b.value;delete r.signatures[role];
   }else if(b.action==='move'){
    if(role!=='driver'||r.movingAt||r.ready.driver!==true||r.ready.spotter!==true||!r.signatures.spotter)fail('Wait for both Ready confirmations and the Spotter signature.',409);
    r.movingAt=stamp();r.driverQualification=terminalLicense.forGate(e,r.gate);
   }else if(b.action==='dock'){
    if(role!=='driver'||!r.movingAt||r.dockedAt)fail('Start movement first.',409);
-   if(r.answers.driver.floor!==true)fail('Confirm the bridge floor position before completing docking.',409);r.dockedAt=stamp();
+   if(r.type!=='departure'&&r.answers.driver.floor!==true)fail('Confirm the bridge floor position before completing docking.',409);r.dockedAt=stamp();
   }else if(b.action==='sign'){
-   if(items.some(x=>x.role===role&&(role==='driver'||x.phase==='pre')&&!r.answers[role][x.id])||r.ready[role]!==true||role==='driver'&&!r.dockedAt)fail('Complete your checks before signing.');
+   if(items.some(x=>(x.type||'arrival')===r.type&&x.role===role&&(role==='driver'||x.phase==='pre')&&!r.answers[role][x.id])||r.ready[role]!==true||role==='driver'&&!r.dockedAt)fail('Complete your checks before signing.');
    const strokes=b.strokes;if(!Array.isArray(strokes)||!strokes.length||strokes.length>100||strokes.some(s=>!Array.isArray(s)||s.length<2)||strokes.flat().length>10000||strokes.flat().some(p=>!Array.isArray(p)||p.length!==2||p.some(n=>!Number.isFinite(n)||n<0||n>1)))fail('Handwritten signature required.');
    r.signatures[role]={employeeId:e.id,name:e.name,eid:e.eid,uid:req.hasUser.uid,strokes,at:stamp(),...(role==='driver'?{pbbId:terminalLicense.forGate(e,r.gate).id,pbbExpiry:terminalLicense.forGate(e,r.gate).expiry,pbbTerminal:terminalLicense.forGate(e,r.gate).terminal}:{})};
    if(r.signatures.driver&&r.signatures.spotter)r.completedAt=stamp();
