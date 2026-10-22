@@ -68,7 +68,7 @@ test('manual Arrival bridge reset clears only its generation and publishes share
  assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);assert.deepEqual(f.service.get(sibling.id),sibling);assert.deepEqual(f.service.get(foreign.id),foreign);
  assert.equal((await f.request('driver','/context')).data.gateLocks[0].gate,'132');assert.equal((await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).status,409);
  assert.match(new TextDecoder().decode((await reader.read()).value),new RegExp(fresh.resetToken));abort.abort();
- f.setTime('2026-10-22T17:00:00Z');assert.equal((await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:fresh.revision})).status,409);
+ f.setTime('2026-10-22T17:00:00Z');assert.equal((await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:fresh.revision})).status,404);
 });
 test('manual reset protects a concurrent answer and prevents stale PDF delivery restoration',async t=>{
  let release,started;const ready=new Promise(resolve=>started=resolve),f=await fixture(t,{buildPdf:()=>new Promise(resolve=>{release=resolve;started();})});let r=(await f.create()).data;
@@ -121,7 +121,9 @@ test('HAS scopes every record read/write/stream and daily uniqueness by station/
 test('expired/missing IDs block Driver creation and mutations; expiry includes its final day',async t=>{
  const f=await fixture(t);for(const user of ['expired','missing'])assert.equal((await f.create(user)).status,403);
  let r=(await f.create()).data;assert.equal((await f.request('driver','/context')).data.employee.driver,true);
- f.setTime('2026-10-22T17:00:00Z');assert.equal((await f.request('driver','/context')).data.employee.driver,false);
+ // Keep a record within its one-hour lifetime while crossing the qualification expiry.
+ r.createdAt='2026-10-22T06:30:00Z';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
+ f.setTime('2026-10-22T07:00:00Z');assert.equal((await f.request('driver','/context')).data.employee.driver,false);
  assert.equal((await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).status,403);
 });
 test('administrator qualification revocation is enforced against an already open checklist',async t=>{
@@ -251,3 +253,28 @@ test('demo dashboard permission is read-only and does not grant Config access',a
 test('Ready immediately authorizes movement and Spotter can sign after Driver finishes',async t=>{const f=await fixture(t);let r=(await f.create()).data;const apply=async(user,body)=>{const response=await f.change(user,r,body);assert.equal(response.status,200,JSON.stringify(response));r=response.data;};for(const role of ['driver','spotter'])for(const q of items.filter(x=>x.role===role&&x.phase==='pre'))await apply(role,{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'ready',value:true});await apply('spotter',{action:'ready',value:true});assert.equal(r.signatures.spotter,undefined);await apply('driver',{action:'move'});assert.ok(r.movingAt);await apply('driver',{action:'answer',itemId:'floor',value:true});await apply('driver',{action:'dock'});for(const q of items.filter(x=>x.role==='driver'&&x.phase==='after'))await apply('driver',{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'sign',strokes});assert.equal(r.completedAt,undefined);await apply('spotter',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);});
 
 test('Arbitrary numeric gates confirm with ordinary PBB credentials',async t=>{const f=await fixture(t);for(const gate of ['0','1','12','128','160','200','226','12345']){await f.request('driver','/gate/clear',{flightNo:'MU583'});assert.equal((await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate})).status,200,gate);}});
+
+test('incomplete records expire one hour from creation or reset, completed PDFs survive',async t=>{
+ const f=await fixture(t),r=(await f.create()).data,done=(await f.create('driver','L2')).data;
+ done.completedAt=done.createdAt;done.delivery={status:'sent',fileId:'fixture-saved'};
+ f.db.prepare('UPDATE has_pbb_records SET data=?,pdf=? WHERE id=?').run(JSON.stringify(done),Buffer.from('saved PDF'),done.id);
+ f.setTime('2026-10-21T17:59:59Z');assert.equal((await f.request('driver','/records')).data.length,2);
+ const changed=(await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).data;
+ assert.equal(changed.updatedAt,'2026-10-21T17:59:59.000Z');
+ f.setTime('2026-10-21T18:00:00Z');assert.equal((await f.request('lake','/dashboard')).data.records.length,1);
+ assert.equal((await f.request('driver','/records/'+r.id)).status,404);assert.equal((await f.change('driver',changed,{action:'sign',strokes})).status,404);
+ assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(done.id).pdf.toString(),'saved PDF');
+ const fresh=(await f.create()).data;assert.notEqual(fresh.id,r.id);
+ f.setTime('2026-10-21T18:30:00Z');const reset=(await f.request('driver','/records/'+fresh.id+'/reset',{role:'driver',revision:fresh.revision})).data;
+ f.setTime('2026-10-21T19:00:00Z');assert.equal(f.service.pruneIncomplete(),0);assert.ok(f.service.get(reset.id));
+ f.setTime('2026-10-21T19:30:00Z');assert.equal(f.service.pruneIncomplete(),1);assert.equal(f.service.pruneIncomplete(),0);
+});
+
+test('expiry notifies an open checklist and shared bridge list',async t=>{
+ const f=await fixture(t),r=(await f.create()).data,abort=new AbortController();t.after(()=>abort.abort());
+ const connect=async suffix=>{const response=await fetch(f.base+'/has-pbb-api/stream'+suffix,{headers:{Authorization:'Bearer driver'},signal:abort.signal});const reader=response.body.getReader();await reader.read();return reader;};
+ const detail=await connect('?id='+r.id),list=await connect('');
+ f.setTime('2026-10-21T18:00:00Z');assert.equal(f.service.pruneIncomplete(),1);
+ assert.match(new TextDecoder().decode((await detail.read()).value),/event: expired/);
+ assert.match(new TextDecoder().decode((await list.read()).value),/data: \[\]/);
+});
