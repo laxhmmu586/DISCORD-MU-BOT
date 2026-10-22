@@ -203,9 +203,4 @@ html.has-theme{background:#fff;color-scheme:light}
 .has-dashboard-page #dashboard-form input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left}
 @media(max-width:600px){.has-dashboard-page #dashboard-form{grid-template-columns:minmax(0,1fr)}.has-dashboard-page #dashboard-form button{max-width:100%;white-space:normal}}
 
-/* Quiet full-body employee art stays inside the desktop sidebar. */
-.has-dashboard-page .has-sidebar{overflow-y:auto}
-.has-sidebar-bottom{flex-shrink:0}
-.has-sidebar-employee{display:block;width:100%;max-width:156px;height:clamp(160px,32vh,290px);object-fit:contain;object-position:center bottom;margin:0 auto 14px}
-@media(max-height:650px){.has-sidebar-employee{display:none}}
 @media(max-width:600px){.has-dashboard-page .has-totals{grid-template-columns:1fr}}
