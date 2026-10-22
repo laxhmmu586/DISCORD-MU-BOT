@@ -16,7 +16,7 @@ const express=require('express'),Database=require('better-sqlite3');
  let browser;
  try{
   browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage(),errors=[];let who=2;
-  page.on('pageerror',e=>errors.push(e.message));
+  page.on('pageerror',e=>{errors.push(e.message);console.error('Browser error:',e.message);});
   await page.route('https://www.gstatic.com/**',route=>route.fulfill({body:'',contentType:'text/javascript'}));
   await page.route('**/__/firebase/init.js',route=>route.fulfill({contentType:'text/javascript',body:`window.MU_API_BASE=${JSON.stringify(base)};const user={...${JSON.stringify(users[who])},getIdToken:async()=>${JSON.stringify(users[who].uid)},providerData:[]};window.firebase={apps:[{}],auth:()=>({currentUser:user,onAuthStateChanged:fn=>setTimeout(()=>fn(user),0)})};`}));
   await page.goto(base+'/admin.html');await page.locator('#employee-panel').waitFor({state:'visible'});
@@ -35,10 +35,13 @@ const express=require('express'),Database=require('better-sqlite3');
   await page.locator('#stage-down').click();await page.locator('#stage-remove').click();
   await page.locator('[data-stage="1"]').click();await page.locator('#stage-position').selectOption('Business Manager');
   assert.match(await page.locator('#stage-reviewers').textContent(),/EXISTING EMPLOYEE 2/);
-  assert.equal(await page.locator('#stage-remove').isDisabled(),true);
+  assert.equal(await page.locator('#stage-remove').isDisabled(),false);
+  await page.getByRole('button',{name:'Add approval stage after last stage',exact:true}).click();await page.locator('#stage-position').selectOption('Regional Manager');
+  assert.equal(await page.locator('[data-stage]').count(),3);
+  await page.getByRole('button',{name:'Add approval stage after last stage',exact:true}).click();await page.locator('#stage-position').selectOption('General Manager');await page.locator('#stage-up').click();await page.locator('#stage-down').click();await page.locator('#stage-remove').click();
   await page.locator('#save-workflow').click();await page.getByText('Workflow saved. New requests will use this route.').waitFor();
-  assert.deepEqual(service.store.workflow().stages,['Senior Supervisor','Business Manager']);
-  await page.reload();await page.locator('#workflow-content').waitFor({state:'visible'});assert.match(await page.locator('[data-stage="1"]').textContent(),/Business Manager/);
+  assert.deepEqual(service.store.workflow().stages,['Senior Supervisor','Business Manager','Regional Manager']);
+  await page.reload();await page.locator('#workflow-content').waitFor({state:'visible'});assert.match(await page.locator('[data-stage="2"]').textContent(),/Regional Manager/);
   fs.mkdirSync('.verification/org-chart',{recursive:true});
   for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await page.screenshot({path:`.verification/org-chart/admin-${width}.png`,fullPage:true});}
   who=0;await page.goto(base+'/request.html');await page.locator('#uniform-content').waitFor({state:'visible'});await page.locator('#request-type').selectOption('uniform');
