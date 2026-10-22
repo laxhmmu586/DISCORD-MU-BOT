@@ -8,7 +8,7 @@ test('EP.DB migrates employee metadata once and retains later changes after reop
  legacy.exec('CREATE TABLE pbb_employees (singleton INTEGER PRIMARY KEY, data TEXT NOT NULL)');
  legacy.prepare('INSERT INTO pbb_employees VALUES (1,?)').run(JSON.stringify(snapshot));
  let store=openEmployeeDatabase(legacy,{seed:[]});
- assert.equal(path.basename(store.db.name),'EP.DB');assert.deepEqual(store.get(),{...snapshot,revision:8,employees:snapshot.employees.map(({driver,...row})=>({...row,station:'LAX',account:'MU',attach:driver,detach:driver}))});
+ assert.equal(path.basename(store.db.name),'EP.DB');assert.deepEqual(store.get(),{...snapshot,revision:8,accounts:[{station:'LAX',account:'MU'}],employees:snapshot.employees.map(({driver,...row})=>({...row,station:'LAX',account:'MU',attach:driver,detach:driver}))});
  const change=store.get();change.employees[0].code='002';change.employees[0].detach=false;const saved=store.save(change,{email:'lake@mu.com'});store.close();
  store=openEmployeeDatabase(legacy,{seed:[]});assert.deepEqual(store.get(),saved);assert.deepEqual(JSON.parse(legacy.prepare('SELECT data FROM pbb_employees').get().data),snapshot);
  store.close();legacy.close();

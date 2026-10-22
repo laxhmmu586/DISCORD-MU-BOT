@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {createEmployeeStore}=require('../employees');
-function database(){let data;return {exec(){},transaction:fn=>fn,prepare(sql){return {run(value){if(sql.startsWith('INSERT'))data??=value;else data=value;},get(){return {data};}};}};}
+function database(){return new (require('better-sqlite3'))(':memory:');}
 const admin={email:'lake@mu.com'};
 test('custom employee order survives save and store reopen with each record intact',()=>{
  const db=database(),seed=['one','two','three'].map((id,i)=>({id,name:`Employee ${i+1}`,eid:String(i+1),discordId:'',attach:true,detach:false,spotter:true}));

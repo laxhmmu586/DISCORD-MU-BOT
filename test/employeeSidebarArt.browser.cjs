@@ -23,7 +23,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),express=re
    for(const [file,content] of Object.entries(pages)){
     await page.goto(base+'/'+file);await page.locator(content).waitFor({state:'visible'});const image=page.locator('#has-sidebar-employee');assert.equal(await image.count(),1);await image.evaluate(img=>img.decode());
     const src=await image.getAttribute('src');if(previous)assert.notEqual(src,previous,'Page entry advances the series');previous=src;
-    for(const name of Object.keys(pages))assert.equal(await page.locator('.profile-sidebar nav a[href="/'+name+'"]').count(),1,'Navigation remains intact: '+name);
+    assert.equal(await page.locator('.profile-sidebar nav a[href="/info.html"]').count(),0);for(const name of Object.keys(pages).filter(name=>name!=='info.html'))assert.equal(await page.locator('.profile-sidebar nav a[href="/'+name+'"]').count(),1,'Navigation remains intact: '+name);
     assert.equal(await image.isVisible(),width>760);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,file+' overflow at '+width);
     if(width>760){const nav=await page.locator('.profile-sidebar nav').boundingBox(),art=await image.boundingBox();assert(art.y>=nav.y+nav.height,'Artwork stays below navigation');assert(art.y+art.height<=1000,'Artwork fits viewport');}
     if(width===1440||width===390)await page.screenshot({path:path.join(output,file.replace('.html','')+'-'+width+'.png'),fullPage:true});
