@@ -10,7 +10,7 @@ async function buildHasPbbPdf(r){
  const box=(top,height,fill)=>page.drawRectangle({x,y:792-top-height,width,height,borderWidth:.4,borderColor:rule,...(fill?{color:fill}:{})});
  const check=(tx,top,yes)=>{page.drawRectangle({x:tx,y:792-top-7,width:7,height:7,borderWidth:.6,borderColor:ink});if(yes){page.drawLine({start:{x:tx+1,y:792-top-4},end:{x:tx+3,y:792-top-6},thickness:.9,color:ink});page.drawLine({start:{x:tx+3,y:792-top-6},end:{x:tx+7,y:792-top},thickness:.9,color:ink});}};
  const logo=await doc.embedPng(await fs.readFile(path.join(__dirname,'public/public/assets/pbb/has-arrival-logo.png'))),dim=logo.scaleToFit(100,68);page.drawImage(logo,{x:40,y:792-72,width:dim.width,height:dim.height});
- text('Arrival Jet Bridge Checklist',255,37,14,bold);
+ text(r.type==='departure'?'Departure Jet Bridge Checklist':'Arrival Jet Bridge Checklist',255,37,14,bold);
  text('To be completed by the Jet Bridge Operator for flights requiring jet bridge movement.',36,91,9);
  text('Retain on file for 90 days as an auditable record.',36,104,9);
  const columns=[36,186,274,342,420,576],labels=['AIRLINE AND FLIGHT #','DATE','GATE','BLOCK TIME','JET BRIDGE USED (circle)'];
@@ -23,6 +23,14 @@ async function buildHasPbbPdf(r){
  const row=(label,yes,height=18)=>{box(top,height);check(43,top+5,yes);text(label,56,top+4,9,font,512);top+=height;};
  const answer=id=>{const q=items.find(q=>q.id===id);return r.answers[q.role]?.[id]===true;};
  const question=id=>{const q=items.find(q=>q.id===id);return row(q.pdfText||q.text,answer(id));};
+ if(r.type==='departure'){
+ section('PRE-MOVEMENT - DRIVER');for(const id of ['d1','d2','d3','d4'])question(id);
+ section('SPOTTER SAFETY');question('d6');
+ row('Spotter confirmed Ready to go and signed.',r.ready.spotter===true&&!!r.signatures.spotter);
+ row('Driver received authorization and started retraction.',!!r.movingAt);
+ row('Bridge returned to box; wheels inside designated stow box.',!!r.dockedAt);
+ section('AFTER RETRACTION');for(const id of ['d10','d11'])question(id);
+ }else{
  section('PRE-MOVEMENT VERIFICATION');
  row(`Gate number confirmed: ${r.gate}. Driver and Spotter reported for the operation.`,!!r.signatures.driver&&!!r.signatures.spotter);
  for(const id of ['serviceable','controls','equipment','cables','stand'])question(id);
@@ -31,6 +39,7 @@ async function buildHasPbbPdf(r){
  section('GO');row('Authorization received from Spotter to begin movement.',!!r.movingAt&&!!r.signatures.spotter);row('Driver acknowledged the authorization.',!!r.movingAt&&r.ready.driver===true);
  section('JET BRIDGE MOVEMENT');question('floor');
  section('POST-DOCKING');for(const id of ['leveler','canopy','crew','shoe'])question(id);
+ }
  section('Irregularities to report on any of the above steps.');box(top,17);top+=17;
  text('In case of an accident/incident, the operator MUST remain at the scene and immediately notify Airport Authorities.',42,top+5,7.5);
  text('Initiate the Incident Checklist with the Station Regional/General Manager. For questions, contact the HQ Safety Manager.',42,top+16,7.5);top+=34;

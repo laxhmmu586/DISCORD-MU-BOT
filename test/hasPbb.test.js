@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
 const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
-const items=require('../public/public/has-pbb-data'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
+const items=require('../public/public/has-pbb-data').filter(q=>q.type==='arrival'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
 test('Dashboard Config counts paired flights once using Inbound weekdays and enforces access/revisions',async t=>{
  const f=await fixture(t),config=(await f.request('lake','/dashboard/config')).data;
  assert.deepEqual(config.pairs,[]);assert.equal((await f.request('driver','/dashboard/config')).status,403);assert.equal((await f.request('driver','/dashboard/config',{revision:config.revision,pairs:[]})).status,403);
@@ -225,4 +225,20 @@ test('gate locks persist for exactly two hours from first confirmation, isolate 
  f.setTime('2026-10-21T19:00:00Z');assert.equal((await f.request('driver','/context')).data.gateLocks.length,0);
  await f.request('driver','/gate',{...body,gate:'134'});assert.equal((await f.request('driver','/context')).data.gateLocks[0].gate,'134');await f.request('spotter','/gate/clear',{flightNo:'MU583'});assert.equal((await f.request('driver','/context')).data.gateLocks.length,0);
  assert.equal((await f.request('expired','/gate',body)).status,403);assert.equal((await f.request('driver','/gate',{...body,gate:'bad gate'})).status,400);
+});
+
+test('Departure is isolated and gates movement on four Driver checks and Spotter readiness/signature',async t=>{
+ const f=await fixture(t),arrival=(await f.create()).data;
+ const created=await f.request('driver','/records',{flightNo:arrival.flightNo,gate:arrival.gate,bridge:arrival.bridge,role:'driver',type:'departure'});
+ assert.equal(created.status,201);let r=created.data;assert.notEqual(r.id,arrival.id);assert.equal(r.type,'departure');
+ const apply=async(user,body)=>{const result=await f.change(user,r,body);assert.equal(result.status,200,JSON.stringify(result));r=result.data;};
+ assert.equal((await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).status,400);
+ assert.equal((await f.change('driver',r,{action:'move'})).status,409);
+ for(const id of ['d1','d2','d3','d4'])await apply('driver',{action:'answer',itemId:id,value:true});
+ await apply('driver',{action:'ready',value:true});
+ await apply('spotter',{action:'answer',itemId:'d6',value:true});await apply('spotter',{action:'ready',value:true});
+ assert.equal((await f.change('driver',r,{action:'move'})).status,409);
+ await apply('spotter',{action:'sign',strokes});await apply('driver',{action:'move'});await apply('driver',{action:'dock'});
+ for(const id of ['d10','d11'])await apply('driver',{action:'answer',itemId:id,value:true});
+ await apply('driver',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');assert.equal(f.service.get(arrival.id).movingAt,undefined);
 });

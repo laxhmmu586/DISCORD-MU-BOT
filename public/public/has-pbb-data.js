@@ -15,5 +15,16 @@
   q('crew','driver','after','I received crew acknowledgment prior to opening the aircraft door.','has-crew-acknowledgment-v1.webp'),
   q('shoe','driver','after','I placed the safety shoe beneath the aircraft door.','safety-shoe.jpg')
  ];
+ for(const item of data)item.type='arrival';
+ const departure=[
+ q('d1','driver','pre','Confirm aircraft door is closed per airline procedure.','airline-door-closure-lax-v2.webp'),
+ q('d2','driver','pre','Remove safety shoe, if fitted; store it in its holder.','safety-shoe-storage-lax-v2.webp'),
+ q('d3','driver','pre','Pull the safety chain across the bridge opening and secure it.','safety-chain-lax-v2.webp'),
+ q('d4','driver','pre','Turn the key to OPERATE and retract the canopy.','operate-key-lax-v2.webp'),
+ q('d6','spotter','pre','Double-check the area is safe.','safe-area-check-lax-v2.webp'),
+ q('d10','driver','after','Remove trash, water and debris.','safety-chain-lax-v2.webp'),
+ q('d11','driver','after','Turn the key to OFF and remove it.','off-key-removed-lax-v2.webp')
+ ];
+ for(const item of departure)data.push({...item,type:'departure'});
  if(typeof module==='object')module.exports=data;else root.HAS_PBB_ITEMS=data;
 })(typeof window==='object'?window:globalThis);
