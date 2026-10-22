@@ -14,13 +14,6 @@
   const resize=()=>{const width=Math.floor(plot.clientWidth);if(width===previousWidth)return;previousWidth=width;const holder=document.createElement('div');holder.innerHTML=charts(d,width);plot.replaceChildren(holder.querySelector('.has-bars'));};
   resize();if(window.ResizeObserver){chartObserver=new ResizeObserver(resize);chartObserver.observe(plot);}
  }
- function sidebarEmployee(){
-  const image=$('has-sidebar-employee'),choices=['tablet-asian-man','welcome-woman','wave-asian-woman','arms-asian-man','arms-woman','arms-asian-woman'];if(!image)return;
-  let previous;try{const saved=sessionStorage.getItem('has-pbb-sidebar-v1');if(saved!==null&&/^\d+$/.test(saved))previous=Number(saved);}catch{}
-  const next=Number.isInteger(previous)?(previous+1)%choices.length:Math.floor(Math.random()*choices.length);
-  image.src='/assets/pbb/staff/sidebar-'+choices[next]+'-v1.webp';
-  try{sessionStorage.setItem('has-pbb-sidebar-v1',String(next));}catch{}
- }
  async function load(initial=false){const version=++requestVersion;try{
   const query=new URLSearchParams();if(!initial){query.set('station',$('dashboard-station').value);query.set('account',$('dashboard-account').value);query.set('start',$('dashboard-start').value);query.set('end',$('dashboard-end').value);}
   const d=await apiJson('/has-pbb-api/dashboard?'+query);if(version!==requestVersion)return;$('dashboard-panel').hidden=false;
@@ -34,5 +27,5 @@
  window.addEventListener('storage',event=>{if(event.key==='has-pbb-schedule-revision'&&!$('dashboard-panel').hidden)refreshScheduleTotals();});
  window.addEventListener('focus',()=>{if(!$('dashboard-panel').hidden)load();});
  $('dashboard-form').onsubmit=e=>{e.preventDefault();load();};$('dashboard-station').onchange=$('dashboard-account').onchange=()=>load();
- requireServiceLogin(async()=>{sidebarEmployee();await load(true);if(!$('dashboard-panel').hidden)timer=setInterval(()=>load(),30000);});window.addEventListener('pagehide',()=>{clearInterval(timer);chartObserver?.disconnect();});
+ requireServiceLogin(async()=>{await load(true);if(!$('dashboard-panel').hidden)timer=setInterval(()=>load(),30000);});window.addEventListener('pagehide',()=>{clearInterval(timer);chartObserver?.disconnect();});
 })();
