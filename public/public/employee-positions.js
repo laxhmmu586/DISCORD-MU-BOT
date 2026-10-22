@@ -7,14 +7,17 @@
 })(typeof globalThis==='object'?globalThis:this,function(){
  const groups=[
   {label:'Station operations',positions:['Regional Manager','General Manager','Interim General Manager','Airport Manager','Airport Operations Manager','Business Manager','Duty Manager','Senior Supervisor','Supervisor','Lead','Agent']},
-  {label:'Headquarters',positions:['President','CFO','Senior Vice President Commercial','Vice President of Operations','Senior Vice President Human Resources','Director of Cash Management & Internal Control','Director of Sales & Marketing','Director Training & Compliance','Senior Manager Airport Services','Quality Assurance Manager & Project Coordinator','HQ Safety & Security Manager','HR Director','HR Manager','HRIS Administrator','Benefits Administrator','Admin Assistant','Badge Coordinator','Workers Comp Advocate','Accounts Receivable','Accounts Payable','Payroll','Accounting','HQ Out Station Recruiter','HQ Recruiter','JFK Recruiter','HQ Senior Instructor','HQ Corporate Instructor','DFW Corporate Instructor','TX Corporate Instructor','SFO Corporate Instructor','Technical Instructor','Safety Advocate']},
-  {label:'Existing positions',positions:['Manager']}
+  {label:'Headquarters',positions:['President','CFO','Senior Vice President Commercial','Vice President of Operations','Senior Vice President Human Resources','Director of Cash Management & Internal Control','Director of Sales & Marketing','Director Training & Compliance','Senior Manager Airport Services','Quality Assurance Manager & Project Coordinator','HQ Safety & Security Manager','HR Director','HR Manager','HRIS Administrator','Benefits Administrator','Admin Assistant','Badge Coordinator','Workers Comp Advocate','Accounts Receivable','Accounts Payable','Payroll','Accounting','HQ Out Station Recruiter','HQ Recruiter','JFK Recruiter','HQ Senior Instructor','HQ Corporate Instructor','DFW Corporate Instructor','TX Corporate Instructor','SFO Corporate Instructor','Technical Instructor','Safety Advocate']}
  ];
- const positions=groups.flatMap(group=>group.positions);
+ const selectablePositions=groups.flatMap(group=>group.positions);
+ const positions=[...selectablePositions,'Manager'];
+ const choices=current=>current==='Manager'?[...selectablePositions,'Manager']:selectablePositions;
+ const readSignPublishers=['Regional Manager','General Manager','Interim General Manager','Airport Manager','Airport Operations Manager','Business Manager','Duty Manager','Senior Supervisor','Supervisor','President','CFO','Senior Vice President Commercial','Vice President of Operations','Senior Vice President Human Resources','Director of Cash Management & Internal Control','Director of Sales & Marketing','Director Training & Compliance','Senior Manager Airport Services','Quality Assurance Manager & Project Coordinator','HQ Safety & Security Manager','HR Director','HR Manager','Manager'];
+ const canPublishReadSign=position=>readSignPublishers.includes(position);
  const normalize=value=>value==='CSA'?'Agent':value;
  const valid=value=>positions.includes(normalize(value));
  const same=(left,right)=>normalize(left)===normalize(right);
  const finalApprover=valid;
  const maxWorkflowStages=20;
- return {groups,positions,normalize,valid,same,finalApprover,maxWorkflowStages};
+ return {groups,positions,selectablePositions,choices,readSignPublishers,canPublishReadSign,normalize,valid,same,finalApprover,maxWorkflowStages};
 });
