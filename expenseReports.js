@@ -1,0 +1,25 @@
+const crypto=require('node:crypto');
+const stages=['Manager','General Manager','Vice President of Operations','President','Accounting'];
+const {fields,calculate,sections,labels}=require('./expenseDefinition');
+const eligible=position=>/Supervisor|Manager|Director|President|^CFO$/.test(position||'');
+const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
+function createExpenseStore({employees,profiles,now=()=>new Date()}){
+ const db=employees.db;db.exec('CREATE TABLE IF NOT EXISTS expense_reports(id TEXT PRIMARY KEY,data TEXT NOT NULL)');
+ const employee=user=>{const e=profiles.linked(user);if(!e||!(eligible(e.position)||e.position==='Accounting'))fail('Supervisor or above access required.',403);return e;};
+ const get=id=>{const row=db.prepare('SELECT data FROM expense_reports WHERE id=?').get(id);if(!row)fail('Report not found.',404);return JSON.parse(row.data);};
+ const review=(r,e)=>r.status==='pending'&&e.position===stages[r.step]&&r.employee.id!==e.id&&!r.approvals.some(a=>a.employeeId===e.id);
+ const visible=(r,e)=>r.employee.id===e.id||review(r,e)||r.approvals.some(a=>a.employeeId===e.id);
+ const view=(r,e)=>({...r,canEdit:r.status==='draft'&&r.employee.id===e.id,canReview:review(r,e)});
+ const put=r=>{db.prepare('INSERT INTO expense_reports VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(r.id,JSON.stringify(r));return r;};
+ const validate=calculate;
+ return {get,
+  list(user){const e=employee(user);return {canCreate:eligible(e.position),employee:{id:e.id,name:e.name,position:e.position,station:e.station,account:e.account},fields,sections,labels,stages,approvalRoute:stages.map(position=>({position,reviewers:employees.get().employees.filter(p=>p.position===position).map(p=>({name:p.name}))})),reports:db.prepare('SELECT data FROM expense_reports ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,e)).map(r=>view(r,e))};},
+  save:db.transaction((user,body)=>{const e=employee(user);if(!eligible(e.position))fail('Supervisor or above access required.',403);if(!/^[0-9a-f-]{36}$/i.test(body.id||''))fail('Invalid report reference.');const row=db.prepare('SELECT data FROM expense_reports WHERE id=?').get(body.id),old=row?JSON.parse(row.data):null;
+   if(old&&(old.employee.id!==e.id||old.status!=='draft'))fail('Only your own draft can be edited.',403);if(old&&old.revision!==body.revision)fail('Report changed. Reload before saving.',409);
+   const submit=body.action==='submit';if(!['save','submit'].includes(body.action))fail('Invalid report action.');const stamp=now().toISOString(),r={id:old?.id||body.id,employee:old?.employee||{id:e.id,name:e.name,eid:e.eid},fields:validate(body.fields,submit),stages,status:submit?'pending':'draft',step:0,revision:(old?.revision||0)+1,createdAt:old?.createdAt||stamp,updatedAt:stamp,...(submit?{submittedAt:stamp}:{}),approvals:[],history:[...(old?.history||[]),{at:stamp,name:e.name,action:submit?'Submitted':'Draft saved'}]};return view(put(r),e);
+  }),
+  decide:db.transaction((user,id,body)=>{const e=employee(user),r=get(id);if(!review(r,e))fail('Only the current approval position can review this report.',403);if(r.revision!==body.revision)fail('Report changed. Reload before reviewing.',409);if(!['approve','reject'].includes(body.action))fail('Choose Approve or Reject.');const note=String(body.note||'').trim();if(note.length>2000||body.action==='reject'&&!note)fail('A rejection reason is required (up to 2000 characters).');const at=now().toISOString();r.approvals.push({employeeId:e.id,name:e.name,position:e.position,action:body.action,note,at});r.history.push({at,name:e.name,action:body.action,note});r.updatedAt=at;r.revision++;if(body.action==='reject')r.status='rejected';else if(++r.step===stages.length){r.status='approved';r.approvedAt=at;}return view(put(r),e);})
+ };
+}
+function registerExpenseReports(app,options){const store=createExpenseStore(options);app.use('/expense-api',require('express').json({limit:'256kb'}),async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.expenseUser=await options.authenticate(req);next();}catch{res.status(401).json({error:'Sign in required.'});}});const route=fn=>(req,res)=>{try{res.json(fn(req));}catch(e){res.status(e.status||400).json({error:e.message});}};app.get('/expense-api',route(req=>store.list(req.expenseUser)));app.post('/expense-api',route(req=>store.save(req.expenseUser,req.body)));app.post('/expense-api/:id/decision',route(req=>store.decide(req.expenseUser,req.params.id,req.body)));return store;}
+module.exports={createExpenseStore,registerExpenseReports,eligible,fields,stages};
