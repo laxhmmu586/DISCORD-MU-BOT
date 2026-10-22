@@ -19,9 +19,9 @@ test('Dashboard Config counts paired flights once using Inbound weekdays and enf
 });
 test('LAX terminal certificates have inclusive boundaries and never substitute for each other',async t=>{
  const license=require('../public/public/pbb-terminal-license'),f=await fixture(t);
- for(const gate of ['131','159','159A'])assert.equal(license.terminal('LAX',gate),'TBIT');
+ for(const gate of ['0','1','12','128','130','131','159','159A','160','200','226','12345'])assert.equal(license.terminal('LAX',gate),'TBIT');
  for(const gate of ['201','225','225A'])assert.equal(license.terminal('LAX',gate),'MSC');
- for(const gate of ['130','160','200','226','TBA','132BAD'])assert.equal(license.terminal('LAX',gate),null);
+ for(const gate of ['TBA','132BAD'])assert.equal(license.terminal('LAX',gate),null);
  const gateBody={role:'driver',flightNo:'MU583',gate:'201'};
  assert.equal((await f.request('driver','/gate',gateBody)).status,403);
  assert.equal((await f.request('driver','/records',{...gateBody,bridge:'L1'})).status,403);
@@ -249,3 +249,5 @@ test('Gate confirmations and clears immediately broadcast scoped snapshots to a 
 
 test('demo dashboard permission is read-only and does not grant Config access',async t=>{const f=await fixture(t);assert.equal((await f.request('demo','/dashboard')).status,200);assert.equal((await f.request('demo','/dashboard/config')).status,403);assert.equal((await f.request('demo','/dashboard/config',{revision:1,pairs:[]})).status,403);assert.equal((await f.request('driver','/dashboard')).status,403);});
 test('Ready immediately authorizes movement and Spotter can sign after Driver finishes',async t=>{const f=await fixture(t);let r=(await f.create()).data;const apply=async(user,body)=>{const response=await f.change(user,r,body);assert.equal(response.status,200,JSON.stringify(response));r=response.data;};for(const role of ['driver','spotter'])for(const q of items.filter(x=>x.role===role&&x.phase==='pre'))await apply(role,{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'ready',value:true});await apply('spotter',{action:'ready',value:true});assert.equal(r.signatures.spotter,undefined);await apply('driver',{action:'move'});assert.ok(r.movingAt);await apply('driver',{action:'answer',itemId:'floor',value:true});await apply('driver',{action:'dock'});for(const q of items.filter(x=>x.role==='driver'&&x.phase==='after'))await apply('driver',{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'sign',strokes});assert.equal(r.completedAt,undefined);await apply('spotter',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);});
+
+test('Arbitrary numeric gates confirm with ordinary PBB credentials',async t=>{const f=await fixture(t);for(const gate of ['0','1','12','128','160','200','226','12345']){await f.request('driver','/gate/clear',{flightNo:'MU583'});assert.equal((await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate})).status,200,gate);}});

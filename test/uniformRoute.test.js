@@ -42,3 +42,11 @@ test('route reassignment sends a fresh notification and revokes the old current 
  const route=routeTools.template(service.store.workflow());route[0].employeeId='e1';const r=service.store.create(f.users[0],{...body(),workflowRevision:1,route});await service.notifyPending(r.id);await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
  const changed=routeTools.nodes(r);changed[0].employeeId='e2';service.store.updateRoute(f.users[0],r.id,{revision:1,route:changed});await service.notifyPending(r.id);assert.deepEqual(sent,['e1','e2']);assert.equal(service.store.canReview(service.store.get(r.id),f.employees.get().employees[1]),false);
 });
+
+test('withdrawal stops approval reminders and resubmission notifies the same approver again',async t=>{
+ const f=fixture(t),sent=[],service=registerUniform(express(),{...f,authenticate:async()=>f.users[0],notify:async(r,e)=>sent.push(e.id),send:async()=>{}});t.after(service.close);
+ const route=routeTools.template(service.store.workflow());route[0].employeeId='e1';const b={...body(),workflowRevision:1,route};let r=service.store.create(f.users[0],b);await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
+ r=service.store.lifecycle(f.users[0],r.id,{revision:r.revision,action:'withdraw'});await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
+ r=service.store.create(f.users[0],{...b,revision:r.revision});await service.notifyPending(r.id);await service.notifyPending(r.id);assert.deepEqual(sent,['e1','e1']);
+ service.store.lifecycle(f.users[0],r.id,{revision:r.revision,action:'delete'});await service.retry();assert.deepEqual(sent,['e1','e1']);
+});
