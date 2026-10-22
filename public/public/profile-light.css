@@ -94,4 +94,16 @@ body.profile-page .flight-password button{color:#fff;background:#087cff;border-c
 /* Fade the artwork itself so its contained left edge cannot create a seam. */
 .profile-hero{background-image:none}
 .profile-hero:after{content:'';display:block;position:absolute;z-index:-2;left:auto;right:0;top:0;height:100%;width:auto;max-width:100%;aspect-ratio:3/1;background:url('/assets/profile-tbit-daylight-v2.webp') right center/contain no-repeat;mask-image:linear-gradient(90deg,transparent 0%,#000 24%);pointer-events:none}
-@media(max-width:760px){.profile-hero:after{background-position:center bottom}}
+@media(max-width:760px){
+ .profile-hero{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:20px 16px;padding:24px 20px;min-height:260px}
+ .profile-hero .profile-avatar-wrap{width:88px;height:88px}
+ .profile-hero .profile-identity{min-width:0;overflow-wrap:anywhere}
+ .profile-hero .profile-edit-link{grid-column:1/-1;justify-self:end;align-self:end;margin:0}
+ .profile-hero:after{inset:auto 0 0;width:100%;height:auto;max-width:none;aspect-ratio:3/1;background-position:center bottom;background-size:contain;mask-image:linear-gradient(180deg,transparent 0%,#000 65%);-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 65%)}
+}
+
+@media(min-width:761px) and (max-width:1100px){
+ .profile-hero{display:grid;grid-template-columns:120px minmax(0,1fr);align-items:center;gap:22px;padding:28px;height:auto;min-height:280px}
+ .profile-hero .profile-avatar-wrap{width:120px;height:120px}
+ .profile-hero .profile-edit-link{grid-column:2;justify-self:end;margin:0}
+}
