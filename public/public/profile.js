@@ -1,5 +1,5 @@
 (() => {
- const auth=window.firebase?.apps?.length&&firebase.auth(),status=document.querySelector('#profile-status'),form=document.querySelector('#profile-form');let data,avatar,dirty=false,saving=false;
+ const auth=window.firebase?.apps?.length&&firebase.auth(),status=document.querySelector('#profile-status'),form=document.querySelector('#profile-form'),adminEmails=new Set(['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com']);let data,avatar,dirty=false,saving=false;
  const field=id=>document.getElementById(id);
  field('phone').addEventListener('blur',()=>{field('phone').value=window.formatEmployeePhone(field('phone').value);});
  const editor=field('profile-edit-dialog');
@@ -12,6 +12,7 @@
  function show(result){
   data=result;avatar=undefined;dirty=false;
   const p=data.profile;p.phone=window.formatEmployeePhone(p.phone);field('profile-content').hidden=false;field('profile-link').hidden=true;
+  field('profile-admin-nav').hidden=!(adminEmails.has((auth.currentUser?.email||'').trim().toLowerCase())||['Business Manager','Manager'].includes(p.position));
   field('full-name').value=p.name;field('employee-id').value=p.eid;field('nickname').value=p.nickname;field('phone').value=p.phone;field('contact-email').value=p.email;
   for(const [id,key] of [['view-full-name','name'],['view-employee-id','eid'],['view-nickname','nickname'],['view-phone','phone'],['view-email','email']])field(id).textContent=p[key]||'—';
   for(const key of ['station','account','pbbId','pbbExpiry','pbbMscId','pbbMscExpiry']){field(key).value=p[key]||'';field('view-'+key).textContent=p[key]||'—';}
@@ -35,5 +36,5 @@
  field('reload-profile').onclick=load;form.oninput=()=>{dirty=true;status.textContent='Unsaved changes';};
  form.onsubmit=async event=>{event.preventDefault();if(saving)return;saving=true;form.querySelectorAll('button,input').forEach(el=>el.disabled=true);field('avatar-file').disabled=true;try{const body={revision:data.revision,nickname:field('nickname').value,phone:window.formatEmployeePhone(field('phone').value),email:field('contact-email').value};if(avatar!==undefined)body.avatar=avatar;show(await employeeProfileApi('',body));status.textContent='Profile saved';editor.close();}catch(error){status.textContent=error.message;}finally{saving=false;form.querySelectorAll('button,input').forEach(el=>el.disabled=false);field('avatar-file').disabled=false;}};
  window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
- if(!auth){status.textContent='Unable to initialize sign-in. Please reload.';return;}auth.onAuthStateChanged(user=>{if(user&&/^[^@\s]+@mu\.com$/i.test(user.email||'')&&(user.email||'').trim().toLowerCase()!=='lake@mu.com'){location.replace('/flights.html');return;}field('profile-admin-nav').hidden=!['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com'].includes(user?.email?.toLowerCase());user?load():location.replace('/login.html');});
+ if(!auth){status.textContent='Unable to initialize sign-in. Please reload.';return;}auth.onAuthStateChanged(user=>{if(user&&/^[^@\s]+@mu\.com$/i.test(user.email||'')&&(user.email||'').trim().toLowerCase()!=='lake@mu.com'){location.replace('/flights.html');return;}field('profile-admin-nav').hidden=!adminEmails.has(user?.email?.toLowerCase());user?load():location.replace('/login.html');});
 })();
