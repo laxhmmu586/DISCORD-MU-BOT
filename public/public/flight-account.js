@@ -35,7 +35,7 @@
   async function logout(){
     window.setMufcFlight?.(null);
     for(const store of [localStorage,sessionStorage]) for(const key of ['mufc_allow_app_entry','mufc_auth_session_started_at','mufc_auth_last_activity_at']) store.removeItem(key);
-    try { if(auth?.currentUser) await auth.signOut(); } finally { location.replace('/login.html'); }
+    try { if(auth?.currentUser) await auth.signOut(); } finally { location.replace(location.pathname.startsWith('/has-pbb')?'/has-login.html':'/login.html'); }
   }
   host.querySelector('#logout').onclick=logout;
   const dialog=document.createElement('dialog');dialog.className='flight-password';
