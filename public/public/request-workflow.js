@@ -6,6 +6,7 @@
  const roles=current=>employeePositions.choices(displayPosition(current)).map(p=>`<option>${esc(p)}</option>`).join('');
  function render({record:r,directory=[],onDraftChange,onSave,onNew,defaultRoute}){
   const draft=r.status==='draft',key=draft?'draft':r.id,state=states.get(key)||{editing:false};states.set(key,state);
+  const host=document.createElement('div');
   const route=(r.approvalRoute||[]).map(node=>({...node,position:displayPosition(node.position)})),canEdit=draft||r.canEditRoute,locked=draft?0:r.step;
   const people=i=>r.approvals?.[i]?.name||(route[i]?.reviewers||[]).map(e=>e.name).join(' / ')||'No eligible approver configured';
   const status=i=>r.approvals[i]?r.approvals[i].action==='approve'?'Approved':'Rejected':!draft&&r.status==='pending'&&i===r.step?'Pending approval':'';
