@@ -74,7 +74,7 @@ const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.a
         return String(value || "MUFC").trim().replace(/@.*$/, "") || "MUFC";
       }
 function requireServiceLogin(onReady) {
-  const login = () => location.replace("/login.html?next=" + encodeURIComponent(location.pathname + location.search));
+  const login = () => location.replace(location.pathname.startsWith("/has-pbb")?"/has-login.html":"/login.html?next=" + encodeURIComponent(location.pathname + location.search));
   if (!auth) return login();
   auth.onAuthStateChanged(user => { if (!user) login(); else onReady?.(user); });
 }
