@@ -31,6 +31,8 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    const pbbId=String(row.pbbId??old?.pbbId??'').trim(),pbbExpiry=String(row.pbbExpiry??old?.pbbExpiry??'');
    if(!/^[A-Z0-9-]{2,20}$/.test(station)||! /^[A-Z0-9-]{1,20}$/.test(account))throw new Error('Valid station and account are required');
    if(pbbId.length>80||/[^\x20-\x7e]/.test(pbbId)||Boolean(pbbId)!==Boolean(pbbExpiry)||pbbExpiry&&(!/^\d{4}-\d{2}-\d{2}$/.test(pbbExpiry)||Number.isNaN(Date.parse(pbbExpiry))||new Date(pbbExpiry).toISOString().slice(0,10)!==pbbExpiry))throw new Error('Enter a PBB ID and valid expiry date together');
+   const pbbMscId=String(row.pbbMscId??old?.pbbMscId??'').trim(),pbbMscExpiry=String(row.pbbMscExpiry??old?.pbbMscExpiry??'');
+   if(pbbMscId.length>80||/[^\x20-\x7e]/.test(pbbMscId)||Boolean(pbbMscId)!==Boolean(pbbMscExpiry)||pbbMscExpiry&&(!/^\d{4}-\d{2}-\d{2}$/.test(pbbMscExpiry)||Number.isNaN(Date.parse(pbbMscExpiry))||new Date(pbbMscExpiry).toISOString().slice(0,10)!==pbbMscExpiry))throw new Error('Enter an MSC PBB ID and valid expiry date together');
    const position=row.position??current.employees.find(old=>old.id===row.id)?.position??'Agent';
    if(!['Manager','Supervisor','Lead','Agent'].includes(position))throw new Error('Select a valid employee position');
    const nickname=String(row.nickname??'').trim();
@@ -46,7 +48,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    const id=String(row.id||''),name=String(row.name||'').trim(),eid=String(row.eid||'').trim(),discordId=String(row.discordId||'').trim();
    if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||name.length>100||(eid&&!/^\d{1,12}$/.test(eid))||(discordId&&!/^\d{17,20}$/.test(discordId))||(discordId&&discordIds.has(discordId))||(typeof row.attach!=='boolean'||typeof row.detach!=='boolean')||typeof row.spotter!=='boolean'||((row.attach||row.detach||row.spotter)&&!name))throw new Error('Check employee names, EIDs and unique Discord IDs');
    try{employeeFont.encodeText(name);}catch{throw new Error('Use employee names in English spelling for the original PDF');}
-   ids.add(id);if(discordId)discordIds.add(discordId);if(loginId)loginIds.add(loginId);return {id,code,position,name,nickname,eid,phone,email,companyEmail,discordId,loginId,station,account,pbbId,pbbExpiry,attach:row.attach,detach:row.detach,spotter:row.spotter};
+   ids.add(id);if(discordId)discordIds.add(discordId);if(loginId)loginIds.add(loginId);return {id,code,position,name,nickname,eid,phone,email,companyEmail,discordId,loginId,station,account,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,attach:row.attach,detach:row.detach,spotter:row.spotter};
   });
   const next={revision:current.revision+1,employees,updatedAt:new Date().toISOString(),updatedBy:user.email};db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });return {get,save,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&e.name&&e[permission]);},options(){return get().employees.filter(e=>e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,eid,attach,detach,spotter})=>({id,name,eid,attach,detach,spotter}));}};

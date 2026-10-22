@@ -1017,6 +1017,7 @@ app.use((req, res, next) => {
 });
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
+app.use('/has-pbb-api', express.json({limit:'2mb'}));
 app.use('/profile-api', express.json({limit:'3mb'}));
 app.use('/read-sign-api', express.json({limit:'15mb'}));
 app.use('/feedback-api', express.json({limit:'24kb'}));
