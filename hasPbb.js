@@ -13,6 +13,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  const schedule=()=>JSON.parse(db.prepare('SELECT data FROM has_pbb_schedule WHERE singleton=1').get().data);
  const gateLocks=e=>{db.prepare('DELETE FROM has_pbb_gates WHERE expires<=?').run(store.now().toISOString());return db.prepare('SELECT data FROM has_pbb_gates WHERE station=? AND account=?').all(e.station,e.account).map(row=>JSON.parse(row.data));};
  const defaultFlights=e=>db.prepare('SELECT flight FROM has_pbb_flights WHERE station=? AND account=? ORDER BY flight').all(e.station,e.account).map(r=>r.flight);
+ const scopedSchedule=e=>schedule().pairs.filter(pair=>pair.station===e.station&&pair.account===e.account);
  const requireManager=e=>{if(e.position!=='Manager')fail('Only a Manager can add or delete default flights.',403);};
  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());
  const get=id=>{const row=db.prepare('SELECT data FROM has_pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);return JSON.parse(row.data);};
@@ -60,7 +61,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   });const next={revision:current.revision+1,pairs,updatedAt:stamp(),updatedBy:user.email};db.prepare('UPDATE has_pbb_schedule SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });
  app.post('/has-pbb-api/dashboard/config',route((req,res)=>res.json(saveSchedule(req.body,req.hasUser))));
- app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:!!e.attach&&terminalLicense.any(e,today()),spotter:e.spotter},date:today(),dashboard:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),gateLocks:gateLocks(e),serverTime:stamp()});}));
+ app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:!!e.attach&&terminalLicense.any(e,today()),spotter:e.spotter},date:today(),dashboard:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),gateLocks:gateLocks(e),serverTime:stamp()});}));
  app.post('/has-pbb-api/gate',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate))fail('Confirm flight and gate number.');
@@ -160,7 +161,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   const counts=all=>{const done=all.filter(r=>r.completedAt);return {submittedFlights:new Set(done.map(r=>[r.station,r.account,r.date,r.flightNo].join('/'))).size,submittedChecklists:done.length,driveSaved:done.filter(r=>r.delivery.status==='sent').length,pending:all.filter(r=>!r.completedAt).length};};
   const expected=(date,scope)=>{const weekday=new Date(date+'T12:00:00Z').getUTCDay()||7;return configured.filter(pair=>same(pair,scope)&&pair.inbound.days.includes(weekday)).length;};
   const daily=[];for(let d=Date.parse(start);d<=Date.parse(end);d+=86400000){const date=new Date(d).toISOString().slice(0,10);daily.push({date,expectedFlights:selectedScopes.reduce((n,s)=>n+expected(date,s),0),...counts(rows.filter(r=>r.date===date))});}
-  const byScope=selectedScopes.map(s=>({...s,expectedFlights:daily.reduce((n,d)=>n+expected(d.date,s),0),...counts(rows.filter(r=>same(r,s)))}));
+  const byScope=selectedScopes.map(s=>({...s,weeklyArrivals:configured.filter(pair=>same(pair,s)).reduce((n,pair)=>n+pair.inbound.days.length,0),weeklyDepartures:configured.filter(pair=>same(pair,s)).reduce((n,pair)=>n+pair.outbound.days.length,0),expectedFlights:daily.reduce((n,d)=>n+expected(d.date,s),0),...counts(rows.filter(r=>same(r,s)))}));
   res.json({station,account,start,end,daily,scopes,byScope,records:rows.map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
  }));
  for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&r.delivery.status!=='sent')void deliver(row.id);}

@@ -6,9 +6,13 @@ test('Dashboard Config counts paired flights once using Inbound weekdays and enf
  assert.deepEqual(config.pairs,[]);assert.equal((await f.request('driver','/dashboard/config')).status,403);assert.equal((await f.request('driver','/dashboard/config',{revision:config.revision,pairs:[]})).status,403);
  const pairs=[{id:'mu',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1,3,5]},outbound:{flightNo:'MU586',days:[2,4,6]}},{id:'xx',station:'SFO',account:'XX',inbound:{flightNo:'XX101',days:[7]},outbound:{flightNo:'XX102',days:[7]}}];
  const saved=await f.request('lake','/dashboard/config',{revision:config.revision,pairs});assert.equal(saved.status,200);assert.deepEqual((await f.request('lake','/dashboard/config')).data.pairs,pairs);
+ const context=(await f.request('driver','/context')).data;
+ assert.deepEqual(context.flightSchedule,[pairs[0]]);
+ assert.deepEqual((await f.request('other','/context')).data.flightSchedule,[]);
  assert.equal((await f.request('lake','/dashboard/config',{revision:config.revision,pairs:[]})).status,409);
  const stats=(await f.request('lake','/dashboard?start=2026-10-19&end=2026-10-25')).data;assert.deepEqual(stats.daily.map(d=>d.expectedFlights),[1,0,1,0,1,0,1]);assert.equal(stats.byScope.find(s=>s.station==='LAX'&&s.account==='MU').expectedFlights,3);assert.equal(stats.byScope.find(s=>s.station==='SFO'&&s.account==='XX').expectedFlights,1);
  const filtered=(await f.request('lake','/dashboard?station=LAX&account=MU&start=2026-10-19&end=2026-10-25')).data;assert.equal(filtered.daily.reduce((n,d)=>n+d.expectedFlights,0),3);
+ assert.equal(filtered.byScope[0].weeklyArrivals,3);assert.equal(filtered.byScope[0].weeklyDepartures,3);
  for(const bad of [{...pairs[0],inbound:{flightNo:'MU583',days:[]}},{...pairs[0],outbound:{flightNo:'MU586',days:[8]}},{...pairs[0],inbound:{flightNo:'BAD',days:[1]}},{...pairs[0],inbound:{flightNo:'MU583',days:[1,1]}}])assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[bad]})).status,400);
  assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[pairs[0],{...pairs[0],id:'dup'}]})).status,400);
  assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[]})).status,200);assert.equal((await f.request('lake','/dashboard')).data.daily.reduce((n,d)=>n+d.expectedFlights,0),0);

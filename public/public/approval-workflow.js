@@ -1,0 +1,26 @@
+(()=>{
+ const $=id=>document.getElementById(id),esc=escapeHtml;
+ let data,employees=[],stages=[],selected=0,dirty=false,saving=false;
+ const reviewers=position=>employees.filter(e=>e.name&&employeePositions.same(e.position,position));
+ const mark=()=>{dirty=true;$('workflow-status').textContent='Unsaved changes';};
+ const initials=name=>name.split(/[\s,]+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('');
+ function render(){
+  $('workflow-nodes').innerHTML=stages.map((position,i)=>`<li><div class="workflow-connector">${stages.length<5?`<button type="button" data-insert="${i}" aria-label="Add approval stage before stage ${i+1}">+ Add stage</button>`:''}</div><button type="button" class="workflow-node ${selected===i?'is-selected':''}" data-stage="${i}" aria-pressed="${selected===i}"><span class="workflow-node-number">${String(i+1).padStart(2,'0')}</span><span class="workflow-node-copy"><small>${i===stages.length-1?'FINAL APPROVAL':'APPROVAL STAGE'}</small><strong>${esc(employeePositions.normalize(position))}</strong><span>${reviewers(position).length} eligible approver${reviewers(position).length===1?'':'s'}</span><span class="workflow-node-people">${esc(reviewers(position).slice(0,3).map(e=>e.name).join(' · '))}${reviewers(position).length>3?' +'+(reviewers(position).length-3):''}</span></span><span class="workflow-node-edit" aria-hidden="true">✎</span></button></li>`).join('');
+  document.querySelectorAll('[data-stage]').forEach(button=>button.onclick=()=>{selected=Number(button.dataset.stage);render();if(innerWidth<=850)$('workflow-inspector').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});
+  document.querySelectorAll('[data-insert]').forEach(button=>button.onclick=()=>{const index=Number(button.dataset.insert);const position=['Supervisor','Lead','Senior Supervisor','Agent'].find(p=>!employeePositions.same(p,stages[index])&&!employeePositions.same(p,stages[index-1]));stages.splice(index,0,position);selected=index;mark();render();});
+  const final=selected===stages.length-1,position=stages[selected],people=reviewers(position);
+  $('stage-title').textContent=final?'Final approval':'Approval stage '+(selected+1);
+  $('stage-position').innerHTML=employeePositions.groups.map(group=>`<optgroup label="${esc(group.label)}">${group.positions.filter(p=>!final||employeePositions.finalApprover(p)).map(p=>`<option ${p===employeePositions.normalize(position)?'selected':''}>${esc(p)}</option>`).join('')}</optgroup>`).join('');
+  $('stage-help').textContent=final?'Final approval completes the request and sends the PDF to the approving Manager.':'Choose the employee position responsible for this approval stage.';
+  $('reviewer-count').textContent=people.length;
+  $('stage-reviewers').innerHTML=people.length?people.map(e=>`<div class="workflow-reviewer"><span class="workflow-avatar">${esc(initials(e.name))}</span><div><strong>${esc(e.name)}</strong><small>${esc(employeePositions.normalize(e.position))}</small></div></div>`).join(''):'<p class="workflow-empty">No employees hold this position. Assign the position in Employee administration before using this stage.</p>';
+  $('stage-up').disabled=selected===0||final;$('stage-down').disabled=selected>=stages.length-2;$('stage-remove').disabled=final;
+  $('workflow-revision').textContent='Version '+data.revision;
+ }
+ $('stage-position').onchange=event=>{stages[selected]=event.target.value;mark();render();};
+ for(const [id,delta] of [['stage-up',-1],['stage-down',1]])$(id).onclick=()=>{const next=selected+delta;[stages[selected],stages[next]]=[stages[next],stages[selected]];selected=next;mark();render();};
+ $('stage-remove').onclick=()=>{stages.splice(selected,1);selected=Math.min(selected,stages.length-1);mark();render();};
+ $('save-workflow').onclick=async()=>{if(saving||!data)return;saving=true;document.querySelectorAll('#workflow-content button,#workflow-content select,#save-workflow').forEach(el=>el.disabled=true);try{data=await uniformApi('/workflow',{revision:data.revision,stages});stages=[...data.stages];dirty=false;$('workflow-status').textContent='Workflow saved. New requests will use this route.';}catch(e){$('workflow-status').textContent=e.message;}finally{saving=false;$('save-workflow').disabled=false;render();}};
+ window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+ requireServiceLogin(async user=>{try{if(!['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com'].includes(user.email?.toLowerCase()))throw Error('Employee administrator access required.');const results=await Promise.all([uniformApi('/workflow'),apiJson('/employee-admin-api')]);data=results[0];employees=results[1].employees;stages=[...data.stages];render();$('workflow-content').hidden=false;$('workflow-status').textContent='';}catch(e){$('workflow-status').textContent=e.message;$('save-workflow').disabled=true;}});
+})();
