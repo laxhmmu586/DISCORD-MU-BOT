@@ -12,7 +12,7 @@
   q('floor','driver','movement','The jet bridge floor is positioned appropriately below the aircraft door sill.','floor-level-lax-v2.webp'),
   q('leveler','driver','after','I activated the auto-leveler.','auto-key-lax-v2.webp'),
   q('canopy','driver','after','I deployed and adjusted the canopy.','canopy-deployed-lax-v2.webp'),
-  q('crew','driver','after','I received crew acknowledgment prior to opening the aircraft door.','has-crew.svg'),
+  q('crew','driver','after','I received crew acknowledgment prior to opening the aircraft door.','has-crew-acknowledgment-v1.webp'),
   q('shoe','driver','after','I placed the safety shoe beneath the aircraft door.','safety-shoe.jpg')
  ];
  if(typeof module==='object')module.exports=data;else root.HAS_PBB_ITEMS=data;
