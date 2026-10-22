@@ -1,0 +1,21 @@
+# HAS Arrival movement and bridge controls
+
+The Arrival movement stage now uses a blue night-airport scene, live flight/role information, left-to-right sequential approach-light arrows, and a Thinking-style light sweep through the Moving heading. The supplied operational photo is the geometry reference for the final background; earlier generated versions with incorrect aircraft height or doorway alignment were discarded. The final asset is a raster WebP, not SVG.
+
+Floor-height and fuselage-clearance photos remain complete and automatically rotate. They are reference material without YES/NO, question navigation, headings, or playback buttons. Manual next/dot controls remain available. Reduced-motion preferences stop automatic rotation and decorative animations. Docking complete explicitly acknowledges the floor position and then requests docking; failed acknowledgement prevents the docking request. Existing server qualification, phase, readiness, signing and PDF checks remain enforced.
+
+Spotter completion uses a green thumb confirmation card followed by the existing signature. The duplicate flight/status card is hidden at that step. Confirmed readiness can still be withdrawn before movement. My role now sits beneath Flight number in the left column and precedes Current account on mobile.
+
+Bridge selection has Arrival and Departure tabs. Only Arrival has a configured checklist; Departure displays a placeholder and cannot create Arrival records. When both roles have completed and signed, the corresponding bridge becomes a dark green gradient button with a translucent check; completion and reset state synchronize to open selection screens. Each Arrival bridge retains a separate reset button. A confirmation identifies the flight, gate and bridge. Reset requires current qualification, today's record and its exact revision. It clears that record's answers, readiness, owners, signatures, movement/docking/completion and embedded PDF, records the resetting employee, and publishes a fresh generation to connected participants. Other flights/bridges/stations/accounts and the gate lock are retained. Older PDF jobs cannot restore a reset generation. Existing remote Drive files are retained.
+
+Validation: 66 focused backend/employee/legacy PBB tests pass. Local Edge verification at 320, 390 and 1440 pixels covers role placement, tabs, reset cancellation/confirmation and SSE, complete reference images, automatic/manual rotation, no movement question buttons, docking-save failure/retry, independent signing and simulated Drive submission. Existing PBB files were not changed. Production deployment and real Drive delivery were not performed.
+
+## Artwork provenance
+
+Tool: built-in image_gen, followed by WebP encoding. Final file: `public/public/assets/pbb/has-movement-night-v1.webp`.
+
+Final prompt:
+
+> Image 1 is the EXACT physical geometry reference and primary edit target. Image 2 is ONLY lighting and color style reference. Transform image 1 into a cinematic blue/cyan NIGHT airport scene on wet reflective apron, using image 2's lighting mood. LOCK ALL PHYSICAL GEOMETRY FROM IMAGE 1: preserve the exact aircraft front three-quarter camera perspective, cockpit location, forward passenger door location, bridge connection point, rubber canopy shape wrapped around that passenger door behind cockpit, height of aircraft, gear and bridge supports. Do not use image 2's aircraft/bridge geometry because its connection is wrong. Keep the bridge on the RIGHT and aircraft nose toward center-left as in image 1. Large realistically scaled airplane with at least adult height beneath belly, long nose gear, unobstructed apron visible. Photorealistic glass bridge with cyan light strips and amber beacons, deep blue twilight sky. Remove foreground tractor at bottom left to simplify scene, keep aircraft and bridge complete with landing gear visible. Expand composition into landscape 3:2 with extra clear navy sky above for heading overlay. No text, logos, arrows or UI. Most important: directly copy the real doorway/canopy alignment in image 1; do not invent or shift door or bridge.
+
+Image 1: `public/public/assets/pbb/has-serviceable-user-v1.webp`. Image 2: the discarded blue night concept used for lighting reference only.

@@ -85,6 +85,14 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   });const r=create();publish(r);res.status(201).json(r);
  }));
  app.get('/has-pbb-api/records/:id',route((req,res)=>res.json(authorized(req,req.params.id))));
+ const resetRecord=db.transaction(req=>{
+  const previous=authorized(req,req.params.id),e=req.hasEmployee;roleCheck(e,req.body.role);
+  if(previous.date!==today())fail('This checklist is from a previous day.',409);
+  if(req.body.revision!==previous.revision)fail('Checklist changed. Review the latest shared state before resetting.',409);
+  const r={id:previous.id,station:previous.station,account:previous.account,date:previous.date,flightNo:previous.flightNo,gate:previous.gate,bridge:previous.bridge,type:previous.type,revision:previous.revision+1,createdAt:previous.createdAt,createdBy:previous.createdBy,updatedAt:stamp(),resetAt:stamp(),resetBy:e.id,resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
+  db.prepare('UPDATE has_pbb_records SET data=?,pdf=NULL WHERE id=?').run(JSON.stringify(r),r.id);return r;
+ });
+ app.post('/has-pbb-api/records/:id/reset',route((req,res)=>{const r=resetRecord(req);publish(r);res.json(r);}));
  const mutate=db.transaction((req)=>{
   const r=authorized(req,req.params.id),b=req.body,e=req.hasEmployee,role=b.role;roleCheck(e,role);
   if(r.completedAt)fail('Submitted checklist is locked.',409);
