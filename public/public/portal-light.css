@@ -1,0 +1,49 @@
+/* Light surfaces for the employee workspace's forms, tables and dialogs. */
+body.profile-page{--profile-border:#dfe9f5;--profile-muted:#7186a3}
+.profile-page :is(.pbb-panel,.rs-stat,.rs-list button,.rs-sign-box,.rs-dialog,.uniform-progress-panel,.oa-current-card,.attendance-calendar){background:#fff;color:#203b60;border-color:#dce7f4;box-shadow:0 5px 22px #24466708}
+.profile-page :is(h1,h2,h3,.rs-stat strong,.rs-body,.uniform-employee dd,.attendance-row-type,.attendance-row-reason,.attendance-month-count){color:#203b60}
+.profile-page :is(.pbb-intro,.pbb-intro .eyebrow,.employee-stats,.info-note,.info-scope,.info-resource p,.rs-muted,.rs-subtitle,.rs-meta,.rs-list p,.rs-stat span,.rs-empty,.rs-attendance-summary,.rs-table small,.uniform-shell label,.uniform-shell .info-note,.uniform-employee dt,.workflow-summary,.oa-subtitle,.oa-current-label,.oa-current-copy p,.oa-track small,.oa-reason,.attendance-row-date,.attendance-row-arrival,.attendance-calendar-weekdays,.attendance-calendar-totals){color:#6d83a0}
+.profile-page :is(input:not([type=checkbox]):not([type=radio]),select,textarea){background:#fff;color:#223f61;border-color:#ccdced;color-scheme:light}
+.profile-page input[readonly]{background:#f3f7fb;color:#6f85a0}
+.profile-page :is(.employee-table th,.rs-table th,.cto-table thead th,.uniform-table th){color:#607b9b;background:#f5f9fe}
+.profile-page :is(.employee-table td,.employee-table th,.rs-table td,.rs-table th,.cto-table td,.cto-table th,.uniform-table td,.uniform-table th){border-color:#e3ebf5}
+.profile-page :is(.employee-table,.cto-table,.rs-table,.uniform-table){color:#244369}
+.profile-page :is(.employee-table select,.employee-table input){border-color:#d1dfef;background:#fff;color:#254260}
+.profile-page :is(.secondary,.employee-move,.employee-pbb-settings,.rs-shell button,.rs-dialog button,.uniform-shell button,#workflow-dialog button,.info-open){background:#f5f9ff;border-color:#ccdff2;color:#2b5a85;box-shadow:none}
+.profile-page :is(.primary,.rs-shell .rs-primary,.rs-dialog .rs-primary,.info-open,.uniform-shell button[type=submit],#workflow-form button[type=submit]){background:#087cff;border-color:#087cff;color:#fff}
+.profile-page :is(.text-button,.back-home,.uniform-request summary,.uniform-state,.uniform-progress-state,#workflow-status,#attendance-status,#rs-status,#compose-status,#info-status,#uniform-status,#pbb-status){color:#3474ab}
+.profile-page :is(.rs-toolbar button[aria-pressed=true],.rs-list button.is-selected){background:#edf5ff;border-color:#8cbeff;color:#1265b7}
+.profile-page :is(.rs-dialog label,.rs-sign-box label,.workflow-stage label){color:#5f7897}
+.profile-page :is(.rs-dialog,.profile-edit-dialog)::backdrop{background:#253e5a55}
+.profile-page :is(.rs-badge,.oa-badge){background:#fff5d6;color:#8a6006}
+.profile-page :is(.rs-badge.signed,.oa-complete .oa-badge){background:#e5f6ed;color:#23734c}
+.profile-page :is(.rs-badge.overdue,.oa-rejected .oa-badge){background:#fff0f1;color:#ab3547}
+.profile-page .cto-table .cto-highlight{background:#fff9e8}.profile-page .cto-table .cto-highlight th{color:#8b6c20}
+.profile-page .cto-table small{color:#7189a5}
+.profile-page .workflow-chart span{background:#edf5ff;color:#316694;border-color:#d3e4f6}
+.profile-page :is(.uniform-request,.uniform-progress-panel,.oa-reason,.uniform-progress-panel .profile-panel-title){border-color:#e0eaf5}
+.profile-page .uniform-progress-panel .profile-panel-title h2{color:#254566}
+.profile-page .oa-track li{background:#f6f9fd;border-color:#dce7f3;color:#315475}
+.profile-page .oa-track .oa-current{background:#edf5ff;border-color:#93c6ff;box-shadow:inset 0 2px #388fff}
+.profile-page .oa-track .oa-complete{background:#f0faf5;border-color:#c5e7d6}
+.profile-page .oa-track .oa-rejected{background:#fff4f5;border-color:#f2cbd2}
+.profile-page .oa-next{background:#edf5ff;border-color:#d6e7fa;color:#3b6a98}
+.profile-page .oa-dot{background:#e8f0f8;color:#6984a2;border-color:#ccddeb}
+.profile-page .oa-complete .oa-dot{background:#27845c;color:#fff}.profile-page .oa-current .oa-dot{background:#087cff;color:#fff}
+.profile-page .oa-current-icon{background:#e6f2ff;color:#087cff;box-shadow:none}
+.profile-page :is(.attendance-request-button,.attendance-calendar-header button,.attendance-clear-day){background:#edf5ff;color:#24669d;border-color:#cbdff4;box-shadow:none}
+.profile-page :is(.attendance-record-summary,.attendance-history-record,.attendance-history-record details>dl){background:transparent;border-color:#e1eaf5;color:#335777}
+.profile-page .attendance-calendar-day{background:#f7faff;color:#4d7095;border-color:#e0eaf6}
+.profile-page .attendance-calendar-day.is-today{background:#e9f3ff;border-color:#64a7fa;color:#0867d7}
+.profile-page .calendar-day-number{color:#30577e}
+.profile-page .rs-attendance-summary strong{color:#305578}
+.profile-page .attendance-filters label{color:#637f9d}
+.profile-page .attendance-request-button svg{stroke:#2582dc}
+.profile-page .rs-meta{border-bottom-color:#e0eaf5}
+.employee-pbb-dialog{width:min(530px,calc(100vw - 28px))}
+.employee-pbb-options{display:grid;gap:12px;margin:22px 0}
+.employee-pbb-options label{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid #e0eaf5;border-radius:9px;color:#315578;background:#f8fbff}
+.employee-pbb-options input{width:19px;height:19px;accent-color:#087cff}
+.employee-pbb-dialog #employee-pbb-person{font-size:13px;color:#748aa4}
+.profile-page .employee-pbb-settings{white-space:nowrap;padding:10px 14px;cursor:pointer}
+.profile-page .employee-table [hidden]{display:none!important}

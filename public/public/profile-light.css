@@ -1,4 +1,4 @@
-/* Profile-only light theme; shared administrative and operational pages retain their themes. */
+/* Shared light theme for the employee workspace. */
 :root{color-scheme:light}
 body.profile-page{background:#f6f9fd;color:#12284b;--profile-border:#e1eaf5;--profile-muted:#7186a3}
 .profile-topbar{background:#fff;border-bottom-color:#e3ebf5;box-shadow:none}

@@ -135,3 +135,17 @@ test('a PDF job started before a gate reset cannot restore obsolete answers or d
  assert.deepEqual(f.service.get(r.id),fresh);assert.equal(f.uploads(),0);assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);
  fresh.completedAt='new';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(fresh),fresh.id);await f.service.deliver(fresh.id);assert.equal(f.uploads(),1);assert.equal(f.service.get(fresh.id).gate,'136');assert.equal(f.service.get(fresh.id).delivery.status,'sent');
 });
+
+test('gate locks persist for exactly two hours from first confirmation, isolate scopes and support manual clear',async t=>{
+ const f=await fixture(t),body={role:'driver',flightNo:'MU583',gate:'132'};
+ const first=await f.request('driver','/gate',body);assert.equal(first.status,200);const lock=first.data.gateLocks[0];assert.equal(lock.expiresAt,'2026-10-21T19:00:00.000Z');
+ assert.equal((await f.request('spotter','/context')).data.gateLocks[0].gate,'132');assert.equal((await f.request('account','/context')).data.gateLocks.length,0);assert.equal((await f.request('other','/context')).data.gateLocks.length,0);
+ f.setTime('2026-10-21T18:00:00Z');assert.deepEqual((await f.request('driver','/gate',body)).data.gateLocks[0],lock);
+ assert.equal((await f.request('driver','/gate',{...body,gate:'134'})).status,409);
+ assert.equal((await f.request('driver','/records',{...body,gate:'134',bridge:'L1'})).status,409);
+ await f.request('account','/gate/clear',{flightNo:'MU583'});assert.equal((await f.request('driver','/context')).data.gateLocks.length,1);
+ f.setTime('2026-10-21T18:59:59Z');assert.equal((await f.request('driver','/context')).data.gateLocks.length,1);
+ f.setTime('2026-10-21T19:00:00Z');assert.equal((await f.request('driver','/context')).data.gateLocks.length,0);
+ await f.request('driver','/gate',{...body,gate:'134'});assert.equal((await f.request('driver','/context')).data.gateLocks[0].gate,'134');await f.request('spotter','/gate/clear',{flightNo:'MU583'});assert.equal((await f.request('driver','/context')).data.gateLocks.length,0);
+ assert.equal((await f.request('expired','/gate',body)).status,403);assert.equal((await f.request('driver','/gate',{...body,gate:'bad gate'})).status,400);
+});

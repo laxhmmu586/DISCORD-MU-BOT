@@ -63,3 +63,5 @@ html.has-theme{background:#fff;color-scheme:light}
 .has-warning{color:#8a5a00!important;background:#fff7d6!important;border-left:4px solid #e5b600;border-radius:8px;padding:10px 12px}
 
 .has-page .has-question{grid-template-columns:minmax(0,1fr);align-items:start}.has-page .has-question img{display:block;max-width:850px;max-height:560px;margin:0 auto;object-fit:contain}.has-page .has-question>div{width:100%;max-width:850px;margin:0 auto}.has-page .has-shell .has-answer.yes{background:#09a66b;border-color:#09a66b;color:#fff}.has-page .has-shell .has-answer.yes:hover{background:#078c59;border-color:#078c59}.has-page .has-shell .has-answer.yes.selected{background:#067347;border-color:#045c39;box-shadow:0 0 0 3px #09a66b2b}
+
+.has-page .has-shell .has-clear-gate{width:100%;background:#ed860f;border-color:#d77508;color:#fff;box-shadow:0 5px 16px #ed860f25}.has-page .has-shell .has-clear-gate:hover{background:#d77508}.has-page .has-gate-entry input[readonly]{cursor:default}
