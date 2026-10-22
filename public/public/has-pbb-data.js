@@ -1,7 +1,7 @@
 (function(root){
  const q=(id,role,phase,text,photo)=>({id,role,phase,text,photo});
  const data=[
-  q('serviceable','driver','pre','The jet bridge is operational and serviceable.','cab-docking-lax-v2.webp'),
+  q('serviceable','driver','pre','The jet bridge is operational and serviceable.','has-serviceable-user-v1.webp'),
   q('controls','driver','pre','The control panel is functioning properly.','control-console.jpg'),
   q('equipment','driver','pre','The canopy, bumpers, roller door, safety shoe, and safety chain are serviceable.','has-equipment-yellow-bumper-v4.webp'),
   q('cables','spotter','pre','Power cables are properly stowed and secured.','has-cables-stowed-v1.webp'),

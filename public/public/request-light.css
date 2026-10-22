@@ -1,0 +1,15 @@
+:root{color-scheme:light;--bg:#f6f9fd;--surface:#fff;--muted:#7185a0;--line:#dce7f4;color:#203b60;background:#f6f9fd}
+body{background:#f6f9fd;color:#203b60}
+.brand,.brand small,.location,.back,label,.notice strong,.time-slider strong,dd{color:#365775}
+.panel{background:#fff;border-color:#dce7f4;box-shadow:0 8px 32px #24476912}
+input,select,textarea{background:#fff;color:#274668;border-color:#cbdcec;color-scheme:light}
+.notice,.time-slider,.summary,.delay{background:#f4f8fe;color:#5f7898;border-color:#dfE9f5}
+.notice p,.summary dt,.range-labels,.step-header>span,.notification-status{color:#7185a0}
+.summary dl>div,.summary h3,.note-label{border-color:#dfe8f3}
+.secondary{background:#f4f8ff;color:#31597f;border-color:#d3e2f2}
+.type-card.sick{background:#fff0f4;border-color:#e899aa;color:#8c324b;box-shadow:none}
+.type-card.late{background:#fff8dd;border-color:#e9ca71;color:#816018;box-shadow:none}
+.type-card>span:last-child{color:#687e98}.type-card strong{color:inherit}
+.card-arrow{background:#ffffffaa}.progress i{background:#e0e9f4}
+.sending{background:#ffffffef}.sending p{color:#637c9a}
+.error{color:#b62c48}.text-button{color:#0875d0}

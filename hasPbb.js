@@ -7,6 +7,8 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  const db=store.db,streams=new Set(),jobs=new Map();
  db.exec('CREATE TABLE IF NOT EXISTS has_pbb_records(id TEXT PRIMARY KEY, station TEXT NOT NULL, account TEXT NOT NULL, date TEXT NOT NULL, flight TEXT NOT NULL, bridge TEXT NOT NULL, data TEXT NOT NULL, pdf BLOB, UNIQUE(station,account,date,flight,bridge))');
  db.exec('CREATE TABLE IF NOT EXISTS has_pbb_flights(station TEXT NOT NULL, account TEXT NOT NULL, flight TEXT NOT NULL, created_by TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(station,account,flight))');
+ db.exec('CREATE TABLE IF NOT EXISTS has_pbb_gates(station TEXT NOT NULL,account TEXT NOT NULL,flight TEXT NOT NULL,data TEXT NOT NULL,expires TEXT NOT NULL,PRIMARY KEY(station,account,flight))');
+ const gateLocks=e=>{db.prepare('DELETE FROM has_pbb_gates WHERE expires<=?').run(store.now().toISOString());return db.prepare('SELECT data FROM has_pbb_gates WHERE station=? AND account=?').all(e.station,e.account).map(row=>JSON.parse(row.data));};
  const defaultFlights=e=>db.prepare('SELECT flight FROM has_pbb_flights WHERE station=? AND account=? ORDER BY flight').all(e.station,e.account).map(r=>r.flight);
  const requireManager=e=>{if(e.position!=='Manager')fail('Only a Manager can add or delete default flights.',403);};
  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());
@@ -48,7 +50,18 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  }
  app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!dashboard(req.hasUser))fail('Dashboard access is restricted to lake@mu.com.',403);}else req.hasEmployee=employee(req.hasUser);next();}catch(e){res.status(e.status||401).json({error:e.message});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
- app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',driver:!!e.attach&&hasPbbLicense(e,today()),spotter:e.spotter},date:today(),dashboard:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e)});}));
+ app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',driver:!!e.attach&&hasPbbLicense(e,today()),spotter:e.spotter},date:today(),dashboard:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),gateLocks:gateLocks(e),serverTime:stamp()});}));
+ app.post('/has-pbb-api/gate',route((req,res)=>{
+  const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
+  if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate))fail('Confirm flight and gate number.');
+  const existing=gateLocks(e).find(g=>g.flightNo===flightNo);if(existing&&existing.gate!==gate)fail('Gate number is locked. Clear gate number before changing it.',409);
+  const lock=existing||{flightNo,gate,confirmedAt:stamp(),expiresAt:new Date(store.now().getTime()+2*60*60*1000).toISOString()};
+  if(!existing)db.prepare('INSERT INTO has_pbb_gates(station,account,flight,data,expires) VALUES(?,?,?,?,?)').run(e.station,e.account,flightNo,JSON.stringify(lock),lock.expiresAt);
+  res.json({gateLocks:gateLocks(e),serverTime:stamp()});
+ }));
+ app.post('/has-pbb-api/gate/clear',route((req,res)=>{
+  const e=req.hasEmployee;db.prepare('DELETE FROM has_pbb_gates WHERE station=? AND account=? AND flight=?').run(e.station,e.account,String(req.body.flightNo||'').trim().toUpperCase());res.json({gateLocks:gateLocks(e),serverTime:stamp()});
+ }));
  app.get('/has-pbb-api/flights',route((req,res)=>res.json(defaultFlights(req.hasEmployee))));
  app.post('/has-pbb-api/flights',route((req,res)=>{
   const e=req.hasEmployee;requireManager(e);const flight=String(req.body.flightNo||'').trim().toUpperCase();
@@ -63,6 +76,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   const e=req.hasEmployee;roleCheck(e,req.body.role);
   const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase(),bridge=req.body.bridge,date=today();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate)||!['L1','L2','L3'].includes(bridge))fail('Confirm flight, gate number and L1/L2/L3.');
+  const heldGate=gateLocks(e).find(g=>g.flightNo===flightNo);if(heldGate&&heldGate.gate!==gate)fail('Gate number is locked. Clear gate number before changing it.',409);
   const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightNo,bridge);if(old){const previous=get(old.id);if(previous.gate===gate)return previous;
     const r={id:previous.id,station:e.station,account:e.account,date,flightNo,gate,bridge,type:'arrival',revision:previous.revision+1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,resetAt:stamp(),resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
     db.prepare('UPDATE has_pbb_records SET data=?,pdf=NULL WHERE id=?').run(JSON.stringify(r),r.id);return r;}
