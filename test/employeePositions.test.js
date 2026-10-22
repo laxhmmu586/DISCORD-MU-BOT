@@ -47,3 +47,8 @@ test('new station and HQ workflow stages resolve exactly and retain old request 
  assert.equal(r.status,'approved');assert.equal(r.manager.name,'EXISTING NAME 2');
  assert.throws(()=>store.saveWorkflow(admin,{revision:2,stages:['Agent','CSA','Manager']}),/duplicate/);
 });
+
+test('legacy Manager is absent from new choices while existing employee and workflow values remain valid',()=>{
+ assert(!positions.groups.some(g=>g.label==='Existing positions'));assert(!positions.selectablePositions.includes('Manager'));assert(!positions.choices('Agent').includes('Manager'));assert(positions.choices('Manager').includes('Manager'));assert(positions.valid('Manager'));
+ assert.equal(positions.readSignPublishers.length,23);assert(positions.canPublishReadSign('Business Manager'));assert(positions.canPublishReadSign('HR Manager'));assert(!positions.canPublishReadSign('Agent'));assert(!positions.canPublishReadSign('Lead'));
+});

@@ -1,7 +1,7 @@
 const crypto = require('node:crypto');
 const emailOK = v => typeof v === 'string' && v.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(v);
 const fail = (message, status = 400) => { throw Object.assign(Error(message), { status }); };
-const publishRole = e => ['Supervisor', 'Manager'].includes(e.position);
+const publishRole = e => require('./public/public/employee-positions').canPublishReadSign(e.position);
 function signatureSVG(strokes) {
   if (!Array.isArray(strokes) || !strokes.length || strokes.length > 60) fail('Draw your handwritten signature.');
   let points = 0, length = 0;
@@ -42,7 +42,7 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
     })}:{})};
   };
   const publish = db.transaction((user,body) => {
-    const e=employee(user);if(!publishRole(e))fail('Only Supervisors and Managers can publish Read & Sign.',403);
+    const e=employee(user);if(!publishRole(e))fail('Your position is not authorized to publish Read & Sign.',403);
     if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(body.requestId||''))fail('Invalid publish reference.');
     const publishHash=crypto.createHash('sha256').update(JSON.stringify([body.subject,body.memoNumber,body.body,body.deadline,body.attachments])).digest('hex');
     const previous=db.prepare('SELECT id,publisher_id FROM read_sign_memos WHERE request_id=?').get(body.requestId);
@@ -67,7 +67,7 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
     return read(user,r.id);
   });
   const addRecipients=db.transaction((user,id,body)=>{
-    const actor=employee(user);if(!publishRole(actor))fail('Only Supervisors and Managers can add recipients.',403);
+    const actor=employee(user);if(!publishRole(actor))fail('Your position is not authorized to add recipients.',403);
     get(id);const ids=body.employeeIds;if(!Array.isArray(ids)||!ids.length||ids.length>500||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)fail('Select 1–500 different employees.');
     const people=ids.map(id=>employees.get().employees.find(p=>p.id===id));if(people.some(p=>!p?.name||!hasEmail(p)))fail('Each selected employee must have a valid Email or Company Email.');
     const r=JSON.parse(db.prepare('SELECT data FROM read_sign_memos WHERE id=?').get(id).data),added=[];
@@ -77,7 +77,7 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
   });
   return {db,employee,get,read,publish,addRecipients,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position||'Agent'},canPublish:publishRole(e),memos:db.prepare('SELECT data FROM read_sign_memos ORDER BY rowid DESC').all().map(row=>summary(visibleRoster(JSON.parse(row.data)),e))};},
     sign:db.transaction((user,id,body)=>{const e=employee(user),r=get(id);if(!r.roster.some(p=>p.id===e.id))fail('You were not assigned to this memo.',403);if(body.acknowledged!==true)fail('Confirm that you have read and understood this memo.');if(db.prepare('SELECT 1 FROM read_sign_signatures WHERE memo_id=? AND employee_id=?').get(id,e.id))return read(user,id);const svg=signatureSVG(body.strokes);db.prepare('INSERT INTO read_sign_signatures VALUES(?,?,?,?,?)').run(id,e.id,r.roster.find(p=>p.id===e.id).name,now().toISOString(),svg);return read(user,id);}),
-    attachment(user,id,fileId){if(!publishRole(employee(user)))fail('Only Supervisors and Managers can download attachments.',403);get(id);const f=db.prepare('SELECT * FROM read_sign_attachments WHERE memo_id=? AND id=?').get(id,fileId);if(!f)fail('Attachment not found.',404);return f;}
+    attachment(user,id,fileId){if(!publishRole(employee(user)))fail('Your position is not authorized to download attachments.',403);get(id);const f=db.prepare('SELECT * FROM read_sign_attachments WHERE memo_id=? AND id=?').get(id,fileId);if(!f)fail('Attachment not found.',404);return f;}
   };
 }
 function emailHTML(memo){
