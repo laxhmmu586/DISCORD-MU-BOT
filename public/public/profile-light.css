@@ -17,7 +17,7 @@ body.profile-page{background:#f6f9fd;color:#12284b;--profile-border:#e1eaf5;--pr
 .sidebar-airport{background:none;color:#7187a2;min-height:100px;padding:25px 24px;border-top:1px solid #e5edf7;margin: auto 0 0}
 .sidebar-airport:before{display:none}
 .sidebar-airport p{color:#315273}
-.profile-hero{background:#eff7ff url('/assets/profile-tbit-daylight-v2.webp') center/cover no-repeat;border-color:#fff;box-shadow:0 6px 24px #3155800a}
+.profile-hero{background:#eff7ff url('/assets/profile-tbit-daylight-v2.webp') right center/contain no-repeat;border-color:#fff;box-shadow:0 6px 24px #3155800a}
 .profile-hero:before{background:linear-gradient(90deg,#ffffffb5 0%,#ffffff75 37%,transparent 75%);opacity:1;box-shadow:none}
 .profile-hero:after{display:none}
 .profile-avatar-wrap{border-color:#fff;background:#e8f3ff;box-shadow:0 4px 20px #2d5b8c12}
@@ -85,7 +85,7 @@ body.profile-page .flight-password button{color:#fff;background:#087cff;border-c
  .profile-brand small{font-size:7px;letter-spacing:.4px}
  .profile-topbar{padding-left:12px;padding-right:12px;gap:8px}
  .profile-sidebar{background:#fff}
- .profile-hero{background-position:65% center}
+ .profile-hero{background-position:center bottom}
  .profile-hero:before{background:#ffffffb8}
 }
 

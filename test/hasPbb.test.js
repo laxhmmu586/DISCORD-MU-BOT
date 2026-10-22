@@ -1,11 +1,11 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
 const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
 const items=require('../public/public/has-pbb-data'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
-async function fixture(t,{failUpload=false}={}){
+async function fixture(t,{failUpload=false,buildPdf}={}){
  const db=new Database(':memory:');let now=new Date('2026-10-21T17:00:00Z'),uploads=0;
  const seed=[['driver','LAX','MU'],['spotter','LAX','MU'],['other','SFO','MU'],['account','LAX','XX'],['expired','LAX','MU'],['missing','LAX','MU']].map(([id,station,account])=>({id,position:['driver','other','account'].includes(id)?'Manager':'Agent',name:'TEST '+id.toUpperCase(),eid:'123',station,account,attach:true,detach:true,spotter:true,pbbId:id==='missing'?'':'PBB-'+id,pbbExpiry:id==='missing'?'':id==='expired'?'2026-10-20':'2026-10-21'}));
  const employees=createEmployeeStore(db,{seed});const profiles={status:()=>{},linked:u=>employees.get().employees.find(e=>e.id===u.uid)};
- const app=express();app.use(express.json());const service=registerHasPbb(app,{store:{db,now:()=>now},employees,profiles,authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!uid)throw Error('Sign in required');return {uid,email:uid==='lake'?'lake@mu.com':uid+'@test.invalid'};},drive:{files:{generateIds:async()=>({data:{ids:['fake-id']}}),get:async()=>{throw {code:404};},create:async()=>{uploads++;if(failUpload)throw Error('fixture upload failure');return {data:{id:'fake-id'}};}}}});
+ const app=express();app.use(express.json());const service=registerHasPbb(app,{store:{db,now:()=>now},employees,profiles,authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!uid)throw Error('Sign in required');return {uid,email:uid==='lake'?'lake@mu.com':uid+'@test.invalid'};},...(buildPdf?{buildPdf}:{}),drive:{files:{generateIds:async()=>({data:{ids:['fake-id']}}),get:async()=>{throw {code:404};},create:async()=>{uploads++;if(failUpload)throw Error('fixture upload failure');return {data:{id:'fake-id'}};}}}});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
  const request=async(user,path='',body,method)=>{const res=await fetch(base+'/has-pbb-api'+path,{method:method||(body?'POST':'GET'),headers:{Authorization:'Bearer '+user,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:res.headers.get('content-type')?.includes('json')?await res.json():Buffer.from(await res.arrayBuffer())};};
@@ -109,4 +109,29 @@ test('combined stopped/chocks question atomically saves both checks and NO block
  assert.equal((await f.change('spotter',r,{action:'ready',value:true})).status,400);
  await change({action:'answer',itemId:'stopped',value:true});await change({action:'ready',value:true});
  assert.equal(r.ready.spotter,true);
+});
+
+test('changing gate resets only the scoped bridge, clears PDF/signatures and publishes the fresh revision',async t=>{
+ const f=await fixture(t);let r=(await f.create()).data;
+ const other=(await f.create('driver','L2')).data,foreign=(await f.create('account')).data;
+ r.answers.driver.serviceable=true;r.ready.driver=true;r.owners.driver='driver';r.signatures.driver={name:'TEST'};r.movingAt=r.dockedAt=r.completedAt='fixture';r.driverQualification={id:'OLD'};r.delivery={status:'sent',fileId:'old-pdf'};
+ f.db.prepare('UPDATE has_pbb_records SET data=?,pdf=? WHERE id=?').run(JSON.stringify(r),Buffer.from('old PDF'),r.id);
+ const abort=new AbortController();t.after(()=>abort.abort());const stream=await fetch(f.base+'/has-pbb-api/stream?id='+r.id,{headers:{Authorization:'Bearer spotter'},signal:abort.signal});const reader=stream.body.getReader();await reader.read();
+ const reset=await f.request('spotter','/records',{role:'spotter',flightNo:'MU583',gate:'134',bridge:'L1'});assert.equal(reset.status,201);const fresh=reset.data;
+ assert.equal(fresh.id,r.id);assert.equal(fresh.gate,'134');assert.equal(fresh.revision,r.revision+1);assert.ok(fresh.resetToken);
+ for(const key of ['movingAt','dockedAt','completedAt','driverQualification'])assert.equal(fresh[key],undefined);
+ assert.deepEqual(fresh.answers,{driver:{},spotter:{}});assert.deepEqual(fresh.ready,{driver:null,spotter:null});assert.deepEqual(fresh.signatures,{});assert.deepEqual(fresh.owners,{});assert.deepEqual(fresh.delivery,{status:'pending'});assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);
+ assert.equal((await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).status,409);
+ assert.equal(f.service.get(other.id).gate,'132');assert.equal(f.service.get(foreign.id).gate,'132');
+ const event=new TextDecoder().decode((await reader.read()).value);assert.match(event,/"gate":"134"/);assert.match(event,/"answers":\{"driver":\{\},"spotter":\{\}\}/);
+ const same=(await f.request('driver','/records',{role:'driver',flightNo:'MU583',gate:'134',bridge:'L1'})).data;assert.equal(same.revision,fresh.revision);assert.equal(same.resetToken,fresh.resetToken);abort.abort();
+});
+test('a PDF job started before a gate reset cannot restore obsolete answers or delivery',async t=>{
+ let release,started;const ready=new Promise(resolve=>started=resolve);let builds=0;
+ const f=await fixture(t,{buildPdf:()=>++builds===1?new Promise(resolve=>{release=resolve;started();}):Promise.resolve(Buffer.from('new PDF'))});
+ const r=(await f.create()).data;r.completedAt='fixture';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
+ const job=f.service.deliver(r.id);await ready;
+ const fresh=(await f.request('driver','/records',{role:'driver',flightNo:'MU583',gate:'136',bridge:'L1'})).data;release(Buffer.from('old PDF'));await job;
+ assert.deepEqual(f.service.get(r.id),fresh);assert.equal(f.uploads(),0);assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);
+ fresh.completedAt='new';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(fresh),fresh.id);await f.service.deliver(fresh.id);assert.equal(f.uploads(),1);assert.equal(f.service.get(fresh.id).gate,'136');assert.equal(f.service.get(fresh.id).delivery.status,'sent');
 });
