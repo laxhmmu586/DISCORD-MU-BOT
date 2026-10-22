@@ -1,0 +1,28 @@
+.employee-account-groups{display:grid;gap:22px;margin-top:24px;min-width:0}
+.employee-account-card{min-width:0;border:1px solid #dbe7f4;border-radius:14px;padding:20px;background:#fff;box-shadow:0 4px 18px #24466706}
+.employee-account-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+.employee-account-heading h3{margin:0 0 7px;font-size:19px;color:#173b61}
+.employee-account-count,.employee-account-empty{font-size:12px;color:#7186a3}
+.employee-account-actions{display:flex;gap:8px;flex-wrap:wrap}
+.employee-account-actions button{font-size:12px;padding:9px 13px;min-height:44px}
+.employee-account-actions button:disabled{opacity:.45;cursor:not-allowed}
+.employee-account-card .employee-table-wrap{max-width:100%;overflow-x:auto}
+.employee-account-empty{padding:12px 0;margin:0}
+.employee-account-card [hidden]{display:none!important}
+@media(max-width:760px){.employee-account-card{padding:15px}.employee-account-heading{align-items:flex-start}.employee-account-heading h3{font-size:17px}.employee-account-actions{width:100%}.employee-account-actions button{flex:1}}
+
+.employee-account-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.employee-account-tile{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:14px;min-height:210px;padding:26px;border:1px solid #dbe7f4;border-radius:16px;background:#fff;color:#173b61;box-shadow:0 4px 18px #24466706;cursor:pointer}
+.employee-account-tile:hover{border-color:#258aff;background:#f8fbff;box-shadow:0 8px 24px #24466712}
+.employee-account-tile:focus-visible{outline:3px solid #258aff;outline-offset:3px}
+.employee-account-tile strong{font-size:23px;overflow-wrap:anywhere}
+.employee-account-type{font-size:10px;letter-spacing:1.5px;color:#7186a3}
+.employee-account-open{margin-top:auto;color:#1479db;font-size:12px}
+.employee-account-back{margin-bottom:24px}
+.employee-account-groups [hidden]{display:none!important}
+@media(max-width:1200px){.employee-account-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:950px){.employee-account-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.employee-account-grid{grid-template-columns:1fr}.employee-account-tile{min-height:180px;padding:22px}}
+
+.employee-admin-page .employee-toolbar>div:last-child{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.employee-admin-page .employee-toolbar>div:last-child>*{margin:0}

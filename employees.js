@@ -1,3 +1,4 @@
+const employeeAccounts=require('./public/public/employee-account-groups');
 const employeePositions=require('./public/public/employee-positions');
 const {StandardFontEmbedder,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
@@ -15,8 +16,12 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
   initial.employees=initial.employees.map(row=>({...row,station:row.station??'LAX',account:row.account??'MU'}));initial.revision++;
   db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(initial));
  }
+ db.exec('CREATE TABLE IF NOT EXISTS employee_account_groups(station TEXT NOT NULL,account TEXT NOT NULL,PRIMARY KEY(station,account))');
+ const syncAccounts=rows=>{for(const row of rows)if(!employeeAccounts.isHeadquarter(row)){const scope=employeeAccounts.scope(row);db.prepare('INSERT OR IGNORE INTO employee_account_groups VALUES(?,?)').run(scope.station,scope.account);}};
+ syncAccounts(initial.employees);
+ const accounts=()=>db.prepare('SELECT station,account FROM employee_account_groups ORDER BY station,account').all();
  const permissions=row=>({attach:row.attach===undefined?row.driver:row.attach,detach:row.detach===undefined?row.driver:row.detach});
- const get=()=>{const data=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);data.employees=data.employees.map(({driver,...row})=>({...row,...permissions({...row,driver})}));return data;};
+ const get=()=>{const data=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);data.employees=data.employees.map(({driver,...row})=>({...row,...permissions({...row,driver})}));data.accounts=accounts();return data;};
  const save=db.transaction((body,user)=>{
   const current=get();if(body.revision!==current.revision){const e=new Error('Employee list changed. Reload before saving.');e.status=409;throw e;}
   if(!Array.isArray(body.employees)||body.employees.length>500)throw new Error('Invalid employee list');
@@ -44,9 +49,21 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    ids.add(id);if(discordId)discordIds.add(discordId);if(loginId)loginIds.add(loginId);
    return {id,code,position,name,nickname,eid,phone,email,companyEmail,discordId,loginId,station,account,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,attach:row.attach,detach:row.detach,spotter:row.spotter};
   });
-  const next={revision:current.revision+1,employees,updatedAt:new Date().toISOString(),updatedBy:user.email};db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
+  const next={revision:current.revision+1,employees,updatedAt:new Date().toISOString(),updatedBy:user.email};db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(next));syncAccounts(employees);return {...next,accounts:accounts()};
  });
- return {get,save,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&e.name&&e[permission]);},options(){return get().employees.filter(e=>e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,eid,attach,detach,spotter})=>({id,name,eid,attach,detach,spotter}));}};
+ const changeAccount=db.transaction((body,user,remove=false)=>{
+  const current=get();if(body.revision!==current.revision)throw Object.assign(Error('Employee list changed. Reload before changing accounts.'),{status:409});
+  const {station,account}=employeeAccounts.scope(body);
+  if(!body.station||!body.account||!/^[A-Z0-9-]{2,20}$/.test(station)||!/^[A-Z0-9-]{1,20}$/.test(account)||employeeAccounts.isHeadquarter({station,account}))throw Error('Enter a valid station and account. HeadQuarter is a separate permanent group.');
+  const existing=db.prepare('SELECT station FROM employee_account_groups WHERE station=? AND account=?').get(station,account);
+  if(remove){
+   if(!existing)throw Object.assign(Error('Account not found.'),{status:404});
+   if(current.employees.some(row=>!employeeAccounts.isHeadquarter(row)&&employeeAccounts.same(row,{station,account})))throw Object.assign(Error('Remove all employees from this account and save before deleting it.'),{status:409});
+   db.prepare('DELETE FROM employee_account_groups WHERE station=? AND account=?').run(station,account);
+  }else{if(existing)throw Object.assign(Error('This station/account already exists.'),{status:409});db.prepare('INSERT INTO employee_account_groups VALUES(?,?)').run(station,account);}
+  const {accounts:ignored,...data}=current;data.revision++;data.updatedAt=new Date().toISOString();data.updatedBy=user.email;db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(data));return get();
+ });
+ return {get,save,changeAccount,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&e.name&&e[permission]);},options(){return get().employees.filter(e=>e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,eid,attach,detach,spotter})=>({id,name,eid,attach,detach,spotter}));}};
 }
 function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
  const accessFor=user=>{
@@ -54,15 +71,16 @@ function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
   const me=store.get().employees.find(row=>normalizeLoginId(row.loginId)===email&&employeePositions.normalize(row.position)==='Business Manager');
   return me?{mode:'business-manager',station:String(me.station||'').toUpperCase(),account:String(me.account||'').toUpperCase()}:null;
  };
- const scopedView=(data,access)=>access.mode==='admin'?{...data,access}:{...data,access,employees:data.employees.filter(row=>employeePositions.normalize(row.position)==='Agent'&&String(row.station||'').toUpperCase()===access.station&&String(row.account||'').toUpperCase()===access.account)};
+ const scopedView=(data,access)=>access.mode==='admin'?{...data,access}:{...data,access,accounts:(data.accounts||[]).filter(row=>employeeAccounts.same(row,access)),employees:data.employees.filter(row=>!employeeAccounts.isHeadquarter(row)&&employeeAccounts.same(row,access))};
  app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);req.employeeAccess=accessFor(req.employeeAdmin);if(!req.employeeAccess)return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
  app.get('/employee-admin-api',(req,res)=>res.json(scopedView(store.get(),req.employeeAccess)));
+ for(const [path,remove] of [['/accounts',false],['/accounts/delete',true]])app.post('/employee-admin-api'+path,(req,res)=>{try{if(req.employeeAccess.mode!=='admin')return res.status(403).json({error:'Only an employee administrator can add or delete accounts.'});const saved=store.changeAccount(req.body,req.employeeAdmin,remove);res.json({...saved,access:req.employeeAccess});onChange();}catch(e){res.status(e.status||400).json({error:e.message});}});
  app.post('/employee-admin-api',(req,res)=>{try{
   if(req.employeeAccess.mode==='admin'){const saved=store.save(req.body,req.employeeAdmin);res.json({...saved,access:req.employeeAccess});onChange();return;}
   const current=store.get();if(req.body.revision!==current.revision){const e=new Error('Employee list changed. Reload before saving.');e.status=409;throw e;}
   if(!Array.isArray(req.body.employees))throw new Error('Invalid employee list');
   const updates=new Map(req.body.employees.map(row=>[String(row.id||''),row]));
-  for(const [id] of updates){const target=current.employees.find(row=>row.id===id);if(!target||employeePositions.normalize(target.position)!=='Agent'||String(target.station||'').toUpperCase()!==req.employeeAccess.station||String(target.account||'').toUpperCase()!==req.employeeAccess.account){const e=new Error('You can only edit PBB information for Agents in your own station and account.');e.status=403;throw e;}}
+  for(const [id] of updates){const target=current.employees.find(row=>row.id===id);if(!target||employeeAccounts.isHeadquarter(target)||employeePositions.normalize(target.position)!=='Agent'||String(target.station||'').toUpperCase()!==req.employeeAccess.station||String(target.account||'').toUpperCase()!==req.employeeAccess.account){const e=new Error('You can only edit PBB information for Agents in your own station and account.');e.status=403;throw e;}}
   const employees=current.employees.map(row=>{const update=updates.get(row.id);return update?{...row,pbbId:update.pbbId,pbbExpiry:update.pbbExpiry,pbbMscId:update.pbbMscId,pbbMscExpiry:update.pbbMscExpiry}:row;});
   const saved=store.save({revision:current.revision,employees},req.employeeAdmin);res.json(scopedView(saved,req.employeeAccess));onChange();
  }catch(e){res.status(e.status||400).json({error:e.message});}});
