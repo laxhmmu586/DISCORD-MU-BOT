@@ -1973,10 +1973,10 @@ function openBagAuthorizationPvgEmail(record) {
 
 function baggagePickupAtLaxEmail(record = {}) {
   const chinese = cbsEmailIsChinese(record);
-  const subject = chinese ? '您的行李已可在洛杉矶机场领取 - 中国东方航空公司' : 'Your Baggage Available for Pick-Up at LAX - China Eastern Airlines';
+  const subject = chinese ? '您的行李已可领取' : 'Your Baggage Is Ready for Pick-Up';
   const text = chinese
-    ? '尊敬的旅客：\n\n您好！\n\n我们通知您，您此前遗留在洛杉矶国际机场（LAX）的行李目前已由我们保管，并存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 7:00 – 下午 3:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司'
-    : 'Dear Passenger,\n\nWe would like to inform you that the baggage you left behind at LAX is currently being held at our office at the Tom Bradley International Terminal (TBIT), Counter A68.\n\nPlease come to collect your baggage during the following office hours:\n\nPick-up Location: LAX TBIT, Counter A68 Office\nPick-up Hours: 7:00 AM – 3:00 PM\n\nPlease bring a valid photo ID for verification when collecting your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines';
+    ? '尊敬的旅客：\n\n您好！\n\n我们通知您，您此前的延误行李目前已由我们保管，并存放于洛杉矶国际机场（LAX）Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 7:00 – 下午 3:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司'
+    : 'Dear Passenger,\n\nWe would like to inform you that your delayed baggage is now in our care and is being held at the Counter A68 office in the Tom Bradley International Terminal (TBIT) at Los Angeles International Airport (LAX).\n\nPlease come to collect your baggage during the following office hours:\n\nPick-up Location: LAX TBIT, Counter A68 Office\nPick-up Hours: 7:00 AM – 3:00 PM\n\nPlease bring a valid photo ID for verification when collecting your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines';
   return { emailContext:{...record,template:'baggagePickupAtLaxEmail'}, subject, text, html: cbsPlainTextEmailHtml(text) };
 }
 
