@@ -21,6 +21,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  const same=(a,b)=>a.station===b.station&&a.account===b.account;
  function employee(user){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);return row;}
  const dashboard=user=>String(user.email||'').trim().toLowerCase()==='lake@mu.com';
+ const dashboardViewer=user=>['lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
  function roleCheck(e,role,date=today(),gate){
   if(!['driver','spotter'].includes(role))fail('Select Driver or Spotter');
   if(role==='driver'&&!(gate===undefined?terminalLicense.any(e,date):terminalLicense.valid(terminalLicense.forGate(e,gate),date)))fail('A valid '+(gate!==undefined&&e.station==='LAX'?(terminalLicense.terminal(e.station,gate)||'recognized LAX gate')+' ':'')+'PBB ID and unexpired qualification are required. Cannot drive PBB.',403);
@@ -54,7 +55,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
    r.revision++;put(r);publish(r);
   })().finally(()=>jobs.delete(jobKey));jobs.set(jobKey,job);return job;
  }
- app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!dashboard(req.hasUser))fail('Dashboard access is restricted to lake@mu.com.',403);}else req.hasEmployee=employee(req.hasUser);next();}catch(e){res.status(e.status||401).json({error:e.message});}});
+ app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser);next();}catch(e){res.status(e.status||401).json({error:e.message});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
  app.get('/has-pbb-api/dashboard/config',route((_req,res)=>res.json(schedule())));
  const saveSchedule=db.transaction((body,user)=>{const current=schedule();if(body.revision!==current.revision)fail('Schedule changed. Reload Config before saving.',409);if(!Array.isArray(body.pairs)||body.pairs.length>200)fail('Enter up to 200 flight pairs.');const inbound=new Set(),outbound=new Set(),ids=new Set();
@@ -63,7 +64,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   });const next={revision:current.revision+1,pairs,updatedAt:stamp(),updatedBy:user.email};db.prepare('UPDATE has_pbb_schedule SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });
  app.post('/has-pbb-api/dashboard/config',route((req,res)=>res.json(saveSchedule(req.body,req.hasUser))));
- app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
+ app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
  app.post('/has-pbb-api/gate',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate))fail('Confirm flight and gate number.');
@@ -129,7 +130,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
    if(b.value&&items.some(x=>(x.type||'arrival')===r.type&&x.role===role&&x.phase==='pre'&&!r.answers[role][x.id]))fail('Complete pre-movement checks first.');
    r.ready[role]=b.value;delete r.signatures[role];
   }else if(b.action==='move'){
-   if(role!=='driver'||r.movingAt||r.ready.driver!==true||r.ready.spotter!==true||!r.signatures.spotter)fail('Wait for both Ready confirmations and the Spotter signature.',409);
+   if(role!=='driver'||r.movingAt||r.ready.driver!==true||r.ready.spotter!==true)fail('Wait for both Ready confirmations.',409);
    r.movingAt=stamp();r.driverQualification=terminalLicense.forGate(e,r.gate);
   }else if(b.action==='dock'){
    if(role!=='driver'||!r.movingAt||r.dockedAt)fail('Start movement first.',409);

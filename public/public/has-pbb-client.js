@@ -89,8 +89,8 @@
   $('clear-signature').onclick=()=>{strokes=[];draw();};$('sign').onclick=()=>update({action:'sign',strokes});
  }
  function driverMovementCard(){
-  const ready=record.ready.spotter===true&&!!record.signatures.spotter,icon=ready?'<path d="m7 16 6 6L26 9"/>':'<path d="M10 15V7a2 2 0 0 1 4 0v8-10a2 2 0 0 1 4 0v10-8a2 2 0 0 1 4 0v11l2-4a2 2 0 0 1 4 2l-3 10a10 10 0 0 1-19-1L4 18a2 2 0 0 1 4-2l2 3Z"/>';
-  const copy=ready?'Your spotter has verified that all safety conditions have been met. You can now start moving the jet bridge.':record.ready.spotter===true?'Please wait until the spotter completes their signature.':'Please wait until the spotter confirms ready to move.';
+  const ready=record.ready.spotter===true,icon=ready?'<path d="m7 16 6 6L26 9"/>':'<path d="M10 15V7a2 2 0 0 1 4 0v8-10a2 2 0 0 1 4 0v10-8a2 2 0 0 1 4 0v11l2-4a2 2 0 0 1 4 2l-3 10a10 10 0 0 1-19-1L4 18a2 2 0 0 1 4-2l2 3Z"/>';
+  const copy=ready?'Your spotter has verified that all safety conditions have been met. You can now start moving the jet bridge.':'Please wait until the spotter confirms ready to move.';
   return `<section class="has-panel has-driver-movement ${ready?'is-ready':'is-waiting'}"><div class="has-movement-status-icon" aria-hidden="true"><svg viewBox="0 0 32 32">${icon}</svg></div><h2>${ready?'Ready to Go':'Waiting for spotter'}</h2><p class="has-movement-copy">${copy}</p><button id="move" ${!ready||busy?'disabled':''}><span aria-hidden="true">${ready?'':'▷ '}</span>Start Jet Bridge Movement <span aria-hidden="true">${ready?' →':''}</span></button><p id="has-question-status" class="has-save-feedback ${saveError?'has-save-error':''}" role="status" aria-live="polite" ${!saveFeedback?'hidden':''}>${esc(saveFeedback)}</p><div class="has-movement-footer"><span aria-hidden="true">${ready?'✓':'ⓘ'}</span>${ready?'Starting confirms Driver readiness.':'The spotter will confirm when all safety conditions have been met.'}</div></section>`;
  }
  function render(){
@@ -103,8 +103,9 @@
 
   }else{
    html=`<button id="back">← Today's bridges</button>`;if(role!=='driver'&&!(atEnd('pre')&&complete('pre')))html+=`<section class="has-panel"><h2>${esc(record.flightNo)} · Gate ${esc(record.gate)} · ${record.bridge}</h2><p>${esc(record.date)} · ${esc(record.station)} / ${esc(record.account)} · ${role==='driver'?'Driver':'Spotter'}</p>${licenseMarkup()}</section>`;
-   if(role==='spotter'&&record.signatures.spotter){html=spotterComplete();}
-   else if(record.completedAt){html+=`<section class="has-panel"><h2>Checklist submitted ✓</h2><p>Both sections are signed and saved.</p><p>Google Drive: ${esc(record.delivery.status)}</p>${record.delivery.status==='sent'?`<a class="has-button" href="${esc(record.delivery.url)}" target="_blank" rel="noopener">Open saved PDF</a>`:record.delivery.status==='failed'?`<p class="has-expired">${esc(record.delivery.error)}</p><button id="retry">Retry Google Drive save</button>`:'<p>Saving PDF to Google Drive…</p>'}</section>`;}
+   if(record.completedAt){html=hasChecklistComplete(record);}
+   else if(role==='spotter'&&record.signatures.spotter){html=spotterComplete();}
+
    else if(!e[role])html+='<p class="has-expired">You are not qualified for this role. Cannot drive PBB without a valid qualification.</p>';
    else if(record.owners[role]&&record.owners[role]!==e.id)html+='<p class="has-wait">This role belongs to another employee. You can view shared progress.</p>';
 
@@ -114,7 +115,8 @@
 
     if(atEnd('pre')&&role==='spotter'&&record.ready.spotter===true){if(record.type==='departure')html+=spotterPosition();html+=signature();}
     if(atEnd('pre')&&role==='driver')html+=driverMovementCard();
-   }else if(role==='driver'){
+   }else if(role==='spotter'&&record.ready.spotter===true){if(record.type==='departure')html+=spotterPosition();html+=signature();}
+   else if(role==='driver'){
     if(!record.dockedAt)html+=movementExperience();
     else{if(!atEnd('after')||!complete('after'))html+=`<section class="has-panel"><h2>${record.type==='departure'?'After retraction':'After docking'}</h2>${questions('after')}</section>`;if(atEnd('after')&&complete('after'))html+=signature();}
    }
@@ -143,6 +145,7 @@
    view.querySelectorAll('[data-ready]').forEach(el=>el.onclick=()=>update({action:'ready',value:el.dataset.ready==='true'}));
    if($('revoke-ready'))$('revoke-ready').onclick=()=>{strokes=[];update({action:'ready',value:false});};
    if($('move'))$('move').onclick=async()=>{if(busy)return;if(record.ready.driver!==true&&!await update({action:'ready',value:true}))return;await update({action:'move'});};if($('dock'))$('dock').onclick=async()=>{if(busy)return;if(record.type!=='departure'&&record.answers.driver.floor!==true&&!await update({action:'answer',itemId:'floor',value:true}))return;await update({action:'dock'});};
+   if($('download-pdf'))$('download-pdf').onclick=async()=>{const button=$('download-pdf');button.disabled=true;try{const response=await fetch(resolveApiBase()+'/has-pbb-api/records/'+record.id+'/pdf',{headers:await authHeaders(),cache:'no-store'});if(!response.ok){const error=await response.json();throw Error(error.error||'PDF is not ready. Try again shortly.');}const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download='HAS-PBB-'+record.type+'-'+record.date+'-'+record.flightNo+'-'+record.bridge+'.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){$('has-download-status').textContent=e.message;}finally{button.disabled=false;}};
    if($('retry'))$('retry').onclick=async()=>{try{apply(await api('/records/'+record.id+'/retry',{}));}catch(e){status.textContent=e.message;}};
    const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
    if($('movement-track')&&!reducedMotion)slidesTimer=setInterval(advanceSlide,4500);
@@ -160,7 +163,7 @@
    throw Error('Live connection interrupted');
   }catch(e){if(signal.aborted)return;status.textContent='Reconnecting shared state…';reconnectTimer=setTimeout(()=>{if(streamKey===id)connect(id);},3000);}
  }
- function showContext(){$('has-dashboard-link').hidden=!context.dashboard;$('has-config-button').hidden=!context.dashboard;}
+ function showContext(){$('has-dashboard-link').hidden=!context.dashboard;$('has-config-button').hidden=!context.canConfigure;}
  window.addEventListener('has-pbb-schedule-updated',()=>refreshContext());
  async function refreshContext(){try{const latest=await api('/context');if(latest.employee.station!==context.employee.station||latest.employee.account!==context.employee.account||latest.date!==context.date){location.reload();return;}const prior={...context,serverTime:''},next={...latest,serverTime:''};if(!acceptGateState(latest))return;if(JSON.stringify(next)!==JSON.stringify(prior)){context=latest;if(!record&&draft.flightNo&&!flightChoices().includes(draft.flightNo)&&!heldGate())draft.flightNo='';if(!heldGate()){setGate('');stage='gate';}showContext();render();}}catch(e){controller?.abort();view.replaceChildren();status.textContent=e.message;}}
  requireServiceLogin(async()=>{try{context=await api('/context');contextRecords=await api('/records');acceptGateState(context);try{draft.flightNo=localStorage.getItem(savedFlightKey())||'';}catch{}if(!draft.flightNo&&context.gateLocks.length===1)draft.flightNo=context.gateLocks[0].flightNo;if(draft.flightNo&&!flightChoices().includes(draft.flightNo)&&!heldGate())draft.flightNo='';role=context.employee.driver?'driver':'spotter';showContext();render();connect();contextTimer=setInterval(refreshContext,30000);}catch(e){status.textContent=e.message;}});

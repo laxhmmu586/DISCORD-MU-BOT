@@ -26,7 +26,7 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
-        "source": "/{has-login.html,has-login.css,has-login.js,pbb-qualification.js,has-pbb.html,has-pbb.css,has-pbb-client.js,has-pbb-data.js,has-pbb-dashboard.html,has-pbb-dashboard.js,has-pbb-nav.js}",
+        "source": "/{has-completion.js,has-login.html,has-login.css,has-login.js,pbb-qualification.js,has-pbb.html,has-pbb.css,has-pbb-client.js,has-pbb-data.js,has-pbb-dashboard.html,has-pbb-dashboard.js,has-pbb-nav.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {

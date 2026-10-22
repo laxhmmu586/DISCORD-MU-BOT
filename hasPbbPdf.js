@@ -26,7 +26,7 @@ async function buildHasPbbPdf(r){
  if(r.type==='departure'){
  section('PRE-MOVEMENT - DRIVER');for(const id of ['d1','d2','d3','d4'])question(id);
  section('SPOTTER SAFETY');question('d6');
- row('Spotter confirmed Ready to go and signed.',r.ready.spotter===true&&!!r.signatures.spotter);
+ row('Spotter confirmed Ready to go.',r.ready.spotter===true);
  row('Driver received authorization and started retraction.',!!r.movingAt);
  row('Bridge returned to box; wheels inside designated stow box.',!!r.dockedAt);
  section('AFTER RETRACTION');for(const id of ['d10','d11'])question(id);
@@ -35,8 +35,8 @@ async function buildHasPbbPdf(r){
  row(`Gate number confirmed: ${r.gate}. Driver and Spotter reported for the operation.`,!!r.signatures.driver&&!!r.signatures.spotter);
  for(const id of ['serviceable','controls','equipment','cables','stand'])question(id);
  section('READY');row('Communication established and confirmed between Driver and Spotter.',r.ready.driver===true&&r.ready.spotter===true);
- section('SAFE');for(const id of ['stopped','chocks','path'])question(id);row('Spotter verified all safety conditions and confirmed Ready to move.',r.ready.spotter===true&&!!r.signatures.spotter);
- section('GO');row('Authorization received from Spotter to begin movement.',!!r.movingAt&&!!r.signatures.spotter);row('Driver acknowledged the authorization.',!!r.movingAt&&r.ready.driver===true);
+ section('SAFE');for(const id of ['stopped','chocks','path'])question(id);row('Spotter verified all safety conditions and confirmed Ready to move.',r.ready.spotter===true);
+ section('GO');row('Authorization received from Spotter to begin movement.',!!r.movingAt&&r.ready.spotter===true);row('Driver acknowledged the authorization.',!!r.movingAt&&r.ready.driver===true);
  section('JET BRIDGE MOVEMENT');question('floor');
  section('POST-DOCKING');for(const id of ['leveler','canopy','crew','shoe'])question(id);
  }
