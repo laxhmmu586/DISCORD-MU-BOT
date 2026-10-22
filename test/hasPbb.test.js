@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
 const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
 const items=require('../public/public/has-pbb-data').filter(q=>q.type==='arrival'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
-test('Dashboard Config counts paired flights once using Inbound weekdays and enforces access/revisions',async t=>{
+test('Dashboard Config counts Arrival and Departure independently using their operating weekdays and enforces access/revisions',async t=>{
  const f=await fixture(t),config=(await f.request('lake','/dashboard/config')).data;
  assert.deepEqual(config.pairs,[]);assert.equal((await f.request('driver','/dashboard/config')).status,403);assert.equal((await f.request('driver','/dashboard/config',{revision:config.revision,pairs:[]})).status,403);
  const pairs=[{id:'mu',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1,3,5]},outbound:{flightNo:'MU586',days:[2,4,6]}},{id:'xx',station:'SFO',account:'XX',inbound:{flightNo:'XX101',days:[7]},outbound:{flightNo:'XX102',days:[7]}}];
@@ -10,8 +10,8 @@ test('Dashboard Config counts paired flights once using Inbound weekdays and enf
  assert.deepEqual(context.flightSchedule,[pairs[0]]);
  assert.deepEqual((await f.request('other','/context')).data.flightSchedule,[]);
  assert.equal((await f.request('lake','/dashboard/config',{revision:config.revision,pairs:[]})).status,409);
- const stats=(await f.request('lake','/dashboard?start=2026-10-19&end=2026-10-25')).data;assert.deepEqual(stats.daily.map(d=>d.expectedFlights),[1,0,1,0,1,0,1]);assert.equal(stats.byScope.find(s=>s.station==='LAX'&&s.account==='MU').expectedFlights,3);assert.equal(stats.byScope.find(s=>s.station==='SFO'&&s.account==='XX').expectedFlights,1);
- const filtered=(await f.request('lake','/dashboard?station=LAX&account=MU&start=2026-10-19&end=2026-10-25')).data;assert.equal(filtered.daily.reduce((n,d)=>n+d.expectedFlights,0),3);
+ const stats=(await f.request('lake','/dashboard?start=2026-10-19&end=2026-10-25')).data;assert.deepEqual(stats.daily.map(d=>d.expectedFlights),[1,1,1,1,1,1,2]);assert.equal(stats.byScope.find(s=>s.station==='LAX'&&s.account==='MU').expectedFlights,6);assert.equal(stats.byScope.find(s=>s.station==='SFO'&&s.account==='XX').expectedFlights,2);
+ const filtered=(await f.request('lake','/dashboard?station=LAX&account=MU&start=2026-10-19&end=2026-10-25')).data;assert.equal(filtered.daily.reduce((n,d)=>n+d.expectedFlights,0),6);
  assert.equal(filtered.byScope[0].weeklyArrivals,3);assert.equal(filtered.byScope[0].weeklyDepartures,3);
  for(const bad of [{...pairs[0],inbound:{flightNo:'MU583',days:[]}},{...pairs[0],outbound:{flightNo:'MU586',days:[8]}},{...pairs[0],inbound:{flightNo:'BAD',days:[1]}},{...pairs[0],inbound:{flightNo:'MU583',days:[1,1]}}])assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[bad]})).status,400);
  assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[pairs[0],{...pairs[0],id:'dup'}]})).status,400);
@@ -277,4 +277,33 @@ test('expiry notifies an open checklist and shared bridge list',async t=>{
  f.setTime('2026-10-21T18:00:00Z');assert.equal(f.service.pruneIncomplete(),1);
  assert.match(new TextDecoder().decode((await detail.read()).value),/event: expired/);
  assert.match(new TextDecoder().decode((await list.read()).value),/data: \[\]/);
+});
+
+test('dashboard counts two flight legs separately from four or six bridge checklists',async t=>{
+ const f=await fixture(t),pairs=[{id:'mu',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'MU586',days:[1,2,3,4,5,6,7]}}];
+ assert.equal((await f.request('lake','/dashboard/config',{revision:1,pairs})).status,200);
+ const complete=async(type,bridge,flightNo=type==='arrival'?'MU583':'MU586')=>{
+  const result=await f.request('driver','/records',{role:'driver',type,flightNo,gate:'132',bridge});assert.equal(result.status,201);
+  const r=result.data;r.completedAt='2026-10-21T17:00:00Z';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
+ };
+ for(const type of ['arrival','departure'])for(const bridge of ['L1','L2'])await complete(type,bridge);
+ const stats=async()=>(await f.request('lake','/dashboard?start=2026-10-21&end=2026-10-21')).data;
+ let d=await stats();assert.equal(d.daily[0].expectedFlights,2);assert.equal(d.daily[0].submittedFlights,2);assert.equal(d.daily[0].coveredFlights,2);assert.equal(d.daily[0].submittedChecklists,4);
+ for(const type of ['arrival','departure'])await complete(type,'L3');
+ d=await stats();assert.equal(d.daily[0].expectedFlights,2);assert.equal(d.daily[0].submittedFlights,2);assert.equal(d.daily[0].submittedChecklists,6);assert.equal(d.byScope.find(s=>s.station==='LAX'&&s.account==='MU').expectedFlights,2);
+ await complete('arrival','L1','MU999');d=await stats();assert.equal(d.daily[0].submittedFlights,3);assert.equal(d.daily[0].submittedChecklists,7);assert.equal(d.daily[0].coveredFlights,2,'Unscheduled submissions cannot inflate schedule coverage');
+});
+
+test('same-number Arrival/Departure flights remain distinct and partial checklists never count as submitted',async t=>{
+ const f=await fixture(t),pairs=[{id:'same',station:'LAX',account:'MU',inbound:{flightNo:'MU100',days:[3]},outbound:{flightNo:'MU100',days:[3]}}];
+ assert.equal((await f.request('lake','/dashboard/config',{revision:1,pairs})).status,200);
+ for(const type of ['arrival','departure']){
+  const r=(await f.request('driver','/records',{role:'driver',type,flightNo:'MU100',gate:'132',bridge:'L1'})).data;
+  r.completedAt='2026-10-21T17:00:00Z';if(type==='arrival')delete r.type;
+  f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
+  await f.request('driver','/records',{role:'driver',type,flightNo:'MU100',gate:'132',bridge:'L2'});
+ }
+ const d=(await f.request('lake','/dashboard?start=2026-10-21&end=2026-10-22')).data;
+ assert.equal(d.daily[0].expectedFlights,2);assert.equal(d.daily[0].submittedFlights,2);assert.equal(d.daily[0].coveredFlights,2);assert.equal(d.daily[0].submittedChecklists,2);assert.equal(d.daily[0].pending,2);
+ assert.equal(d.daily[1].expectedFlights,0);assert.equal(d.daily[1].submittedFlights,0);
 });
