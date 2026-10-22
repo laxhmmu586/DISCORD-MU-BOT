@@ -23,3 +23,20 @@ test('no-email operational accounts are excluded from new and existing rosters, 
  assert.equal(f.store.read(f.users[1],memo.id).total,5);assert.equal(f.store.list(f.users[1]).memos[0].total,5);assert.throws(()=>f.store.sign({uid:'ops'},memo.id,signed),e=>e.status===403);
  f.store.sign(f.users[0],memo.id,signed);f.rows[0].email='';const view=f.store.read(f.users[1],memo.id);assert.equal(view.total,4);assert.equal(view.signed,0);assert(!view.roster.some(p=>p.id==='e0'));assert.equal(f.store.list(f.users[0]).memos[0].myStatus,'not-required');
 });
+
+test('managers append recipients to old memos after an email is added without losing signatures',t=>{
+ const f=fixture(t);f.rows[3].email='';let r=f.store.publish(f.users[1],body());const original=f.store.sign(f.users[0],r.id,signed).mySignedAt;
+ f.rows[3].email='new-staff@example.test';assert.equal(f.store.read(f.users[3],r.id).required,false);assert(f.store.read(f.users[1],r.id).availableRecipients.some(p=>p.id===f.rows[3].id));
+ assert.throws(()=>f.store.addRecipients(f.users[0],r.id,{employeeIds:[f.rows[3].id]}),e=>e.status===403);
+ for(const employeeIds of [[],['missing'],[f.rows[3].id,f.rows[3].id]])assert.throws(()=>f.store.addRecipients(f.users[1],r.id,{employeeIds}));
+ r=f.store.addRecipients(f.users[1],r.id,{employeeIds:[f.rows[3].id]});assert.equal(r.total,4);assert.equal(r.signed,1);assert.equal(r.availableRecipients.length,0);assert.equal(f.store.read(f.users[0],r.id).mySignedAt,original);assert.equal(f.store.read(f.users[3],r.id).myStatus,'pending');
+ const mail=f.employees.db.prepare('SELECT * FROM read_sign_mail WHERE memo_id=? AND employee_id=?').get(r.id,f.rows[3].id);assert.equal(mail.status,'pending');assert.equal(mail.recipient,'new-staff@example.test');
+ const staff=f.store.read(f.users[3],r.id);assert.equal(staff.availableRecipients,undefined);assert.equal(staff.recipientHistory,undefined);
+ f.store.addRecipients(f.users[1],r.id,{employeeIds:[f.rows[3].id]});assert.equal(f.store.get(r.id).recipientHistory.length,1);assert.equal(f.store.read(f.users[1],r.id).total,4);
+ assert.equal(f.store.sign(f.users[3],r.id,signed).myStatus,'signed');
+});
+test('recipient additions validate the entire batch and accept overdue acknowledgements',t=>{
+ const f=fixture(t),r=f.store.publish(f.users[1],body());f.rows.push({id:'late',name:'FICTIONAL LATE EMPLOYEE',email:'late@example.test',position:'Agent'});f.rows.push({id:'no-email',name:'FICTIONAL OPS',position:'Agent',email:''});
+ assert.throws(()=>f.store.addRecipients(f.users[1],r.id,{employeeIds:['late','no-email']}));assert.equal(f.store.get(r.id).roster.some(p=>p.id==='late'),false);
+ f.setTime('2026-11-01T12:00:00Z');f.store.addRecipients(f.users[1],r.id,{employeeIds:['late']});assert.equal(f.store.read({uid:'late'},r.id).myStatus,'overdue');assert.equal(f.store.sign({uid:'late'},r.id,signed).myStatus,'signed');
+});
