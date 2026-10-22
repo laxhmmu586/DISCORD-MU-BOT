@@ -1,6 +1,6 @@
 # HAS gate entry and Driver readiness
 
-Gate entry uses three independently scrollable digits with keyboard support. Confirm and Clear stay inside the blue gate sign. Existing server-owned two-hour gate locks, reload persistence, manual clearing and checklist resets remain in use. The expanded Current account card includes the saved employee name, EID and PBB credentials.
+Gate entry uses a direct three-digit numeric text field with a mobile numeric keyboard. Confirm and Clear stay inside the blue gate sign. Existing server-owned two-hour gate locks, reload persistence, manual clearing and checklist resets remain in use. The expanded Current account card includes the saved employee name, EID and PBB credentials.
 
 Questions appear above their reference images, with answer buttons below. Completed question groups no longer show Review answers. A NO answer still blocks readiness and returns the user to an unresolved question. Driver no longer displays the duplicate flight/peer summary.
 
