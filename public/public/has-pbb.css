@@ -65,3 +65,75 @@ html.has-theme{background:#fff;color-scheme:light}
 .has-page .has-question{grid-template-columns:minmax(0,1fr);align-items:start}.has-page .has-question img{display:block;max-width:850px;max-height:560px;margin:0 auto;object-fit:contain}.has-page .has-question>div{width:100%;max-width:850px;margin:0 auto}.has-page .has-shell .has-answer.yes{background:#09a66b;border-color:#09a66b;color:#fff}.has-page .has-shell .has-answer.yes:hover{background:#078c59;border-color:#078c59}.has-page .has-shell .has-answer.yes.selected{background:#067347;border-color:#045c39;box-shadow:0 0 0 3px #09a66b2b}
 
 .has-page .has-shell .has-clear-gate{width:100%;background:#ed860f;border-color:#d77508;color:#fff;box-shadow:0 5px 16px #ed860f25}.has-page .has-shell .has-clear-gate:hover{background:#d77508}.has-page .has-gate-entry input[readonly]{cursor:default}
+
+/* Three independent, scrollable digit reels within the gate sign. */
+.has-page .has-gate-sign{max-width:680px;min-height:208px;padding:20px 25px 42px;gap:12px}
+.has-assigned-label{position:relative;font-size:12px;letter-spacing:1.8px;color:#e2f4ff}
+.has-page .has-gate-entry{gap:22px;width:100%;align-items:center}
+.has-page .has-gate-entry>span{font-size:36px}
+.has-reel-controls{display:flex;align-items:center;gap:18px;min-width:0}
+.has-gate-reels{display:flex;gap:8px;position:relative}
+.has-gate-reel{--reel-step:40px;position:relative;width:54px;height:120px;padding:40px 0;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y mandatory;scrollbar-width:none;border:1px solid #9cddff75;border-radius:12px;background:linear-gradient(#062c5b,#1d71ae 34%,#2a83bd 66%,#062c5b);box-shadow:inset 0 8px 12px #00285255,inset 0 -8px 12px #00285255;touch-action:pan-y}
+.has-gate-reel::-webkit-scrollbar{display:none}
+.has-page .has-shell .has-gate-reel button{display:block;width:100%;height:var(--reel-step);min-height:var(--reel-step);margin:0;padding:0;border:0;border-radius:0;background:transparent;color:#a9d7f5;font-size:24px;line-height:var(--reel-step);font-weight:700;scroll-snap-align:center;opacity:1;box-shadow:none}
+.has-page .has-shell .has-gate-reel button[aria-selected=true]{color:#fff;background:#ffffff16;font-size:33px;text-shadow:0 2px 5px #001d3e55}
+.has-gate-reel[aria-disabled=true]{overflow:hidden;touch-action:none}
+.has-page .has-shell .has-reel-confirm{flex:none;min-height:42px;padding:9px 13px;margin:0;border:1px solid #bce6ff;background:#fff;color:#075a94;font-size:12px;border-radius:10px}
+.has-page .has-shell .has-reel-confirm:disabled{opacity:.5;cursor:not-allowed}
+.has-page .has-gate-sign #confirm-gate{width:auto;min-width:84px;min-height:42px;padding:9px 13px;font-size:12px;box-shadow:none}
+.has-page .has-shell .has-reel-clear{position:absolute;right:16px;bottom:9px;width:auto;min-height:27px;padding:4px 12px;margin:0;font-size:11px;border-radius:7px;box-shadow:none}
+.has-legacy-gate{font-size:38px;color:#fff}
+.has-page .has-gate-first-row{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:start}
+.has-page .has-current-account{display:block;min-height:220px;padding:20px;position:relative}
+.has-account-scope{display:grid;grid-template-columns:1fr auto;gap:5px 14px;align-items:center}
+.has-account-scope>span{font-size:11px;color:#7188a2}
+.has-account-scope>strong{grid-column:2;grid-row:1/3;font-size:26px;color:#185d96}
+.has-account-scope>span{grid-column:1;grid-row:1}.has-account-scope>small:not(.has-operation-date){grid-column:1;grid-row:2}
+.has-account-scope>.has-operation-date{grid-row:3}
+.has-page .has-current-account .has-operation-date{position:static;grid-column:1/-1;margin:3px 0 0;font-size:11px;text-align:left}
+.has-account-person{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 16px;padding-top:15px;margin-top:14px;border-top:1px solid #dfebf6;overflow-wrap:anywhere}
+.has-account-person strong{font-size:17px;color:#173d66}
+.has-account-person span{font-size:12px;color:#6b829e}
+.has-current-account #has-license{font-size:12px;margin:12px 0 0;line-height:1.7;overflow-wrap:anywhere;color:#547797}
+.has-page .has-gate-second-row{grid-template-columns:1fr;padding-bottom:20px}
+.has-page .has-gate-second-row .has-role-picker{max-width:520px}
+.has-question>.has-statement{width:100%;max-width:850px;margin:0 auto 4px;font-size:19px;font-weight:600}
+.has-save-feedback{font-size:12px;color:#527591;margin:12px 0 0;overflow-wrap:anywhere}
+.has-save-error{padding:12px;border-radius:9px;background:#fff0f1;color:#a51f32}
+.has-ready-panel h2{margin-top:0}.has-ready-panel .has-gate-art{display:block;margin:18px 0}
+.has-driver-movement{text-align:center;padding:56px 36px 30px;max-width:850px;margin:22px auto;background:radial-gradient(ellipse at 50% 4%,#fff6f7,transparent 60%),#fff}
+.has-driver-movement.is-ready{background:radial-gradient(ellipse at 50% 10%,#effdf2,transparent 55%),linear-gradient(145deg,#fff,#f1faff)}
+.has-movement-status-icon{display:grid;place-items:center;width:90px;height:90px;margin:28px auto 50px;border-radius:50%;color:#c7264c;background:#fbe2e7;box-shadow:0 0 0 15px #fceef1,0 0 0 30px #fff7f8}
+.has-movement-status-icon svg{width:48px;height:48px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.is-ready .has-movement-status-icon{color:#fff;background:linear-gradient(135deg,#19b74d,#059d35);box-shadow:0 0 0 15px #e0f9df,0 0 0 30px #f0fdf0}
+.is-ready .has-movement-status-icon svg{transform-origin:center;animation:has-ready-wiggle 3s ease-in-out infinite}
+@keyframes has-ready-wiggle{0%,55%,100%{transform:rotate(0)}14%{transform:rotate(-10deg)}28%{transform:rotate(9deg)}40%{transform:rotate(-4deg)}}
+.is-waiting .has-movement-status-icon{position:relative}
+.is-waiting .has-movement-status-icon:before,.is-waiting .has-movement-status-icon:after{content:'';position:absolute;inset:-16px;border:12px solid #f7c8d280;border-radius:50%;pointer-events:none;animation:has-waiting-ripple 2.6s ease-out infinite}
+.is-waiting .has-movement-status-icon:after{animation-delay:1.3s}
+@keyframes has-waiting-ripple{0%{transform:scale(.8);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+@media(prefers-reduced-motion:reduce){.is-waiting .has-movement-status-icon:before,.is-waiting .has-movement-status-icon:after{animation:none;opacity:.3}.is-ready .has-movement-status-icon svg{animation:none}}
+.has-page .has-driver-movement h2{font-size:34px;margin:0 0 16px;font-weight:750;letter-spacing:-.6px}
+.has-movement-copy{max-width:620px;margin:0 auto 34px;color:#71839c;font-size:16px;line-height:1.7}
+.has-page .has-driver-movement #move{width:100%;max-width:650px;padding:18px 20px;margin:8px 0 28px;background:linear-gradient(120deg,#169876,#007448);border-color:#0b9169;color:#fff;font-weight:750;font-size:18px;box-shadow:0 6px 16px #129c7530}
+.has-page .has-driver-movement #move:disabled{opacity:1;cursor:not-allowed;background:#e0e5eb;color:#8594a5;border-color:#e0e5eb;box-shadow:none}
+.has-movement-footer{display:flex;justify-content:center;align-items:center;gap:12px;border-top:1px solid #e4ebf3;padding-top:22px;color:#7d8fa5;font-size:12px;line-height:1.6}
+.has-movement-footer>span{display:grid;place-items:center;flex:none;width:25px;height:25px;border-radius:50%;background:#e6f1ff;color:#287bcb;font-weight:700}
+.is-ready .has-movement-footer>span{background:#e3f8e8;color:#13a249}
+@media(max-width:760px){
+ .has-page .has-gate-sign{padding:15px 12px 39px;min-height:222px;border-radius:20px}
+ .has-page .has-gate-entry{flex-direction:column;gap:8px}
+ .has-page .has-gate-entry>span{font-size:22px;line-height:1}
+ .has-gate-reel{--reel-step:36px;width:40px;height:108px;padding:36px 0;border-radius:9px}
+ .has-reel-controls{gap:10px}.has-gate-reels{gap:5px}
+ .has-page .has-shell .has-gate-reel button{font-size:22px}
+ .has-page .has-shell .has-gate-reel button[aria-selected=true]{font-size:29px}
+ .has-page .has-shell .has-reel-confirm{font-size:11px;padding:8px;min-height:38px}
+ .has-page .has-gate-sign #confirm-gate{width:66px;min-width:66px;min-height:38px;font-size:10px;padding:8px 5px}
+ .has-page .has-gate-first-row{grid-template-columns:1fr}
+ .has-page .has-current-account{padding:16px;min-height:0}
+ .has-page .has-gate-card{background-size:auto 510px}
+ .has-account-person strong{font-size:16px}
+ .has-question>.has-statement{font-size:17px}
+ .has-driver-movement{padding:30px 18px 24px}.has-movement-status-icon{width:72px;height:72px;margin:24px auto 44px}.has-movement-status-icon svg{width:40px;height:40px}.has-page .has-driver-movement h2{font-size:27px}.has-movement-copy{font-size:14px}.has-page .has-driver-movement #move{font-size:15px;padding:16px 12px}.has-movement-footer{font-size:11px;text-align:left}
+}
