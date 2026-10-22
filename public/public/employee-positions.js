@@ -14,6 +14,7 @@
  const normalize=value=>value==='CSA'?'Agent':value;
  const valid=value=>positions.includes(normalize(value));
  const same=(left,right)=>normalize(left)===normalize(right);
- const finalApprover=value=>['Manager','Business Manager'].includes(value);
- return {groups,positions,normalize,valid,same,finalApprover};
+ const finalApprover=valid;
+ const maxWorkflowStages=20;
+ return {groups,positions,normalize,valid,same,finalApprover,maxWorkflowStages};
 });
