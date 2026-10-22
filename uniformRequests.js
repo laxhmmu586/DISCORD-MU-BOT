@@ -11,7 +11,11 @@ function createUniformStore({employees,profiles,now=()=>new Date()}){
  const db=employees.db;
  db.exec(`CREATE TABLE IF NOT EXISTS uniform_workflow(id INTEGER PRIMARY KEY CHECK(id=1),data TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS uniform_requests(id TEXT PRIMARY KEY,data TEXT NOT NULL,pdf BLOB,delivered INTEGER NOT NULL DEFAULT 0);`);
- db.prepare('INSERT OR IGNORE INTO uniform_workflow VALUES(1,?)').run(JSON.stringify({revision:1,stages:['Supervisor','Manager']}));
+ const desiredWorkflow={revision:2,stages:['Business Manager','Admin Assistant']};
+ db.prepare('INSERT OR IGNORE INTO uniform_workflow VALUES(1,?)').run(JSON.stringify(desiredWorkflow));
+ const savedWorkflow=JSON.parse(db.prepare('SELECT data FROM uniform_workflow WHERE id=1').get().data);
+ const legacyStages=JSON.stringify(savedWorkflow.stages||[]);
+ if(legacyStages===JSON.stringify(['Supervisor','Manager'])||legacyStages===JSON.stringify(['Supervisor','Business Manager']))db.prepare('UPDATE uniform_workflow SET data=? WHERE id=1').run(JSON.stringify({...savedWorkflow,revision:Math.max(2,(savedWorkflow.revision||1)+1),stages:desiredWorkflow.stages,updatedAt:now().toISOString(),updatedBy:'system-migration'}));
  const workflow=()=>JSON.parse(db.prepare('SELECT data FROM uniform_workflow WHERE id=1').get().data);
  const employee=user=>{const row=profiles.linked(user);if(!row)fail('Link your employee profile first.',403);return row;};
  const get=id=>{const row=db.prepare('SELECT data FROM uniform_requests WHERE id=?').get(id);if(!row)fail('Request not found.',404);const r=JSON.parse(row.data);if(r.status==='deleted')fail('Request not found.',404);return r;};
