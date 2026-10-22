@@ -25,22 +25,26 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  function publish(r){for(const s of streams){try{const current=employee(s.user);if(!same(current,s.scope)){s.res.end();continue;}if(s.id?s.id===r.id:same(current,r))s.res.write(`event: state\ndata: ${JSON.stringify(s.id?r:list(current))}\n\n`);}catch{s.res.end();}}}
  const stamp=()=>store.now().toISOString();
  async function deliver(id){
-  if(jobs.has(id))return jobs.get(id);
+  const initial=get(id),generation=initial.resetToken||'',jobKey=id+':'+generation;
+  if(jobs.has(jobKey))return jobs.get(jobKey);
+  const current=()=>{const r=get(id);return (r.resetToken||'')===generation&&!!r.completedAt;};
   const job=(async()=>{
    let r=get(id);if(!r.completedAt||r.delivery.status==='sent')return;
    try{
     let pdf=db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(id).pdf;
-    if(!pdf){pdf=await buildPdf(r);db.prepare('UPDATE has_pbb_records SET pdf=? WHERE id=?').run(pdf,id);}
+    if(!pdf){pdf=await buildPdf(r);if(!current())return;db.prepare('UPDATE has_pbb_records SET pdf=? WHERE id=?').run(pdf,id);}
     const folderId=process.env.HAS_PBB_DRIVE_FOLDER_ID||process.env.PBB_DRIVE_FOLDER_ID||'1wMyB23ikaAnbkhJZcKBKBNujEeeY7Xsu';
-    if(drive.validateFolder)await drive.validateFolder(folderId);
-    if(!r.delivery.fileId){const generated=await drive.files.generateIds({count:1,space:'drive'});r.delivery.fileId=generated.data.ids[0];put(r);}
+    if(drive.validateFolder)await drive.validateFolder(folderId);if(!current())return;
+    if(!r.delivery.fileId){const generated=await drive.files.generateIds({count:1,space:'drive'});if(!current())return;r.delivery.fileId=generated.data.ids[0];put(r);}
     const fileId=r.delivery.fileId;let exists=false;
     try{await drive.files.get({fileId,fields:'id',supportsAllDrives:true});exists=true;}catch(e){if(Number(e.code)!==404&&Number(e.response?.status)!==404)throw e;}
+    if(!current())return;
     if(!exists)await drive.files.create({requestBody:{id:fileId,name:`HAS-PBB-${r.station}-${r.account}-${r.date}-${r.flightNo}-${r.bridge}.pdf`,parents:[folderId]},media:{mimeType:'application/pdf',body:require('node:stream').Readable.from(pdf)},fields:'id',supportsAllDrives:true});
     r.delivery={status:'sent',fileId,url:`https://drive.google.com/file/d/${fileId}/view`};
    }catch(e){r.delivery={...r.delivery,status:'failed',error:require('./pbbDrive').driveError(e)};}
+   if(!current())return;
    r.revision++;put(r);publish(r);
-  })().finally(()=>jobs.delete(id));jobs.set(id,job);return job;
+  })().finally(()=>jobs.delete(jobKey));jobs.set(jobKey,job);return job;
  }
  app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!dashboard(req.hasUser))fail('Dashboard access is restricted to lake@mu.com.',403);}else req.hasEmployee=employee(req.hasUser);next();}catch(e){res.status(e.status||401).json({error:e.message});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
@@ -59,7 +63,9 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   const e=req.hasEmployee;roleCheck(e,req.body.role);
   const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase(),bridge=req.body.bridge,date=today();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate)||!['L1','L2','L3'].includes(bridge))fail('Confirm flight, gate number and L1/L2/L3.');
-  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightNo,bridge);if(old){const r=get(old.id);if(r.gate!==gate)fail('Gate differs from the shared checklist. Confirm the saved gate before joining.',409);return r;}
+  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightNo,bridge);if(old){const previous=get(old.id);if(previous.gate===gate)return previous;
+    const r={id:previous.id,station:e.station,account:e.account,date,flightNo,gate,bridge,type:'arrival',revision:previous.revision+1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,resetAt:stamp(),resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
+    db.prepare('UPDATE has_pbb_records SET data=?,pdf=NULL WHERE id=?').run(JSON.stringify(r),r.id);return r;}
    const r={id:crypto.randomUUID(),station:e.station,account:e.account,date,flightNo,gate,bridge,type:'arrival',revision:1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
    db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(r.id,e.station,e.account,date,flightNo,bridge,JSON.stringify(r));return r;
   });const r=create();publish(r);res.status(201).json(r);

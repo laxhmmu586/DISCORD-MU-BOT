@@ -7,10 +7,10 @@
  const getItems=phase=>HAS_PBB_ITEMS.filter(q=>q.role===role&&q.phase===phase&&!q.hidden);
  const answerValue=q=>{const values=[q.id,...(q.linkedAnswers||[])].map(id=>record.answers[role][id]);return values.includes(false)?false:values.every(v=>v===true)?true:undefined;};
  const complete=phase=>getItems(phase).every(q=>answerValue(q)===true);
- const cursorKey=phase=>record.id+':'+role+':'+phase;
+ const cursorKey=phase=>record.id+':'+(record.resetToken||'')+':'+role+':'+phase;
  function cursor(phase){const key=cursorKey(phase),items=getItems(phase);if(!cursors.has(key)){const next=items.findIndex(q=>answerValue(q)===undefined);cursors.set(key,next<0?items.length:next);}return cursors.get(key);}
  const atEnd=phase=>cursor(phase)>=getItems(phase).length;
- function apply(r){if(record&&r.id===record.id&&r.revision<record.revision)return;record=r;render();}
+ function apply(r){if(record&&r.id===record.id&&r.revision<record.revision)return;if(record&&record.id===r.id&&record.resetToken!==r.resetToken){strokes=[];slide=0;draft.gate=r.gate;status.textContent='Gate changed. Checklist cleared; restart the checks.';}record=r;render();}
  async function update(body){if(busy)return;busy=true;status.textContent='Saving…';try{const r=await api('/records/'+record.id,{...body,role,revision:record.revision});if(body.action==='answer'){const q=HAS_PBB_ITEMS.find(q=>q.id===body.itemId);cursors.set(cursorKey(q.phase),getItems(q.phase).findIndex(item=>item.id===q.id)+1);}apply(r);status.textContent='Saved · Shared live';}catch(e){status.textContent=e.message;try{apply(await api('/records/'+record.id));}catch{}}finally{busy=false;}}
  function guide(){return `<section class="has-panel has-guide"><div class="has-slider" aria-label="Jet bridge height and distance references"><div class="has-slide-track" id="movement-track" style="transform:translateX(${slide?-50:0}%)"><figure><img src="${art('floor-level-lax-v2.webp')}" alt="Bridge floor height reference"><figcaption>Bridge floor height</figcaption></figure><figure><img src="${art('fuselage-gap-lax-v2.webp')}" alt="Maintain fuselage clearance"><figcaption>Maintain distance from the fuselage</figcaption></figure></div></div>${!record.dockedAt?questions('movement',false):''}</section>`;}
  function advanceSlide(){slide=1-slide;const track=$('movement-track');if(track)track.style.transform='translateX('+(slide?-50:0)+'%)';}
