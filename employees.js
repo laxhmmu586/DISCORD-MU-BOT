@@ -1,3 +1,4 @@
+const employeePositions=require('./public/public/employee-positions');
 const {StandardFontEmbedder,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
 const formatEmployeePhone=require('./public/public/employee-phone');
@@ -34,7 +35,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    const pbbMscId=String(row.pbbMscId??old?.pbbMscId??'').trim(),pbbMscExpiry=String(row.pbbMscExpiry??old?.pbbMscExpiry??'');
    if(pbbMscId.length>80||/[^\x20-\x7e]/.test(pbbMscId)||Boolean(pbbMscId)!==Boolean(pbbMscExpiry)||pbbMscExpiry&&(!/^\d{4}-\d{2}-\d{2}$/.test(pbbMscExpiry)||Number.isNaN(Date.parse(pbbMscExpiry))||new Date(pbbMscExpiry).toISOString().slice(0,10)!==pbbMscExpiry))throw new Error('Enter an MSC PBB ID and valid expiry date together');
    const position=row.position??current.employees.find(old=>old.id===row.id)?.position??'Agent';
-   if(!['Manager','Supervisor','Lead','Agent'].includes(position))throw new Error('Select a valid employee position');
+   if(!employeePositions.valid(position))throw new Error('Select a valid employee position');
    const nickname=String(row.nickname??'').trim();
    if(nickname.length>60||/[\x00-\x1f\x7f]/.test(nickname))throw new Error('Check employee nicknames (maximum 60 characters)');
    const companyEmail=String(row.companyEmail??current.employees.find(old=>old.id===row.id)?.companyEmail??'').trim();
