@@ -55,7 +55,20 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
    r.revision++;put(r);publish(r);
   })().finally(()=>jobs.delete(jobKey));jobs.set(jobKey,job);return job;
  }
- app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser);next();}catch(e){res.status(e.status||401).json({error:e.message});}});
+ // Expiry is measured from this checklist generation, never extended by answers.
+ function pruneIncomplete(){
+  const cutoff=store.now().getTime()-60*60*1000,expired=db.prepare('SELECT id,data FROM has_pbb_records').all().filter(row=>{const r=JSON.parse(row.data);return !r.completedAt&&Date.parse(r.resetAt||r.createdAt)<=cutoff;});
+  for(const row of expired){
+   db.prepare('DELETE FROM has_pbb_records WHERE id=?').run(row.id);
+   for(const sub of streams)if(sub.id===row.id){sub.res.write(`event: expired\ndata: ${JSON.stringify({id:row.id})}\n\n`);sub.res.end();streams.delete(sub);}
+  }
+  const scopes=new Map(expired.map(row=>{const r=JSON.parse(row.data);return [JSON.stringify([r.station,r.account]),r];}));
+  for(const r of scopes.values())publish(r);
+  return expired.length;
+ }
+ pruneIncomplete();
+ const cleanupTimer=setInterval(pruneIncomplete,30000);cleanupTimer.unref();
+ app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser);pruneIncomplete();next();}catch(e){res.status(e.status||401).json({error:e.message});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
  app.get('/has-pbb-api/dashboard/config',route((_req,res)=>res.json(schedule())));
  const saveSchedule=db.transaction((body,user)=>{const current=schedule();if(body.revision!==current.revision)fail('Schedule changed. Reload Config before saving.',409);if(!Array.isArray(body.pairs)||body.pairs.length>200)fail('Enter up to 200 flight pairs.');const inbound=new Set(),outbound=new Set(),ids=new Set();
@@ -169,6 +182,6 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   res.json({station,account,start,end,daily,scopes,byScope,records:rows.map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
  }));
  for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&r.delivery.status!=='sent')void deliver(row.id);}
- return {deliver,get,close(){for(const s of streams)s.res.end();}};
+ return {deliver,get,pruneIncomplete,close(){clearInterval(cleanupTimer);for(const s of streams)s.res.end();}};
 }
 module.exports={registerHasPbb};
