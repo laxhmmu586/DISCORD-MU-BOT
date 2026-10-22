@@ -1,6 +1,12 @@
 (() => {
   if (["/", "/index.html"].includes(location.pathname) && ["#reports", "#test"].includes(location.hash)) return;
   const key = 'mufc-online-flight';
+  const loginOriginKey = 'mufc_login_origin';
+  const rememberLoginOrigin = value => {
+    for (const storageName of ['localStorage','sessionStorage']) {
+      try { window[storageName].setItem(loginOriginKey,value); return; } catch {}
+    }
+  };
   const today = () => {
     const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone:'America/Los_Angeles', day:'2-digit', month:'short', year:'2-digit' }).formatToParts(new Date()).map(p => [p.type,p.value]));
     return p.day + p.month.toUpperCase() + p.year;
@@ -13,7 +19,7 @@
     window.mufcFlight = value;
     if (value) sessionStorage.setItem(key, JSON.stringify(value)); else sessionStorage.removeItem(key);
   };
-  if (location.pathname === '/login.html') window.setMufcFlight(null);
+  if (location.pathname === '/login.html') { window.setMufcFlight(null); rememberLoginOrigin('mufc'); }
   const guarded = ['/','/index.html','/scan.html','/scan2.html','/m-board.html','/m-board2.html','/box.html'];
   if (guarded.includes(location.pathname) && !selected) location.replace('/flights.html?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
   const nativeFetch = window.fetch.bind(window);
