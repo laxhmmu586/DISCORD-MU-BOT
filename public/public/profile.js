@@ -19,7 +19,7 @@
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),notices=[];
   for(const key of p.station==='LAX'?['pbbExpiry','pbbMscExpiry']:['pbbExpiry']){const state=pbbQualificationStatus(p[key],today),name=p.station==='LAX'?(key==='pbbExpiry'?'TBIT':'MSC')+' ':'';for(const id of ['view-'+key,key]){field(id).classList.toggle('has-expired',state==='expired');field(id).classList.toggle('has-warning',state==='warning');}if(state)notices.push({state,text:state==='expired'?name+'PBB qualification expired — cannot drive PBB.':name+'PBB qualification expires in less than 1 month.'});}
   field('profile-pbb-warning').hidden=!notices.length;field('profile-pbb-warning').className=notices.some(n=>n.state==='expired')?'has-expired':'has-warning';field('profile-pbb-warning').textContent=notices.map(n=>n.text).join(' ');
-  field('profile-has-dashboard').hidden=(auth.currentUser?.email||'').trim().toLowerCase()!=='lake@mu.com';
+  field('profile-has-dashboard').hidden=!['lake@mu.com','demo@hm.com'].includes((auth.currentUser?.email||'').trim().toLowerCase());
   field('profile-display-name').textContent=p.nickname||p.name;field('profile-full-name').textContent=p.name;field('profile-employee-id').textContent=p.eid||'—';field('profile-initials').textContent=(p.nickname||p.name||'?').split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();photo(p.avatar);
   window.dispatchEvent(new CustomEvent('employee-profile-updated',{detail:p}));
  }
