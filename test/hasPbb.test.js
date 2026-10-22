@@ -1,6 +1,32 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
 const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
 const items=require('../public/public/has-pbb-data'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
+test('manual Arrival bridge reset clears only its generation and publishes shared state',async t=>{
+ const f=await fixture(t);let r=(await f.create()).data;const sibling=(await f.create('driver','L2')).data,foreign=(await f.create('account')).data;
+ await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate:'132'});
+ r.answers.driver.serviceable=true;r.ready.driver=true;r.owners.driver='driver';r.signatures.driver={name:'TEST'};r.movingAt=r.dockedAt=r.completedAt='fixture';r.delivery={status:'sent',fileId:'old'};
+ f.db.prepare('UPDATE has_pbb_records SET data=?,pdf=? WHERE id=?').run(JSON.stringify(r),Buffer.from('PDF'),r.id);
+ for(const user of ['other','account'])assert.equal((await f.request(user,'/records/'+r.id+'/reset',{role:'driver',revision:r.revision})).status,403);
+ assert.equal((await f.request('expired','/records/'+r.id+'/reset',{role:'driver',revision:r.revision})).status,403);
+ assert.equal((await f.request('driver','/records/'+r.id+'/reset',{role:'driver',revision:r.revision-1})).status,409);
+ const abort=new AbortController();t.after(()=>abort.abort());const response=await fetch(f.base+'/has-pbb-api/stream?id='+r.id,{headers:{Authorization:'Bearer spotter'},signal:abort.signal}),reader=response.body.getReader();await reader.read();
+ const result=await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:r.revision});assert.equal(result.status,200);const fresh=result.data;
+ assert.equal(fresh.id,r.id);assert.equal(fresh.gate,'132');assert.equal(fresh.revision,r.revision+1);assert.equal(fresh.resetBy,'spotter');assert.ok(fresh.resetToken);
+ assert.deepEqual(fresh.answers,{driver:{},spotter:{}});assert.deepEqual(fresh.signatures,{});assert.deepEqual(fresh.owners,{});assert.deepEqual(fresh.ready,{driver:null,spotter:null});assert.deepEqual(fresh.delivery,{status:'pending'});
+ for(const key of ['movingAt','dockedAt','completedAt','driverQualification'])assert.equal(fresh[key],undefined);
+ assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);assert.deepEqual(f.service.get(sibling.id),sibling);assert.deepEqual(f.service.get(foreign.id),foreign);
+ assert.equal((await f.request('driver','/context')).data.gateLocks[0].gate,'132');assert.equal((await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).status,409);
+ assert.match(new TextDecoder().decode((await reader.read()).value),new RegExp(fresh.resetToken));abort.abort();
+ f.setTime('2026-10-22T17:00:00Z');assert.equal((await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:fresh.revision})).status,409);
+});
+test('manual reset protects a concurrent answer and prevents stale PDF delivery restoration',async t=>{
+ let release,started;const ready=new Promise(resolve=>started=resolve),f=await fixture(t,{buildPdf:()=>new Promise(resolve=>{release=resolve;started();})});let r=(await f.create()).data;
+ const changed=(await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).data;
+ assert.equal((await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:r.revision})).status,409);assert.equal(f.service.get(r.id).answers.driver.serviceable,true);
+ r={...changed,completedAt:'fixture'};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);const job=f.service.deliver(r.id);await ready;
+ const fresh=(await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:r.revision})).data;release(Buffer.from('obsolete PDF'));await job;
+ assert.deepEqual(f.service.get(r.id),fresh);assert.equal(f.uploads(),0);assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);
+});
 async function fixture(t,{failUpload=false,buildPdf}={}){
  const db=new Database(':memory:');let now=new Date('2026-10-21T17:00:00Z'),uploads=0;
  const seed=[['driver','LAX','MU'],['spotter','LAX','MU'],['other','SFO','MU'],['account','LAX','XX'],['expired','LAX','MU'],['missing','LAX','MU']].map(([id,station,account])=>({id,position:['driver','other','account'].includes(id)?'Manager':'Agent',name:'TEST '+id.toUpperCase(),eid:'123',station,account,attach:true,detach:true,spotter:true,pbbId:id==='missing'?'':'PBB-'+id,pbbExpiry:id==='missing'?'':id==='expired'?'2026-10-20':'2026-10-21'}));
