@@ -1,6 +1,4 @@
 const ExcelJS=require('exceljs');
-const {PDFDocument,rgb}=require('./vendor/pdf-lib/pdf-lib');
-const fs=require('node:fs'),path=require('node:path');
 const expense=require('./expenseDefinition');
 const display={date:'Date',reason:'Reason',amount:'Local amount',from:'From',to:'To',dateTime:'Date / Dep + Arr Time',purpose:'Purpose / transport / miles / parking',foreignAmount:'Foreign amount',exchangeRate:'Exchange rate',companyCard:'Company credit card',breakfast:'Breakfast',lunch:'Lunch',dinner:'Dinner',sundry:'Tel / Sundry',city:'City',hotel:'Hotel',days:'Days',dailyRate:'Daily rate'};
 async function buildExpenseExcel(record){
@@ -12,13 +10,5 @@ async function buildExpenseExcel(record){
  banner('Totals and balance');for(const [key,label] of Object.entries({total:'Total expenses',companyCard:'Company credit card',cash:'Cash expenses',advance:'Travel advance received',dueEmployee:'Balance due to employee',dueCompany:'Balance due to company'})){sheet.mergeCells(row,1,row,8);sheet.getCell(row,1).value=label;sheet.mergeCells(row,9,row,11);sheet.getCell(row,9).value=key==='total'?{formula:totals.map(t=>`${t.col}${t.row}`).join('+'),result:f.totals[key]}:f.totals[key];sheet.getCell(row,9).numFmt='#,##0.00';row++;}row++;banner('Approval history');sheet.getRow(row++).values=['Position','Approver','Decision','Processed at (UTC)','Remarks'];for(const [i,stage] of record.stages.entries()){const a=record.approvals[i];sheet.getRow(row++).values=[stage,a?.name||'',a?.action||(record.status==='pending'&&record.step===i?'Awaiting review':'Upcoming'),a?.at||'',a?.note||''];}
  sheet.eachRow(r=>{r.eachCell(c=>{c.alignment={vertical:'top',wrapText:true};c.border={top:{style:'thin',color:{argb:'FFD4DFEA'}},bottom:{style:'thin',color:{argb:'FFD4DFEA'}},left:{style:'thin',color:{argb:'FFD4DFEA'}},right:{style:'thin',color:{argb:'FFD4DFEA'}}};if(!c.font?.bold)c.font={name:'Arial',size:11};});if(!r.height)r.height=30;});return Buffer.from(await book.xlsx.writeBuffer());
 }
-async function buildIncidentPdf(record){
- const doc=await PDFDocument.create();doc.registerFontkit(require('@pdf-lib/fontkit'));const cjk=/[\u2e80-\u9fff]/.test(JSON.stringify(record)),font=await doc.embedFont(fs.readFileSync(path.join(__dirname,cjk?'vendor/fonts/NotoSansCJKsc-Regular.otf':'vendor/fonts/NotoSans.ttf')),{subset:!cjk}),bold=cjk?font:await doc.embedFont(fs.readFileSync(path.join(__dirname,'vendor/fonts/NotoSans-Bold.ttf')),{subset:true});let page,y;const pages=[];
- const next=()=>{page=doc.addPage([612,792]);pages.push(page);y=748;};next();
- function line(text,size=10,face=font){if(y<50)next();page.drawText(text,{x:42,y,size,font:face,color:rgb(.09,.18,.29)});y-=size*1.55;}
- function paragraph(text,size=10,face=font){for(const raw of String(text||'—').split(/\r?\n/)){let current='',width=0;for(const char of raw){const charWidth=face.widthOfTextAtSize(char,size);if(width+charWidth>520){line(current,size,face);current='';width=0;}current+=char;width+=charWidth;}line(current,size,face);}y-=7;}
- paragraph('Incident Investigation Report',19,bold);paragraph(`Status: ${record.status} | Submitted: ${record.submittedAt}`,9);for(const [key,label] of Object.entries(require('./incidentReports').fields)){if(y<90)next();paragraph(label,11,bold);paragraph(record.fields[key]);}
- if(y<150)next();paragraph('Approval stages and review remarks',15,bold);for(const [i,stage] of record.stages.entries()){const a=record.approvals[i];if(y<120)next();paragraph(`${i+1}. ${stage}`,11,bold);paragraph(a?`${a.action==='approve'?'Approved':a.action==='transfer'?'Transferred':'Rejected'} by ${a.name} | ${a.at}`:record.status==='pending'&&record.step===i?'Awaiting review':record.status==='rejected'?'Not reached':'Upcoming');paragraph('Review remarks: '+(a?.note||'—'));}
- pages.forEach((p,i)=>p.drawText(`${i+1} / ${pages.length}  |  Report ${record.id}`,{x:42,y:24,size:8,font}));return Buffer.from(await doc.save());
-}
+const buildIncidentPdf=record=>require('./requestPdf').buildRequestPdf('incident',record);
 module.exports={buildExpenseExcel,buildIncidentPdf,display};

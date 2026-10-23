@@ -1,4 +1,6 @@
 (()=>{
+ window.canDownloadRequestPdf=r=>r.status!=='draft'||(r.timeline||[]).some(e=>e.action==='submit');
+ window.downloadRequestPdf=async(kind,r,button,onError)=>{button.disabled=true;try{const user=firebase.auth().currentUser;if(!user)throw Error('Sign in required.');const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/'+kind+'-api/'+r.id+'/pdf',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});if(!response.ok)throw Error((await response.json()).error||'Download failed.');const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download=kind+'-'+r.id+'-r'+r.revision+'.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){onError(error.message);}finally{button.disabled=false;}};
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  window.bindReportNodes=(host,r,data,{api,onSaved,onDecision})=>{
   const target=host.querySelector('.request-node-workbench');if(!target||!r||!data.reviewerDirectory)return;
