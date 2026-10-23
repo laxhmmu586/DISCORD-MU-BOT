@@ -14,13 +14,13 @@ function setup(data,{error=false}={}){
  vm.runInContext(shared,context);vm.runInContext(page,context);
  return {links,elements,auth,get requests(){return requests;},get redirect(){return redirect;},async login(value=user){auth.currentUser=value;await Promise.all(callbacks.map(fn=>fn(value)));}};
 }
-for(const station of ['LAX',' lax ','SFO','JFK','HQ',''])test('Info access for '+JSON.stringify(station),async()=>{
+for(const station of ['LAX',' lax ','SFO','JFK','HQ','Headquarter','Headquarters',' hq ',''])test('Info access for '+JSON.stringify(station),async()=>{
  const app=setup({state:'ready',profile:{station}});assert(app.links.every(link=>link.hidden));await app.login();
- const allowed=station.trim().toUpperCase()==='LAX';assert.equal(app.elements['#info-content'].hidden,!allowed);assert(app.links.every(link=>link.hidden===!allowed));assert.equal(app.requests,1);
+ const allowed=['LAX','HQ','HEADQUARTER','HEADQUARTERS'].includes(station.trim().toUpperCase());assert.equal(app.elements['#info-content'].hidden,!allowed);assert(app.links.every(link=>link.hidden===!allowed));assert.equal(app.requests,1);
 });
 test('Unlinked profile cannot view Info',async()=>{const app=setup({state:'confirm',profile:{station:'LAX'}});await app.login();assert(app.elements['#info-content'].hidden);assert(app.links.every(link=>link.hidden));});
 test('Profile failure keeps Info hidden',async()=>{const app=setup(null,{error:true});await app.login();assert(app.elements['#info-content'].hidden);assert(app.links.every(link=>link.hidden));assert.match(app.elements['#info-status'].textContent,/Unable to verify/);});
 test('Signing out hides Info and sends direct visitors to login',async()=>{const app=setup({state:'ready',profile:{station:'LAX'}});await app.login();await app.login(null);assert(app.elements['#info-content'].hidden);assert(app.links.every(link=>link.hidden));assert.equal(app.redirect,'/login.html');});
 test('Insurance removed and each sidebar starts with Info hidden',()=>{
- for(const name of fs.readdirSync('public/public').filter(name=>name.endsWith('.html'))){const html=fs.readFileSync('public/public/'+name,'utf8');if(!html.includes('<aside class="profile-sidebar"'))continue;assert.match(html,/<a hidden data-info-access href="\/info.html"/);assert.match(html,/info-access.js\?v=20261023-lax/);if(['profile.html','info.html'].includes(name))assert.doesNotMatch(html,/Insurance Waiver|info.html#insurance|id="insurance"/);}
+ for(const name of fs.readdirSync('public/public').filter(name=>name.endsWith('.html'))){const html=fs.readFileSync('public/public/'+name,'utf8');if(!html.includes('<aside class="profile-sidebar"'))continue;assert.match(html,/<a hidden data-info-access href="\/info.html"/);assert.match(html,/info-access.js\?v=20261023-lax-hq/);if(['profile.html','info.html'].includes(name))assert.doesNotMatch(html,/Insurance Waiver|info.html#insurance|id="insurance"/);}
 });
