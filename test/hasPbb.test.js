@@ -318,3 +318,16 @@ test('linked accounts select independent schedules, gate locks, records and stre
  const controller=new AbortController(),stream=await fetch(f.base+'/has-pbb-api/stream'+secondary,{headers:{Authorization:'Bearer driver'},signal:controller.signal});assert.equal(stream.status,200);const reader=stream.body.getReader(),text=new TextDecoder().decode((await reader.read()).value);assert.match(text,/XX101/);controller.abort();
  const changed=f.employees.get();changed.employees.find(e=>e.id==='driver').additionalAccounts=[];f.employees.save(changed,{email:'lake@mu.com'});for(const path of ['/context','/records','/stream'])assert.equal((await f.request('driver',path+secondary)).status,403);assert.equal((await f.request('driver','/records/'+r.data.id+secondary,{role:'driver',revision:r.data.revision,action:'ready',value:true})).status,403);assert.equal(f.employees.get().employees.find(e=>e.id==='driver').account,'MU');
 });
+
+
+test('Supervisor Config saves only own-account schedules and preserves other accounts',async t=>{
+ const f=await fixture(t),draft=f.employees.get();draft.employees.find(e=>e.id==='spotter').position='Supervisor';f.employees.save(draft,{email:'lake@mu.com'});
+ assert.equal((await f.request('spotter','/context')).data.canConfigure,true);
+ const own={id:'own',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1]},outbound:{flightNo:'MU586',days:[2]}},other={id:'other',station:'SFO',account:'MU',inbound:{flightNo:'MU101',days:[1]},outbound:{flightNo:'MU102',days:[2]}};
+ let saved=await f.request('lake','/dashboard/config',{revision:1,pairs:[own,other]});assert.equal(saved.status,200);
+ let config=await f.request('spotter','/dashboard/config');assert.deepEqual(config.data.pairs,[own]);
+ assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[other]})).status,403);
+ const updated={...own,inbound:{flightNo:'MU585',days:[3]}};saved=await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[updated]});assert.equal(saved.status,200);assert.deepEqual(saved.data.pairs,[updated]);assert((await f.request('lake','/dashboard/config')).data.pairs.some(p=>p.id==='other'));
+ assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[]})).status,409);
+ assert.equal((await f.request('spotter','/dashboard')).status,403);const changed=f.employees.get();changed.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(changed,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard/config')).status,403);
+});
