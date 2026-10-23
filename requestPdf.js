@@ -49,6 +49,6 @@ async function buildRequestPdf(kind,record,{workflowOnly=false,pageOffset=0}={})
  return Buffer.from(await doc.save());
 }
 function registerPdf(app,{kind,store,user}){
- app.get('/'+kind+'-api/:id/pdf',async(req,res)=>{try{const r=store.read(user(req),req.params.id);if(!canExport(r))throw Object.assign(Error('Submit this request before exporting PDF.'),{status:409});const bytes=await buildRequestPdf(kind,r);res.type('application/pdf').set('Content-Disposition','attachment; filename="'+kind+'-'+r.id+'-r'+r.revision+'.pdf"').send(bytes);}catch(error){res.status(error.status||400).json({error:error.message});}});
+ app.get('/'+kind+'-api/:id/pdf',async(req,res)=>{try{const r=store.read(user(req),req.params.id);if(!canExport(r))throw Object.assign(Error('Submit this request before exporting PDF.'),{status:409});const bytes=await buildRequestPdf(kind,r);res.type('application/pdf').set('Content-Disposition',require('./public/public/download-filename').disposition(kind,r)).send(bytes);}catch(error){res.status(error.status||400).json({error:error.message});}});
 }
 module.exports={buildRequestPdf,canExport,registerPdf};
