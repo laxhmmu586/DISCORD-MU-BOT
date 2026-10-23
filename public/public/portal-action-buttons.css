@@ -1,0 +1,11 @@
+/* Shared glossy blue controls for employee PBB settings and HAS configuration. */
+#employee-panel .employee-table .employee-pbb-settings,
+.has-page #has-config-button.has-config-button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;min-height:44px;height:44px;margin:0;padding:10px 16px;border:1px solid #79cfff;border-radius:23px;
+ background:linear-gradient(155deg,#6edcff 0%,#259eff 40%,#0875f3 80%,#176ce3 100%);color:#fff;font:inherit;font-size:12px;font-weight:700;line-height:20px;white-space:nowrap;cursor:pointer;
+ box-shadow:inset 0 2px 3px #ffffff9c,inset 0 -2px 4px #1767d12b,0 0 0 4px #f2f9ff,0 0 0 5px #dcebf8,0 5px 13px #168aff30;
+}
+#employee-panel .employee-table .employee-pbb-settings{width:100%}
+#employee-panel .employee-table .employee-pbb-settings:hover:not(:disabled),.has-page #has-config-button.has-config-button:hover:not(:disabled){background:linear-gradient(155deg,#7be5ff,#279fff 40%,#076be8 85%)}
+#employee-panel .employee-table .employee-pbb-settings:focus-visible,.has-page #has-config-button.has-config-button:focus-visible{outline:3px solid #086ad6;outline-offset:7px}
+#employee-panel .employee-table .employee-pbb-settings:disabled,.has-page #has-config-button.has-config-button:disabled{opacity:.45;cursor:not-allowed}

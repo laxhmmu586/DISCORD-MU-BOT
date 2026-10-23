@@ -55,3 +55,38 @@
 @media(max-width:600px){#add-member-dialog{padding:22px 18px}#add-member-dialog h2{font-size:21px}#add-member-dialog .member-dialog-icon{flex-basis:40px;width:40px;height:40px;border-radius:12px}#add-member-dialog .member-heading-copy{gap:10px}#add-member-check{gap:10px}#add-member-dialog .member-dialog-footer{font-size:9px}}
 
 .employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table td:nth-child(9),.employee-admin-page .employee-table col:nth-child(9){display:none}
+
+/* Account editors use measured field widths rather than inherited percentage columns. */
+.employee-admin-page #employee-panel{padding:22px}
+.employee-admin-page .employee-toolbar{margin-bottom:0}
+.employee-admin-page .employee-account-groups{margin-top:14px}
+.employee-admin-page #employee-updated:empty{display:none}
+.employee-admin-page .employee-region>h3{margin-bottom:12px;padding-bottom:10px}
+.employee-admin-page .employee-account-card .employee-table{table-layout:fixed;min-width:2430px;width:100%}
+.employee-admin-page .employee-account-card .employee-table .employee-col-position{width:210px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-name{width:220px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-nickname{width:140px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-eid{width:100px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-phone{width:150px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-email{width:230px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-company-email{width:260px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-discord{width:180px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-login{width:0}
+.employee-admin-page .employee-account-card .employee-table :is(.employee-col-account,.employee-col-account-secondary,.employee-col-account-third){width:180px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-pbb{width:140px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-order{width:160px}
+.employee-admin-page .employee-account-card .employee-table td{width:auto;vertical-align:middle;padding:12px 8px}
+.employee-admin-page .employee-account-card .employee-table th{padding:14px 8px;white-space:nowrap}
+.employee-admin-page .employee-account-card .employee-table :is(input:not([type=checkbox]),select){display:block;box-sizing:border-box;width:100%;min-width:0;height:44px;min-height:44px;margin:0;padding:10px 12px;border:1px solid #cadbed;border-radius:10px;font:inherit;font-size:12px;line-height:22px;background-color:#fff;box-shadow:0 1px 3px #183c6009;color:#254260}
+.employee-admin-page .employee-account-card .employee-table select{padding-right:28px}
+@media(max-width:1100px){
+ .employee-admin-page .employee-account-card .employee-table{min-width:0}
+ .employee-admin-page .employee-account-card .employee-table td{padding:0}
+ .employee-admin-page .employee-account-card .employee-table :is(td:first-child,td:nth-child(2)){grid-column:1/-1}
+ .employee-admin-page .employee-account-card .employee-table :is(td:nth-child(10),td:nth-child(11),td:nth-child(12)){grid-column:auto}
+}
+@media(max-width:760px){.employee-admin-page #employee-panel{padding:16px}.employee-admin-page .employee-account-groups{margin-top:12px}}
+
+.employee-admin-page .employee-account-card .employee-table td:last-child{white-space:nowrap}
+.employee-admin-page .employee-account-card .employee-order-buttons{display:inline-flex;vertical-align:middle;margin:0 8px 0 0}
+.employee-admin-page .employee-account-card .employee-table [data-remove]{display:inline-block;vertical-align:middle;box-sizing:border-box;height:44px;min-height:44px;padding:10px 4px;line-height:24px;border:0;background:transparent}
