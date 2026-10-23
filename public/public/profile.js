@@ -1,5 +1,5 @@
 (() => {
- const auth=window.firebase?.apps?.length&&firebase.auth(),status=document.querySelector('#profile-status'),form=document.querySelector('#profile-form'),adminEmails=new Set(['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com']);let data,avatar,dirty=false,saving=false;
+ const auth=window.firebase?.apps?.length&&firebase.auth(),status=document.querySelector('#profile-status'),form=document.querySelector('#profile-form'),adminEmails=new Set(['lake@mu.com','nextweek1216@gmail.com','tamsun10@gmail.com']);let data,avatar,dirty=false,saving=false;
  const field=id=>document.getElementById(id);
  field('phone').addEventListener('blur',()=>{field('phone').value=window.formatEmployeePhone(field('phone').value);});
  const editor=field('profile-edit-dialog');
