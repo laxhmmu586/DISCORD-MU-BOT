@@ -70,17 +70,19 @@ function normalizeScheduleName(value) {
 function isLegacyEtabRequest({channelId,message},enabled,etabChannelId='1252026975720046655') {
   return enabled && String(channelId)===etabChannelId && typeof message==='string' && /^\s*(?:#+\s*)?(?:✈️?\s*)?ETAB\s+ADVISORY\b/i.test(message);
 }
-function arrivalTeam(rows,date,employees) {
+function arrivalTeam(rows,date,employees,log=console) {
   const col=(rows[1] || []).findIndex((v,i)=>i>=3 && scheduleDate(v)===date);
   if(col<0) throw new Error('ETAB schedule date not found: '+date);
   const normalize=s=>String(s || '').trim().toLowerCase();
-  const ids=[],missing=[];
+  const ids=[],missing=[],skipped=[];
   for(const row of rows.slice(2)) if(normalize(row[col])==='a' && normalize(row[1])) {
     const key=normalizeScheduleName(row[1]);
     const matches=employees.filter(e=>key && normalizeScheduleName(e.name)===key);
-    if(matches.length!==1 || !/^\d{17,20}$/.test(matches[0].discordId || '')) missing.push(String(row[1]));
+    if(matches.length===1 && !String(matches[0].discordId || '').trim()) skipped.push(String(row[1]));
+    else if(matches.length!==1 || !/^\d{17,20}$/.test(matches[0].discordId || '')) missing.push(String(row[1]));
     else ids.push(matches[0].discordId);
   }
+  if(skipped.length) log.warn?.('ETAB arrival team skipped employees without Discord IDs:',skipped.join(', '));
   if(missing.length) throw new Error('ETAB schedule employees require unique server Discord IDs: '+missing.join(', '));
   return [...new Set(ids)];
 }
@@ -114,7 +116,7 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,stor
         const item=await latest(state);if(!item)return;
         const hash=crypto.createHash('sha256').update(JSON.stringify(item.advisory)).digest('hex');
         if(hash===state.lastHash){store.put({...state,lastMessageId:item.messageId,lastReceived:item.received});return;}
-        const ids=arrivalTeam(await readSchedule(),item.advisory.date,getEmployees());
+        const ids=arrivalTeam(await readSchedule(),item.advisory.date,getEmployees(),log);
         state={...state,pending:{...item,hash,ids}};store.put(state);
       }
       const p=state.pending, target=await channel();
