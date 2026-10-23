@@ -204,3 +204,9 @@ html.has-theme{background:#fff;color-scheme:light}
 @media(max-width:600px){.has-dashboard-page #dashboard-form{grid-template-columns:minmax(0,1fr)}.has-dashboard-page #dashboard-form button{max-width:100%;white-space:normal}}
 
 @media(max-width:600px){.has-dashboard-page .has-totals{grid-template-columns:1fr}}
+
+.has-account-switch{grid-column:2;grid-row:1/3;display:flex;gap:3px;align-items:center;padding:4px;max-width:100%;border:1px solid #e4edf6;border-radius:24px;background:#f3f8fd;box-shadow:inset 0 1px 3px #fff,0 5px 14px #255b8d12}
+.has-page .has-account-switch button{min-width:52px;min-height:44px;padding:10px 13px;border:1px solid transparent;border-radius:21px;background:transparent;color:#607b94;font-size:12px;font-weight:700;box-shadow:none;white-space:normal}
+.has-page .has-account-switch button[aria-pressed=true]{color:#fff;border-color:#75caff;background:linear-gradient(150deg,#6ce1ff,#168aff 65%,#176ee5);box-shadow:inset 0 2px 3px #ffffff99,0 4px 10px #168aff55}
+.has-page .has-account-switch button:focus-visible{outline:3px solid #087bec;outline-offset:2px}.has-page .has-account-switch button:disabled{opacity:.65;cursor:wait}
+@media(max-width:400px){.has-account-scope{grid-template-columns:1fr}.has-account-switch{grid-column:1;grid-row:2;justify-self:start}.has-account-scope>small:not(.has-operation-date){grid-row:3}.has-account-scope>.has-operation-date{grid-row:4}}

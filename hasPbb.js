@@ -1,6 +1,7 @@
 const crypto=require('node:crypto');
 const items=require('./public/public/has-pbb-data');
 const terminalLicense=require('./public/public/pbb-terminal-license');
+const employeeAccounts=require('./public/public/employee-account-groups');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const validDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d))&&new Date(d).toISOString().slice(0,10)===d;
 function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPdf=require('./hasPbbPdf').buildHasPbbPdf}){
@@ -19,7 +20,8 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  const get=id=>{const row=db.prepare('SELECT data FROM has_pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);return JSON.parse(row.data);};
  const put=r=>{db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
  const same=(a,b)=>a.station===b.station&&a.account===b.account;
- function employee(user){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);return row;}
+ const accounts=row=>[...new Map([employeeAccounts.scope(row),...(row.additionalAccounts||[]).map(employeeAccounts.scope)].map(scope=>[employeeAccounts.key(scope),scope])).values()];
+ function employee(user,scope){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);if(scope?.station!==undefined||scope?.account!==undefined){if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));if(!selected)fail('You are not assigned to this station/account.',403);return {...row,...selected};}return row;}
  const dashboard=user=>String(user.email||'').trim().toLowerCase()==='lake@mu.com';
  const dashboardViewer=user=>['lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
  function roleCheck(e,role,date=today(),gate){
@@ -29,10 +31,10 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  }
  const list=e=>db.prepare('SELECT data FROM has_pbb_records WHERE station=? AND account=? AND date=? ORDER BY flight,bridge').all(e.station,e.account,today()).map(x=>JSON.parse(x.data));
  function authorized(req,id){const r=get(id);if(!same(req.hasEmployee,r))fail('This checklist belongs to another station/account.',403);return r;}
- function publish(r){for(const s of streams){try{const current=employee(s.user);if(!same(current,s.scope)){s.res.end();continue;}if(s.id?s.id===r.id:same(current,r))s.res.write(`event: state\ndata: ${JSON.stringify(s.id?r:list(current))}\n\n`);}catch{s.res.end();}}}
+ function publish(r){for(const s of streams){try{const current=employee(s.user,s.scope);if(!same(current,s.scope)){s.res.end();continue;}if(s.id?s.id===r.id:same(current,r))s.res.write(`event: state\ndata: ${JSON.stringify(s.id?r:list(current))}\n\n`);}catch{s.res.end();}}}
  const stamp=()=>store.now().toISOString();
  const gateState=e=>({gateLocks:gateLocks(e),serverTime:stamp(),gateEpoch,gateRevision});
- function publishGates(e){gateRevision++;const state=gateState(e);for(const s of streams){try{const current=employee(s.user);if(!same(current,s.scope)){s.res.end();continue;}if(same(current,e))s.res.write(`event: gates\ndata: ${JSON.stringify(state)}\n\n`);}catch{s.res.end();}}return state;}
+ function publishGates(e){gateRevision++;const state=gateState(e);for(const s of streams){try{const current=employee(s.user,s.scope);if(!same(current,s.scope)){s.res.end();continue;}if(same(current,e))s.res.write(`event: gates\ndata: ${JSON.stringify(state)}\n\n`);}catch{s.res.end();}}return state;}
  async function deliver(id){
   const initial=get(id),generation=initial.resetToken||'',jobKey=id+':'+generation;
   if(jobs.has(jobKey))return jobs.get(jobKey);
@@ -68,7 +70,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
  }
  pruneIncomplete();
  const cleanupTimer=setInterval(pruneIncomplete,30000);cleanupTimer.unref();
- app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser);pruneIncomplete();next();}catch(e){res.status(e.status||401).json({error:e.message});}});
+ app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser,req.query);pruneIncomplete();next();}catch(e){res.status(e.status||401).json({error:e.message});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
  app.get('/has-pbb-api/dashboard/config',route((_req,res)=>res.json(schedule())));
  const saveSchedule=db.transaction((body,user)=>{const current=schedule();if(body.revision!==current.revision)fail('Schedule changed. Reload Config before saving.',409);if(!Array.isArray(body.pairs)||body.pairs.length>200)fail('Enter up to 200 flight pairs.');const inbound=new Set(),outbound=new Set(),ids=new Set();
@@ -77,7 +79,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   });const next={revision:current.revision+1,pairs,updatedAt:stamp(),updatedBy:user.email};db.prepare('UPDATE has_pbb_schedule SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });
  app.post('/has-pbb-api/dashboard/config',route((req,res)=>res.json(saveSchedule(req.body,req.hasUser))));
- app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
+ app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
  app.post('/has-pbb-api/gate',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate))fail('Confirm flight and gate number.');
@@ -164,7 +166,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   res.set({'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});res.flushHeaders();
   const sub={res,id,user:req.hasUser,scope:req.hasEmployee};streams.add(sub);res.write(`event: state\ndata: ${JSON.stringify(id?get(id):list(req.hasEmployee))}\n\n`);
   res.write(`event: gates\ndata: ${JSON.stringify(gateState(req.hasEmployee))}\n\n`);
-  const timer=setInterval(()=>{try{if(!same(employee(sub.user),sub.scope))return res.end();res.write(': keep-alive\n\n');}catch{res.end();}},15000);timer.unref();res.on('close',()=>{clearInterval(timer);streams.delete(sub);});
+  const timer=setInterval(()=>{try{if(!same(employee(sub.user,sub.scope),sub.scope))return res.end();res.write(': keep-alive\n\n');}catch{res.end();}},15000);timer.unref();res.on('close',()=>{clearInterval(timer);streams.delete(sub);});
  }));
  app.get('/has-pbb-api/dashboard',route((req,res)=>{
   const end=String(req.query.end||today());if(!validDate(end))fail('Select a valid end date.');
