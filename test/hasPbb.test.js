@@ -384,3 +384,15 @@ test('demo linked as Business Manager can configure only its assigned account',a
  assert.equal((await f.request('demo','/dashboard/config',{revision:config.data.revision,pairs:[{...own,account:'XX'}]})).status,403);
  assert.equal((await f.request('demo','/dashboard/config',{revision:config.data.revision,pairs:[own]})).status,200);
 });
+
+test('Business Manager Config is Main Account only with an independent empty configuration',async t=>{
+ const f=await fixture(t),draft=f.employees.get(),row=draft.employees.find(e=>e.id==='spotter');row.position='Business Manager';row.account='XX';row.additionalAccounts=[{station:'LAX',account:'MU'},{station:'SFO',account:'MU'}];f.employees.save(draft,{email:'lake@mu.com'});
+ const other={id:'existing-mu',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1]},outbound:{flightNo:'MU586',days:[2]}};
+ await f.request('lake','/dashboard/config',{revision:1,pairs:[other]});
+ assert.equal((await f.request('spotter','/context')).data.canConfigure,true);
+ for(const query of ['?station=LAX&account=MU','?station=SFO&account=MU'])assert.equal((await f.request('spotter','/context'+query)).data.canConfigure,false);
+ const config=(await f.request('spotter','/dashboard/config')).data;assert.deepEqual(config.scopes,[{station:'LAX',account:'XX'}]);assert.deepEqual(config.pairs,[]);
+ assert.equal((await f.request('spotter','/dashboard/config',{revision:config.revision,pairs:[other]})).status,403);
+ const own={...other,id:'new-xx',account:'XX'};assert.equal((await f.request('spotter','/dashboard/config',{revision:config.revision,pairs:[own]})).status,200);
+ assert.deepEqual((await f.request('spotter','/dashboard/config')).data.pairs,[own]);assert.deepEqual((await f.request('lake','/dashboard/config')).data.pairs,[other,own]);
+});
