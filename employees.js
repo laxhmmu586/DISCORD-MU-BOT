@@ -72,8 +72,8 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
 function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
  const accessFor=user=>{
   const email=normalizeLoginId(user?.email);if(ADMIN_EMAILS.has(email))return {mode:'admin'};
-  const me=store.get().employees.find(row=>normalizeLoginId(row.loginId)===email&&employeePositions.normalize(row.position)==='Business Manager');
-  return me?{mode:'business-manager',...employeeAccounts.scope(me),scopes:employeeAccounts.memberships(me)}:null;
+  const me=store.get().employees.find(row=>normalizeLoginId(row.loginId)===email&&['Business Manager','Supervisor'].includes(employeePositions.normalize(row.position)));
+  return me?{mode:'business-manager',pbbPositions:employeePositions.normalize(me.position)==='Supervisor'?['Supervisor','Lead','Agent']:['Agent'],...employeeAccounts.scope(me),scopes:employeeAccounts.memberships(me)}:null;
  };
  const scopedView=(data,access)=>access.mode==='admin'?{...data,access}:{...data,access,accounts:(data.accounts||[]).filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope))),employees:data.employees.filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)))};
  app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);req.employeeAccess=accessFor(req.employeeAdmin);if(!req.employeeAccess)return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
@@ -92,7 +92,7 @@ function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
   const current=store.get();if(req.body.revision!==current.revision){const e=new Error('Employee list changed. Reload before saving.');e.status=409;throw e;}
   if(!Array.isArray(req.body.employees))throw new Error('Invalid employee list');
   const updates=new Map(req.body.employees.map(row=>[String(row.id||''),row]));
-  for(const [id] of updates){const target=current.employees.find(row=>row.id===id);if(!target||employeeAccounts.isHeadquarter(target)||employeePositions.normalize(target.position)!=='Agent'||!(req.employeeAccess.scopes||[req.employeeAccess]).some(scope=>employeeAccounts.belongs(target,scope))){const e=new Error('You can only edit PBB information for Agents in your own station and account.');e.status=403;throw e;}}
+  for(const [id] of updates){const target=current.employees.find(row=>row.id===id);if(!target||employeeAccounts.isHeadquarter(target)||!req.employeeAccess.pbbPositions.includes(employeePositions.normalize(target.position))||!(req.employeeAccess.scopes||[req.employeeAccess]).some(scope=>employeeAccounts.belongs(target,scope))){const e=new Error('You can only edit PBB information for permitted titles in your own station and account.');e.status=403;throw e;}}
   const employees=current.employees.map(row=>{const update=updates.get(row.id);return update?{...row,pbbId:update.pbbId,pbbExpiry:update.pbbExpiry,pbbMscId:update.pbbMscId,pbbMscExpiry:update.pbbMscExpiry}:row;});
   const saved=store.save({revision:current.revision,employees},req.employeeAdmin);res.json(scopedView(saved,req.employeeAccess));onChange();
  }catch(e){res.status(e.status||400).json({error:e.message});}});

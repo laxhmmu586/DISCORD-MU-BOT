@@ -12,7 +12,7 @@
  function show(result){
   data=result;avatar=undefined;dirty=false;
   const p=data.profile;p.phone=window.formatEmployeePhone(p.phone);field('profile-content').hidden=false;field('profile-link').hidden=true;
-  field('profile-admin-nav').hidden=!(adminEmails.has((auth.currentUser?.email||'').trim().toLowerCase())||['Business Manager','Manager'].includes(p.position));
+  field('profile-admin-nav').hidden=!(adminEmails.has((auth.currentUser?.email||'').trim().toLowerCase())||['Business Manager','Manager','Supervisor'].includes(p.position));
   field('full-name').value=p.name;field('employee-id').value=p.eid;field('nickname').value=p.nickname;field('phone').value=p.phone;field('contact-email').value=p.email;
   for(const [id,key] of [['view-full-name','name'],['view-employee-id','eid'],['view-nickname','nickname'],['view-phone','phone'],['view-email','email']])field(id).textContent=p[key]||'—';
   for(const key of ['station','account','pbbId','pbbExpiry','pbbMscId','pbbMscExpiry']){field(key).value=p[key]||'';field('view-'+key).textContent=p[key]||'—';}

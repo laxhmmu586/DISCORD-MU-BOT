@@ -28,7 +28,7 @@
 .employee-admin-page .employee-toolbar>div:last-child>*{margin:0}
 
 .employee-region+ .employee-region{margin-top:30px}.employee-region>h3{font-size:16px;color:#173b61;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid #dbe7f4}
-.employee-account-card[data-discord=false] th:nth-child(8),.employee-account-card[data-discord=false] td:nth-child(8),.employee-account-card[data-discord=false] col:nth-child(8){display:none}
+.employee-account-card[data-discord=false] th:nth-child(9),.employee-account-card[data-discord=false] td:nth-child(9),.employee-account-card[data-discord=false] col:nth-child(9){display:none}
 
 .employee-admin-page .employee-toolbar>div:last-child{margin-left:auto}
 #add-member-check{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin:20px 0}
@@ -54,7 +54,7 @@
 #add-member-dialog .member-dialog-footer{display:flex;gap:7px;justify-content:center;border-top:1px solid #e4edf7;margin-top:24px;padding-top:17px;font-size:10px;color:#7a91a7;line-height:1.5}#add-member-dialog .member-dialog-footer>span{color:#1ba88d}
 @media(max-width:600px){#add-member-dialog{padding:22px 18px}#add-member-dialog h2{font-size:21px}#add-member-dialog .member-dialog-icon{flex-basis:40px;width:40px;height:40px;border-radius:12px}#add-member-dialog .member-heading-copy{gap:10px}#add-member-check{gap:10px}#add-member-dialog .member-dialog-footer{font-size:9px}}
 
-.employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table td:nth-child(9),.employee-admin-page .employee-table col:nth-child(9){display:none}
+.employee-admin-page .employee-table th:nth-child(10),.employee-admin-page .employee-table td:nth-child(10),.employee-admin-page .employee-table col:nth-child(10){display:none}
 
 /* Account editors use measured field widths rather than inherited percentage columns. */
 .employee-admin-page #employee-panel{padding:22px}
@@ -83,7 +83,7 @@
  .employee-admin-page .employee-account-card .employee-table{min-width:0}
  .employee-admin-page .employee-account-card .employee-table td{padding:0}
  .employee-admin-page .employee-account-card .employee-table :is(td:first-child,td:nth-child(2)){grid-column:1/-1}
- .employee-admin-page .employee-account-card .employee-table :is(td:nth-child(10),td:nth-child(11),td:nth-child(12)){grid-column:auto}
+ .employee-admin-page .employee-account-card .employee-table :is(td:nth-child(11),td:nth-child(12),td:nth-child(13)){grid-column:auto}
 }
 @media(max-width:760px){.employee-admin-page #employee-panel{padding:16px}.employee-admin-page .employee-account-groups{margin-top:12px}}
 
