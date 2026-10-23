@@ -14,3 +14,9 @@
 @media(max-width:1000px){.request-node-workbench .oa-track li:has(.request-review-controls){display:block}.oa-node-audit{grid-template-columns:repeat(2,minmax(0,1fr));max-width:640px}.oa-node-audit>div:last-child{grid-column:auto}}@media(max-width:560px){.request-dashboard-tabs .request-card-alert{right:12px;top:12px}.request-dashboard-tabs button:is([data-request-tab=pending],[data-request-tab=mine]){padding-right:34px}.oa-node-audit{gap:12px}}
 
 .request-dashboard-tabs .request-tab-icon{width:58px;height:58px;background:none;border-radius:0}.request-tab-icon img{display:block;width:58px;height:58px;object-fit:contain}.request-dashboard-tabs button{grid-template-columns:58px 1fr}@media(max-width:560px){.request-dashboard-tabs button{grid-template-columns:1fr}.request-dashboard-tabs .request-tab-icon,.request-tab-icon img{width:48px;height:48px}}
+
+/* Keep completed-node records alongside the person and status. */
+.request-node-workbench .oa-track li:has(>.oa-node-audit){display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:auto auto 1fr;column-gap:24px;align-items:start}
+.request-node-workbench .oa-track li:has(>.oa-node-audit)>:is(strong,small,.oa-badge){grid-column:1;justify-self:start}
+.request-node-workbench .oa-track li>.oa-node-audit{grid-column:2;grid-row:1/4;align-self:start;grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr) minmax(0,.8fr) minmax(0,1.4fr);max-width:none;margin:0;padding:0;border:0;gap:18px}
+@media(max-width:1000px){.request-node-workbench .oa-track li:has(>.oa-node-audit){display:block}.request-node-workbench .oa-track li>.oa-node-audit{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:14px;padding-top:14px;border-top:1px solid #dce7f1;gap:12px}}
