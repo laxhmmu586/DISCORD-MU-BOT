@@ -327,6 +327,7 @@ for(const position of ['Supervisor','Business Manager','Manager'])test(position+
  let saved=await f.request('lake','/dashboard/config',{revision:1,pairs:[own,other]});assert.equal(saved.status,200);
  let config=await f.request('spotter','/dashboard/config');assert.deepEqual(config.data.pairs,[own]);
  assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[other]})).status,403);
+ assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[{...own,account:'XX'}]})).status,403);
  const updated={...own,inbound:{flightNo:'MU585',days:[3]}};saved=await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[updated]});assert.equal(saved.status,200);assert.deepEqual(saved.data.pairs,[updated]);assert((await f.request('lake','/dashboard/config')).data.pairs.some(p=>p.id==='other'));
  assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[]})).status,409);
  assert.equal((await f.request('spotter','/dashboard')).status,403);const changed=f.employees.get();changed.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(changed,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard/config')).status,403);
