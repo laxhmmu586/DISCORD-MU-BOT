@@ -2,54 +2,84 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-const { EventEmitter } = require('node:events');
+const handler = import('../deploy/has-network/worker.mjs');
+const request = (path, options = {}) => new Request('https://www.mufcapp.net' + path, {
+  ...options, headers: { Authorization: 'Bearer test', ...options.headers },
+});
 
-function fixture() {
-  let sent, callback;
-  const request = new EventEmitter();
-  request.setTimeout = (ms, cb) => { request.timeout = cb; };
-  request.destroy = error => request.emit('error', error);
-  request.end = body => { sent.body = body; };
-  const sandbox = { module: { exports: {} }, URL, require: () => ({ request(options, cb) { sent = options; callback = cb; return request; } }) };
-  vm.runInNewContext(fs.readFileSync('public/functions/proxy.js', 'utf8'), sandbox);
-  const res = new EventEmitter();
-  res.headers = {};
-  res.setHeader = (key, value) => { res.headers[key] = value; };
-  res.status = code => { res.statusCode = code; return res; };
-  res.json = body => { res.body = body; res.headersSent = true; };
-  return { proxy: sandbox.module.exports.proxy, res, request, sent: () => sent, respond: response => callback(response) };
-}
-
-test('HAS proxy rejects unauthenticated, unrelated and streaming requests', () => {
-  for (const [path, method, auth, status] of [
-    ['/has-network/has-pbb-api/context', 'GET', '', 401],
-    ['/has-network/admin', 'GET', 'Bearer test', 404],
-    ['/has-network/has-pbb-api/stream', 'GET', 'Bearer test', 404],
-    ['/has-network/has-pbb-api/context', 'DELETE', 'Bearer test', 405],
+test('free proxy rejects missing authentication and unrelated paths/methods before fetching', async () => {
+  const { proxy } = await handler;
+  for (const [path, options, status] of [
+    ['/has-network/has-pbb-api/context', { headers: { Authorization: '' } }, 401],
+    ['/has-network/admin', {}, 404],
+    ['/has-pbb-api/context', {}, 404],
+    ['/has-network/has-pbb-api/context', { method: 'DELETE' }, 405],
   ]) {
-    const f = fixture(); f.proxy({ url: path, method, headers: { authorization: auth } }, f.res);
-    assert.equal(f.res.statusCode, status); assert.equal(f.sent(), undefined);
+    const response = await proxy(request(path, options), () => { throw Error('Must not fetch'); });
+    assert.equal(response.status, status);
   }
 });
 
-test('HAS proxy preserves scope, bearer token, raw JSON and API error status without forwarding cookies', () => {
-  const f = fixture(), body = Buffer.from('{"role":"spotter"}');
-  f.proxy({ url: '/has-network/has-pbb-api/records?station=LAX&account=MU', method: 'POST', rawBody: body, headers: { authorization: 'Bearer test', cookie: 'secret', 'content-type': 'application/json' } }, f.res);
-  assert.equal(f.sent().hostname, 'api.mufcapp.net');
-  assert.equal(f.sent().path, '/has-pbb-api/records?station=LAX&account=MU');
-  assert.equal(f.sent().headers.authorization, 'Bearer test'); assert.equal(f.sent().headers.cookie, undefined);
-  assert.equal(f.sent().body, body);
-  const response = new EventEmitter(); response.statusCode = 403; response.headers = { 'content-type': 'application/json', 'set-cookie': 'secret' }; response.pipe = res => { assert.equal(res, f.res); };
-  f.respond(response); assert.equal(f.res.statusCode, 403); assert.equal(f.res.headers['set-cookie'], undefined);
-  assert.equal(f.res.headers['Cache-Control'], 'private, no-store');
+test('free proxy preserves scope, raw JSON and bearer token without forwarding cookies', async () => {
+  const { proxy } = await handler;
+  const body = '{"role":"spotter"}';
+  const response = await proxy(request('/has-network/has-pbb-api/records?station=LAX&account=MU', {
+    method: 'POST', body, headers: { Cookie: 'secret', 'Content-Type': 'application/json' },
+  }), async (url, options) => {
+    assert.equal(url, 'https://api.mufcapp.net/has-pbb-api/records?station=LAX&account=MU');
+    assert.equal(options.headers.get('Authorization'), 'Bearer test');
+    assert.equal(options.headers.get('Cookie'), null);
+    assert.equal(new TextDecoder().decode(options.body), body);
+    assert.equal(options.redirect, 'manual');
+    return Response.json({ error: 'Denied' }, { status: 403, headers: { 'Set-Cookie': 'secret' } });
+  });
+  assert.equal(response.status, 403); assert.equal(response.headers.get('Set-Cookie'), null);
+  assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
+  assert.deepEqual(await response.json(), { error: 'Denied' });
 });
 
-test('HAS PDF responses retain their download headers and upstream timeouts return 502', () => {
-  const f = fixture(); f.proxy({ url: '/has-network/has-pbb-api/records/test/pdf', method: 'GET', headers: { authorization: 'Bearer test' } }, f.res);
-  const response = new EventEmitter(); response.statusCode = 200; response.headers = { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="test.pdf"' }; response.pipe = () => {};
-  f.respond(response); assert.equal(f.res.headers['content-type'], 'application/pdf'); assert.match(f.res.headers['content-disposition'], /test.pdf/);
-  const failed = fixture(); failed.proxy({ url: '/has-network/profile-api', method: 'GET', headers: { authorization: 'Bearer test' } }, failed.res);
-  failed.request.timeout(); assert.equal(failed.res.statusCode, 502);
+test('free proxy streams SSE immediately and retains PDF headers and binary bytes', async () => {
+  const { proxy } = await handler;
+  let streamController;
+  const stream = new ReadableStream({ start(controller) { streamController = controller; } });
+  const response = await proxy(request('/has-network/has-pbb-api/stream?account=MU'), async () =>
+    new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } }));
+  assert.equal(response.headers.get('Content-Type'), 'text/event-stream');
+  const reader = response.body.getReader();
+  streamController.enqueue(new TextEncoder().encode('event: gates\ndata: {}\n\n'));
+  assert.match(new TextDecoder().decode((await reader.read()).value), /event: gates/);
+  streamController.close();
+  const pdf = await proxy(request('/has-network/has-pbb-api/records/test/pdf'), async () =>
+    new Response(new Uint8Array([37,80,68,70,0,255]), { headers: {
+      'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="test.pdf"',
+    } }));
+  assert.equal(pdf.headers.get('Content-Type'), 'application/pdf');
+  assert.match(pdf.headers.get('Content-Disposition'), /test.pdf/);
+  assert.deepEqual([...new Uint8Array(await pdf.arrayBuffer())], [37,80,68,70,0,255]);
+});
+
+test('free proxy rejects redirects and reports upstream failures without following URLs', async () => {
+  const { proxy } = await handler;
+  for (const fetcher of [async () => Response.redirect('https://other.invalid'), async () => { throw Error('offline'); }]) {
+    const response = await proxy(request('/has-network/profile-api'), fetcher);
+    assert.equal(response.status, 502); assert.equal(response.headers.get('Location'), null);
+  }
+});
+
+test('free proxy bounds POST bodies with and without Content-Length', async () => {
+  const { proxy } = await handler;
+  for (const headers of [{}, { 'Content-Length': String(3 * 1024 * 1024) }]) {
+    const response = await proxy(request('/has-network/has-pbb-api/records', {
+      method: 'POST', body: new Uint8Array(2 * 1024 * 1024 + 1), headers,
+    }), () => { throw Error('Must not fetch'); });
+    assert.equal(response.status, 413);
+  }
+});
+
+test('Hosting deployment has no billable function or serverless rewrite dependency', () => {
+  const config = JSON.parse(fs.readFileSync('public/firebase.json', 'utf8'));
+  assert.equal(config.functions, undefined);
+  assert.equal(config.hosting.rewrites, undefined);
 });
 
 test('HAS transport selects same origin in production and retains local/test overrides', () => {

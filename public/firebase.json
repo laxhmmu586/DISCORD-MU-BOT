@@ -1,7 +1,5 @@
 {
-  "functions": [{ "source": "functions", "codebase": "has-network" }],
   "hosting": {
-    "rewrites": [{ "source": "/has-network/**", "function": { "functionId": "hasNetwork", "region": "us-central1" } }],
     "public": "public",
     "redirects": [
       { "source": "/", "destination": "/flights.html", "type": 302 }
