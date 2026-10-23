@@ -1,10 +1,16 @@
 {
+  "functions": [{ "source": "functions", "codebase": "has-network" }],
   "hosting": {
+    "rewrites": [{ "source": "/has-network/**", "function": { "functionId": "hasNetwork", "region": "us-central1" } }],
     "public": "public",
     "redirects": [
       { "source": "/", "destination": "/flights.html", "type": 302 }
     ],
     "headers": [
+      {
+        "source": "/{has-network.js,service-common.js,has-pbb-config.js}",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
       {
         "source": "/{attendance-calendar.js,read-sign.html,read-sign.css,read-sign.js,people-api.js,profile-modules.js,attendance.html,attendance-history.js,uniform-notifications.js,uniform.html,uniform.css,uniform-client.js,uniform-api.js,uniform-workflow.js,login.html,auth-confirm.css,flight-account.js,employee-profile-api.js,employee-phone.js,portal-cards.css,info.html,info.js,profile.html,profile.css,profile-light.css,portal-light.css,profile.js,dashboard-profile.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
