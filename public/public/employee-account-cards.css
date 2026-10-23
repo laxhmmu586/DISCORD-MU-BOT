@@ -26,3 +26,6 @@
 
 .employee-admin-page .employee-toolbar>div:last-child{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .employee-admin-page .employee-toolbar>div:last-child>*{margin:0}
+
+.employee-region+ .employee-region{margin-top:30px}.employee-region>h3{font-size:16px;color:#173b61;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid #dbe7f4}
+.employee-account-card[data-discord=false] th:nth-child(8),.employee-account-card[data-discord=false] td:nth-child(8),.employee-account-card[data-discord=false] col:nth-child(8){display:none}

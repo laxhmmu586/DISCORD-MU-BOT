@@ -1,5 +1,13 @@
 (()=>{
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ window.bindReportNodes=(host,r,data,{api,onSaved})=>{
+  const target=host.querySelector('.request-node-workbench');if(!target||!r||!data.reviewerDirectory)return;
+  const route=r.approvalRoute?.length?r.approvalRoute:data.approvalRoute;
+  target.replaceWith(RequestWorkflow.render({record:{...r,employee:r.employee||data.employee,stages:route.map(n=>n.position),approvalRoute:route,step:r.step||0},directory:data.reviewerDirectory,defaultRoute:data.approvalRoute,showForm:false,stateKey:r.id,
+   onDraftChange:route=>{r.approvalRoute=route;window.bindReportNodes(host,r,data,{api,onSaved});},
+   onSave:async(route,revision)=>{await api('/'+r.id+'/route',{route,revision});await onSaved();}
+  }));
+ };
  window.reportProgress=(r,data)=>{
   const draft=r.status==='draft',stages=(r.stages||data.stages||[]).map(position=>window.employeePositions?.normalize?employeePositions.normalize(position):position),approvals=r.approvals||[];
   const people=i=>approvals[i]?.name||(data.approvalRoute?.[i]?.reviewers||[]).map(p=>p.name).join(' / ')||'No eligible approver configured';
