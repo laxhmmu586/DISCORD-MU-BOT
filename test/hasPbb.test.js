@@ -363,3 +363,14 @@ test('Drive failure does not block LAX MU Discord; Drive retry does not resend D
  await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'failed');assert.equal(f.service.get(r.id).discordDelivery.status,'sent');assert.equal(sends,1);
  f.recover();await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');assert.equal(sends,1);
 });
+
+test('HQ is excluded from dashboard totals, scope filters and details even with historical schedules and records',async t=>{
+ const f=await fixture(t),draft=f.employees.get();draft.employees.push({id:'hq-stat',name:'HQ fixture',position:'Agent',station:'HQ',account:'HQ',attach:false,detach:false,spotter:false});f.employees.save(draft,{email:'lake@mu.com'});
+ const config=(await f.request('lake','/dashboard/config')).data,pairs=[{id:'mu-stats',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'MU586',days:[1,2,3,4,5,6,7]}},{id:'hq-stats',station:'HQ',account:'HQ',inbound:{flightNo:'HQ100',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'HQ101',days:[1,2,3,4,5,6,7]}}];
+ assert.equal((await f.request('lake','/dashboard/config',{revision:config.revision,pairs})).status,200);
+ const mu=(await f.create()).data;mu.completedAt='2026-10-21T17:00:00Z';mu.delivery={status:'sent'};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(mu),mu.id);
+ for(const [i,scope] of [{station:'HQ',account:'HQ'},{station:'LAX',account:'HEADQUARTER'},{station:'HEADQUARTERS',account:'MU'}].entries()){const r={...mu,...scope,id:'hq-historical-'+i};f.db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(r.id,r.station,r.account,r.date,r.flightNo,r.bridge,JSON.stringify(r));}
+ const data=(await f.request('lake','/dashboard?start=2026-10-19&end=2026-10-25')).data;
+ const isHq=require('../public/public/employee-account-groups').isHeadquarter;assert(data.scopes.every(s=>!isHq(s)));assert(data.byScope.every(s=>!isHq(s)));assert.deepEqual(data.records.map(r=>r.id),[mu.id]);assert.equal(data.daily.reduce((n,d)=>n+d.expectedFlights,0),14);assert.equal(data.daily.reduce((n,d)=>n+d.submittedChecklists,0),1);
+ const hq=(await f.request('lake','/dashboard?station=HQ&account=HQ')).data;assert.deepEqual(hq.byScope,[]);assert.deepEqual(hq.records,[]);assert(hq.daily.every(d=>d.expectedFlights===0&&d.submittedChecklists===0));
+});

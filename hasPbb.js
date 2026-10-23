@@ -208,9 +208,9 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
   const start=String(req.query.start||new Date(Date.parse(end)-6*86400000).toISOString().slice(0,10));
   if(!validDate(start)||!validDate(end)||start>end||(Date.parse(end)-Date.parse(start))/86400000>92)fail('Select a date range of up to 93 days.');
   const station=String(req.query.station||'ALL').toUpperCase(),account=String(req.query.account||'ALL').toUpperCase();
-  const rows=db.prepare("SELECT data FROM has_pbb_records WHERE (?='ALL' OR station=?) AND (?='ALL' OR account=?) AND date>=? AND date<=? ORDER BY date,station,account,flight,bridge").all(station,station,account,account,start,end).map(x=>JSON.parse(x.data));
-  const configured=schedule().pairs;
-  const scopes=[...configured,...employees.get().employees,...db.prepare('SELECT DISTINCT station,account FROM has_pbb_records').all()].map(e=>({station:e.station,account:e.account})).filter((e,i,a)=>a.findIndex(x=>same(x,e))===i);
+  const rows=db.prepare("SELECT data FROM has_pbb_records WHERE (?='ALL' OR station=?) AND (?='ALL' OR account=?) AND date>=? AND date<=? ORDER BY date,station,account,flight,bridge").all(station,station,account,account,start,end).map(x=>JSON.parse(x.data)).filter(r=>!employeeAccounts.isHeadquarter(r));
+  const configured=schedule().pairs.filter(pair=>!employeeAccounts.isHeadquarter(pair));
+  const scopes=[...configured,...employees.get().employees,...db.prepare('SELECT DISTINCT station,account FROM has_pbb_records').all()].map(e=>({station:e.station,account:e.account})).filter(e=>!employeeAccounts.isHeadquarter(e)).filter((e,i,a)=>a.findIndex(x=>same(x,e))===i);
   const selectedScopes=scopes.filter(s=>(station==='ALL'||s.station===station)&&(account==='ALL'||s.account===account));
   const flightIdentity=r=>[r.station,r.account,r.date,r.type||'arrival',r.flightNo].join('/');
   const isScheduled=r=>{const weekday=new Date(r.date+'T12:00:00Z').getUTCDay()||7;return configured.some(pair=>{const leg=pair[(r.type||'arrival')==='departure'?'outbound':'inbound'];return same(pair,r)&&leg.flightNo===r.flightNo&&leg.days.includes(weekday);});};
