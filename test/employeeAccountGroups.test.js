@@ -56,20 +56,18 @@ test('Business Manager checks an EID and explicitly links an existing Agent rath
 });
 
 
-test('Supervisor can access Admin and edit only own-account Supervisor and lower PBB certificates',async t=>{
- const f=await fixture(t),email='supervisor@example.test';
- const draft=f.store.get();draft.employees.push({id:'lead',name:'LEAD FIXTURE',position:'Lead',station:'LAX',account:'MU',attach:false,detach:false,spotter:false});f.store.save(draft,admin);
- const view=await f.request('',undefined,email);assert.equal(view.status,200);assert.deepEqual(view.data.accounts,[{station:'LAX',account:'MU'}]);assert.deepEqual(view.data.access.pbbPositions,['Supervisor','Lead','Agent']);
- for(const id of ['supervisor','lead','agent']){
-  const before=f.store.get().employees.find(e=>e.id===id);
-  const saved=await f.request('',{revision:f.store.get().revision,employees:[{...before,name:'FORGED',position:'Business Manager',station:'SFO',pbbId:'TBIT-1',pbbExpiry:'2027-10-23',pbbMscId:'MSC-1',pbbMscExpiry:'2027-11-23'}]},email);
-  assert.equal(saved.status,200,id);const actual=f.store.get().employees.find(e=>e.id===id);assert.equal(actual.name,before.name);assert.equal(actual.position,before.position);assert.equal(actual.station,before.station);assert.equal(actual.pbbId,'TBIT-1');assert.equal(actual.pbbMscId,'MSC-1');
- }
- for(const id of ['hq','manager','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED'}]},email)).status,403,id);
+test('Supervisor edits all lower-level employee information and account assignments within the original scope',async t=>{
+ const f=await fixture(t),email='supervisor@example.test',view=(await f.request('',undefined,email)).data;
+ assert.equal(view.access.canEditEmployeeInfo,true);assert.deepEqual(view.access.editableEmployeeIds,['agent']);assert(view.accountChoices.some(a=>a.station==='SFO'));const before=view.employees.find(e=>e.id==='agent');
+ for(const id of ['supervisor','manager','hq','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED'}]},email)).status,403,id);
+ for(const change of [{position:'Supervisor'},{position:'Business Manager'},{loginId:'lake@mu.com'},{station:'ZZ',account:'FAKE'}])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{...before,...change}]},email)).status,403);
+ const edited={...before,position:'Lead',name:'EDITED EMPLOYEE',nickname:'Updated',eid:'9988',phone:'6265550123',email:'updated@example.test',companyEmail:'company@example.test',loginId:'updated-signin@example.test',discordId:'123456789012345678',station:'SFO',account:'MU',additionalAccounts:[{station:'LAX',account:'MU'},{station:'LAX',account:'XX'}],pbbId:'TBIT-1',pbbExpiry:'2027-10-23',pbbMscId:'MSC-1',pbbMscExpiry:'2027-10-23',attach:true,detach:true,spotter:true};
+ let r=await f.request('',{revision:view.revision,employees:[edited]},email);assert.equal(r.status,200);const actual=f.store.get().employees.find(e=>e.id==='agent');for(const key of ['position','name','nickname','eid','email','companyEmail','loginId','discordId','station','account','pbbId','pbbMscId','attach','detach','spotter'])assert.equal(actual[key],edited[key],key);assert.deepEqual(actual.additionalAccounts,edited.additionalAccounts);
+ // Removing the original account remains a savable reassignment, then removes further access.
+ r=await f.request('',{revision:r.data.revision,employees:[{...actual,additionalAccounts:[]}]},email);assert.equal(r.status,200);assert(!r.data.employees.some(e=>e.id==='agent'));assert.equal((await f.request('',{revision:r.data.revision,employees:[actual]},email)).status,403);
  for(const path of ['/accounts','/accounts/delete'])assert.equal((await f.request(path,{revision:f.store.get().revision,station:'LAX',account:'ZZ'},email)).status,403);
  const revoked=f.store.get();revoked.employees.find(e=>e.id==='supervisor').position='Lead';f.store.save(revoked,admin);assert.equal((await f.request('',undefined,email)).status,403);
 });
-
 
 test('administrator can persist HeadQuarter as the main account without a station account membership',async t=>{
  const f=await fixture(t),draft=f.store.get(),agent=draft.employees.find(e=>e.id==='agent');agent.station='HQ';agent.account='HQ';

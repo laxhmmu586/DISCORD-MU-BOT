@@ -30,12 +30,13 @@ test('return for revision goes to the previous reviewer, preserves audit, permit
  const {store,users}=fixture(t),b=body();let r=store.save(users[2],{...b,action:'submit'});
  assert.throws(()=>store.decide(users[3],r.id,{revision:r.revision,action:'return'}),/reason/);
  const original=r;r=store.decide(users[3],r.id,{revision:r.revision,action:'return',note:'Correct the report'});
- assert.equal(r.status,'draft');assert.equal(store.list(users[2]).reports[0].canEdit,true);assert.equal(r.history.at(-1).action,'Returned for revision');
+ assert.equal(r.status,'draft');assert.equal(store.list(users[2]).reports[0].canEdit,true);assert.equal(r.history.at(-1).action,'Returned for revision');assert.deepEqual(r.timeline.map(e=>e.action),['submit','return']);assert.equal(store.list(users[2]).reports[0].needsRevision,true);
  assert.throws(()=>store.save(users[2],{...b,revision:original.revision,action:'submit'}),e=>e.status===409);
- r=store.save(users[2],{...b,revision:r.revision,action:'submit'});
+ r=store.save(users[2],{...b,revision:r.revision,action:'save'});assert.equal(store.list(users[2]).reports.find(x=>x.id===r.id).needsRevision,true);
+ r=store.save(users[2],{...b,revision:r.revision,action:'submit'});assert.equal(store.list(users[2]).reports.find(x=>x.id===r.id).needsRevision,false);
  r=store.decide(users[3],r.id,{revision:r.revision,action:'approve',note:'Initial check'});
  const approved=r;r=store.decide(users[4],r.id,{revision:r.revision,action:'return',note:'Previous reviewer must correct this'});
- assert.equal(r.step,0);assert.equal(r.status,'pending');assert.equal(r.returnedTo,users[3].uid);assert.equal(r.approvals.length,0);assert.equal(r.history.at(-1).approvals[0].note,'Initial check');
+ assert.equal(r.step,0);assert.equal(r.status,'pending');assert.equal(r.returnedTo,users[3].uid);assert.equal(r.approvals.length,0);assert.equal(r.history.at(-1).approvals[0].note,'Initial check');assert(r.timeline.some(e=>e.action==='approve'&&e.note==='Initial check'));assert.equal(r.timeline.at(-1).action,'return');
  const returned=store.list(users[3]).reports.find(x=>x.id===r.id);assert.equal(returned.canReview,true);assert.equal(returned.canEdit,true);
  assert.throws(()=>store.decide(users[4],r.id,{revision:r.revision,action:'approve'}),e=>e.status===403);
  assert.throws(()=>store.save(users[2],{...b,revision:r.revision}),e=>e.status===403);
@@ -49,7 +50,7 @@ test('transfer assigns the next node to a named person, records the operator and
  const {store,users}=fixture(t);let r=store.save(users[2],{...body(),action:'submit'}),count=r.stages.length;
  for(const employeeId of ['missing',users[2].uid,users[3].uid])assert.throws(()=>store.decide(users[3],r.id,{revision:r.revision,action:'transfer',employeeId}),e=>e.status===400);
  const stale=r.revision;r=store.decide(users[3],r.id,{revision:r.revision,action:'transfer',employeeId:users[4].uid,note:'Please take this review'});
- assert.equal(r.status,'pending');assert.equal(r.step,1);assert.equal(r.stages.length,count);assert.equal(r.assignees[1],users[4].uid);assert.equal(r.approvals[0].action,'transfer');assert.equal(r.approvals[0].targetId,users[4].uid);
+ assert.equal(r.status,'pending');assert.equal(r.step,1);assert.equal(r.stages.length,count);assert.equal(r.assignees[1],users[4].uid);assert.equal(r.approvals[0].action,'transfer');assert.equal(r.approvals[0].targetId,users[4].uid);assert.deepEqual(r.timeline.map(e=>e.action),['submit','transfer']);
  assert.equal(store.list(users[4]).reports.find(x=>x.id===r.id).canReview,true);assert.equal(store.list(users[3]).reports.find(x=>x.id===r.id).canReview,false);
  assert.throws(()=>store.decide(users[4],r.id,{revision:stale,action:'approve'}),e=>e.status===409);
  r=store.decide(users[4],r.id,{revision:r.revision,action:'approve'});assert.equal(r.step,2);assert.equal(r.approvals[1].action,'approve');

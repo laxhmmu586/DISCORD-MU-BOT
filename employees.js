@@ -22,7 +22,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
  const accounts=()=>db.prepare('SELECT station,account FROM employee_account_groups ORDER BY station,account').all();
  const permissions=row=>({attach:row.attach===undefined?row.driver:row.attach,detach:row.detach===undefined?row.driver:row.detach});
  const get=()=>{const data=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);data.employees=data.employees.map(({driver,...row})=>({...row,...permissions({...row,driver})}));data.accounts=accounts();return data;};
- const save=db.transaction((body,user)=>{
+ const save=db.transaction((body,user,options={})=>{
   const current=get();if(body.revision!==current.revision){const e=new Error('Employee list changed. Reload before saving.');e.status=409;throw e;}
   if(!Array.isArray(body.employees)||body.employees.length>500)throw new Error('Invalid employee list');
   const canEditLoginId=LOGIN_ID_ADMIN_EMAILS.has(normalizeLoginId(user?.email));
@@ -40,7 +40,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
    const nickname=String(row.nickname??'').trim();if(nickname.length>60||/[\x00-\x1f\x7f]/.test(nickname))throw new Error('Check employee nicknames (maximum 60 characters)');
    const companyEmail=String(row.companyEmail??old?.companyEmail??'').trim();if(companyEmail&&(companyEmail.length>254||!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(companyEmail)))throw new Error('Company email must be a valid email address');
    const code=String(row.code??old?.code??'').trim(),phone=formatEmployeePhone(row.phone),email=String(row.email??'').trim();
-   const previousLoginId=normalizeLoginId(old?.loginId),loginId=normalizeLoginId(row.loginId??previousLoginId);if(!canEditLoginId&&loginId!==previousLoginId)loginIdForbidden();
+   const previousLoginId=normalizeLoginId(old?.loginId),loginId=normalizeLoginId(row.loginId??previousLoginId);if(!canEditLoginId&&loginId!==previousLoginId&&!options.editableLoginIds?.has(row.id))loginIdForbidden();
    if(loginId&&(loginId.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginId)||loginIds.has(loginId)))throw new Error('Original Login IDs must be valid, unique sign-in email addresses');
    if(code.length>40||phone.length>40||email.length>254||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw new Error('Check employee codes, phone numbers and email addresses');
    const id=String(row.id||''),name=String(row.name||'').trim(),eid=String(row.eid||'').trim(),discordId=String(row.discordId||'').trim();
@@ -73,9 +73,10 @@ function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
  const accessFor=user=>{
   const email=normalizeLoginId(user?.email);if(ADMIN_EMAILS.has(email))return {mode:'admin'};
   const me=store.get().employees.find(row=>normalizeLoginId(row.loginId)===email&&['Business Manager','Supervisor'].includes(employeePositions.normalize(row.position)));
-  return me?{mode:'business-manager',pbbPositions:employeePositions.normalize(me.position)==='Supervisor'?['Supervisor','Lead','Agent']:['Agent'],...employeeAccounts.scope(me),scopes:employeeAccounts.memberships(me)}:null;
+  return me?{mode:'business-manager',canEditEmployeeInfo:employeePositions.normalize(me.position)==='Supervisor',pbbPositions:employeePositions.normalize(me.position)==='Supervisor'?['Lead','Agent']:['Agent'],...employeeAccounts.scope(me),scopes:employeeAccounts.memberships(me)}:null;
  };
- const scopedView=(data,access)=>access.mode==='admin'?{...data,access}:{...data,access,accounts:(data.accounts||[]).filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope))),employees:data.employees.filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)))};
+ const editableBy=(row,access)=>access.canEditEmployeeInfo&&!employeeAccounts.isHeadquarter(row)&&['Lead','Agent'].includes(employeePositions.normalize(row.position))&&!ADMIN_EMAILS.has(normalizeLoginId(row.loginId))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope));
+ const scopedView=(data,access)=>access.mode==='admin'?{...data,access}:{...data,access:{...access,editableEmployeeIds:data.employees.filter(row=>editableBy(row,access)).map(row=>row.id)},accountChoices:data.accounts||[],accounts:(data.accounts||[]).filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope))),employees:data.employees.filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)))};
  app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);req.employeeAccess=accessFor(req.employeeAdmin);if(!req.employeeAccess)return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
  app.get('/employee-admin-api',(req,res)=>res.json(scopedView(store.get(),req.employeeAccess)));
  for(const [path,remove] of [['/accounts',false],['/accounts/delete',true]])app.post('/employee-admin-api'+path,(req,res)=>{try{if(req.employeeAccess.mode!=='admin')return res.status(403).json({error:'Only an employee administrator can add or delete accounts.'});const saved=store.changeAccount(req.body,req.employeeAdmin,remove);res.json({...saved,access:req.employeeAccess});onChange();}catch(e){res.status(e.status||400).json({error:e.message});}});
@@ -93,8 +94,19 @@ function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
   if(!Array.isArray(req.body.employees))throw new Error('Invalid employee list');
   const updates=new Map(req.body.employees.map(row=>[String(row.id||''),row]));
   for(const [id] of updates){const target=current.employees.find(row=>row.id===id);if(!target||employeeAccounts.isHeadquarter(target)||!req.employeeAccess.pbbPositions.includes(employeePositions.normalize(target.position))||!(req.employeeAccess.scopes||[req.employeeAccess]).some(scope=>employeeAccounts.belongs(target,scope))){const e=new Error('You can only edit PBB information for permitted titles in your own station and account.');e.status=403;throw e;}}
-  const employees=current.employees.map(row=>{const update=updates.get(row.id);return update?{...row,pbbId:update.pbbId,pbbExpiry:update.pbbExpiry,pbbMscId:update.pbbMscId,pbbMscExpiry:update.pbbMscExpiry}:row;});
-  const saved=store.save({revision:current.revision,employees},req.employeeAdmin);res.json(scopedView(saved,req.employeeAccess));onChange();
+  const editableLoginIds=new Set();
+  const employees=current.employees.map(row=>{const update=updates.get(row.id);if(!update)return row;
+   if(req.employeeAccess.canEditEmployeeInfo){
+    const deny=message=>{throw Object.assign(Error(message),{status:403});};
+    if(!editableBy(row,req.employeeAccess))deny('You can only edit lower-level employees in your own accounts.');
+    if(!['Lead','Agent'].includes(employeePositions.normalize(update.position??row.position)))deny('Choose a title below Supervisor.');
+    if(ADMIN_EMAILS.has(normalizeLoginId(update.loginId??row.loginId)))deny('An administrator sign-in cannot be assigned to this employee.');
+    const destination=employeeAccounts.scope({...row,...update});if(!employeeAccounts.isHeadquarter(destination)&&!current.accounts.some(a=>employeeAccounts.same(a,destination)))deny('Choose an existing main account.');
+    editableLoginIds.add(row.id);return {...row,...update,id:row.id};
+   }
+   return {...row,pbbId:update.pbbId,pbbExpiry:update.pbbExpiry,pbbMscId:update.pbbMscId,pbbMscExpiry:update.pbbMscExpiry};
+  });
+  const saved=store.save({revision:current.revision,employees},req.employeeAdmin,{editableLoginIds});res.json(scopedView(saved,req.employeeAccess));onChange();
  }catch(e){res.status(e.status||400).json({error:e.message});}});
 }
 module.exports={ADMIN_EMAILS,LOGIN_ID_ADMIN_EMAILS,createEmployeeStore,registerEmployees,hasPbbLicense};
