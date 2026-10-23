@@ -15,4 +15,9 @@ Validation:
 
 The older broad `scripts/verify-has-pbb.cjs` stops on an expired-license DOM expectation against current main. The focused hero workflow uses the same local integration fixture and independently exercises the changed controls.
 
-The gate number is centered in the inner pane. Confirm Gate sits at its right edge on desktop and at the lower right on mobile. On confirmation it disappears; Clear appears at the inner pane lower right.
+The gate number is centered in the inner pane. Confirm Gate sits at the right edge on desktop. On mobile, Confirm Gate and Clear are centered below the compact inner pane, within the outer glass pane. On confirmation, Confirm Gate disappears; desktop Clear remains at the inner pane lower right.
+
+## Responsive follow-up
+The desktop outer pane is narrower and shifted down; tablet widths retain enough outer width to contain the inner pane. Both desktop and mobile load the same bundled Poppins ExtraBold font (with SIL OFL license). The font is preloaded, and synthetic weights are disabled. Mobile digits use a compact 184px value region. Its inner pane is 150px tall; actions sit beneath it. The mobile background fits the full card width, positioned to expose both aircraft above the flight form.
+
+Focused browser verification covers 320/390/768/1024/1440px, actual webfont loading, progressive entry/deletion, suffix handling, digit centering, pane containment, mobile action placement, and confirmation/Clear. Screenshots use local Edge; a physical iPhone was not used for this local verification.
