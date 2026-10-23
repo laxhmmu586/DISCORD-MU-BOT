@@ -3,7 +3,7 @@ const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('..
 const items=require('../public/public/has-pbb-data').filter(q=>q.type==='arrival'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
 test('Dashboard Config counts Arrival and Departure independently using their operating weekdays and enforces access/revisions',async t=>{
  const f=await fixture(t),config=(await f.request('lake','/dashboard/config')).data;
- assert.deepEqual(config.pairs,[]);assert.equal((await f.request('driver','/dashboard/config')).status,403);assert.equal((await f.request('driver','/dashboard/config',{revision:config.revision,pairs:[]})).status,403);
+ assert.deepEqual(config.pairs,[]);assert.equal((await f.request('spotter','/dashboard/config')).status,403);assert.equal((await f.request('spotter','/dashboard/config',{revision:config.revision,pairs:[]})).status,403);
  const pairs=[{id:'mu',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1,3,5]},outbound:{flightNo:'MU586',days:[2,4,6]}},{id:'xx',station:'SFO',account:'XX',inbound:{flightNo:'XX101',days:[7]},outbound:{flightNo:'XX102',days:[7]}}];
  const saved=await f.request('lake','/dashboard/config',{revision:config.revision,pairs});assert.equal(saved.status,200);assert.deepEqual((await f.request('lake','/dashboard/config')).data.pairs,pairs);
  const context=(await f.request('driver','/context')).data;
@@ -320,8 +320,8 @@ test('linked accounts select independent schedules, gate locks, records and stre
 });
 
 
-test('Supervisor Config saves only own-account schedules and preserves other accounts',async t=>{
- const f=await fixture(t),draft=f.employees.get();draft.employees.find(e=>e.id==='spotter').position='Supervisor';f.employees.save(draft,{email:'lake@mu.com'});
+for(const position of ['Supervisor','Business Manager','Manager'])test(position+' Config saves only own-account schedules and preserves other accounts',async t=>{
+ const f=await fixture(t),draft=f.employees.get();draft.employees.find(e=>e.id==='spotter').position=position;f.employees.save(draft,{email:'lake@mu.com'});
  assert.equal((await f.request('spotter','/context')).data.canConfigure,true);
  const own={id:'own',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1]},outbound:{flightNo:'MU586',days:[2]}},other={id:'other',station:'SFO',account:'MU',inbound:{flightNo:'MU101',days:[1]},outbound:{flightNo:'MU102',days:[2]}};
  let saved=await f.request('lake','/dashboard/config',{revision:1,pairs:[own,other]});assert.equal(saved.status,200);

@@ -2,6 +2,7 @@ const crypto=require('node:crypto');
 const items=require('./public/public/has-pbb-data');
 const terminalLicense=require('./public/public/pbb-terminal-license');
 const employeeAccounts=require('./public/public/employee-account-groups');
+const employeePositions=require('./public/public/employee-positions');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const validDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d))&&new Date(d).toISOString().slice(0,10)===d;
 function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,buildPdf=require('./hasPbbPdf').buildHasPbbPdf}){
@@ -24,7 +25,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  const accounts=row=>[...new Map((isOps(row)?employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)):[employeeAccounts.scope(row),...(row.additionalAccounts||[]).map(employeeAccounts.scope)]).map(scope=>[employeeAccounts.key(scope),scope])).values()];
  function employee(user,scope){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);if(scope?.station!==undefined||scope?.account!==undefined){if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));if(!selected)fail('You are not assigned to this station/account.',403);return {...row,...selected};}return row;}
  const dashboard=user=>String(user.email||'').trim().toLowerCase()==='lake@mu.com';
- const configSupervisor=user=>String(user.email||'').trim().toLowerCase()!=='demo@hm.com'&&profiles.linked(user)?.position==='Supervisor';
+ const configEditor=user=>String(user.email||'').trim().toLowerCase()!=='demo@hm.com'&&['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
  const dashboardViewer=user=>['lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
  function roleCheck(e,role,date=today(),gate){
   if(!['driver','spotter'].includes(role))fail('Select Driver or Spotter');
@@ -88,7 +89,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  }
  pruneIncomplete();
  const cleanupTimer=setInterval(pruneIncomplete,30000);cleanupTimer.unref();
- app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard/config'?(dashboard(req.hasUser)||configSupervisor(req.hasUser)):req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser,req.query);pruneIncomplete();next();}catch(e){res.status(e.status||401).json({error:e.message});}});
+ app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard/config'?(dashboard(req.hasUser)||configEditor(req.hasUser)):req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser,req.query);pruneIncomplete();next();}catch(e){res.status(e.status||401).json({error:e.message});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
  const configView=(user,data=schedule())=>dashboard(user)?data:{...data,scopes:accounts(employee(user)),pairs:data.pairs.filter(pair=>accounts(employee(user)).some(scope=>same(scope,pair)))};
  app.get('/has-pbb-api/dashboard/config',route((req,res)=>res.json(configView(req.hasUser))));
@@ -99,14 +100,14 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  });
  const saveScopedSchedule=db.transaction((body,user)=>{
   if(dashboard(user))return saveSchedule(body,user);
-  const e=employee(user);if(!configSupervisor(user))fail('Config access denied.',403);
+  const e=employee(user);if(!configEditor(user))fail('Config access denied.',403);
   const scopes=accounts(e),current=schedule();if(!Array.isArray(body.pairs))fail('Enter flight pairs.');
   const own=pair=>scopes.some(scope=>same(scope,employeeAccounts.scope(pair)));
   if(body.pairs.some(pair=>!own(pair)||current.pairs.some(old=>old.id===pair.id&&!own(old))))fail('You can only configure your own station and accounts.',403);
   const saved=saveSchedule({...body,pairs:[...current.pairs.filter(pair=>!own(pair)),...body.pairs]},user);return configView(user,saved);
  });
  app.post('/has-pbb-api/dashboard/config',route((req,res)=>res.json(saveScopedSchedule(req.body,req.hasUser))));
- app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({allAccountAccess:isOps(profiles.linked(req.hasUser)),accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser)||configSupervisor(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
+ app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({allAccountAccess:isOps(profiles.linked(req.hasUser)),accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser)||configEditor(req.hasUser),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
  app.post('/has-pbb-api/gate',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate))fail('Confirm flight and gate number.');
