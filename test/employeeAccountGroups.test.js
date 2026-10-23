@@ -22,7 +22,7 @@ test('Business Manager can read the own-account card but only edit own Agents PB
  const f=await fixture(t),email='manager@example.test',view=(await f.request('',undefined,email)).data;
  assert.deepEqual(view.accounts,[{station:'LAX',account:'MU'}]);assert.deepEqual(view.employees.map(e=>e.id),['manager','supervisor','agent']);assert.equal(view.access.mode,'business-manager');
  const agent=view.employees.find(e=>e.id==='agent'),saved=await f.request('',{revision:view.revision,employees:[{...agent,name:'FORGED NAME',eid:'99999',station:'SFO',pbbId:'PBB-TEST',pbbExpiry:'2027-10-22'}]},email);assert.equal(saved.status,200);const actual=f.store.get().employees.find(e=>e.id==='agent');assert.equal(actual.name,agent.name);assert.equal(actual.eid,agent.eid);assert.equal(actual.station,'LAX');assert.equal(actual.pbbId,'PBB-TEST');
- for(const id of ['hq','supervisor','manager','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED',pbbExpiry:'2027-10-22'}]},email)).status,403,id);
+ for(const id of ['hq','supervisor','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED',pbbExpiry:'2027-10-22'}]},email)).status,403,id);
  for(const path of ['/accounts','/accounts/delete'])assert.equal((await f.request(path,{revision:f.store.get().revision,station:'LAX',account:'ZZ'},email)).status,403);
  assert.equal((await f.request('',undefined,'agent@example.test')).status,403);
  const changed=f.store.get();changed.employees.find(e=>e.id==='manager').position='Agent';f.store.save(changed,admin);assert.equal((await f.request('',undefined,email)).status,403,'Revocation applies to the next request');
@@ -74,8 +74,8 @@ test('administrator can persist HeadQuarter as the main account without a statio
  const saved=f.store.save(draft,admin),actual=saved.employees.find(e=>e.id==='agent');assert.equal(actual.station,'HQ');assert.equal(actual.account,'HQ');assert(require('../public/public/employee-account-groups').isHeadquarter(actual));assert(!require('../public/public/employee-account-groups').belongs(actual,{station:'LAX',account:'MU'}));
 });
 
-test('Supervisor edits own contact and accounts but cannot promote own title or change own sign-in',async t=>{
- const f=await fixture(t),email='supervisor@example.test',view=(await f.request('',undefined,email)).data,self=view.employees.find(e=>e.id==='supervisor');
+for(const id of ['supervisor','manager'])test(id+' edits own contact and accounts but cannot promote own title or change own sign-in',async t=>{
+ const f=await fixture(t),email=id+'@example.test',view=(await f.request('',undefined,email)).data,self=view.employees.find(e=>e.id===id);
  let r=await f.request('',{revision:view.revision,employees:[{...self,nickname:'Own nickname',phone:'6265550199',station:'SFO',account:'MU'}]},email);assert.equal(r.status,200);assert.equal(r.data.access.station,'SFO');assert.equal(r.data.employees.find(e=>e.id===self.id).nickname,'Own nickname');
  for(const change of [{position:'President'},{loginId:'new@example.test'}])assert.equal((await f.request('',{revision:r.data.revision,employees:[{...r.data.employees.find(e=>e.id===self.id),...change}]},email)).status,403);
 });

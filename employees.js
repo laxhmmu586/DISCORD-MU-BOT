@@ -75,7 +75,7 @@ function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
   const me=store.get().employees.find(row=>normalizeLoginId(row.loginId)===email&&['Business Manager','Supervisor'].includes(employeePositions.normalize(row.position)));
   return me?{mode:'business-manager',employeeId:me.id,canEditEmployeeInfo:employeePositions.normalize(me.position)==='Supervisor',pbbPositions:employeePositions.normalize(me.position)==='Supervisor'?['Lead','Agent']:['Agent'],...employeeAccounts.scope(me),scopes:employeeAccounts.memberships(me)}:null;
  };
- const editableBy=(row,access)=>access.canEditEmployeeInfo&&(row.id===access.employeeId||!employeeAccounts.isHeadquarter(row)&&['Lead','Agent'].includes(employeePositions.normalize(row.position))&&!ADMIN_EMAILS.has(normalizeLoginId(row.loginId))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)));
+ const editableBy=(row,access)=>(row.id===access.employeeId||access.canEditEmployeeInfo&&!employeeAccounts.isHeadquarter(row)&&['Lead','Agent'].includes(employeePositions.normalize(row.position))&&!ADMIN_EMAILS.has(normalizeLoginId(row.loginId))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)));
  const scopedView=(data,access)=>access.mode==='admin'?{...data,access}:{...data,access:{...access,editableEmployeeIds:data.employees.filter(row=>editableBy(row,access)).map(row=>row.id)},accountChoices:data.accounts||[],accounts:(data.accounts||[]).filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope))),employees:data.employees.filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)))};
  app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);req.employeeAccess=accessFor(req.employeeAdmin);if(!req.employeeAccess)return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
  app.get('/employee-admin-api',(req,res)=>res.json(scopedView(store.get(),req.employeeAccess)));
@@ -93,10 +93,10 @@ function registerEmployees(app,{store,authenticate,onChange=()=>{}}){
   const current=store.get();if(req.body.revision!==current.revision){const e=new Error('Employee list changed. Reload before saving.');e.status=409;throw e;}
   if(!Array.isArray(req.body.employees))throw new Error('Invalid employee list');
   const updates=new Map(req.body.employees.map(row=>[String(row.id||''),row]));
-  for(const [id] of updates){const target=current.employees.find(row=>row.id===id);if(req.employeeAccess.canEditEmployeeInfo?!target||!editableBy(target,req.employeeAccess):!target||employeeAccounts.isHeadquarter(target)||!req.employeeAccess.pbbPositions.includes(employeePositions.normalize(target.position))||!(req.employeeAccess.scopes||[req.employeeAccess]).some(scope=>employeeAccounts.belongs(target,scope))){const e=new Error('You can only edit PBB information for permitted titles in your own station and account.');e.status=403;throw e;}}
+  for(const [id] of updates){const target=current.employees.find(row=>row.id===id);if(!target||!editableBy(target,req.employeeAccess)&&(req.employeeAccess.canEditEmployeeInfo||employeeAccounts.isHeadquarter(target)||!req.employeeAccess.pbbPositions.includes(employeePositions.normalize(target.position))||!(req.employeeAccess.scopes||[req.employeeAccess]).some(scope=>employeeAccounts.belongs(target,scope)))){const e=new Error('You can only edit PBB information for permitted titles in your own station and account.');e.status=403;throw e;}}
   const editableLoginIds=new Set();
   const employees=current.employees.map(row=>{const update=updates.get(row.id);if(!update)return row;
-   if(req.employeeAccess.canEditEmployeeInfo){
+   if(editableBy(row,req.employeeAccess)){
     const deny=message=>{throw Object.assign(Error(message),{status:403});};
     if(!editableBy(row,req.employeeAccess))deny('You can only edit lower-level employees in your own accounts.');
     if(row.id===req.employeeAccess.employeeId&&(employeePositions.normalize(update.position??row.position)!==employeePositions.normalize(row.position)||normalizeLoginId(update.loginId??row.loginId)!==normalizeLoginId(row.loginId)))deny('Your own title and original sign-in must remain unchanged.');
