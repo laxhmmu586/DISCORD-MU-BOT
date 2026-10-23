@@ -78,11 +78,11 @@ test('manual reset protects a concurrent answer and prevents stale PDF delivery 
  const fresh=(await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:r.revision})).data;release(Buffer.from('obsolete PDF'));await job;
  assert.deepEqual(f.service.get(r.id),fresh);assert.equal(f.uploads(),0);assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);
 });
-async function fixture(t,{failUpload=false,buildPdf}={}){
+async function fixture(t,{failUpload=false,buildPdf,client}={}){
  const db=new Database(':memory:');let now=new Date('2026-10-21T17:00:00Z'),uploads=0;
  const seed=[['driver','LAX','MU'],['spotter','LAX','MU'],['other','SFO','MU'],['account','LAX','XX'],['expired','LAX','MU'],['missing','LAX','MU']].map(([id,station,account])=>({id,position:['driver','other','account'].includes(id)?'Manager':'Agent',name:'TEST '+id.toUpperCase(),eid:'123',station,account,attach:true,detach:true,spotter:true,pbbId:id==='missing'?'':'PBB-'+id,pbbExpiry:id==='missing'?'':id==='expired'?'2026-10-20':'2026-10-21'}));
  const employees=createEmployeeStore(db,{seed});const profiles={status:()=>{},linked:u=>employees.get().employees.find(e=>e.id===u.uid)};
- const app=express();app.use(express.json({limit:'2mb'}));const service=registerHasPbb(app,{store:{db,now:()=>now},employees,profiles,authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!uid)throw Error('Sign in required');return {uid,email:uid==='lake'?'lake@mu.com':uid==='demo'?'demo@hm.com':uid+'@test.invalid'};},...(buildPdf?{buildPdf}:{}),drive:{files:{generateIds:async()=>({data:{ids:['fake-id']}}),get:async()=>{throw {code:404};},create:async()=>{uploads++;if(failUpload)throw Error('fixture upload failure');return {data:{id:'fake-id'}};}}}});
+ const app=express();app.use(express.json({limit:'2mb'}));const service=registerHasPbb(app,{store:{db,now:()=>now},employees,profiles,client,authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!uid)throw Error('Sign in required');return {uid,email:uid==='lake'?'lake@mu.com':uid==='demo'?'demo@hm.com':uid+'@test.invalid'};},...(buildPdf?{buildPdf}:{}),drive:{files:{generateIds:async()=>({data:{ids:['fake-id']}}),get:async()=>{throw {code:404};},create:async()=>{uploads++;if(failUpload)throw Error('fixture upload failure');return {data:{id:'fake-id'}};}}}});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
  const request=async(user,path='',body,method)=>{if(body?.action==='answer'&&body.value===false&&body.evidence===undefined)body={...body,evidence:{reason:'Fixture obstruction',photo:'data:image/webp;base64,'+require('node:fs').readFileSync(require('node:path').join(__dirname,'../public/public/assets/pbb/has-crew-acknowledgment-v1.webp')).toString('base64')}};const res=await fetch(base+'/has-pbb-api'+path,{method:method||(body?'POST':'GET'),headers:{Authorization:'Bearer '+user,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:res.headers.get('content-type')?.includes('json')?await res.json():Buffer.from(await res.arrayBuffer())};};
@@ -343,4 +343,23 @@ test('configured OPS arrival auto-completes spotter and typed signature on creat
  let r=(await f.create()).data;assert.equal(r.ready.spotter,true);assert.equal(r.signatures.spotter.typedSignature,'HAS OPS RAMP');assert.equal(r.ready.driver,null);assert.deepEqual(r.answers.driver,{});assert(items.filter(i=>i.role==='spotter').every(i=>r.answers.spotter[i.id]===true));
  r=(await f.request('driver','/records/'+r.id+'/reset',{role:'driver',revision:r.revision})).data;assert.equal(r.signatures.spotter.name,'HAS OPS RAMP');
  const departure=(await f.request('driver','/records',{role:'driver',flightNo:'MU586',gate:'132',bridge:'L1',type:'departure'})).data;assert.equal(departure.ready.spotter,null);assert.equal(departure.signatures.spotter,undefined);
+});
+
+test('HAS Discord sends only completed LAX MU records to the fixed channel with PDF and retries independently',async t=>{
+ const sent=[],channels=[];let discordFails=true;
+ const client={channels:{fetch:async id=>{channels.push(id);return {isTextBased:()=>true,send:async payload=>{if(discordFails)throw Error('Discord offline');sent.push(payload);return {id:'message-'+sent.length};}};}}};
+ const f=await fixture(t,{client,buildPdf:async()=>Buffer.from('%PDF-fixture')});
+ let r=(await f.create()).data;await f.service.deliver(r.id);assert.equal(channels.length,0,'Incomplete records never notify');
+ const complete=(record,scope={})=>{const next={...record,...scope,completedAt:'2026-10-21T17:00:00Z',signatures:{driver:{name:'Driver fixture'},spotter:{name:'HAS OPS RAMP'}}};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(next),next.id);return next;};
+ r=complete(r);await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');assert.equal(f.service.get(r.id).discordDelivery.status,'failed');assert.equal(f.uploads(),1);
+ discordFails=false;await Promise.all([f.service.deliver(r.id),f.service.deliver(r.id)]);assert.equal(sent.length,1);assert.equal(f.uploads(),1,'Discord retry does not upload again');assert.equal(f.service.get(r.id).discordDelivery.messageId,'message-1');
+ assert(channels.every(id=>id==='1559561919826890852'));assert.match(sent[0].content,/Jet Bridge ARRIVAL \| MU583/);assert.match(sent[0].content,/Spotter: HAS OPS RAMP ✓/);assert.equal(sent[0].files[0].attachment.toString(),'%PDF-fixture');assert.match(sent[0].files[0].name,/^HAS PBB Arrival_LAX-MU_Driver fixture_2026-10-21.pdf$/);assert.equal(sent[0].enforceNonce,true);assert.deepEqual(sent[0].allowedMentions,{parse:[]});
+ await f.service.deliver(r.id);assert.equal(sent.length,1,'Completed notifications are not resent');
+ for(const scope of [{station:'LAX',account:'NH'},{station:'LAX',account:'OPS'},{station:'SFO',account:'MU'}]){const next=(await f.create('driver',scope.account==='NH'?'L2':'L3')).data;complete(next,scope);await f.service.deliver(next.id);assert.equal(sent.length,1,'No Discord notification for '+scope.station+'/'+scope.account);}
+});
+test('Drive failure does not block LAX MU Discord; Drive retry does not resend Discord',async t=>{
+ let sends=0;const f=await fixture(t,{failUpload:true,buildPdf:async()=>Buffer.from('%PDF-fixture'),client:{channels:{fetch:async()=>({isTextBased:()=>true,send:async()=>({id:String(++sends)})})}}});
+ const r=(await f.create()).data;r.completedAt='2026-10-21T17:00:00Z';r.signatures={driver:{name:'Driver'},spotter:{name:'Spotter'}};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
+ await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'failed');assert.equal(f.service.get(r.id).discordDelivery.status,'sent');assert.equal(sends,1);
+ f.recover();await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');assert.equal(sends,1);
 });
