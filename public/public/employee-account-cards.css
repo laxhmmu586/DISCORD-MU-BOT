@@ -29,3 +29,29 @@
 
 .employee-region+ .employee-region{margin-top:30px}.employee-region>h3{font-size:16px;color:#173b61;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid #dbe7f4}
 .employee-account-card[data-discord=false] th:nth-child(8),.employee-account-card[data-discord=false] td:nth-child(8),.employee-account-card[data-discord=false] col:nth-child(8){display:none}
+
+.employee-admin-page .employee-toolbar>div:last-child{margin-left:auto}
+#add-member-check{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin:20px 0}
+#add-member-dialog label{display:block;font-size:12px;color:#607b98}#add-member-dialog input{display:block;width:100%;margin-top:8px}
+#add-member-dialog button.profile-primary{min-height:44px;padding:11px 18px;border:1px solid #087fff;border-radius:10px;background:#087fff;color:#fff;font-weight:600;cursor:pointer;box-shadow:0 4px 10px #087fff18}
+#add-member-dialog button:disabled{opacity:.5;cursor:not-allowed}#add-member-existing{padding:15px;border:1px solid #dbe8f6;border-radius:10px;background:#f7fbff;line-height:1.6}
+#add-member-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}#confirm-add-member{margin-top:16px}#add-member-status{font-size:12px;line-height:1.6;color:#526e8b}
+@media(max-width:600px){#add-member-check,#add-member-fields{grid-template-columns:1fr}#add-member-dialog button.profile-primary{width:100%}}
+
+#add-member-dialog{width:min(620px,calc(100vw - 28px));padding:30px;border:1px solid #dce8f6;border-radius:22px;box-shadow:0 24px 90px #173b6133;background:linear-gradient(160deg,#f5faff 0,#fff 38%)}
+#add-member-dialog::backdrop{background:#173b6159;backdrop-filter:blur(7px)}
+#add-member-dialog .member-dialog-heading{align-items:flex-start;margin-bottom:24px;gap:14px}#add-member-dialog .member-heading-copy{display:flex;gap:14px;align-items:center;min-width:0}
+#add-member-dialog .member-dialog-icon{display:flex;align-items:center;justify-content:center;flex:0 0 48px;width:48px;height:48px;border:1px solid #d3e7fc;border-radius:15px;background:#eaf4ff;color:#087fff}#add-member-dialog .member-dialog-icon svg{width:26px;height:26px}
+#add-member-dialog .member-eyebrow{font-size:9px;letter-spacing:1.8px;font-weight:700;color:#7291b0}#add-member-dialog h2{font-size:24px;font-weight:700;margin:4px 0 6px;color:#173b61}#add-member-dialog .member-heading-copy p{font-size:12px;line-height:1.6;color:#7186a0;margin:0}
+#close-add-member{flex:0 0 32px;width:32px;height:32px;border:0;border-radius:50%;background:#eaf2fa;color:#61809e;font-size:22px;line-height:1}
+#add-member-dialog .member-target{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid #dceaf8;border-radius:12px;background:#f3f8fe;margin-bottom:25px}#add-member-dialog .member-target>span{font-size:9px;font-weight:700;letter-spacing:1.6px;color:#7391ae}#add-member-dialog .member-target strong{font-size:15px;color:#1765a6}
+#add-member-dialog .member-step-label{display:block;font-size:9px;letter-spacing:1.5px;font-weight:700;color:#7693b0;margin-bottom:14px}#add-member-check{margin:0 0 26px;gap:12px}#add-member-dialog label{font-size:12px;font-weight:600;color:#3f5e7d}
+#add-member-dialog input{height:46px;border:1px solid #cadbed;border-radius:10px;padding:12px 14px;font-size:14px;background:#fff;box-shadow:0 2px 5px #173b6105}#add-member-dialog input:focus{outline:3px solid #dceeff;border-color:#3999ff;box-shadow:none}
+#add-member-dialog button.profile-primary{background:linear-gradient(135deg,#209cff,#0877f9);border-color:#1388ff;font-size:12px;min-height:46px;box-shadow:0 5px 12px #087fff20;white-space:normal}
+#add-member-dialog #add-member-confirm{border-top:1px solid #e4edf7;padding-top:23px}#add-member-existing{margin:0 0 16px;padding:18px;background:#f5faff;border-color:#d8e9fb;border-radius:13px}#add-member-existing strong{display:block;font-size:16px;color:#173b61;font-weight:700}#add-member-existing .member-identity{display:inline-block;margin:8px 0;padding:3px 8px;border-radius:6px;background:#e6f1ff;color:#3676ac;font-size:10px}#add-member-existing small{display:block;font-size:12px;line-height:1.7;color:#66829c}
+#add-member-dialog #confirm-add-member{width:100%;font-size:14px;min-height:48px;margin-top:4px}#add-member-dialog #add-member-fields:not([hidden]){margin:18px 0}#add-member-dialog [hidden]{display:none!important}
+#add-member-status:not(:empty){padding:10px 12px;margin:16px 0 0;border-radius:9px;background:#f2f7fc}#add-member-status:empty{margin:0}
+#add-member-dialog .member-dialog-footer{display:flex;gap:7px;justify-content:center;border-top:1px solid #e4edf7;margin-top:24px;padding-top:17px;font-size:10px;color:#7a91a7;line-height:1.5}#add-member-dialog .member-dialog-footer>span{color:#1ba88d}
+@media(max-width:600px){#add-member-dialog{padding:22px 18px}#add-member-dialog h2{font-size:21px}#add-member-dialog .member-dialog-icon{flex-basis:40px;width:40px;height:40px;border-radius:12px}#add-member-dialog .member-heading-copy{gap:10px}#add-member-check{gap:10px}#add-member-dialog .member-dialog-footer{font-size:9px}}
+
+.employee-admin-page .employee-table th:nth-child(9),.employee-admin-page .employee-table td:nth-child(9),.employee-admin-page .employee-table col:nth-child(9){display:none}
