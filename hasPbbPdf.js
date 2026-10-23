@@ -46,6 +46,7 @@ async function buildHasPbbPdf(r){
  for(const role of ['driver','spotter']){
   const s=r.signatures[role];if(!s)throw Error('Both signatures required');box(top,30);line(326,top,326,top+30);
   text(`Jet Bridge ${role==='driver'?'Driver':'Spotter'} (Name):`,43,top+2,8);text(s.name,43,top+14,10,bold,274);text('(Signature):',332,top+2,8);
+  if(s.typedSignature)text(s.typedSignature,395,top+14,10,bold,170);
   for(const stroke of s.strokes)for(let i=1;i<stroke.length;i++)page.drawLine({start:{x:395+stroke[i-1][0]*170,y:792-top-4-stroke[i-1][1]*22},end:{x:395+stroke[i][0]*170,y:792-top-4-stroke[i][1]*22},thickness:.8,color:ink});top+=30;
  }
  text(`Station / Account: ${r.station} / ${r.account}    Driver ${r.signatures.driver.pbbTerminal||''} PBB ID: ${r.signatures.driver.pbbId}    Valid through: ${r.signatures.driver.pbbExpiry}`,36,top+7,8,bold,540);

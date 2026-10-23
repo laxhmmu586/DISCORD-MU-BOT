@@ -7,7 +7,7 @@ const label=key=>display[key]||key.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.t
 const canExport=r=>r.status!=='deleted'&&(r.status!=='draft'||workflow.events(r).some(e=>e.action==='submit'));
 async function buildRequestPdf(kind,record,{workflowOnly=false,pageOffset=0}={}){
  record={...record,employee:record.employee||{id:'',name:record.fields?.preparedBy||'-'}};
- const doc=await PDFDocument.create();doc.registerFontkit(require('@pdf-lib/fontkit'));
+ const doc=await PDFDocument.create();doc.registerFontkit(require('./vendor/fontkit/fontkit.umd.min'));
  const cjk=/[\u2e80-\u9fff]/.test(JSON.stringify(record)),font=await doc.embedFont(fs.readFileSync(path.join(__dirname,cjk?'vendor/fonts/NotoSansCJKsc-Regular.otf':'vendor/fonts/NotoSans.ttf')),{subset:false}),bold=cjk?font:await doc.embedFont(fs.readFileSync(path.join(__dirname,'vendor/fonts/NotoSans-Bold.ttf')),{subset:false});
  const ink=rgb(.09,.18,.29),blue=rgb(.09,.25,.41),muted=rgb(.36,.45,.54),border=rgb(.82,.87,.92),left=42,width=528,bottom=55;
  let page,y;const pages=[];
