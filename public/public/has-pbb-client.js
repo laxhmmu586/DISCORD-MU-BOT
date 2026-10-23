@@ -182,6 +182,7 @@
  }
  async function connect(id=''){
   clearTimeout(reconnectTimer);controller?.abort();controller=new AbortController();const signal=controller.signal,requestedScope=scopeKey(selectedScope);streamKey=id;
+  if(resolveApiBase()==='/has-network'){pollShared(id,signal,requestedScope);return;}
   try{
    const response=await fetch(resolveApiBase()+'/has-pbb-api'+scopedPath('/stream'+(id?'?id='+encodeURIComponent(id):'')),{headers:await authHeaders(),signal});if(!response.ok)throw Error('Shared connection unavailable');status.textContent='Live · Shared state connected';
    const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
@@ -189,9 +190,19 @@
    throw Error('Live connection interrupted');
   }catch(e){if(signal.aborted)return;status.textContent='Reconnecting shared state…';reconnectTimer=setTimeout(()=>{if(streamKey===id)connect(id);},3000);}
  }
+ async function pollShared(id,signal,requestedScope){
+  try{
+   const [latest,rows]=await Promise.all([api('/context'),api(id?'/records/'+id:'/records')]);
+   if(signal.aborted||requestedScope!==scopeKey(selectedScope))return;
+   receiveGates(latest);
+   if(id){if(record?.id===id&&rows.revision>record.revision)apply(rows);}else if(!record&&JSON.stringify(contextRecords)!==JSON.stringify(rows)){contextRecords=rows;render();}
+   status.textContent='Connected · Shared state refreshes every 3 seconds';
+  }catch(error){if(signal.aborted)return;if(id&&/HTTP 404/.test(error.message)){record=null;strokes=[];noReport=null;noDialog.close();render();connect();return;}status.textContent='Connection interrupted. Retrying…';}
+  if(!signal.aborted)reconnectTimer=setTimeout(()=>pollShared(id,signal,requestedScope),3000);
+ }
  function showContext(){$('has-dashboard-link').hidden=!context.dashboard;$('has-config-button').hidden=!context.canConfigure;}
  window.addEventListener('has-pbb-schedule-updated',()=>refreshContext());
- async function refreshContext(){if(busy)return;const requestedScope=scopeKey(selectedScope);try{const latest=await api('/context');if(requestedScope!==scopeKey(selectedScope))return;if(latest.employee.station!==context.employee.station||latest.employee.account!==context.employee.account||latest.date!==context.date){location.reload();return;}const prior={...context,serverTime:''},next={...latest,serverTime:''};if(!acceptGateState(latest))return;if(JSON.stringify(next)!==JSON.stringify(prior)){context=latest;if(!record&&draft.flightNo&&!flightChoices().includes(draft.flightNo)&&!heldGate())draft.flightNo='';if(!heldGate()){setGate('');stage='gate';}showContext();render();}}catch(e){if(requestedScope!==scopeKey(selectedScope))return;controller?.abort();view.replaceChildren();status.textContent=e.message;try{await loadAccount(null);}catch(fallback){status.textContent=fallback.message;}}}
- requireServiceLogin(async()=>{try{context=await api('/context',undefined,null);let scope=defaultAccount();if(!scope)throw Error('No business account assigned. Ask an administrator to add an account.');try{const saved=JSON.parse(sessionStorage.getItem('has-pbb-account:'+context.employee.id));if(accountOptions().some(a=>scopeKey(a)===scopeKey(saved)))scope=saved;}catch{}await loadAccount(scope);contextTimer=setInterval(refreshContext,30000);}catch(e){status.textContent=e.message;}});
+ async function refreshContext(){if(busy)return;const requestedScope=scopeKey(selectedScope);try{const latest=await api('/context');if(requestedScope!==scopeKey(selectedScope))return;if(latest.employee.station!==context.employee.station||latest.employee.account!==context.employee.account||latest.date!==context.date){location.reload();return;}const prior={...context,serverTime:''},next={...latest,serverTime:''};if(!acceptGateState(latest))return;if(JSON.stringify(next)!==JSON.stringify(prior)){context=latest;if(!record&&draft.flightNo&&!flightChoices().includes(draft.flightNo)&&!heldGate())draft.flightNo='';if(!heldGate()){setGate('');stage='gate';}showContext();render();}}catch(e){if(requestedScope!==scopeKey(selectedScope))return;if(/HTTP (401|403)/.test(e.message)){controller?.abort();try{await loadAccount(null);}catch(fallback){status.textContent=fallback.message;}return;}status.textContent='Unable to refresh. Check your connection; retrying automatically…';}}
+ requireServiceLogin(async()=>{try{context=await api('/context',undefined,null);let scope=defaultAccount();if(!scope)throw Error('No business account assigned. Ask an administrator to add an account.');try{const saved=JSON.parse(sessionStorage.getItem('has-pbb-account:'+context.employee.id));if(accountOptions().some(a=>scopeKey(a)===scopeKey(saved)))scope=saved;}catch{}await loadAccount(scope);contextTimer=setInterval(refreshContext,30000);}catch(e){status.textContent=e instanceof TypeError?'Unable to load HAS. Check your connection and retry.':e.message;const retry=document.createElement('button');retry.type='button';retry.textContent='Retry connection';retry.onclick=()=>location.reload();view.replaceChildren(retry);}});
  window.addEventListener('pagehide',()=>{controller?.abort();clearTimeout(reconnectTimer);clearTimeout(gateTimer);clearInterval(slidesTimer);clearInterval(contextTimer);});
 })();
