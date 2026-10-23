@@ -25,7 +25,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  const accounts=row=>[...new Map((isOps(row)?employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)):[employeeAccounts.scope(row),...(row.additionalAccounts||[]).map(employeeAccounts.scope)]).map(scope=>[employeeAccounts.key(scope),scope])).values()];
  function employee(user,scope){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);if(scope?.station!==undefined||scope?.account!==undefined){if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));if(!selected)fail('You are not assigned to this station/account.',403);return {...row,...selected};}return row;}
  const dashboard=user=>String(user.email||'').trim().toLowerCase()==='lake@mu.com';
- const configEditor=user=>String(user.email||'').trim().toLowerCase()!=='demo@hm.com'&&['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
+ const configEditor=user=>['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
  const dashboardViewer=user=>['lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
  function roleCheck(e,role,date=today(),gate){
   if(!['driver','spotter'].includes(role))fail('Select Driver or Spotter');
