@@ -1,3 +1,12 @@
+// Connection lines carry their own boarding numbers. Only the local PR header
+// or numbered passenger line can identify a passenger on this flight.
+function passengerBn(section) {
+  const text = String(section || '');
+  const bn = text.match(/\bPR:[^\r\n]*,BN\s*(\d{1,3})\b/i)?.[1]
+    || text.match(/^\s*\d+\.[^\r\n]*\bBN\s*(\d{1,3})\b/im)?.[1];
+  return bn ? bn.padStart(3, '0') : '';
+}
+
 // A failed FB lookup is authoritative for that BN in the current flight context.
 // Resolve context by timestamp because terminal exports can be newest-first.
 function filterUnavailablePassengerSections(sections, timestampToMs) {
@@ -16,8 +25,7 @@ function filterUnavailablePassengerSections(sections, timestampToMs) {
     if (header) context = { flight: header[1].toUpperCase(), date: header[2].toUpperCase(), day };
     // Only the PR header or passenger line identifies the local BN. An onward
     // connection's BN must never identify this passenger.
-    const bn = text.match(/\bPR:[^\r\n]*,BN\s*(\d{1,3})\b/i)?.[1]
-      || text.match(/^\s*\d+\.[^\r\n]*\bBN\s*(\d{1,3})\b/im)?.[1];
+    const bn = passengerBn(text);
     if (header && bn) identities.set(entry.index, keyFor(header[1].toUpperCase(), header[2].toUpperCase(), day, bn));
     const emptyBn = text.match(/^\s*>\s*FB\s*(\d{1,3})\s*$/im)?.[1];
     if (emptyBn && /^\s*(?:>\s*)?PSGR\s+ID\s*$/im.test(text) && context?.day === day) {
@@ -33,4 +41,4 @@ function filterUnavailablePassengerSections(sections, timestampToMs) {
   });
 }
 
-module.exports = { filterUnavailablePassengerSections };
+module.exports = { filterUnavailablePassengerSections, passengerBn };
