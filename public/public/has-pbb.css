@@ -342,3 +342,25 @@ html.has-theme{background:#fff;color-scheme:light}
 @media(max-width:360px){.has-page .has-gate-card:before{height:346px}.has-page .has-gate-card{background-position:center 270px}}
 /* Keep the inner pane contained on tablet widths as well. */
 @media(min-width:761px) and (max-width:1100px){.has-page .has-gate-card:before{left:10%;right:10%}.has-page .has-gate-hero{padding-left:14%;padding-right:14%}}
+/* Compact mobile gate confirmation and align its single-line heading. */
+.has-page .has-gate-heading{align-items:center}
+.has-page .has-gate-heading h2{margin:0}
+@media(max-width:760px){
+ .has-page .has-gate-card:before{height:270px}
+ .has-page .has-gate-hero{padding-top:26px;padding-bottom:14px}
+ .has-page .has-gate-sign{min-height:134px;padding-top:10px;padding-bottom:10px;gap:4px}
+ .has-page .has-gate-controls,.has-page .has-gate-value{min-height:84px;height:84px}
+ .has-page .has-gate-sign #confirm-gate{top:calc(100% + 22px)}
+ .has-page .has-gate-sign .has-clear-gate{left:auto;right:8px;top:8px;bottom:auto;transform:none;min-width:46px;min-height:25px;padding:3px 7px;font-size:10px;border-radius:7px}
+ .has-page .has-assigned-gate{padding-bottom:130px}
+ .has-page .has-gate-card{background-position:center 205px}
+}
+@media(max-width:360px){.has-page .has-gate-card:before{height:278px}.has-page .has-gate-card{background-position:center 213px}}
+/* White form surround; remove the unused mobile action space once locked. */
+.has-page .has-gate-card{background-color:#fff}
+@media(max-width:760px){
+ .has-page .has-gate-card:has(#clear-gate:not([hidden])):before{height:214px}
+ .has-page .has-assigned-gate:has(#clear-gate:not([hidden])){padding-bottom:105px}
+ .has-page .has-gate-card:has(#clear-gate:not([hidden])){background-position:center 180px}
+}
+@media(max-width:360px){.has-page .has-gate-card:has(#clear-gate:not([hidden])):before{height:222px}.has-page .has-gate-card:has(#clear-gate:not([hidden])){background-position:center 188px}}
