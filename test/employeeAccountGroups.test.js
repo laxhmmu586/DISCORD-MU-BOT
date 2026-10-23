@@ -30,3 +30,13 @@ test('Business Manager can read the own-account card but only edit own Agents PB
 test('HeadQuarter titles do not create normal account groups or leak into Business Manager views',()=>{
  const db=new Database(':memory:');try{const store=createEmployeeStore(db,{seed:[{id:'hq',position:'President',name:'HQ FIXTURE',station:'LAX',account:'MU',attach:false,detach:false,spotter:false}]});assert.deepEqual(store.get().accounts,[]);}finally{db.close();}
 });
+
+test('one employee may belong to three accounts without duplication and additional membership prevents deletion',async t=>{
+ const {store,request}=await fixture(t);let data=store.get(),agent=data.employees.find(e=>e.id==='agent');agent.additionalAccounts=[{station:'LAX',account:'XX'},{station:'SFO',account:'MU'}];data=store.save(data,admin);
+ assert.equal(data.employees.filter(e=>e.id==='agent').length,1);assert.equal(data.employees.find(e=>e.id==='agent').additionalAccounts.length,2);
+ const empty=store.get();empty.employees=empty.employees.filter(e=>e.id!=='other');data=store.save(empty,admin);assert.equal((await request('/accounts/delete',{revision:data.revision,station:'LAX',account:'XX'})).status,409);
+ const moved=store.get();moved.employees.find(e=>e.id==='manager').station='SFO';data=store.save(moved,admin);const view=(await request('',undefined,'manager@example.test')).data;assert(view.employees.some(e=>e.id==='agent'));assert(!view.employees.some(e=>e.id==='supervisor'));
+ const forged=store.get();forged.employees.find(e=>e.id==='agent').additionalAccounts=[{station:'LAX',account:'MU'}];assert.throws(()=>store.save(forged,admin),/distinct/);
+ forged.employees.find(e=>e.id==='agent').additionalAccounts=[{station:'XYZ',account:'MISSING'}];assert.throws(()=>store.save(forged,admin),/existing/);
+ forged.employees.find(e=>e.id==='agent').additionalAccounts=Array(3).fill({station:'LAX',account:'XX'});assert.throws(()=>store.save(forged,admin),/at most/);
+});
