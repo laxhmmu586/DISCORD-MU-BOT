@@ -90,7 +90,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
  app.post('/pbb-api/session',(_req,res)=>{const token='pbb_guest_'+crypto.randomBytes(32).toString('hex'),uid='guest-'+crypto.randomUUID(),expires=Date.now()+86400000;store.db.prepare('DELETE FROM pbb_guest_sessions WHERE expires<?').run(Date.now());store.db.prepare('INSERT INTO pbb_guest_sessions VALUES(?,?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),uid,expires);res.set('Cache-Control','no-store').json({token,uid,expires});});
  const streams=new Map(),jobs=new Map(),lobbyStreams=new Set();
- const hasPbbService=require('./hasPbb').registerHasPbb(app,{store,employees,profiles,authenticate,drive});
+ const hasPbbService=require('./hasPbb').registerHasPbb(app,{store,employees,profiles,authenticate,drive,client});
  const presence=id=>{const clients=streams.get(id)||[];const online=new Set([...clients].map(res=>res.pbbUid)).size;for(const res of clients)res.write(`event: presence\ndata: ${JSON.stringify({online})}\n\n`);};
  const currentDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());
  const activeRooms=(flightNo,type,date=currentDate())=>store.day(date,type).map(r=>({id:r.id,flightNo:r.flightNo,type:r.type,gate:r.gate,bridges:r.bridges,revision:r.revision,completedAt:r.completedAt,driver:{uid:r.owners.driver||null,joined:!!r.owners.driver,signed:!!r.signatures.driver},spotter:{uid:r.owners.spotter||null,joined:!!r.owners.spotter,signed:!!r.signatures.spotter}}));

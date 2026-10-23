@@ -4,7 +4,7 @@ const terminalLicense=require('./public/public/pbb-terminal-license');
 const employeeAccounts=require('./public/public/employee-account-groups');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const validDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d))&&new Date(d).toISOString().slice(0,10)===d;
-function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPdf=require('./hasPbbPdf').buildHasPbbPdf}){
+function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,buildPdf=require('./hasPbbPdf').buildHasPbbPdf}){
  const db=store.db,streams=new Set(),jobs=new Map(),gateEpoch=crypto.randomUUID();let gateRevision=0;
  db.exec('CREATE TABLE IF NOT EXISTS has_pbb_records(id TEXT PRIMARY KEY, station TEXT NOT NULL, account TEXT NOT NULL, date TEXT NOT NULL, flight TEXT NOT NULL, bridge TEXT NOT NULL, data TEXT NOT NULL, pdf BLOB, UNIQUE(station,account,date,flight,bridge))');
  db.exec('CREATE TABLE IF NOT EXISTS has_pbb_flights(station TEXT NOT NULL, account TEXT NOT NULL, flight TEXT NOT NULL, created_by TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(station,account,flight))');
@@ -42,10 +42,11 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   if(jobs.has(jobKey))return jobs.get(jobKey);
   const current=()=>{const r=get(id);return (r.resetToken||'')===generation&&!!r.completedAt;};
   const job=(async()=>{
-   let r=get(id);if(!r.completedAt||r.delivery.status==='sent')return;
+   let r=get(id);const notifyDiscord=r.station==='LAX'&&r.account==='MU'&&!!client;if(!r.completedAt||r.delivery.status==='sent'&&(!notifyDiscord||r.discordDelivery?.status==='sent'))return;let pdf;
    try{
-    let pdf=db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(id).pdf;
+    pdf=db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(id).pdf;
     if(!pdf){pdf=await buildPdf(r);if(!current())return;db.prepare('UPDATE has_pbb_records SET pdf=? WHERE id=?').run(pdf,id);}
+    if(r.delivery.status!=='sent'){
     const folderId=process.env.HAS_PBB_DRIVE_FOLDER_ID||process.env.PBB_DRIVE_FOLDER_ID||'1wMyB23ikaAnbkhJZcKBKBNujEeeY7Xsu';
     if(drive.validateFolder)await drive.validateFolder(folderId);if(!current())return;
     if(!r.delivery.fileId){const generated=await drive.files.generateIds({count:1,space:'drive'});if(!current())return;r.delivery.fileId=generated.data.ids[0];put(r);}
@@ -53,8 +54,23 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
     try{await drive.files.get({fileId,fields:'id',supportsAllDrives:true});exists=true;}catch(e){if(Number(e.code)!==404&&Number(e.response?.status)!==404)throw e;}
     if(!current())return;
     if(!exists)await drive.files.create({requestBody:{id:fileId,name:`HAS-PBB-${r.type}-${r.station}-${r.account}-${r.date}-${r.flightNo}-${r.bridge}.pdf`,parents:[folderId]},media:{mimeType:'application/pdf',body:require('node:stream').Readable.from(pdf)},fields:'id',supportsAllDrives:true});
-    r.delivery={status:'sent',fileId,url:`https://drive.google.com/file/d/${fileId}/view`};
+    r.delivery={status:'sent',fileId,url:`https://drive.google.com/file/d/${fileId}/view`};}
+
    }catch(e){r.delivery={...r.delivery,status:'failed',error:require('./pbbDrive').driveError(e)};}
+   if(!current())return;
+   // Discord and Drive retry independently; a successful destination is never resent.
+   if(notifyDiscord&&r.discordDelivery?.status!=='sent'){
+    r.discordDelivery={status:'pending'};put(r);
+    try{
+     if(!pdf)throw Error('PDF is still generating. Retry delivery.');
+     const channel=await client.channels.fetch('1559561919826890852');if(!current())return;
+     if(!channel?.isTextBased())throw Error('Discord channel is unavailable');
+     const line=value=>String(value??'').replace(/\s+/g,' ').trim();
+     const content=[`Jet Bridge ${line(r.type).toUpperCase()} | ${line(r.flightNo)} | ${line(r.date)} |`,`Gate ${line(r.gate)} | ${line(r.bridge)}`,`Driver: ${line(r.signatures.driver.name)} ✓`,`Spotter: ${line(r.signatures.spotter.name)} ✓`].join('\n');
+     const sent=await channel.send({content,files:[{attachment:pdf,name:require('./public/public/download-filename')(r.type,r)}],allowedMentions:{parse:[]},nonce:crypto.createHash('sha256').update('has-pbb:'+id+':'+generation).digest('hex').slice(0,24),enforceNonce:true});
+     if(!current())return;r.discordDelivery={status:'sent',messageId:sent.id,channelId:'1559561919826890852'};
+    }catch(error){r.discordDelivery={status:'failed',error:error.message};}
+   }
    if(!current())return;
    r.revision++;put(r);publish(r);
   })().finally(()=>jobs.delete(jobKey));jobs.set(jobKey,job);return job;
@@ -173,7 +189,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
    if(items.some(x=>(x.type||'arrival')===r.type&&x.role===role&&(role==='driver'||x.phase==='pre')&&!r.answers[role][x.id])||r.ready[role]!==true||role==='driver'&&!r.dockedAt)fail('Complete your checks before signing.');
    const strokes=b.strokes;if(!Array.isArray(strokes)||!strokes.length||strokes.length>100||strokes.some(s=>!Array.isArray(s)||s.length<2)||strokes.flat().length>10000||strokes.flat().some(p=>!Array.isArray(p)||p.length!==2||p.some(n=>!Number.isFinite(n)||n<0||n>1)))fail('Handwritten signature required.');
    r.signatures[role]={employeeId:e.id,name:e.name,eid:e.eid,uid:req.hasUser.uid,strokes,at:stamp(),...(role==='driver'?{pbbId:terminalLicense.forGate(e,r.gate).id,pbbExpiry:terminalLicense.forGate(e,r.gate).expiry,pbbTerminal:terminalLicense.forGate(e,r.gate).terminal}:{})};
-   if(r.signatures.driver&&r.signatures.spotter)r.completedAt=stamp();
+   if(r.signatures.driver&&r.signatures.spotter){r.completedAt=stamp();if(r.station==='LAX'&&r.account==='MU')r.discordDelivery={status:'pending'};}
   }else fail('Unknown action');
   r.owners[role]=e.id;r.updatedAt=stamp();r.revision++;return put(r);
  });
@@ -204,7 +220,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,buildPd
   const byScope=selectedScopes.map(s=>({...s,weeklyArrivals:configured.filter(pair=>same(pair,s)).reduce((n,pair)=>n+pair.inbound.days.length,0),weeklyDepartures:configured.filter(pair=>same(pair,s)).reduce((n,pair)=>n+pair.outbound.days.length,0),expectedFlights:daily.reduce((n,d)=>n+expected(d.date,s),0),...counts(rows.filter(r=>same(r,s)))}));
   res.json({station,account,start,end,daily,scopes,byScope,records:rows.map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
  }));
- for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&r.delivery.status!=='sent')void deliver(row.id);}
+ for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&(r.delivery.status!=='sent'||r.station==='LAX'&&r.account==='MU'&&['pending','failed'].includes(r.discordDelivery?.status)))void deliver(row.id);}
  return {deliver,get,pruneIncomplete,close(){clearInterval(cleanupTimer);for(const s of streams)s.res.end();}};
 }
 module.exports={registerHasPbb};
