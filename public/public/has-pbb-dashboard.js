@@ -27,5 +27,5 @@
  window.addEventListener('storage',event=>{if(event.key==='has-pbb-schedule-revision'&&!$('dashboard-panel').hidden)refreshScheduleTotals();});
  window.addEventListener('focus',()=>{if(!$('dashboard-panel').hidden)load();});
  $('dashboard-form').onsubmit=e=>{e.preventDefault();load();};$('dashboard-station').onchange=$('dashboard-account').onchange=()=>load();
- requireServiceLogin(async()=>{await load(true);timer=setInterval(()=>load($('dashboard-panel').hidden),30000);});window.addEventListener('pagehide',()=>{clearInterval(timer);chartObserver?.disconnect();});
+ requireServiceLogin(async()=>{await load(true);if(!$('dashboard-panel').hidden)timer=setInterval(()=>load(),30000);});window.addEventListener('pagehide',()=>{clearInterval(timer);chartObserver?.disconnect();});
 })();
