@@ -1,7 +1,7 @@
-const ExcelJS=require('exceljs');
 const expense=require('./expenseDefinition');
 const display={date:'Date',reason:'Reason',amount:'Local amount',from:'From',to:'To',dateTime:'Date / Dep + Arr Time',purpose:'Purpose / transport / miles / parking',foreignAmount:'Foreign amount',exchangeRate:'Exchange rate',companyCard:'Company credit card',breakfast:'Breakfast',lunch:'Lunch',dinner:'Dinner',sundry:'Tel / Sundry',city:'City',hotel:'Hotel',days:'Days',dailyRate:'Daily rate'};
 async function buildExpenseExcel(record){
+ const ExcelJS=require('exceljs');
  const f=expense.calculate(record.fields,true),book=new ExcelJS.Workbook();book.creator='Hallmark Aviation Services';const sheet=book.addWorksheet('Expense Report');sheet.columns=Array.from({length:11},()=>({width:19}));sheet.views=[{state:'frozen',ySplit:10}];sheet.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
  let row=1;const banner=text=>{sheet.mergeCells(row,1,row,11);const c=sheet.getCell(row,1);c.value=text;c.font={name:'Arial',size:13,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF173F68'}};sheet.getRow(row).height=27;row++;};
  banner('Expense Report');for(const key of Object.keys(expense.fields)){sheet.mergeCells(row,1,row,3);sheet.getCell(row,1).value=expense.fields[key];sheet.mergeCells(row,4,row,11);sheet.getCell(row,4).value=f[key];row++;}row++;

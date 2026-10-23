@@ -3,7 +3,7 @@
  const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
  const date=(v,short=false)=>new Date(v).toLocaleString('en-US',{timeZone:'America/Los_Angeles',...(short?{month:'short',day:'numeric',year:'numeric'}:{dateStyle:'medium',timeStyle:'short'})})+(short?'':' PT');
  const badge=m=>node('span',{signed:'Signed',pending:'Awaiting your signature',overdue:'Overdue','not-required':'Not assigned'}[m.myStatus],'rs-badge '+m.myStatus);
- const api=(path='',body,blob)=>peopleApi('/read-sign-api'+path,body,blob);
+ const api=async(path='',body,blob)=>{const result=await peopleApi('/read-sign-api'+path,body,blob);if(body){window.dispatchEvent(new Event('read-sign-changed'));try{localStorage.setItem('read-sign-updated',String(Date.now()));}catch{}}return result;};
  function list(){
   const q=$('rs-search').value.toLowerCase();$('rs-list').replaceChildren();
   const memos=data.memos.filter(m=>(filter==='all'||filter==='signed'&&m.myStatus==='signed'||filter==='pending'&&['pending','overdue'].includes(m.myStatus))&&(m.subject+' '+m.memoNumber).toLowerCase().includes(q));

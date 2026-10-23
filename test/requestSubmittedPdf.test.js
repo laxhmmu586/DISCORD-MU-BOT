@@ -1,5 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),express=require('express'),Database=require('better-sqlite3'),fs=require('node:fs'),path=require('node:path');
 const {PDFDocument}=require('../vendor/pdf-lib/pdf-lib');
+if(!process.env.REQUEST_PDF_NO_EXCEL)test('PDF endpoints do not require exceljs, even when it is unavailable',()=>{
+ const source=`const Module=require('node:module'),original=Module._load;Module._load=function(name,...args){if(name==='exceljs')throw Object.assign(Error("Cannot find module 'exceljs'"),{code:'MODULE_NOT_FOUND'});return original.call(this,name,...args);};require(${JSON.stringify(path.resolve(__dirname,'../reportExports.js'))});require(${JSON.stringify(__filename)});`;
+ const result=require('node:child_process').spawnSync(process.execPath,['-e',source],{env:{...process.env,REQUEST_PDF_NO_EXCEL:'1'},encoding:'utf8',timeout:60000});
+ assert.equal(result.status,0,result.stdout+'\n'+result.stderr);
+});
 test('all four forms export real PDFs after first submission and after return, with authenticated record access',async t=>{
  const db=new Database(':memory:'),seed=['Supervisor','Business Manager','General Manager','President','Accounting','Badge Coordinator','Supervisor'].map((position,i)=>({id:'pdf-'+i,name:'FICTIONAL EMPLOYEE '+i,position,eid:'100'+i,station:'LAX',account:'MU',phone:'6265550100',loginId:'pdf'+i+'@example.test',companyEmail:'pdf'+i+'@company.test',attach:false,detach:false,spotter:false}));
  const employees={...require('../employees').createEmployeeStore(db,{seed}),db},profiles={linked:user=>employees.get().employees.find(e=>e.id===user.uid)},app=express();app.use(express.json());
