@@ -364,3 +364,10 @@ html.has-theme{background:#fff;color-scheme:light}
  .has-page .has-gate-card:has(#clear-gate:not([hidden])){background-position:center 180px}
 }
 @media(max-width:360px){.has-page .has-gate-card:has(#clear-gate:not([hidden])):before{height:222px}.has-page .has-gate-card:has(#clear-gate:not([hidden])){background-position:center 188px}}
+/* Lower only the mobile glass group; keep the photo and flight form fixed. */
+@media(max-width:760px){
+ .has-page .has-gate-card:before{top:48px}
+ .has-page .has-gate-hero{padding-top:56px}
+ .has-page .has-assigned-gate{padding-bottom:100px}
+ .has-page .has-assigned-gate:has(#clear-gate:not([hidden])){padding-bottom:75px}
+}
