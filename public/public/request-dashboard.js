@@ -16,7 +16,18 @@
   for(const key of ['pending','mine']){const count=key==='pending'?sets.pending.length:sets.mine.filter(({r})=>r.needsRevision).length,alert=tabs.querySelector('[data-request-tab='+key+'] .request-card-alert');alert.hidden=!count;alert.setAttribute('aria-label',count+(key==='pending'?' requests awaiting your review':' requests returned for revision'));}
   if(active==='new')return;panel.replaceChildren();const heading=document.createElement('div');heading.className='profile-panel-title';const h=document.createElement('h2');h.textContent={pending:'Pending approvals',mine:'My requests',approved:'My approvals'}[active];const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Refresh';refresh.onclick=()=>window.RequestInbox.load().catch(()=>{});heading.append(h,refresh);panel.append(heading);
   const errors=data.groups.filter(g=>g.error);if(errors.length){const p=document.createElement('p');p.setAttribute('role','alert');p.textContent='Unable to load: '+errors.map(g=>g.name).join(', ')+'. Use Refresh to retry.';panel.append(p);}
-  for(const {kind,r} of sets[active]){const b=document.createElement('button');b.type='button';b.className='request-summary-row';const title=document.createElement('strong');title.textContent=RequestInbox.title(kind,r);const state=document.createElement('small');state.textContent=r.needsRevision?'Returned for revision':r.status==='pending'?'Awaiting '+(r.stages?.[r.step]||'review'):r.status;if(r.status==='pending'){const progress=document.createElement('span');progress.className='request-case-status';const ring=document.createElement('span');ring.className='request-status-ring';ring.setAttribute('aria-hidden','true');progress.append(ring,document.createTextNode('In Progress'));b.append(progress);}b.append(title,state);b.onclick=()=>openRecord(kind,r);panel.append(b);}
+  for(const {kind,r} of sets[active]){
+   const row=document.createElement('div');row.className='request-summary-item';
+   const action=document.createElement('div');action.className='request-action-box';action.dataset.state=r.needsRevision?'revision':r.status;
+   const actionLabel=document.createElement('span');actionLabel.className='request-action-label';actionLabel.textContent='Action';
+   const value=document.createElement('span');value.className='request-action-value';
+   if(r.status==='pending'&&!r.needsRevision){value.classList.add('request-case-status');const ring=document.createElement('span');ring.className='request-status-ring';ring.setAttribute('aria-hidden','true');value.append(ring);}
+   value.append(document.createTextNode(r.needsRevision?'Returned for revision':({pending:'In Progress',approved:'Approved',rejected:'Rejected',draft:'Draft'}[r.status]||r.status)));
+   action.append(actionLabel,value);
+   const button=document.createElement('button');button.type='button';button.className='request-summary-row';
+   const title=document.createElement('strong');title.textContent=RequestInbox.title(kind,r);button.append(title);button.onclick=()=>openRecord(kind,r);
+   row.append(action,button);panel.append(row);
+  }
   if(!sets[active].length&&!errors.length){const p=document.createElement('p');p.textContent={pending:'No requests awaiting your review.',mine:'No requests yet.',approved:'No requests approved by you yet.'}[active];panel.append(p);}
  }
  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>choose(b.dataset.requestTab));
