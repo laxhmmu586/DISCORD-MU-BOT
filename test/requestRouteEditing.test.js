@@ -24,3 +24,14 @@ for(const [kind,create] of [['incident','createIncidentStore'],['expense','creat
  route[0].employeeId=f.users[1].id;assert.throws(()=>store.updateRoute(f.users[0],id,{revision:r.revision,route}),/Completed/);
  const future=tools.nodes(r);future[1].employeeId='missing';assert.throws(()=>store.updateRoute(f.users[0],id,{revision:r.revision,route:future}),/existing/);
 });
+
+
+test('uniform transfer inserts a named next reviewer and a returned reviewer can correct and reapprove',t=>{
+ const f=setup(t),store=require('../uniformRequests').createUniformStore(f),flow=store.workflow(),route=tools.template(flow),b=uniformBody();route[1].employeeId=f.users[3].id;route[1].position=f.users[3].position;
+ let r=store.create(f.users[0],{...b,route,workflowRevision:flow.revision});
+ r=store.decide(f.users[1],r.id,{revision:r.revision,action:'transfer',employeeId:f.users[2].id,note:'Please review'});assert.equal(r.step,1);assert.equal(r.assignees[1],f.users[2].id);assert.equal(r.stages.length,3);assert.equal(r.approvals[0].action,'transfer');
+ assert.throws(()=>store.decide(f.users[2],r.id,{revision:r.revision,action:'return'}),/reason/);
+ r=store.decide(f.users[2],r.id,{revision:r.revision,action:'return',note:'Please correct the quantities'});assert.equal(r.step,0);assert.equal(store.read(f.users[1],r.id).canEdit,true);
+ r=store.create(f.users[1],{...b,revision:r.revision,reason:'size'});assert.equal(r.reason,'size');assert.equal(r.employee.id,f.users[0].id);assert.equal(r.status,'pending');assert.equal(r.step,0);
+ r=store.decide(f.users[1],r.id,{revision:r.revision,action:'approve'});assert.equal(r.step,1);assert.equal(store.read(f.users[2],r.id).canReview,true);
+});

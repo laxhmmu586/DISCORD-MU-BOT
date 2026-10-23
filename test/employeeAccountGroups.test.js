@@ -69,3 +69,9 @@ test('Supervisor can access Admin and edit only own-account Supervisor and lower
  for(const path of ['/accounts','/accounts/delete'])assert.equal((await f.request(path,{revision:f.store.get().revision,station:'LAX',account:'ZZ'},email)).status,403);
  const revoked=f.store.get();revoked.employees.find(e=>e.id==='supervisor').position='Lead';f.store.save(revoked,admin);assert.equal((await f.request('',undefined,email)).status,403);
 });
+
+
+test('administrator can persist HeadQuarter as the main account without a station account membership',async t=>{
+ const f=await fixture(t),draft=f.store.get(),agent=draft.employees.find(e=>e.id==='agent');agent.station='HQ';agent.account='HQ';
+ const saved=f.store.save(draft,admin),actual=saved.employees.find(e=>e.id==='agent');assert.equal(actual.station,'HQ');assert.equal(actual.account,'HQ');assert(require('../public/public/employee-account-groups').isHeadquarter(actual));assert(!require('../public/public/employee-account-groups').belongs(actual,{station:'LAX',account:'MU'}));
+});

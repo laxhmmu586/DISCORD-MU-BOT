@@ -10,7 +10,7 @@ function requestLifecycle({db,employee,get,put,view,now}){
   const at=now().toISOString();
   r.history=[...(r.history||[]),{at,name:e.name,employeeId:e.id,action:body.action==='withdraw'?'Withdrawn to draft':'Deleted',previousStatus:r.status,approvals:r.approvals||[],submittedAt:r.submittedAt}];
   r.status=body.action==='delete'?'deleted':'draft';r.step=0;r.approvals=[];r.revision++;r.updatedAt=at;
-  delete r.submittedAt;delete r.approvedAt;delete r.manager;
+  delete r.returnedTo;delete r.submittedAt;delete r.approvedAt;delete r.manager;
   put(r);
   return body.action==='delete'?{id:r.id,deleted:true}:view(r,e);
  });

@@ -62,7 +62,7 @@
 .employee-admin-page .employee-account-groups{margin-top:14px}
 .employee-admin-page #employee-updated:empty{display:none}
 .employee-admin-page .employee-region>h3{margin-bottom:12px;padding-bottom:10px}
-.employee-admin-page .employee-account-card .employee-table{table-layout:fixed;min-width:2430px;width:100%}
+.employee-admin-page .employee-account-card .employee-table{table-layout:fixed;min-width:2270px;width:100%}
 .employee-admin-page .employee-account-card .employee-table .employee-col-position{width:210px}
 .employee-admin-page .employee-account-card .employee-table .employee-col-name{width:220px}
 .employee-admin-page .employee-account-card .employee-table .employee-col-nickname{width:140px}
@@ -72,8 +72,8 @@
 .employee-admin-page .employee-account-card .employee-table .employee-col-company-email{width:260px}
 .employee-admin-page .employee-account-card .employee-table .employee-col-discord{width:180px}
 .employee-admin-page .employee-account-card .employee-table .employee-col-login{width:0}
-.employee-admin-page .employee-account-card .employee-table :is(.employee-col-account,.employee-col-account-secondary,.employee-col-account-third){width:180px}
-.employee-admin-page .employee-account-card .employee-table .employee-col-pbb{width:140px}
+.employee-admin-page .employee-account-card .employee-table :is(.employee-col-account,.employee-col-account-secondary,.employee-col-account-third){width:145px}
+.employee-admin-page .employee-account-card .employee-table .employee-col-pbb{width:85px}
 .employee-admin-page .employee-account-card .employee-table .employee-col-order{width:160px}
 .employee-admin-page .employee-account-card .employee-table td{width:auto;vertical-align:middle;padding:12px 8px}
 .employee-admin-page .employee-account-card .employee-table th{padding:14px 8px;white-space:nowrap}

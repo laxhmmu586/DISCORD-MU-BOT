@@ -107,3 +107,7 @@ body.profile-page .flight-password button{color:#fff;background:#087cff;border-c
  .profile-hero .profile-avatar-wrap{width:120px;height:120px}
  .profile-hero .profile-edit-link{grid-column:2;justify-self:end;margin:0}
 }
+
+.profile-pbb-actions{display:flex;align-items:center;gap:12px;margin-top:24px;flex-wrap:wrap}.profile-pbb-actions a{display:inline-flex;align-items:center;justify-content:center;gap:7px;box-sizing:border-box;min-height:42px;padding:10px 13px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap}.profile-pbb-actions svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7}.profile-pbb-actions .profile-pbb-primary{border:1px solid #79cfff;border-radius:24px;background:linear-gradient(155deg,#6edcff,#259eff 40%,#0875f3 80%,#176ce3);color:#fff;box-shadow:inset 0 2px 3px #ffffff9c,inset 0 -2px 4px #1767d12b,0 0 0 4px #f2f9ff,0 0 0 5px #dcebf8,0 5px 13px #168aff30}.profile-pbb-actions .profile-pbb-secondary{border:1px solid #d3e2f3;border-radius:9px;background:#fff;color:#075cb0}.profile-pbb-actions a:focus-visible{outline:3px solid #087fff;outline-offset:5px}.profile-pbb-actions a:hover{filter:brightness(.97)}.profile-pbb-actions [hidden]{display:none!important}
+
+.profile-pbb-actions{flex-wrap:nowrap}.profile-pbb-actions a{flex:1;min-width:0}@media(max-width:560px){.profile-pbb-actions a{padding:10px 6px;font-size:10px}.profile-pbb-actions{gap:10px}}

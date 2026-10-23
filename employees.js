@@ -3,7 +3,7 @@ const employeePositions=require('./public/public/employee-positions');
 const {StandardFontEmbedder,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
 const formatEmployeePhone=require('./public/public/employee-phone');
-const ADMIN_EMAILS=new Set(['lake@mu.com','tamsun@hm.com','nextweek1216@gmail.com','tamsun10@gmail.com']);
+const ADMIN_EMAILS=new Set(['lake@mu.com','nextweek1216@gmail.com','tamsun10@gmail.com']);
 const LOGIN_ID_ADMIN_EMAILS=new Set(['lake@mu.com','nextweek1216@gmail.com']);
 const normalizeLoginId=value=>String(value??'').trim().toLowerCase();
 const hasPbbLicense=(row,date=new Date().toISOString().slice(0,10))=>Boolean(row?.pbbId&&row?.pbbExpiry&&row.pbbExpiry>=date);
