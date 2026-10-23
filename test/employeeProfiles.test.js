@@ -26,7 +26,7 @@ test('verified email matches case insensitively, requires confirmation and persi
 });
 test('unknown Google email requires EID and rejects missing, invalid, duplicate and already linked IDs',t=>{
  const {profiles,employees}=fixture(t),other={...google,uid:'other',email:'other@gmail.com'};
- assert.deepEqual(profiles.status(other),{state:'needs_eid'});assert.throws(()=>profiles.preview(other,'123'),/not found/);assert.throws(()=>profiles.preview(other,''),/Enter/);
+ assert.deepEqual(profiles.status(other),{state:'needs_eid'});assert.equal(profiles.preview(other,'123').state,'register');assert.throws(()=>profiles.preview(other,''),/Enter/);
  const preview=profiles.preview(other,'00123');assert.equal(preview.profile.id,'one');profiles.link(other,{eid:'00123',revision:preview.revision});assert.throws(()=>profiles.status(google),/already has/);
  const data=employees.get();data.employees[1].eid='00123';employees.save(data,{email:'admin@example.com'});assert.throws(()=>profiles.preview({...other,uid:'third'},'00123'),/ambiguous/);
 });
@@ -48,7 +48,7 @@ test('avatars are decoded, normalized, persisted separately from admin saves, an
  ready=await profiles.update(google,{revision:employees.get().revision,avatar:''});assert.equal(ready.profile.avatar,'');
 });
 test('EID enumeration is limited and deleted employee identities fail closed',t=>{
- const {profiles,employees}=fixture(t);for(let i=0;i<5;i++)assert.throws(()=>profiles.preview({...google,email:'unknown@gmail.com'},'999'),/not found/);assert.throws(()=>profiles.preview({...google,email:'unknown@gmail.com'},'00123'),error=>error.status===429);
+ const {profiles,employees}=fixture(t);for(let i=0;i<5;i++)assert.equal(profiles.preview({...google,email:'unknown@gmail.com'},'999').state,'register');assert.throws(()=>profiles.preview({...google,email:'unknown@gmail.com'},'00123'),error=>error.status===429);
  confirm(profiles);const data=employees.get();data.employees.shift();employees.save(data,{email:'admin@example.com'});assert.equal(profiles.linked(google),undefined);assert.throws(()=>profiles.status(google),/unavailable/);
 });
 test('profile HTTP API requires auth and returns conflicts without overwriting data',async t=>{
@@ -57,4 +57,20 @@ test('profile HTTP API requires auth and returns conflicts without overwriting d
  assert.equal((await fetch(base+'/profile-api')).status,401);const headers={Authorization:'Bearer fixture','Content-Type':'application/json'};const preview=await (await fetch(base+'/profile-api',{headers})).json();assert.equal(preview.state,'confirm');
  const linked=await fetch(base+'/profile-api/link',{method:'POST',headers,body:JSON.stringify({revision:preview.revision,eid:preview.profile.eid})});assert.equal(linked.status,200);
  const stale=await fetch(base+'/profile-api',{method:'POST',headers,body:JSON.stringify({revision:0,nickname:'wrong'})});assert.equal(stale.status,409);assert.equal(employees.get().employees[0].nickname,'Test');
+});
+
+
+test('new identity registers under an existing main account without granting employee privileges',t=>{
+ const {profiles,employees}=fixture(t),user={...google,uid:'new-user',email:'new@gmail.com'};
+ const preview=profiles.preview(user,'00999');assert.equal(preview.state,'register');assert.deepEqual(preview.accounts,[{station:'LAX',account:'MU'}]);
+ assert.throws(()=>profiles.register(user,{eid:'00999',revision:preview.revision,station:'XXX',account:'FAKE'}),/existing Main Account/);
+ assert.throws(()=>profiles.register(user,{eid:'00123',revision:preview.revision,station:'LAX',account:'MU'}),/already exists/);
+ assert.throws(()=>profiles.register({...user,emailVerified:false},{eid:'00999',revision:preview.revision,station:'LAX',account:'MU'}),/verified/);
+ assert.throws(()=>profiles.register(user,{eid:'00999',revision:0,station:'LAX',account:'MU'}),/changed/);
+ const body={eid:'00999',revision:preview.revision,station:'LAX',account:'MU',position:'Manager',attach:true};
+ const ready=profiles.register(user,body);assert.equal(ready.state,'ready');assert.equal(ready.profile.eid,'00999');assert.equal(ready.profile.account,'MU');
+ const row=employees.get().employees.find(row=>row.id===ready.profile.id);assert.equal(row.position,'Agent');assert.equal(row.attach,false);assert.equal(row.detach,false);assert.equal(row.spotter,false);assert.equal(row.email,user.email);
+ assert.equal(profiles.register(user,body).profile.id,row.id);assert.equal(employees.get().employees.length,3);
+ assert.equal(createProfileStore(employees).status(user).profile.id,row.id);
+ assert.throws(()=>profiles.register({...user,uid:'another',email:'another@gmail.com'},{...body,revision:employees.get().revision}),/already has/);
 });
