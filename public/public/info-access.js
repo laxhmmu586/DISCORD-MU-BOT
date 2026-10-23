@@ -1,7 +1,7 @@
 (() => {
  const auth=window.firebase?.apps?.length&&firebase.auth();
  let currentUser=null,pending=null,generation=0;
- const isLax=data=>data?.state==='ready'&&String(data.profile?.station||'').trim().toUpperCase()==='LAX';
+ const isLax=data=>data?.state==='ready'&&['LAX','HQ','HEADQUARTER','HEADQUARTERS'].includes(String(data.profile?.station||'').trim().toUpperCase());
  const apply=allowed=>document.querySelectorAll('[data-info-access]').forEach(element=>{element.hidden=!allowed;});
  window.employeeInfoAccess=user=>{
   if(user===currentUser&&pending)return pending;
