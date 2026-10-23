@@ -1,4 +1,4 @@
-const { filterUnavailablePassengerSections } = require('./passengerRecordValidity');
+const { filterUnavailablePassengerSections, passengerBn } = require('./passengerRecordValidity');
 const { checkVisa } = require('./visaRuntime');
 const { countryForAirport } = require('./visaDestinations');
 const { dateFromToken: visaDateFromToken } = require('./visaEngine');
@@ -968,10 +968,8 @@ function enrichCheckinAgentStatsFromLog(log, syInfo, targetYmd = null) {
     const section = sectionObj.content || '';
     if (!section.includes('PR:') || !sectionMatchesFlightOperationDate(sectionObj, targetYmd, syInfo.flightNo)) continue;
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
-    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
-    if (!prMatch || !bnMatch || !matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
-
-    const bn = bnMatch[1].padStart(3, '0');
+    const bn = passengerBn(section);
+    if (!prMatch || !bn || !matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const previous = latestByBn.get(bn);
     if (!previous || ts >= previous.ts) {
@@ -1296,9 +1294,8 @@ function enrichWchListFromLog(log, syInfo, targetYmd = null) {
     if (!prMatch) continue;
     if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
 
-    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
-    if (!bnMatch) continue;
-    const bn = bnMatch[1].padStart(3, '0');
+    const bn = passengerBn(section);
+    if (!bn) continue;
     const nameMatch = section.match(/\n\s*\d+\.\s*([A-Z]+\/[A-Z]+)/i);
     const paxLineMatch = section.match(/\n\s*\d+\.\s*[^\n\r]*/i);
     const paxLine = paxLineMatch?.[0] || '';
@@ -1412,7 +1409,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     const passengerLine = getPassengerRecordLine(section);
     const passengerName = getPassengerNameFromSection(section);
     const paxListName = extractPaxListName(section);
-    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    const bn = passengerBn(section);
     const seat = (
       extractSeatAfterBn(passengerLine) ||
       passengerLine.match(/\bSNR?\s*(\d{1,3}[A-Z])\b/i)?.[1] ||
@@ -1507,7 +1504,7 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
     const involuntaryUpgrade = extractInvoluntaryUpgrade(section);
     if (!psmLines.length && !involuntaryUpgrade) continue;
 
-    const bn = section.match(/\bBN\s*(\d{1,3})\b/i)?.[1]?.padStart(3, '0') || '';
+    const bn = passengerBn(section);
     if (!bn) continue;
 
     const passengerLine = getPassengerRecordLine(section);
@@ -1586,9 +1583,8 @@ function enrichBnAuditFromLog(log, syInfo, targetYmd = null) {
     const prMatch = section.match(/PR:\s*([A-Z0-9]+)\/(\d{2}[A-Z]{3}\d{2})/i);
     if (!prMatch) continue;
     if (!matchesSyFlightRecord(prMatch[1], prMatch[2], syInfo)) continue;
-    const bnMatch = section.match(/\bBN(\d{1,3})\b/i);
-    if (!bnMatch) continue;
-    const bn = bnMatch[1].padStart(3, '0');
+    const bn = passengerBn(section);
+    if (!bn) continue;
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const score = sectionRichnessScore(section);
     const isDeletedSection = isDeletedPassengerSection(section);
@@ -1953,7 +1949,7 @@ function enrichBadSeatListFromLog(log, syInfo, targetYmd = null) {
     const ckinBadMatch = section.match(/^\s*CKIN\s+BAD\s+SEAT\s+([0-9]{1,3}[A-Z])\b/im);
     if (!ckinBadMatch) continue;
     const passengerLine = getPassengerRecordLine(section);
-    const bn = (section.match(/\bBN\s*(\d{1,3})\b/i)?.[1] || '').padStart(3, '0');
+    const bn = passengerBn(section);
     if (!bn) continue;
     const ts = parseSectionTimestamp(sectionObj.timestamp);
     const row = {

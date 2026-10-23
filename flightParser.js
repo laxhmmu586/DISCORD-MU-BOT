@@ -1,5 +1,5 @@
 const passengers = {};
-const { filterUnavailablePassengerSections } = require('./passengerRecordValidity');
+const { filterUnavailablePassengerSections, passengerBn } = require('./passengerRecordValidity');
 
 
 function parseSectionTimestamp(timestamp) {
@@ -361,15 +361,14 @@ function parseIncrementalLog(log) {
       section.match(
         /\d+\.\s+([A-Z\/]+).*?BN(\d+)(?:\s+\*?(\d+[A-Z]))?/i
       );
-    const headerBnMatch =
-      section.match(/\bBN(\d{1,3})\b/i);
+    const localBn = passengerBn(section);
 
     const offloadedMatch =
       section.match(
         /^\s*\d+\.\s+([A-Z\/]+).*?\bDELETED\b/im
       );
 
-    if (!paxMatch && !offloadedMatch && !headerBnMatch) {
+    if (!paxMatch && !offloadedMatch && !localBn) {
       continue;
     }
 
@@ -378,8 +377,8 @@ function parseIncrementalLog(log) {
         .trim();
 
     const bn =
-      (paxMatch?.[2] || headerBnMatch?.[1] || '')
-        ? (paxMatch?.[2] || headerBnMatch?.[1] || '').padStart(3, '0')
+      (paxMatch?.[2] || localBn || '')
+        ? (paxMatch?.[2] || localBn || '').padStart(3, '0')
         : '---';
 
     const isPassengerOffloaded =
