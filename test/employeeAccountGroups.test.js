@@ -58,8 +58,8 @@ test('Business Manager checks an EID and explicitly links an existing Agent rath
 
 test('Supervisor edits all lower-level employee information and account assignments within the original scope',async t=>{
  const f=await fixture(t),email='supervisor@example.test',view=(await f.request('',undefined,email)).data;
- assert.equal(view.access.canEditEmployeeInfo,true);assert.deepEqual(view.access.editableEmployeeIds,['agent']);assert(view.accountChoices.some(a=>a.station==='SFO'));const before=view.employees.find(e=>e.id==='agent');
- for(const id of ['supervisor','manager','hq','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED'}]},email)).status,403,id);
+ assert.equal(view.access.canEditEmployeeInfo,true);assert.deepEqual(view.access.editableEmployeeIds,['supervisor','agent']);assert(view.accountChoices.some(a=>a.station==='SFO'));const before=view.employees.find(e=>e.id==='agent');
+ for(const id of ['manager','hq','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED'}]},email)).status,403,id);
  for(const change of [{position:'Supervisor'},{position:'Business Manager'},{loginId:'lake@mu.com'},{station:'ZZ',account:'FAKE'}])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{...before,...change}]},email)).status,403);
  const edited={...before,position:'Lead',name:'EDITED EMPLOYEE',nickname:'Updated',eid:'9988',phone:'6265550123',email:'updated@example.test',companyEmail:'company@example.test',loginId:'updated-signin@example.test',discordId:'123456789012345678',station:'SFO',account:'MU',additionalAccounts:[{station:'LAX',account:'MU'},{station:'LAX',account:'XX'}],pbbId:'TBIT-1',pbbExpiry:'2027-10-23',pbbMscId:'MSC-1',pbbMscExpiry:'2027-10-23',attach:true,detach:true,spotter:true};
  let r=await f.request('',{revision:view.revision,employees:[edited]},email);assert.equal(r.status,200);const actual=f.store.get().employees.find(e=>e.id==='agent');for(const key of ['position','name','nickname','eid','email','companyEmail','loginId','discordId','station','account','pbbId','pbbMscId','attach','detach','spotter'])assert.equal(actual[key],edited[key],key);assert.deepEqual(actual.additionalAccounts,edited.additionalAccounts);
@@ -72,4 +72,10 @@ test('Supervisor edits all lower-level employee information and account assignme
 test('administrator can persist HeadQuarter as the main account without a station account membership',async t=>{
  const f=await fixture(t),draft=f.store.get(),agent=draft.employees.find(e=>e.id==='agent');agent.station='HQ';agent.account='HQ';
  const saved=f.store.save(draft,admin),actual=saved.employees.find(e=>e.id==='agent');assert.equal(actual.station,'HQ');assert.equal(actual.account,'HQ');assert(require('../public/public/employee-account-groups').isHeadquarter(actual));assert(!require('../public/public/employee-account-groups').belongs(actual,{station:'LAX',account:'MU'}));
+});
+
+test('Supervisor edits own contact and accounts but cannot promote own title or change own sign-in',async t=>{
+ const f=await fixture(t),email='supervisor@example.test',view=(await f.request('',undefined,email)).data,self=view.employees.find(e=>e.id==='supervisor');
+ let r=await f.request('',{revision:view.revision,employees:[{...self,nickname:'Own nickname',phone:'6265550199',station:'SFO',account:'MU'}]},email);assert.equal(r.status,200);assert.equal(r.data.access.station,'SFO');assert.equal(r.data.employees.find(e=>e.id===self.id).nickname,'Own nickname');
+ for(const change of [{position:'President'},{loginId:'new@example.test'}])assert.equal((await f.request('',{revision:r.data.revision,employees:[{...r.data.employees.find(e=>e.id===self.id),...change}]},email)).status,403);
 });

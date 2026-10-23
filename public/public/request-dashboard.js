@@ -30,7 +30,7 @@
   }
   if(!sets[active].length&&!errors.length){const p=document.createElement('p');p.textContent={pending:'No requests awaiting your review.',mine:'No requests yet.',approved:'No requests approved by you yet.'}[active];panel.append(p);}
  }
- tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>choose(b.dataset.requestTab));
+ tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>choose(b.dataset.requestTab));if(new URLSearchParams(location.search).get('view')==='mine')choose('mine');
  window.addEventListener('request-inbox-updated',async event=>{data=event.detail;try{const profile=await window.requestProfileReady;data.profileId=profile.id;}catch{}draw();const requested=new URLSearchParams(location.search).get('request');if(requested&&!openedLink){const match=data.rows.find(({r})=>r.id===requested);if(match){openedLink=true;choose(match.r.canReview?'pending':match.r.employee.id===data.profileId?'mine':'approved');openRecord(match.kind,match.r);}}});
  legacy.querySelector('.profile-panel-title').hidden=true;legacy.hidden=true;if(data)window.requestProfileReady.then(p=>{data.profileId=p.id;draw();});
 })();

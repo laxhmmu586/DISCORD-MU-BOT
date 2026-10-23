@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),express=require('express'),Database=require('better-sqlite3'),fs=require('node:fs'),path=require('node:path');
 const {PDFDocument}=require('../vendor/pdf-lib/pdf-lib');
-if(!process.env.REQUEST_PDF_NO_EXCEL)test('PDF endpoints do not require exceljs, even when it is unavailable',()=>{
- const source=`const Module=require('node:module'),original=Module._load;Module._load=function(name,...args){if(name==='exceljs')throw Object.assign(Error("Cannot find module 'exceljs'"),{code:'MODULE_NOT_FOUND'});return original.call(this,name,...args);};require(${JSON.stringify(path.resolve(__dirname,'../reportExports.js'))});require(${JSON.stringify(__filename)});`;
+if(!process.env.REQUEST_PDF_NO_EXCEL)test('PDF endpoints work without installed ExcelJS or fontkit packages',()=>{
+ const source=`const Module=require('node:module'),original=Module._load;Module._load=function(name,...args){if(['exceljs','@pdf-lib/fontkit'].includes(name))throw Object.assign(Error("Cannot find module 'exceljs'"),{code:'MODULE_NOT_FOUND'});return original.call(this,name,...args);};require(${JSON.stringify(path.resolve(__dirname,'../reportExports.js'))});require(${JSON.stringify(__filename)});`;
  const result=require('node:child_process').spawnSync(process.execPath,['-e',source],{env:{...process.env,REQUEST_PDF_NO_EXCEL:'1'},encoding:'utf8',timeout:60000});
  assert.equal(result.status,0,result.stdout+'\n'+result.stderr);
 });

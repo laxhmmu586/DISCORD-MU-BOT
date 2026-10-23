@@ -331,3 +331,16 @@ test('Supervisor Config saves only own-account schedules and preserves other acc
  assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[]})).status,409);
  assert.equal((await f.request('spotter','/dashboard')).status,403);const changed=f.employees.get();changed.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(changed,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard/config')).status,403);
 });
+
+test('LAX OPS can select all registered business scopes; ordinary employees cannot',async t=>{
+ const f=await fixture(t),draft=f.employees.get();draft.employees.find(e=>e.id==='driver').account='OPS';f.employees.save(draft,{email:'lake@mu.com'});
+ const c=(await f.request('driver','/context')).data;assert.equal(c.allAccountAccess,true);assert(c.accounts.some(a=>a.station==='SFO'&&a.account==='MU'));assert(!c.accounts.some(a=>a.station==='HQ'||a.account==='HQ'));
+ assert.equal((await f.request('driver','/context?station=SFO&account=MU')).status,200);assert.equal((await f.request('spotter','/context?station=SFO&account=MU')).status,403);assert.equal((await f.request('driver','/context?station=HQ&account=HQ')).status,403);
+});
+test('configured OPS arrival auto-completes spotter and typed signature on creation and reset only for arrival',async t=>{
+ const f=await fixture(t),config=(await f.request('lake','/dashboard/config')).data,pair={id:'ops',station:'LAX',account:'MU',opsArrivalSpotter:true,inbound:{flightNo:'MU583',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'MU586',days:[1,2,3,4,5,6,7]}};
+ assert.equal((await f.request('lake','/dashboard/config',{revision:config.revision,pairs:[pair]})).status,200);
+ let r=(await f.create()).data;assert.equal(r.ready.spotter,true);assert.equal(r.signatures.spotter.typedSignature,'HAS OPS RAMP');assert.equal(r.ready.driver,null);assert.deepEqual(r.answers.driver,{});assert(items.filter(i=>i.role==='spotter').every(i=>r.answers.spotter[i.id]===true));
+ r=(await f.request('driver','/records/'+r.id+'/reset',{role:'driver',revision:r.revision})).data;assert.equal(r.signatures.spotter.name,'HAS OPS RAMP');
+ const departure=(await f.request('driver','/records',{role:'driver',flightNo:'MU586',gate:'132',bridge:'L1',type:'departure'})).data;assert.equal(departure.ready.spotter,null);assert.equal(departure.signatures.spotter,undefined);
+});
