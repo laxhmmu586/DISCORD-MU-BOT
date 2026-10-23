@@ -54,3 +54,18 @@ test('Business Manager checks an EID and explicitly links an existing Agent rath
  assert.equal((await request('/add-employee',{station:'LAX',account:'MU',eid:'99998',revision:checked.data.revision,name:'STALE'},email)).status,409);
  data=store.get();data.employees.find(e=>e.id==='agent').eid=target.eid;store.save(data,admin);assert.equal((await request('/employee-check',{station:'LAX',account:'MU',eid:target.eid},email)).status,409,'Ambiguous EID fails closed');
 });
+
+
+test('Supervisor can access Admin and edit only own-account Supervisor and lower PBB certificates',async t=>{
+ const f=await fixture(t),email='supervisor@example.test';
+ const draft=f.store.get();draft.employees.push({id:'lead',name:'LEAD FIXTURE',position:'Lead',station:'LAX',account:'MU',attach:false,detach:false,spotter:false});f.store.save(draft,admin);
+ const view=await f.request('',undefined,email);assert.equal(view.status,200);assert.deepEqual(view.data.accounts,[{station:'LAX',account:'MU'}]);assert.deepEqual(view.data.access.pbbPositions,['Supervisor','Lead','Agent']);
+ for(const id of ['supervisor','lead','agent']){
+  const before=f.store.get().employees.find(e=>e.id===id);
+  const saved=await f.request('',{revision:f.store.get().revision,employees:[{...before,name:'FORGED',position:'Business Manager',station:'SFO',pbbId:'TBIT-1',pbbExpiry:'2027-10-23',pbbMscId:'MSC-1',pbbMscExpiry:'2027-11-23'}]},email);
+  assert.equal(saved.status,200,id);const actual=f.store.get().employees.find(e=>e.id===id);assert.equal(actual.name,before.name);assert.equal(actual.position,before.position);assert.equal(actual.station,before.station);assert.equal(actual.pbbId,'TBIT-1');assert.equal(actual.pbbMscId,'MSC-1');
+ }
+ for(const id of ['hq','manager','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED'}]},email)).status,403,id);
+ for(const path of ['/accounts','/accounts/delete'])assert.equal((await f.request(path,{revision:f.store.get().revision,station:'LAX',account:'ZZ'},email)).status,403);
+ const revoked=f.store.get();revoked.employees.find(e=>e.id==='supervisor').position='Lead';f.store.save(revoked,admin);assert.equal((await f.request('',undefined,email)).status,403);
+});
