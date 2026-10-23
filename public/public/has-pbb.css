@@ -210,3 +210,107 @@ html.has-theme{background:#fff;color-scheme:light}
 .has-page .has-account-switch button[aria-pressed=true]{color:#fff;border-color:#75caff;background:linear-gradient(150deg,#6ce1ff,#168aff 65%,#176ee5);box-shadow:inset 0 2px 3px #ffffff99,0 4px 10px #168aff55}
 .has-page .has-account-switch button:focus-visible{outline:3px solid #087bec;outline-offset:2px}.has-page .has-account-switch button:disabled{opacity:.65;cursor:wait}
 @media(max-width:400px){.has-account-scope{grid-template-columns:1fr}.has-account-switch{grid-column:1;grid-row:2;justify-self:start}.has-account-scope>small:not(.has-operation-date){grid-row:3}.has-account-scope>.has-operation-date{grid-row:4}}
+
+/* Gate confirmation: daylight glass hero, scoped to the entry card. */
+.has-page .has-gate-card{position:relative;isolation:isolate;background:#edf6fc url('/assets/pbb/has-gate-terminal-132-205-v4.webp') center top/100% auto no-repeat;border-color:#d7e6f2;border-radius:26px;box-shadow:0 16px 45px #174c7514}
+.has-page .has-gate-card:before{content:'';position:absolute;z-index:-1;inset:26px 7% auto;height:330px;border:1px solid #ffffffed;border-radius:26px;background:linear-gradient(125deg,#ffffffa8,#e5f4ff66 60%,#ffffffb8);backdrop-filter:blur(12px);box-shadow:inset 0 0 0 3px #ffffff40,inset 0 1px 0 #fff,0 14px 38px #21527d20;pointer-events:none}
+.has-page .has-gate-hero{padding:54px 10% 22px;background:none}
+.has-page .has-gate-heading h2{font-size:clamp(20px,2.3vw,29px);color:#102e60;letter-spacing:.2px}
+.has-page .has-plane-mark{background:linear-gradient(145deg,#f0fbff,#a2dfff);box-shadow:inset 0 1px 1px white,0 4px 15px #4d9bd31a;color:#0870bd}
+.has-page .has-gate-form{padding:0 25px 25px}
+.has-page .has-assigned-gate{padding:0 6% 85px}
+.has-page .has-gate-sign{max-width:700px;min-height:180px;padding:18px 24px 20px;gap:10px;border:1px solid #fff;border-radius:22px;background:linear-gradient(125deg,#ffffffa8,#e1f3ff80);box-shadow:inset 0 0 0 2px #ffffff44,0 8px 26px #2363971a;overflow:visible;color:#126ac2}
+.has-page .has-gate-sign:before{inset:0;border-radius:inherit;background:linear-gradient(135deg,transparent 15%,#ffffff60 15.2%,transparent 15.6%,transparent 75%,#ffffff55 75.2%,transparent 75.6%)}
+.has-page .has-assigned-label{color:#254c7c;font-size:11px;font-weight:700;letter-spacing:3px}
+.has-page .has-gate-entry{width:100%}
+.has-page .has-gate-entry>span{display:none}
+.has-page .has-gate-controls{display:flex;align-items:center;justify-content:center;gap:30px;width:100%}
+.has-page .has-gate-entry #has-gate-number{width:310px;max-width:58%;font-size:clamp(76px,9vw,116px);line-height:1.05;font-weight:850;letter-spacing:-4px;color:#0879cf;-webkit-text-fill-color:#0879cf;background:transparent;border:0;padding:0 4px;text-shadow:0 2px 0 #d2f5ff,0 4px 0 #0860ae,0 10px 18px #0572c344}
+.has-page #has-gate-number::placeholder{color:#72a9ce;-webkit-text-fill-color:#72a9ce;text-shadow:none;letter-spacing:4px}
+.has-page .has-shell .has-gate-confirm{flex:none;margin:0;min-height:54px;padding:15px 26px;border:1px solid #e1f7ff;border-radius:13px;background:linear-gradient(#199ffc,#066cdb 65%,#0759b8);box-shadow:inset 0 1px 2px #ffffffb3,inset 0 -2px 2px #06499a66,0 7px 16px #075fa632;color:white;font-size:15px;font-weight:650;white-space:nowrap}
+.has-page .has-gate-confirm:disabled{opacity:.55}
+.has-page .has-gate-confirm:not(:disabled):hover{filter:brightness(1.07);box-shadow:inset 0 1px 2px #fff,0 9px 20px #075fa648}
+.has-page .has-gate-entry input:focus-visible,.has-page .has-gate-confirm:focus-visible{outline:3px solid #1267c3;outline-offset:5px}
+.has-page .has-gate-sign:focus-within{outline:none}
+.has-page .has-gate-marker{height:22px;opacity:.5}.has-page .has-gate-marker:before{height:16px;border-width:1px}.has-page .has-gate-marker i{top:14px;width:9px;height:9px;border-width:2px;box-shadow:0 0 0 3px #ffffff88}
+.has-page .has-shell .has-clear-gate{position:relative;background:#ffffffb8;border-color:#b8d4ec;color:#245684}
+@media(max-width:760px){
+ .has-page .has-gate-card{background-size:auto 470px}
+ .has-page .has-gate-card:before{inset:18px 10px auto;height:350px;border-radius:21px;backdrop-filter:blur(9px)}
+ .has-page .has-gate-hero{padding:36px 24px 20px}
+ .has-page .has-gate-heading h2{font-size:18px!important}
+ .has-page .has-gate-form{padding:0 10px 12px}
+ .has-page .has-assigned-gate{padding:0 12px 70px}
+ .has-page .has-gate-sign{padding:18px 10px;min-height:210px;gap:10px}
+ .has-page .has-gate-controls{flex-direction:column;gap:16px}
+ .has-page .has-gate-entry #has-gate-number{width:100%;max-width:100%;font-size:76px;letter-spacing:-3px}
+ .has-page .has-shell .has-gate-confirm{min-height:48px;padding:12px 22px}
+ .has-page .has-assigned-label{font-size:10px;letter-spacing:2px}
+}
+/* Keep keyboard focus visible without a frame around the gate number. */
+.has-page .has-gate-entry #has-gate-number:focus-visible{outline:none;box-shadow:0 2px 0 #3a95d0}
+.has-page .has-gate-sign #confirm-gate{width:auto;min-width:158px;min-height:54px;padding:15px 24px;font-size:15px;box-shadow:inset 0 1px 2px #ffffffb3,inset 0 -2px 2px #06499a66,0 7px 16px #075fa632}
+@media(min-width:761px){.has-page .has-gate-card{background-position:center 110px;background-color:#dceffc}.has-page .has-assigned-gate{padding-bottom:145px}}
+@media(max-width:760px){.has-page .has-gate-sign #confirm-gate{width:auto;min-width:154px;min-height:48px;padding:12px 22px;font-size:14px}}
+@media(min-width:761px){.has-page .has-gate-card{background-image:linear-gradient(#dceffc 45%,#dceffc00),url('/assets/pbb/has-gate-terminal-132-205-v4.webp');background-size:100% 350px,100% auto;background-position:center top,center 195px;background-repeat:no-repeat}.has-page .has-assigned-gate{padding-bottom:205px}}
+/* Narrower, taller glass pane with exposed airport scenery at both sides. */
+@media(min-width:761px){
+ .has-page .has-gate-card:before{left:16%;right:16%;height:360px;background:linear-gradient(120deg,#ffffff8c,#d7edff54 65%,#ffffffa6);border:1px solid #fff;box-shadow:inset 0 0 0 4px #ffffff38,inset 0 2px 0 #fff,0 18px 40px #1b54852e;backdrop-filter:blur(9px) saturate(1.15)}
+ .has-page .has-gate-hero{padding:54px 18% 30px}
+ .has-page .has-gate-heading{gap:14px}
+ .has-page .has-gate-heading h2{font-size:24px}
+ .has-page .has-gate-heading p{font-size:12px}
+ .has-page .has-gate-sign{max-width:560px;min-height:192px;padding:22px 20px;background:linear-gradient(125deg,#ffffff87,#d7efff52);box-shadow:inset 0 0 0 2px #ffffff38,0 12px 28px #23639720}
+ .has-page .has-gate-controls{gap:18px}
+ .has-page .has-gate-entry #has-gate-number{width:285px;font-size:108px}
+}
+/* Optical depth: restrained blue type extrusion and a polished glass rim. */
+.has-page .has-gate-entry #has-gate-number{text-shadow:0 1px 0 #b9edff,0 2px 0 #075dad,0 3px 0 #0756a2,0 4px 0 #064d94,0 5px 0 #06488c,0 8px 4px #1867a522,0 14px 20px #0457a238;font-weight:900}
+.has-page .has-gate-sign{border:1px solid #fffffff0;box-shadow:inset 0 2px 0 #fff,inset 2px 0 0 #ffffff91,inset -2px -3px 0 #b4dcf080,inset 0 0 0 4px #ffffff24,0 3px 0 #c9e1f1a6,0 16px 30px #174b782b}
+.has-page .has-gate-sign:after{content:'';position:absolute;pointer-events:none;inset:5px;border:1px solid #ffffff66;border-radius:17px;background:linear-gradient(155deg,#ffffff38,transparent 30%,transparent 80%,#d4f0ff30)}
+@media(min-width:761px){.has-page .has-gate-entry #has-gate-number{font-size:116px;letter-spacing:-5px}.has-page .has-gate-card:before{box-shadow:inset 0 2px 0 #fff,inset 2px 0 0 #ffffffaa,inset -2px -3px 0 #b9d9ee99,inset 0 0 0 5px #ffffff2e,0 4px 0 #cce5f39c,0 22px 40px #174f7b2b}}
+/* Pearl glass: translucent optical layers over the actual airport scene. */
+.has-page .has-gate-card{background:#e7f4ff url('/assets/pbb/has-gate-terminal-132-205-v4.webp') center top/100% auto no-repeat}
+.has-page .has-gate-card:before{background:linear-gradient(118deg,#ffffff62,#f5fbff24 45%,#ffffff52);border:1px solid #fff;backdrop-filter:blur(7px) saturate(1.2);box-shadow:inset 0 0 0 3px #ffffff45,inset 0 2px 1px #fff,inset 0 -3px 2px #87c8f36b,0 0 0 1px #a9dcff99,0 0 15px #bee9ff9c,0 20px 35px #1a5a8624}
+.has-page .has-gate-sign{background:linear-gradient(115deg,#ffffff59,#e4f5ff1f 58%,#ffffff45);border-color:#fff;backdrop-filter:blur(4px);box-shadow:inset 0 2px 2px #fff,inset 2px 0 1px #ffffffa6,inset -2px -3px 2px #a4dcfa70,inset 0 0 0 3px #ffffff24,0 2px 0 #c7edffbd,0 0 15px #e7f8ff7a,0 14px 26px #1a649b29}
+.has-page .has-gate-sign:before{inset:0;background:linear-gradient(135deg,transparent 19%,#ffffff7a 19.2%,#ffffff10 19.6%,transparent 20%,transparent 73%,#ffffff40 73.2%,transparent 73.6%);border-radius:inherit}
+.has-page .has-gate-sign:after{inset:4px;border:1px solid #ffffff78;border-bottom-color:#d9f5ffb8;background:linear-gradient(155deg,#ffffff25,transparent 30%,transparent 80%,#d4f0ff25)}
+.has-page .has-assigned-label{display:flex;align-items:center;justify-content:center;gap:15px;color:#123e8c;font-size:11px;font-weight:750;letter-spacing:2.5px}
+.has-page .has-assigned-label:before,.has-page .has-assigned-label:after{content:'';height:1px;width:52px;background:#64b8f491}
+.has-page .has-gate-heading h2{font-family:Arial,'Segoe UI',sans-serif;font-weight:800;color:#09265f;letter-spacing:-.5px}
+.has-page .has-gate-entry #has-gate-number{font-family:'Arial Rounded MT Bold','Segoe UI',Arial,sans-serif;font-weight:950;letter-spacing:-5px;background:linear-gradient(175deg,#55d7ff 12%,#0097f2 33%,#0064ce 58%,#003b97 83%,#006ad7 100%);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;color:#007be2;text-shadow:none;filter:drop-shadow(0 1px 0 #a9f2ff) drop-shadow(0 3px 0 #085cb6) drop-shadow(0 8px 7px #0872bc48);padding-bottom:8px}
+.has-page .has-gate-entry #has-gate-number::placeholder{-webkit-text-fill-color:#6ba9cd;filter:none}
+.has-page .has-gate-entry:after{content:'';position:absolute;pointer-events:none;bottom:-8px;left:13%;width:48%;height:14px;border-radius:50%;background:radial-gradient(ellipse,#039de84d,transparent 70%);filter:blur(5px)}
+.has-page .has-gate-marker{visibility:hidden}
+.has-page .has-gate-sign #confirm-gate{border:1px solid #f2fdff;background:linear-gradient(175deg,#32b8ff,#0085f3 35%,#0065d6 72%,#0059c0);box-shadow:inset 0 1px 2px #ffffffb8,inset 0 -2px 3px #0063c9,0 0 0 1px #7ed9ff87,0 0 14px #2facff45,0 8px 18px #086ac143;font-weight:650}
+@media(min-width:761px){.has-page .has-gate-card{background-size:100% auto;background-position:center -40px}.has-page .has-gate-card:before{background:linear-gradient(118deg,#ffffff62,#f5fbff24 45%,#ffffff52);backdrop-filter:blur(7px) saturate(1.2)}.has-page .has-gate-sign{background:linear-gradient(115deg,#ffffff59,#e4f5ff1f 58%,#ffffff45);min-height:205px}.has-page .has-gate-entry #has-gate-number{font-size:124px;letter-spacing:-6px}.has-page .has-assigned-gate{padding-bottom:130px}}
+@media(max-width:760px){.has-page .has-gate-card{background-size:auto 620px;background-position:center top}.has-page .has-gate-card:before{backdrop-filter:blur(7px);background:linear-gradient(118deg,#ffffff70,#f5fbff32 45%,#ffffff66)}.has-page .has-gate-entry #has-gate-number{font-size:82px;letter-spacing:-4px}.has-page .has-assigned-label{font-size:10px;gap:10px}.has-page .has-assigned-label:before,.has-page .has-assigned-label:after{width:26px}}
+/* Selected pearl-white treatment. */
+.has-page .has-gate-card:before{background:linear-gradient(125deg,#ffffffeb,#edf8ffd9);backdrop-filter:blur(18px)}
+.has-page .has-gate-sign{background:linear-gradient(125deg,#fffffff0,#dcefffbb);box-shadow:inset 0 0 0 2px #fff8,0 10px 30px #23639720}
+.has-page .has-gate-entry #has-gate-number{font-family:'Segoe UI',Arial,sans-serif;-webkit-text-stroke:.65px #0878cf66}
+@media(min-width:761px){.has-page .has-gate-card:before{background:linear-gradient(125deg,#ffffffeb,#edf8ffd9);backdrop-filter:blur(18px)}.has-page .has-gate-sign{background:linear-gradient(125deg,#fffffff0,#dcefffbb);box-shadow:inset 0 0 0 2px #fff8,0 10px 30px #23639720}}/* A placeholder disappears in full as soon as a gate digit is entered. */
+.has-page .has-gate-entry #has-gate-number::placeholder{color:#1687dc;-webkit-text-fill-color:#1687dc;font-size:42px;font-weight:650;letter-spacing:5px;text-shadow:none;-webkit-text-stroke:0}
+@media(max-width:760px){.has-page .has-gate-entry #has-gate-number::placeholder{font-size:36px;letter-spacing:4px}}
+/* Accessible text input with three independently replaced visual positions. */
+.has-page .has-gate-value{position:relative;width:285px;max-width:58%;min-width:0;height:145px}
+.has-page .has-gate-value #has-gate-number{position:absolute;inset:0;width:100%;max-width:100%;height:100%;box-sizing:border-box;margin:0;opacity:0;filter:none;cursor:text}
+.has-page .has-gate-slots{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;gap:0;font-family:'Segoe UI',Arial,sans-serif;font-size:124px;font-weight:950;line-height:1;letter-spacing:-6px}
+.has-page .has-gate-slots>span{flex:1;min-width:0;text-align:center}
+.has-page .has-gate-digit{background:linear-gradient(175deg,#55d7ff 12%,#0097f2 33%,#0064ce 58%,#003b97 83%,#006ad7 100%);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 1px 0 #a9f2ff) drop-shadow(0 3px 0 #085cb6) drop-shadow(0 8px 7px #0872bc48)}
+.has-page .has-gate-dash{font-size:43px;letter-spacing:0;color:#1687dc}
+.has-page .has-gate-slots.has-suffix{font-size:104px}
+.has-page .has-gate-value:has(input:focus-visible){box-shadow:0 2px 0 #3a95d0}
+@media(max-width:760px){.has-page .has-gate-value{width:100%;max-width:100%;height:94px}.has-page .has-gate-slots{font-size:82px;letter-spacing:-4px}.has-page .has-gate-slots.has-suffix{font-size:72px}.has-page .has-gate-dash{font-size:34px}}
+.has-page .has-gate-slots.has-long-gate{font-size:calc(310px / var(--gate-count));letter-spacing:0}
+@media(max-width:760px){.has-page .has-gate-slots.has-long-gate{font-size:calc(260px / var(--gate-count))}}
+/* Polished type face and a fading reflection on the glass floor. */
+.has-page .has-gate-digit{background-image:linear-gradient(172deg,#8deaff 0%,#37c8ff 12%,#069df5 31%,#0071df 54%,#004cb8 79%,#0067d3 100%);-webkit-text-stroke:.45px #0786df50;filter:drop-shadow(0 -1px 0 #c8f8ffb3) drop-shadow(0 2px 1px #0055b68c) drop-shadow(0 6px 8px #0069c03b);-webkit-box-reflect:below -10px linear-gradient(transparent 48%,#00000036)}
+.has-page .has-gate-value:after{content:'';position:absolute;pointer-events:none;left:0;right:0;bottom:-5px;height:16px;border-radius:50%;background:radial-gradient(ellipse,#1d99f34a,transparent 70%);filter:blur(7px)}
+.has-page .has-gate-slots{z-index:1}
+/* Center the gate independently of the actions; confirm sits at the right edge. */
+.has-page .has-gate-controls{position:relative;min-height:145px;justify-content:center}
+.has-page .has-gate-value{margin:0 auto;max-width:100%;width:285px}
+.has-page .has-gate-sign #confirm-gate{position:absolute;left:calc(100% - 82px);top:50%;transform:translateY(-50%);min-width:158px;z-index:3}
+.has-page .has-gate-sign .has-clear-gate{position:absolute;right:16px;bottom:10px;margin:0;min-height:32px;padding:5px 12px;font-size:12px;z-index:3}
+@media(max-width:760px){.has-page .has-gate-controls{min-height:156px;display:block;padding-bottom:50px;box-sizing:border-box}.has-page .has-gate-value{width:100%;height:94px}.has-page .has-gate-sign #confirm-gate{left:auto;right:0;top:auto;bottom:0;transform:none;min-width:132px;min-height:42px;padding:10px 16px;font-size:12px}.has-page .has-gate-sign .has-clear-gate{right:12px;bottom:8px}}
