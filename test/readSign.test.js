@@ -50,3 +50,41 @@ test('every pictured management title can publish, inspect counts and append old
  }
  for(const position of ['Agent','Lead','Accounting','Admin Assistant','HRIS Administrator','Unknown']){f.rows[1].position=position;assert.equal(f.store.list(f.users[1]).canPublish,false,position);assert.throws(()=>f.store.publish(f.users[1],{...body(),position:'President'}),e=>e.status===403);}
 });
+
+
+test('Main Account publishers exclude secondary memberships and reject forged cross-account publish/add batches atomically',t=>{
+ const f=fixture(t);for(const e of f.rows)Object.assign(e,{station:'LAX',account:'CZ'});
+ f.rows[1].position='Business Manager';f.rows[1].additionalAccounts=[{station:'LAX',account:'MU'}];
+ f.rows[3].account='MU';f.rows[3].additionalAccounts=[{station:'LAX',account:'CZ'}];
+ const info=f.store.list(f.users[1]);assert.equal(info.canSelectAccounts,false);assert.deepEqual(info.recipientAccounts,[{station:'LAX',account:'CZ'}]);
+ const memo=f.store.publish(f.users[1],body());assert.deepEqual(memo.roster.map(p=>p.id),['e0','e1','e2']);
+ assert.equal(f.employees.db.prepare('SELECT count(*) n FROM read_sign_mail WHERE memo_id=?').get(memo.id).n,3);
+ const count=f.employees.db.prepare('SELECT count(*) n FROM read_sign_memos').get().n;
+ for(const targetAccount of ['ALL',JSON.stringify(['LAX','MU']),JSON.stringify(['SFO','CZ'])])assert.throws(()=>f.store.publish(f.users[1],{...body(),targetAccount}),e=>e.status===403);
+ assert.equal(f.employees.db.prepare('SELECT count(*) n FROM read_sign_memos').get().n,count);
+ f.rows.push({id:'new-cz',name:'New CZ',email:'cz@example.test',station:'LAX',account:'CZ'});
+ const detail=f.store.read(f.users[1],memo.id);assert.deepEqual(detail.availableRecipients.map(p=>p.id),['new-cz']);
+ assert.throws(()=>f.store.addRecipients(f.users[1],memo.id,{employeeIds:['new-cz','e3']}),e=>e.status===403);
+ assert(!f.store.get(memo.id).roster.some(p=>p.id==='new-cz'));
+ assert.equal(f.store.addRecipients(f.users[1],memo.id,{employeeIds:['new-cz']}).total,4);
+});
+
+test('Headquarter publisher chooses a single account or all accounts, including across stations',t=>{
+ const f=fixture(t);Object.assign(f.rows[1],{station:'HQ',account:'HQ'});
+ Object.assign(f.rows[0],{station:'LAX',account:'CZ'});Object.assign(f.rows[2],{station:'LAX',account:'MU'});Object.assign(f.rows[3],{station:'SFO',account:'CZ'});
+ assert.equal(f.store.list(f.users[1]).canSelectAccounts,true);
+ const one=f.store.publish(f.users[1],{...body(),targetAccount:JSON.stringify(['SFO','CZ'])});assert.deepEqual(one.roster.map(p=>p.id),['e3']);
+ const all=f.store.publish(f.users[1],{...body(),targetAccount:'ALL'});assert.equal(all.total,4);
+ f.rows.push({id:'new-mu',name:'New MU',email:'mu@example.test',station:'LAX',account:'MU'});
+ assert(f.store.read(f.users[1],one.id).availableRecipients.some(p=>p.id==='new-mu'));
+ assert.equal(f.store.addRecipients(f.users[1],one.id,{employeeIds:['new-mu']}).total,2);
+ const draft={...body(),targetAccount:'ALL'},published=f.store.publish(f.users[1],draft);assert.equal(f.store.publish(f.users[1],draft).id,published.id);
+ assert.throws(()=>f.store.publish(f.users[1],{...draft,targetAccount:JSON.stringify(['LAX','CZ'])}),e=>e.status===409);
+});
+
+test('recipient scope follows current Main Account after promotion and does not grant HQ power from an additional account',t=>{
+ const f=fixture(t);for(const e of f.rows)Object.assign(e,{station:'LAX',account:'CZ'});
+ f.rows[1].additionalAccounts=[{station:'HQ',account:'HQ'}];assert.equal(f.store.list(f.users[1]).canSelectAccounts,false);
+ f.rows[0].account='MU';f.rows[1].account='MU';
+ const r=f.store.publish(f.users[1],body());assert.deepEqual(r.roster.map(p=>p.id),['e0','e1']);
+});
