@@ -131,7 +131,7 @@ test('administrator qualification revocation is enforced against an already open
  assert.equal((await f.change('driver',r,{action:'ready',value:true})).status,403);
  assert.equal((await f.request('driver','/context')).data.employee.driver,false);
 });
-test('SSE sends shared Ready changes, denies premature movement, supports changes, signs independently and saves Drive only',async t=>{
+test('SSE sends shared Ready changes, denies premature movement, supports changes, signs independently and keeps downloadable PDFs locally without Drive',async t=>{
  const f=await fixture(t);let r=(await f.create()).data;
  const abort=new AbortController(),stream=await fetch(f.base+'/has-pbb-api/stream?id='+r.id,{headers:{Authorization:'Bearer driver'},signal:abort.signal}),reader=stream.body.getReader();t.after(()=>abort.abort());
  assert.match(new TextDecoder().decode((await reader.read()).value),/event: state/);
@@ -152,9 +152,9 @@ test('SSE sends shared Ready changes, denies premature movement, supports change
  assert.equal((await f.change('driver',r,{action:'dock'})).status,409);
  await apply('driver',{action:'answer',itemId:'floor',value:true});await apply('driver',{action:'dock'});
  for(const q of items.filter(x=>x.phase==='after'))await apply('driver',{action:'answer',itemId:q.id,value:true});
- await apply('driver',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);r=f.service.get(r.id);assert.equal(r.delivery.status,'sent');assert.equal(f.uploads(),1);assert.equal(r.delivery.discord,undefined);assert.equal((await require('../vendor/pdf-lib/pdf-lib').PDFDocument.load(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf)).getPageCount(),2);
- await f.service.deliver(r.id);assert.equal(f.uploads(),1);assert.equal((await f.request('driver','/records/'+r.id+'/pdf')).data.subarray(0,4).toString(),'%PDF');
- const dashboard=await f.request('lake','/dashboard');assert.equal(dashboard.status,200);assert.equal(dashboard.data.daily.length,7);assert.equal(dashboard.data.daily.at(-1).submittedFlights,1);assert.equal(dashboard.data.daily.at(-1).driveSaved,1);
+ await apply('driver',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);r=f.service.get(r.id);assert.equal(r.delivery.status,'ready');assert.equal(f.uploads(),0);assert.equal(r.delivery.discord,undefined);assert.equal((await require('../vendor/pdf-lib/pdf-lib').PDFDocument.load(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf)).getPageCount(),2);
+ await f.service.deliver(r.id);assert.equal(f.uploads(),0);assert.equal((await f.request('driver','/records/'+r.id+'/pdf')).data.subarray(0,4).toString(),'%PDF');
+ const dashboard=await f.request('lake','/dashboard');assert.equal(dashboard.status,200);assert.equal(dashboard.data.daily.length,7);assert.equal(dashboard.data.daily.at(-1).submittedFlights,1);assert.equal(dashboard.data.daily.at(-1).driveSaved,undefined);
  assert.equal((await f.request('spotter','/dashboard')).status,403);assert.equal((await f.request('lake','/dashboard?end=bad')).status,400);
  assert.equal((await f.change('driver',r,{action:'dock'})).status,409);abort.abort();
 });
@@ -167,12 +167,14 @@ test('dashboard independent station/account filters and overall totals count fli
  const mu=(await f.request('lake','/dashboard?station=ALL&account=MU')).data;assert.equal(mu.daily.at(-1).submittedFlights,2);
  const sfo=(await f.request('lake','/dashboard?station=SFO&account=MU')).data;assert.equal(sfo.daily.at(-1).submittedFlights,1);assert.equal(sfo.daily.at(-1).expectedFlights,0);
 });
-test('Drive failures keep submitted records and stable upload IDs for retry and stats',async t=>{
- const f=await fixture(t,{failUpload:true});let r=(await f.create()).data;
- r.completedAt='2026-10-21T17:00:00Z';r.movingAt=r.dockedAt=r.completedAt;r.answers={driver:Object.fromEntries(items.filter(q=>q.role==='driver').map(q=>[q.id,true])),spotter:Object.fromEntries(items.filter(q=>q.role==='spotter').map(q=>[q.id,true]))};r.ready={driver:true,spotter:true};r.signatures=Object.fromEntries(['driver','spotter'].map(role=>[role,{name:'TEST '+role.toUpperCase(),eid:'123',strokes,at:r.completedAt,pbbId:'PBB-fixture',pbbExpiry:'2026-10-21'}]));f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
- await f.service.deliver(r.id);r=f.service.get(r.id);assert.equal(r.delivery.status,'failed');assert.equal(r.delivery.fileId,'fake-id');
- let stats=(await f.request('lake','/dashboard')).data.daily.at(-1);assert.equal(stats.submittedChecklists,1);assert.equal(stats.driveSaved,0);
- f.recover();await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');stats=(await f.request('lake','/dashboard')).data.daily.at(-1);assert.equal(stats.driveSaved,1);
+test('completed PDFs remain downloadable without any Drive calls',async t=>{
+ let builds=0;const f=await fixture(t,{failUpload:true,buildPdf:async()=>{builds++;return Buffer.from('%PDF-local');}});
+ for(const user of ['driver','account','other']){
+  const r=(await f.create(user)).data;r.completedAt='2026-10-21T17:00:00Z';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
+  const response=await f.request(user,'/records/'+r.id+'/pdf');assert.equal(response.status,200);assert.equal(response.data.toString(),'%PDF-local');assert.equal(f.service.get(r.id).delivery.status,'ready');
+  await f.service.deliver(r.id);assert.equal((await f.request(user,'/records/'+r.id+'/pdf')).status,200);
+ }
+ assert.equal(builds,3);assert.equal(f.uploads(),0);assert.equal((await f.request('lake','/dashboard')).data.daily.at(-1).driveSaved,undefined);
 });
 
 test('combined stopped/chocks question atomically saves both checks and NO blocks Ready',async t=>{
@@ -212,7 +214,7 @@ test('a PDF job started before a gate reset cannot restore obsolete answers or d
  const job=f.service.deliver(r.id);await ready;
  const fresh=(await f.request('driver','/records',{role:'driver',flightNo:'MU583',gate:'136',bridge:'L1'})).data;release(Buffer.from('old PDF'));await job;
  assert.deepEqual(f.service.get(r.id),fresh);assert.equal(f.uploads(),0);assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);
- fresh.completedAt='new';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(fresh),fresh.id);await f.service.deliver(fresh.id);assert.equal(f.uploads(),1);assert.equal(f.service.get(fresh.id).gate,'136');assert.equal(f.service.get(fresh.id).delivery.status,'sent');
+ fresh.completedAt='new';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(fresh),fresh.id);await f.service.deliver(fresh.id);assert.equal(f.uploads(),0);assert.equal(f.service.get(fresh.id).gate,'136');assert.equal(f.service.get(fresh.id).delivery.status,'ready');
 });
 
 test('gate locks persist for exactly two hours from first confirmation, isolate scopes and support manual clear',async t=>{
@@ -242,7 +244,7 @@ test('Departure is isolated and gates movement on four Driver checks and Spotter
  assert.equal(r.ready.spotter,true);
  await apply('spotter',{action:'sign',strokes});await apply('driver',{action:'move'});await apply('driver',{action:'dock'});
  for(const id of ['d10','d11'])await apply('driver',{action:'answer',itemId:id,value:true});
- await apply('driver',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');assert.equal(f.service.get(arrival.id).movingAt,undefined);
+ await apply('driver',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'ready');assert.equal(f.service.get(arrival.id).movingAt,undefined);
 });
 
 test('HAS Driver needs only a valid terminal ID; all linked employees may be Spotters',async t=>{const f=await fixture(t),d=f.employees.get();for(const e of d.employees){e.attach=false;e.detach=false;e.spotter=false;}f.employees.save(d,{email:'lake@mu.com'});const ctx=(await f.request('driver','/context')).data;assert.equal(ctx.employee.driver,true);assert.equal(ctx.employee.spotter,true);assert.equal((await f.create('driver')).status,201);assert.equal((await f.create('missing')).status,403);const opened=await f.request('missing','/records',{role:'spotter',flightNo:'MU583',gate:'132',bridge:'L2'});assert.equal(opened.status,201);const answered=await f.request('missing','/records/'+opened.data.id,{role:'spotter',revision:opened.data.revision,action:'answer',itemId:'cables',value:true});assert.equal(answered.status,200);});
@@ -352,17 +354,17 @@ test('HAS Discord sends only completed LAX MU records to the fixed channel with 
  const f=await fixture(t,{client,buildPdf:async()=>Buffer.from('%PDF-fixture')});
  let r=(await f.create()).data;await f.service.deliver(r.id);assert.equal(channels.length,0,'Incomplete records never notify');
  const complete=(record,scope={})=>{const next={...record,...scope,completedAt:'2026-10-21T17:00:00Z',signatures:{driver:{name:'Driver fixture'},spotter:{name:'HAS OPS RAMP'}}};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(next),next.id);return next;};
- r=complete(r);await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');assert.equal(f.service.get(r.id).discordDelivery.status,'failed');assert.equal(f.uploads(),1);
- discordFails=false;await Promise.all([f.service.deliver(r.id),f.service.deliver(r.id)]);assert.equal(sent.length,1);assert.equal(f.uploads(),1,'Discord retry does not upload again');assert.equal(f.service.get(r.id).discordDelivery.messageId,'message-1');
+ r=complete(r);await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'ready');assert.equal(f.service.get(r.id).discordDelivery.status,'failed');assert.equal(f.uploads(),0);
+ discordFails=false;await Promise.all([f.service.deliver(r.id),f.service.deliver(r.id)]);assert.equal(sent.length,1);assert.equal(f.uploads(),0,'Discord retry does not upload again');assert.equal(f.service.get(r.id).discordDelivery.messageId,'message-1');
  assert(channels.every(id=>id==='1559561919826890852'));assert.match(sent[0].content,/Jet Bridge ARRIVAL \| MU583/);assert.match(sent[0].content,/Spotter: HAS OPS RAMP ✓/);assert.equal(sent[0].files[0].attachment.toString(),'%PDF-fixture');assert.match(sent[0].files[0].name,/^HAS PBB Arrival_LAX-MU_Driver fixture_2026-10-21.pdf$/);assert.equal(sent[0].enforceNonce,true);assert.deepEqual(sent[0].allowedMentions,{parse:[]});
  await f.service.deliver(r.id);assert.equal(sent.length,1,'Completed notifications are not resent');
  for(const scope of [{station:'LAX',account:'NH'},{station:'LAX',account:'OPS'},{station:'SFO',account:'MU'}]){const next=(await f.create('driver',scope.account==='NH'?'L2':'L3')).data;complete(next,scope);await f.service.deliver(next.id);assert.equal(sent.length,1,'No Discord notification for '+scope.station+'/'+scope.account);}
 });
-test('Drive failure does not block LAX MU Discord; Drive retry does not resend Discord',async t=>{
+test('local PDF generation preserves LAX MU Discord notification without Drive',async t=>{
  let sends=0;const f=await fixture(t,{failUpload:true,buildPdf:async()=>Buffer.from('%PDF-fixture'),client:{channels:{fetch:async()=>({isTextBased:()=>true,send:async()=>({id:String(++sends)})})}}});
  const r=(await f.create()).data;r.completedAt='2026-10-21T17:00:00Z';r.signatures={driver:{name:'Driver'},spotter:{name:'Spotter'}};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
- await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'failed');assert.equal(f.service.get(r.id).discordDelivery.status,'sent');assert.equal(sends,1);
- f.recover();await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'sent');assert.equal(sends,1);
+ await f.service.deliver(r.id);assert.equal(f.service.get(r.id).delivery.status,'ready');assert.equal(f.service.get(r.id).discordDelivery.status,'sent');assert.equal(sends,1);assert.equal(f.uploads(),0);
+ await f.service.deliver(r.id);assert.equal(sends,1);
 });
 
 test('HQ is excluded from dashboard totals, scope filters and details even with historical schedules and records',async t=>{
@@ -440,4 +442,18 @@ test('Business Manager dashboard exposes only Main Account totals, schedules, fi
  for(const query of ['?station=LAX&account=XX','?station=SFO&account=MU'])assert.equal((await f.request('spotter','/dashboard'+query)).status,403);
  assert.equal((await f.request('lake','/dashboard')).data.records.length,3);
  const updated=f.employees.get();updated.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(updated,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard')).status,403);
+});
+
+test('each Business Manager downloads only Main Account PDFs while demo aggregates and downloads all accounts',async t=>{
+ const f=await fixture(t,{failUpload:true,buildPdf:async r=>Buffer.from('%PDF-'+r.station+'-'+r.account)}),records=[];
+ for(const user of ['driver','account','other']){
+  const r=(await f.create(user)).data;r.completedAt='2026-10-21T17:00:00Z';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);records.push(r);
+ }
+ const demo=await f.request('demo','/dashboard');assert.equal(demo.status,200);assert.equal(demo.data.records.length,3);assert.equal(demo.data.daily.at(-1).submittedFlights,3);
+ for(const [i,user] of ['driver','account','other'].entries()){
+  const d=(await f.request(user,'/dashboard')).data;assert.equal(d.records.length,1);assert.equal(d.records[0].id,records[i].id);assert.equal(d.daily.at(-1).submittedChecklists,1);
+  for(const r of records){const path='/dashboard/records/'+r.id+'/pdf',result=await f.request(user,path);assert.equal(result.status,r.id===records[i].id?200:403);if(result.status===200)assert.equal(result.data.toString(),'%PDF-'+r.station+'-'+r.account);assert.equal((await f.request('demo',path)).status,200);}
+ }
+ const pending=(await f.create('driver','L2')).data;assert.equal((await f.request('driver','/dashboard/records/'+pending.id+'/pdf')).status,409);
+ assert.equal((await f.request('spotter','/dashboard/records/'+records[0].id+'/pdf')).status,403);assert.equal(f.uploads(),0);
 });
