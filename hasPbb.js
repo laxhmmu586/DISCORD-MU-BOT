@@ -92,22 +92,38 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard/config'?(dashboard(req.hasUser)||configEditor(req.hasUser)):req.path==='/dashboard'&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser,req.query);pruneIncomplete();next();}catch(e){res.status(e.status||401).json({error:e.message});}});
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
  const configScopes=user=>employeePositions.normalize(profiles.linked(user)?.position)==='Business Manager'?[employeeAccounts.scope(employee(user))]:accounts(employee(user));
- const configView=(user,data=schedule())=>dashboard(user)?data:{...data,scopes:configScopes(user),pairs:data.pairs.filter(pair=>configScopes(user).some(scope=>same(scope,pair)))};
- app.get('/has-pbb-api/dashboard/config',route((req,res)=>res.json(configView(req.hasUser))));
+ const requestedConfigScopes=(user,query={})=>{
+  if(query.station===undefined&&query.account===undefined)return dashboard(user)?null:configScopes(user);
+  const selected=employeeAccounts.scope(employee(user,query));
+  if(!dashboard(user)&&!configScopes(user).some(scope=>same(scope,selected)))fail('You can only configure your own station and accounts.',403);
+  return [selected];
+ };
+ const configView=(user,data=schedule(),query)=>{const scopes=requestedConfigScopes(user,query);return scopes?{...data,scopes,pairs:data.pairs.filter(pair=>scopes.some(scope=>same(scope,pair)))}:data;};
+ app.get('/has-pbb-api/dashboard/config',route((req,res)=>res.json(configView(req.hasUser,schedule(),req.query))));
  const saveSchedule=db.transaction((body,user)=>{const current=schedule();if(body.revision!==current.revision)fail('Schedule changed. Reload Config before saving.',409);if(!Array.isArray(body.pairs)||body.pairs.length>200)fail('Enter up to 200 flight pairs.');const inbound=new Set(),outbound=new Set(),ids=new Set();
   const pairs=body.pairs.map(row=>{const station=String(row.station||'').trim().toUpperCase(),account=String(row.account||'').trim().toUpperCase(),id=String(row.id||crypto.randomUUID());if(!/^[A-Z0-9-]{2,20}$/.test(station)||!/^[A-Z0-9-]{1,20}$/.test(account)||!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id))fail('Check stations, accounts and unique flight pairs.');ids.add(id);
    const leg=(value,seen)=>{const flightNo=String(value?.flightNo||'').trim().toUpperCase(),days=value?.days;if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||!Array.isArray(days)||!days.length||days.length>7||new Set(days).size!==days.length||days.some(n=>!Number.isInteger(n)||n<1||n>7))fail('Each Inbound and Outbound needs a flight number and at least one operating day.');const key=[station,account,flightNo].join('/');if(seen.has(key))fail('Duplicate flight in this station/account.');seen.add(key);return {flightNo,days:[...days].sort((a,b)=>a-b)};};return {id,station,account,...(station==='LAX'&&row.opsArrivalSpotter===true?{opsArrivalSpotter:true}:{}),inbound:leg(row.inbound,inbound),outbound:leg(row.outbound,outbound)};
   });const next={revision:current.revision+1,pairs,updatedAt:stamp(),updatedBy:user.email};db.prepare('UPDATE has_pbb_schedule SET data=? WHERE singleton=1').run(JSON.stringify(next));return next;
  });
- const saveScopedSchedule=db.transaction((body,user)=>{
-  if(dashboard(user))return saveSchedule(body,user);
-  const e=employee(user);if(!configEditor(user))fail('Config access denied.',403);
-  const scopes=configScopes(user),current=schedule();if(!Array.isArray(body.pairs))fail('Enter flight pairs.');
+ const saveScopedSchedule=db.transaction((body,user,query)=>{
+  const scopes=requestedConfigScopes(user,query);
+  if(!scopes)return saveSchedule(body,user);
+  if(!dashboard(user)&&!configEditor(user))fail('Config access denied.',403);
+  const current=schedule();if(!Array.isArray(body.pairs))fail('Enter flight pairs.');
   const own=pair=>scopes.some(scope=>same(scope,employeeAccounts.scope(pair)));
   if(body.pairs.some(pair=>!own(pair)||current.pairs.some(old=>old.id===pair.id&&!own(old))))fail('You can only configure your own station and accounts.',403);
-  const saved=saveSchedule({...body,pairs:[...current.pairs.filter(pair=>!own(pair)),...body.pairs]},user);return configView(user,saved);
+  const saved=saveSchedule({...body,pairs:[...current.pairs.filter(pair=>!own(pair)),...body.pairs]},user);return configView(user,saved,query);
  });
- app.post('/has-pbb-api/dashboard/config',route((req,res)=>res.json(saveScopedSchedule(req.body,req.hasUser))));
+ app.post('/has-pbb-api/dashboard/config',route((req,res)=>{
+  const saved=saveScopedSchedule(req.body,req.hasUser,req.query);
+  for(const row of db.prepare('SELECT data FROM has_pbb_records WHERE date=?').all(today())){
+   const r=JSON.parse(row.data);
+   if(!r.completedAt&&req.body.pairs.some(pair=>same(employeeAccounts.scope(pair),r)&&pair.inbound.flightNo===r.flightNo)&&opsArrival(r)&&r.signatures.spotter?.source!=='configured-ops-arrival'){
+    applyOpsArrival(r);r.revision++;r.updatedAt=stamp();put(r);publish(r);
+   }
+  }
+  res.json(saved);
+ }));
  app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({allAccountAccess:isOps(profiles.linked(req.hasUser)),accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser)||configEditor(req.hasUser)&&(employeePositions.normalize(profiles.linked(req.hasUser)?.position)!=='Business Manager'||same(e,employeeAccounts.scope(profiles.linked(req.hasUser)))),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
  app.post('/has-pbb-api/gate',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
@@ -131,6 +147,8 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
   const e=req.hasEmployee;requireManager(e);db.prepare('DELETE FROM has_pbb_flights WHERE station=? AND account=? AND flight=?').run(e.station,e.account,String(req.params.flightNo).toUpperCase());res.json(defaultFlights(e));
  }));
  app.get('/has-pbb-api/records',route((req,res)=>res.json(list(req.hasEmployee))));
+ function opsArrival(r){return r.station==='LAX'&&r.type==='arrival'&&schedule().pairs.some(p=>same(p,r)&&p.inbound.flightNo===r.flightNo&&p.opsArrivalSpotter);}
+ function requireManualRole(r,role){if(role==='spotter'&&opsArrival(r))fail('Arrival Spotter is completed and locked by LAX/OPS configuration.',403);}
  function applyOpsArrival(r){
   const pair=schedule().pairs.find(p=>p.station===r.station&&p.account===r.account&&p.inbound.flightNo===r.flightNo);
   if(r.station!=='LAX'||r.type!=='arrival'||!pair?.opsArrivalSpotter)return r;
@@ -144,8 +162,9 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
   const type=req.body.type||'arrival';if(!['arrival','departure'].includes(type))fail('Invalid operation');const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),flightKey=flightNo+(type==='departure'?'|departure':''),gate=String(req.body.gate||'').trim().toUpperCase(),bridge=req.body.bridge,date=today();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate)||!['L1','L2','L3'].includes(bridge))fail('Confirm flight, gate number and L1/L2/L3.');
   roleCheck(e,req.body.role,date,gate);
+  requireManualRole({station:e.station,account:e.account,flightNo,type},req.body.role);
   const heldGate=gateLocks(e).find(g=>g.flightNo===flightNo);if(heldGate&&heldGate.gate!==gate)fail('Gate number is locked. Clear gate number before changing it.',409);
-  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightKey,bridge);if(old){const previous=get(old.id);if(previous.gate===gate)return previous;
+  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightKey,bridge);if(old){const previous=get(old.id);if(previous.gate===gate){if(!previous.completedAt&&opsArrival(previous)&&previous.signatures.spotter?.source!=='configured-ops-arrival'){applyOpsArrival(previous);previous.revision++;previous.updatedAt=stamp();put(previous);}return previous;}
     const r={id:previous.id,station:e.station,account:e.account,date,flightNo,gate,bridge,type,revision:previous.revision+1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,resetAt:stamp(),resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
     applyOpsArrival(r);db.prepare('UPDATE has_pbb_records SET data=?,pdf=NULL WHERE id=?').run(JSON.stringify(r),r.id);return r;}
    const r={id:crypto.randomUUID(),station:e.station,account:e.account,date,flightNo,gate,bridge,type,revision:1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
@@ -154,7 +173,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  }));
  app.get('/has-pbb-api/records/:id',route((req,res)=>res.json(authorized(req,req.params.id))));
  const resetRecord=db.transaction(req=>{
-  const previous=authorized(req,req.params.id),e=req.hasEmployee;roleCheck(e,req.body.role);
+  const previous=authorized(req,req.params.id),e=req.hasEmployee;roleCheck(e,req.body.role);requireManualRole(previous,req.body.role);
   if(previous.date!==today())fail('This checklist is from a previous day.',409);
   if(req.body.revision!==previous.revision)fail('Checklist changed. Review the latest shared state before resetting.',409);
   const r={id:previous.id,station:previous.station,account:previous.account,date:previous.date,flightNo:previous.flightNo,gate:previous.gate,bridge:previous.bridge,type:previous.type,revision:previous.revision+1,createdAt:previous.createdAt,createdBy:previous.createdBy,updatedAt:stamp(),resetAt:stamp(),resetBy:e.id,resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
@@ -162,7 +181,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  });
  app.post('/has-pbb-api/records/:id/reset',route((req,res)=>{const r=resetRecord(req);publish(r);res.json(r);}));
  const mutate=db.transaction((req)=>{
-  const r=authorized(req,req.params.id),b=req.body,e=req.hasEmployee,role=b.role;roleCheck(e,role,today(),r.gate);
+  const r=authorized(req,req.params.id),b=req.body,e=req.hasEmployee,role=b.role;roleCheck(e,role,today(),r.gate);requireManualRole(r,role);
   if(r.completedAt)fail('Submitted checklist is locked.',409);
   if(r.date!==today())fail('This checklist is from a previous day.',409);
   if(b.revision!==r.revision)fail('Checklist changed. Review the latest shared state.',409);

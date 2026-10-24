@@ -396,3 +396,32 @@ test('Business Manager Config is Main Account only with an independent empty con
  const own={...other,id:'new-xx',account:'XX'};assert.equal((await f.request('spotter','/dashboard/config',{revision:config.revision,pairs:[own]})).status,200);
  assert.deepEqual((await f.request('spotter','/dashboard/config')).data.pairs,[own]);assert.deepEqual((await f.request('lake','/dashboard/config')).data.pairs,[other,own]);
 });
+
+test('OPS arrival locks Spotter creation, edits and reset, updates existing checks, and keeps Driver and Departure usable',async t=>{
+ const f=await fixture(t),existing=(await f.create()).data;
+ const pair={id:'ops-lock',station:'LAX',account:'MU',opsArrivalSpotter:true,inbound:{flightNo:'MU583',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'MU586',days:[1,2,3,4,5,6,7]}};
+ await f.request('lake','/dashboard/config',{revision:1,pairs:[pair]});
+ const updated=(await f.request('driver','/records/'+existing.id)).data;
+ assert.equal(updated.ready.spotter,true);assert.equal(updated.revision,existing.revision+1);assert.equal(updated.signatures.spotter.typedSignature,'HAS OPS RAMP');
+ assert(items.filter(i=>i.role==='spotter').every(i=>updated.answers.spotter[i.id]===true));
+ for(const bridge of ['L1','L2','L3']){
+  assert.equal((await f.create('spotter',bridge)).status,403);
+  const r=(await f.create('driver',bridge)).data;assert.equal(r.signatures.spotter.typedSignature,'HAS OPS RAMP');
+  assert.equal((await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:r.revision})).status,403);
+  assert.equal((await f.change('spotter',r,{action:'ready',value:false})).status,403);
+  assert.equal((await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).status,200);
+ }
+ const departure=await f.request('spotter','/records',{role:'spotter',flightNo:'MU586',gate:'132',bridge:'L1',type:'departure'});assert.equal(departure.status,201);assert.equal(departure.data.signatures.spotter,undefined);
+});
+
+test('administrator operation Config is scoped to the selected account and saves preserve other flights',async t=>{
+ const f=await fixture(t),draft=f.employees.get();draft.employees.push({...draft.employees.find(e=>e.id==='driver'),id:'lake',additionalAccounts:[{station:'LAX',account:'XX'}]});f.employees.save(draft,{email:'lake@mu.com'});
+ const own={id:'mu',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[3]},outbound:{flightNo:'MU586',days:[3]}},other={...own,id:'xx',account:'XX'};
+ await f.request('lake','/dashboard/config',{revision:1,pairs:[own,other]});
+ const path='/dashboard/config?station=LAX&account=MU',view=(await f.request('lake',path)).data;assert.deepEqual(view.pairs,[own]);assert.deepEqual(view.scopes,[{station:'LAX',account:'MU'}]);
+ assert.equal((await f.request('lake',path,{revision:view.revision,pairs:[other]})).status,403);
+ assert.equal((await f.request('lake','/dashboard/config?station=SFO&account=MU')).status,403);
+ assert.equal((await f.request('lake','/dashboard/config?station=LAX')).status,400);
+ const saved=await f.request('lake',path,{revision:view.revision,pairs:[]});assert.equal(saved.status,200);assert.deepEqual(saved.data.pairs,[]);assert.deepEqual((await f.request('lake','/dashboard/config')).data.pairs,[other]);
+ assert.deepEqual((await f.request('lake','/dashboard/config?station=LAX&account=XX')).data.pairs,[other]);
+});
