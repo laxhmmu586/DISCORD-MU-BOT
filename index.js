@@ -1,3 +1,4 @@
+const { createSendMessageHandler } = require('./sendMessageApi');
 const { pnrRecordMatchesFlight } = require('./cbsRecordParser');
 const { runWithBoardingFlight, normalizeBoardingFlight } = require('./boardingContext');
 const { scopedLog, discoverFlights, operationalDate, normalizeSupportedFlight } = require('./flightContext');
@@ -5237,63 +5238,11 @@ app.post('/nextday-info/send', async (req, res) => {
 // ===============================
 // Send Message API
 // ===============================
-app.post('/send', async (req, res) => {
-
-  try {
-
-    const {
-      channelId,
-      message
-    } = req.body;
-    if (etabAdvisory.isLegacyEtabRequest(req.body, process.env.ETAB_ADVISORY_ENABLED === 'true', process.env.ETAB_DISCORD_CHANNEL_ID || '1252026975720046655')) {
-      return res.json({ success:true, skipped:true, reason:'ETAB advisories are managed by MUFC' });
-    }
-    const sanitizedMessage = removeBoardingLinesFromDiscordEmbedText(message);
-
-    if (!channelId) {
-
-      return res.json({
-        error: 'Missing channelId'
-      });
-    }
-
-    const channel =
-      await client.channels.fetch(channelId);
-
-    if (!channel) {
-
-      return res.json({
-        error: 'Channel not found'
-      });
-    }
-
-    if (req.body.embeds) {
-
-  await channel.send({
-    content: sanitizedMessage || "",
-    embeds: removeBoardingLinesFromDiscordEmbeds(req.body.embeds)
-  });
-
-} else {
-
-  await channel.send(sanitizedMessage);
-}
-
-    res.json({
-      success: true
-    });
-
-  }
-
-  catch (err) {
-
-    console.error(err);
-
-    res.json({
-      error: 'Send failed'
-    });
-  }
-});
+app.post('/send', createSendMessageHandler({
+  client, etabAdvisory,
+  removeBoardingLinesFromDiscordEmbedText,
+  removeBoardingLinesFromDiscordEmbeds
+}));
 // ===============================
 // Start Server
 // ===============================
