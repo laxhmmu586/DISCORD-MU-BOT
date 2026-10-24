@@ -185,13 +185,13 @@
  async function connect(id=''){
   clearTimeout(reconnectTimer);controller?.abort();controller=new AbortController();const signal=controller.signal,requestedScope=scopeKey(selectedScope);streamKey=id;
   const streamController=new AbortController(),cancelStream=()=>streamController.abort();signal.addEventListener('abort',cancelStream,{once:true});let streamTimer;
-  const watchStream=()=>{clearTimeout(streamTimer);if(resolveApiBase()==='/has-network')streamTimer=setTimeout(cancelStream,35000);};watchStream();
+  const watchStream=()=>{clearTimeout(streamTimer);streamTimer=setTimeout(cancelStream,35000);};watchStream();
   try{
    const response=await fetch(resolveApiBase()+'/has-pbb-api'+scopedPath('/stream'+(id?'?id='+encodeURIComponent(id):'')),{headers:await authHeaders(),signal:streamController.signal});if(!response.ok)throw Error('Shared connection unavailable');status.textContent='Live · Shared state connected';
    const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
    while(true){const {value,done}=await reader.read();if(done)break;watchStream();if(signal.aborted||requestedScope!==scopeKey(selectedScope))return;buffer+=decoder.decode(value,{stream:true});let n;while((n=buffer.indexOf('\n\n'))>=0){const event=buffer.slice(0,n);buffer=buffer.slice(n+2);const data=event.split('\n').find(s=>s.startsWith('data: '));if(data){const result=JSON.parse(data.slice(6));if(event.startsWith('event: expired')){if(record?.id===result.id){record=null;strokes=[];noReport=null;noDialog.close();contextRecords=contextRecords.filter(r=>r.id!==result.id);render();status.textContent='Incomplete checklist deleted after 1 hour. Start a new checklist.';connect();}}else if(event.startsWith('event: gates')){receiveGates(result);}else if(id){if(record?.id===id)apply(result);}else if(!record&&JSON.stringify(contextRecords)!==JSON.stringify(result)){contextRecords=result;render();}}}}
    throw Error('Live connection interrupted');
-  }catch(e){if(signal.aborted)return;if(resolveApiBase()==='/has-network'){pollShared(id,signal,requestedScope);return;}status.textContent='Reconnecting shared state…';reconnectTimer=setTimeout(()=>{if(streamKey===id)connect(id);},3000);}finally{clearTimeout(streamTimer);signal.removeEventListener('abort',cancelStream);streamController.abort();}
+  }catch(e){if(signal.aborted)return;pollShared(id,signal,requestedScope);return;}finally{clearTimeout(streamTimer);signal.removeEventListener('abort',cancelStream);streamController.abort();}
  }
  async function pollShared(id,signal,requestedScope){
   try{
