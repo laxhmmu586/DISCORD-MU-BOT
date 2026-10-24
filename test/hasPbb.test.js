@@ -155,7 +155,7 @@ test('SSE sends shared Ready changes, denies premature movement, supports change
  await apply('driver',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);r=f.service.get(r.id);assert.equal(r.delivery.status,'sent');assert.equal(f.uploads(),1);assert.equal(r.delivery.discord,undefined);assert.equal((await require('../vendor/pdf-lib/pdf-lib').PDFDocument.load(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf)).getPageCount(),2);
  await f.service.deliver(r.id);assert.equal(f.uploads(),1);assert.equal((await f.request('driver','/records/'+r.id+'/pdf')).data.subarray(0,4).toString(),'%PDF');
  const dashboard=await f.request('lake','/dashboard');assert.equal(dashboard.status,200);assert.equal(dashboard.data.daily.length,7);assert.equal(dashboard.data.daily.at(-1).submittedFlights,1);assert.equal(dashboard.data.daily.at(-1).driveSaved,1);
- assert.equal((await f.request('driver','/dashboard')).status,403);assert.equal((await f.request('lake','/dashboard?end=bad')).status,400);
+ assert.equal((await f.request('spotter','/dashboard')).status,403);assert.equal((await f.request('lake','/dashboard?end=bad')).status,400);
  assert.equal((await f.change('driver',r,{action:'dock'})).status,409);abort.abort();
 });
 test('dashboard independent station/account filters and overall totals count flights within each scope',async t=>{
@@ -249,7 +249,7 @@ test('HAS Driver needs only a valid terminal ID; all linked employees may be Spo
 
 test('Gate confirmations and clears immediately broadcast scoped snapshots to a second employee',async t=>{const f=await fixture(t),abort=new AbortController();t.after(()=>abort.abort());const timeout=setTimeout(()=>abort.abort(),8000);timeout.unref();t.after(()=>clearTimeout(timeout));const response=await fetch(f.base+'/has-pbb-api/stream',{headers:{Authorization:'Bearer spotter'},signal:abort.signal}),reader=response.body.getReader();let buffer='';const until=async text=>{while(!buffer.includes(text)){const {value,done}=await reader.read();assert.equal(done,false);buffer+=new TextDecoder().decode(value);}const output=buffer;buffer='';return output;};await until('event: gates');const confirmed=await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate:'132'});assert.equal(confirmed.status,200);const gateEvent=await until('MU583');assert.match(gateEvent,/event: gates/);assert.match(gateEvent,/132/);assert.deepEqual((await f.request('other','/context')).data.gateLocks,[]);const cleared=await f.request('driver','/gate/clear',{flightNo:'MU583'});assert.equal(cleared.status,200);assert.match(await until('event: gates'),/"gateLocks":\[\]/);abort.abort();});
 
-test('demo dashboard permission is read-only and does not grant Config access',async t=>{const f=await fixture(t);assert.equal((await f.request('demo','/dashboard')).status,200);assert.equal((await f.request('demo','/dashboard/config')).status,403);assert.equal((await f.request('demo','/dashboard/config',{revision:1,pairs:[]})).status,403);assert.equal((await f.request('driver','/dashboard')).status,403);});
+test('demo dashboard permission is read-only and does not grant Config access',async t=>{const f=await fixture(t);assert.equal((await f.request('demo','/dashboard')).status,200);assert.equal((await f.request('demo','/dashboard/config')).status,403);assert.equal((await f.request('demo','/dashboard/config',{revision:1,pairs:[]})).status,403);assert.equal((await f.request('spotter','/dashboard')).status,403);});
 test('Ready immediately authorizes movement and Spotter can sign after Driver finishes',async t=>{const f=await fixture(t);let r=(await f.create()).data;const apply=async(user,body)=>{const response=await f.change(user,r,body);assert.equal(response.status,200,JSON.stringify(response));r=response.data;};for(const role of ['driver','spotter'])for(const q of items.filter(x=>x.role===role&&x.phase==='pre'))await apply(role,{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'ready',value:true});await apply('spotter',{action:'ready',value:true});assert.equal(r.signatures.spotter,undefined);await apply('driver',{action:'move'});assert.ok(r.movingAt);await apply('driver',{action:'answer',itemId:'floor',value:true});await apply('driver',{action:'dock'});for(const q of items.filter(x=>x.role==='driver'&&x.phase==='after'))await apply('driver',{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'sign',strokes});assert.equal(r.completedAt,undefined);await apply('spotter',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);});
 
 test('Arbitrary numeric gates confirm with ordinary PBB credentials',async t=>{const f=await fixture(t);for(const gate of ['0','1','12','128','160','200','226','12345']){await f.request('driver','/gate/clear',{flightNo:'MU583'});assert.equal((await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate})).status,200,gate);}});
@@ -330,7 +330,7 @@ for(const position of ['Supervisor','Business Manager','Manager'])test(position+
  assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[{...own,account:'XX'}]})).status,403);
  const updated={...own,inbound:{flightNo:'MU585',days:[3]}};saved=await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[updated]});assert.equal(saved.status,200);assert.deepEqual(saved.data.pairs,[updated]);assert((await f.request('lake','/dashboard/config')).data.pairs.some(p=>p.id==='other'));
  assert.equal((await f.request('spotter','/dashboard/config',{revision:config.data.revision,pairs:[]})).status,409);
- assert.equal((await f.request('spotter','/dashboard')).status,403);const changed=f.employees.get();changed.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(changed,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard/config')).status,403);
+ assert.equal((await f.request('spotter','/dashboard')).status,position==='Supervisor'?403:200);const changed=f.employees.get();changed.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(changed,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard/config')).status,403);
 });
 
 test('LAX OPS can select all registered business scopes; ordinary employees cannot',async t=>{
@@ -424,4 +424,20 @@ test('administrator operation Config is scoped to the selected account and saves
  assert.equal((await f.request('lake','/dashboard/config?station=LAX')).status,400);
  const saved=await f.request('lake',path,{revision:view.revision,pairs:[]});assert.equal(saved.status,200);assert.deepEqual(saved.data.pairs,[]);assert.deepEqual((await f.request('lake','/dashboard/config')).data.pairs,[other]);
  assert.deepEqual((await f.request('lake','/dashboard/config?station=LAX&account=XX')).data.pairs,[other]);
+});
+
+test('Business Manager dashboard exposes only Main Account totals, schedules, filters and records',async t=>{
+ const f=await fixture(t);
+ for(const user of ['driver','account','other'])assert.equal((await f.create(user)).status,201);
+ const draft=f.employees.get(),row=draft.employees.find(e=>e.id==='spotter');row.position='Business Manager';row.additionalAccounts=[{station:'LAX',account:'XX'},{station:'SFO',account:'MU'}];f.employees.save(draft,{email:'lake@mu.com'});
+ const pair=(id,station,account)=>({id,station,account,inbound:{flightNo:'MU583',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'MU586',days:[1,2,3,4,5,6,7]}});
+ assert.equal((await f.request('lake','/dashboard/config',{revision:1,pairs:[pair('own','LAX','MU'),pair('other','LAX','XX'),pair('station','SFO','MU')]})).status,200);
+ assert.equal((await f.request('spotter','/context')).data.dashboard,true);
+ for(const query of ['', '?station=ALL&account=ALL','?station=LAX&account=MU']){
+  const result=await f.request('spotter','/dashboard'+query);assert.equal(result.status,200);const d=result.data;
+  assert.deepEqual(d.scopes,[{station:'LAX',account:'MU'}]);assert.equal(d.byScope.length,1);assert.equal(d.records.length,1);assert(d.records.every(r=>r.station==='LAX'&&r.account==='MU'));assert(d.daily.every(r=>r.expectedFlights===2));assert.equal(d.daily.at(-1).pending,1);
+ }
+ for(const query of ['?station=LAX&account=XX','?station=SFO&account=MU'])assert.equal((await f.request('spotter','/dashboard'+query)).status,403);
+ assert.equal((await f.request('lake','/dashboard')).data.records.length,3);
+ const updated=f.employees.get();updated.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(updated,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard')).status,403);
 });

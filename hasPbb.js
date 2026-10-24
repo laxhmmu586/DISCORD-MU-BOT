@@ -26,7 +26,9 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
  function employee(user,scope){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);if(scope?.station!==undefined||scope?.account!==undefined){if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));if(!selected)fail('You are not assigned to this station/account.',403);return {...row,...selected};}return row;}
  const dashboard=user=>String(user.email||'').trim().toLowerCase()==='lake@mu.com';
  const configEditor=user=>['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
- const dashboardViewer=user=>['lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
+ const globalDashboard=user=>['lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
+ const businessManager=user=>employeePositions.normalize(profiles.linked(user)?.position)==='Business Manager';
+ const dashboardViewer=user=>globalDashboard(user)||businessManager(user);
  function roleCheck(e,role,date=today(),gate){
   if(!['driver','spotter'].includes(role))fail('Select Driver or Spotter');
   if(role==='driver'&&!(gate===undefined?terminalLicense.any(e,date):terminalLicense.valid(terminalLicense.forGate(e,gate),date)))fail('A valid '+(gate!==undefined&&e.station==='LAX'?(terminalLicense.terminal(e.station,gate)||'recognized LAX gate')+' ':'')+'PBB ID and unexpired qualification are required. Cannot drive PBB.',403);
@@ -225,13 +227,17 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,drive,client,
   const timer=setInterval(()=>{try{if(!same(employee(sub.user,sub.scope),sub.scope))return res.end();res.write(': keep-alive\n\n');}catch{res.end();}},15000);timer.unref();res.on('close',()=>{clearInterval(timer);streams.delete(sub);});
  }));
  app.get('/has-pbb-api/dashboard',route((req,res)=>{
+  // Resolve Main Account from the linked profile, never from client filters or additional accounts.
+  const allowed=globalDashboard(req.hasUser)?null:employeeAccounts.scope(employee(req.hasUser));
+  const visible=scope=>!employeeAccounts.isHeadquarter(scope)&&(!allowed||same(allowed,scope));
   const end=String(req.query.end||today());if(!validDate(end))fail('Select a valid end date.');
   const start=String(req.query.start||new Date(Date.parse(end)-6*86400000).toISOString().slice(0,10));
   if(!validDate(start)||!validDate(end)||start>end||(Date.parse(end)-Date.parse(start))/86400000>92)fail('Select a date range of up to 93 days.');
   const station=String(req.query.station||'ALL').toUpperCase(),account=String(req.query.account||'ALL').toUpperCase();
-  const rows=db.prepare("SELECT data FROM has_pbb_records WHERE (?='ALL' OR station=?) AND (?='ALL' OR account=?) AND date>=? AND date<=? ORDER BY date,station,account,flight,bridge").all(station,station,account,account,start,end).map(x=>JSON.parse(x.data)).filter(r=>!employeeAccounts.isHeadquarter(r));
-  const configured=schedule().pairs.filter(pair=>!employeeAccounts.isHeadquarter(pair));
-  const scopes=[...configured,...employees.get().employees,...db.prepare('SELECT DISTINCT station,account FROM has_pbb_records').all()].map(e=>({station:e.station,account:e.account})).filter(e=>!employeeAccounts.isHeadquarter(e)).filter((e,i,a)=>a.findIndex(x=>same(x,e))===i);
+  if(allowed&&((station!=='ALL'&&station!==allowed.station)||(account!=='ALL'&&account!==allowed.account)))fail('You can only view your Main Account dashboard.',403);
+  const rows=db.prepare("SELECT data FROM has_pbb_records WHERE (?='ALL' OR station=?) AND (?='ALL' OR account=?) AND date>=? AND date<=? ORDER BY date,station,account,flight,bridge").all(station,station,account,account,start,end).map(x=>JSON.parse(x.data)).filter(visible);
+  const configured=schedule().pairs.filter(visible);
+  const scopes=[...configured,...employees.get().employees,...db.prepare('SELECT DISTINCT station,account FROM has_pbb_records').all()].map(e=>({station:e.station,account:e.account})).filter(visible).filter((e,i,a)=>a.findIndex(x=>same(x,e))===i);
   const selectedScopes=scopes.filter(s=>(station==='ALL'||s.station===station)&&(account==='ALL'||s.account===account));
   const flightIdentity=r=>[r.station,r.account,r.date,r.type||'arrival',r.flightNo].join('/');
   const isScheduled=r=>{const weekday=new Date(r.date+'T12:00:00Z').getUTCDay()||7;return configured.some(pair=>{const leg=pair[(r.type||'arrival')==='departure'?'outbound':'inbound'];return same(pair,r)&&leg.flightNo===r.flightNo&&leg.days.includes(weekday);});};
