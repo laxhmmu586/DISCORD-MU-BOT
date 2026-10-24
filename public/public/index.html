@@ -6182,7 +6182,8 @@
           bn: row?.bn || "",
           seat: row?.seat || "",
           passportNo: row?.passportNo || "",
-          ticketNo: row?.ticketNumber || row?.ticketNo || ""
+          ticketNo: row?.ticketNumber || row?.ticketNo || "",
+          dobKey: row?.dobKey || row?.dob || ""
         }));
       }
 
@@ -6221,6 +6222,13 @@
         });
         return [...groups.entries()].flatMap(([bagKey, rows]) => {
           if (rows.some(hasUnknownPassengerName)) return [];
+          // Reissued BNs can repeat one passenger's bag tags. A different BN alone
+          // is not a different owner; conflicting documents still require review.
+          const names = new Set(rows.map((row) => normalizeComparableName(row.name)));
+          const conflictingIdentity = ["passportNo", "ticketNo", "dobKey"].some((field) =>
+            new Set(rows.map((row) => normalizeIdentityText(row[field])).filter(Boolean)).size > 1
+          );
+          if (names.size === 1 && !conflictingIdentity) return [];
           const uniquePassengers = new Set(rows.map((row) => row.bn || `${row.name}|${row.seat}`));
           if (rows.length < 2 || uniquePassengers.size < 2) return [];
           return rows.map((row) => ({ ...row, bagKey }));
@@ -7097,7 +7105,7 @@
 
       function renderDuplicateBagsPanel() {
         const rows = duplicateBagRows(currentSy);
-        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate bag rows: ${rows.length}</span><span>Compare by exact bag tag before destination</span></div>`;
+        const stats = `<div class="panel-stats"><span class="status-fail">Duplicate bag rows: ${rows.length}</span><span>Exact bag tag shared by different passengers</span></div>`;
         renderPanel("Duplicate Bag Tags", currentSy?.flightNo || "SY", stats + rowsTable(rows, [
           { label: "Bag Tag Key", value: (row) => row.bagKey },
           { label: "Name", value: (row) => row.name },

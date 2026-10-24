@@ -37,7 +37,7 @@ const pn = `2026 October 23, Friday, 13:44:49
 
 function duplicateBags(info) {
   const html = fs.readFileSync(require.resolve('../public/public/index.html'), 'utf8');
-  const names = ['passengerName', 'allPassengerRecords', 'splitBagTag', 'bagEntriesForRow', 'hasUnknownPassengerName', 'duplicateBagRows'];
+  const names = ['passengerName', 'allPassengerRecords', 'splitBagTag', 'bagEntriesForRow', 'hasUnknownPassengerName', 'normalizeIdentityText', 'normalizeComparableName', 'duplicateBagRows'];
   const source = names.map(name => html.slice(html.indexOf(`      function ${name}(`)).split(/\n      (?:async )?function /)[0]).join('\n');
   const context = vm.createContext({ info });
   return vm.runInContext(`${source}\nduplicateBagRows(info)`, context);
@@ -73,4 +73,27 @@ test('local identity accepts real BN999 and never falls back to either connectio
   assert.equal(passengerBn(seatQuery), '');
   assert.equal(passengerBn(seatQuery.replace(' I/DL1598/23OCT BN999 SFO', '')), '');
   assert.equal(passengerBn(empty), '');
+});
+
+const bagPassenger=(bn,name,extra={})=>({bn,name,bagtags:['7006919772/FOC'],...extra});
+test('same passenger under different BNs does not create DUP BAG alerts',()=>{
+ for(const name of ['SAMPLE/ALPHA','SAMPLE/BETA','SAMPLE/GAMMA','SAMPLE/DELTAMS','SAMPLE/EPSILON','SAMPLE/ZETA','SAMPLE/ETAMR']){
+  const rows=[bagPassenger('001',name),bagPassenger('043',name)];
+  for(const passengers of [rows,[...rows].reverse()])assert.equal(duplicateBags({seatMapRecords:passengers}).length,0);
+ }
+});
+test('same passenger title/spacing variants and matching documents do not create DUP BAG',()=>{
+ const rows=[bagPassenger('007','SAMPLE/ETAMR',{passportNo:'P1234',ticketNumber:'7811234567890'}),bagPassenger('056','SAMPLE / ETA',{passportNo:'p1234',ticketNo:'7811234567890'})];
+ assert.equal(duplicateBags({bnAudit:rows.map(passengerRecord=>({passengerRecord}))}).length,0);
+});
+test('same-name passengers with conflicting documents or birth dates still trigger DUP BAG',()=>{
+ for(const field of ['passportNo','ticketNo','dobKey']){
+  const rows=[bagPassenger('001','SAMPLE/GAMMA',{[field]:'123'}),bagPassenger('043','SAMPLE/GAMMA',{[field]:'456'})];
+  assert.equal(duplicateBags({seatMapRecords:rows}).length,2,field);
+ }
+});
+test('repeated same-owner records cannot hide a real bag shared with another passenger',()=>{
+ const rows=[bagPassenger('001','SAMPLE/DELTAMS'),bagPassenger('043','SAMPLE/DELTA'),bagPassenger('100','TEST/OTHER',{bagtags:['7006919772/PVG']})];
+ assert.equal(duplicateBags({seatMapRecords:rows}).length,3);
+ assert.equal(duplicateBags({seatMapRecords:rows.map((row,i)=>({...row,bagtags:[String(7006919772+i)+'/FOC']}))}).length,0);
 });
