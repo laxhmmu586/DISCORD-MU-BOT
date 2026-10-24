@@ -37,13 +37,12 @@ body.aviation-240 { --brand:#4030ff; --ink:#161d68; --muted:#515ba0; --line:#cdd
 .aviation-240 .airport-code { width:auto; }
 .aviation-240 .stop.from-row .airport-code { grid-column:2; grid-row:1; }
 .aviation-240 .passport-date-field { display:grid; gap:8px; min-width:0; color:#454e99; font-size:12px; font-weight:750; text-transform:uppercase; }
-.aviation-240 .passport-wheels { display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:8px; }
-.aviation-240 .passport-wheels select { height:112px; padding:4px; overflow-y:auto; text-align:center; }
-.aviation-240 .passport-wheels option { padding:8px 4px; border-radius:5px; }
+.aviation-240 .passport-wheels { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:6px; width:min(100%,280px); }
+.aviation-240 .passport-wheels select { height:72px; min-height:72px; padding:2px; overflow-y:auto; text-align:center; }
+.aviation-240 .passport-wheels option { padding:2px 4px; border-radius:5px; }
 .aviation-240 .stop-date-picker { grid-column:2 / 4; display:grid; gap:8px; padding:10px 0 0; }
 .aviation-240 .stop:has(.stop-date-picker) > .stop-code { grid-column:2 / 4; }
 .aviation-240 .stop:has(.stop-date-picker) > button.danger { grid-column:4; grid-row:1; }
-.aviation-240 .date-hint { color:#454e99; font-size:12px; }
 .aviation-240 .date-choices { display:flex; flex-wrap:wrap; gap:6px; }
 .aviation-240 .date-choice { min-width:54px; min-height:44px; padding:8px; border:1px solid #cdd3ff; border-radius:9px; background:#f6f7ff; color:#202779; box-shadow:none; font-size:13px; }
 .aviation-240 .date-choice[aria-pressed=true] { background:#4030ff; border-color:#4030ff; color:#fff; }
