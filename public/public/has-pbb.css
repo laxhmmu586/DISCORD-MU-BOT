@@ -372,15 +372,19 @@ html.has-theme{background:#fff;color-scheme:light}
  .has-page .has-assigned-gate:has(#clear-gate:not([hidden])){padding-bottom:75px}
 }
 
-/* Give mobile account names the available header width instead of an 86px cap. */
+/* Keep the mobile profile control compact beside Config and Dashboard. */
 @media(max-width:760px){
- .has-topbar{height:auto;min-height:76px;padding-top:10px;padding-bottom:10px}
- .has-brand{flex:none}.has-top-actions{flex:1;justify-content:flex-end;flex-wrap:wrap;row-gap:6px}
- .has-top-actions .flight-account{flex:1 1 150px;min-width:0;max-width:260px}
- .has-page .has-topbar .login-button{width:100%;min-width:0;max-width:none;height:auto;min-height:40px;justify-content:flex-end;padding:0}
- .has-page .has-topbar .flight-account-name{flex:1;min-width:0;max-width:none;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.4;text-align:left}
+ .has-top-actions{flex:0 1 auto;justify-content:flex-end;flex-wrap:nowrap;gap:6px}
+ .has-top-actions .flight-account{flex:0 0 auto;min-width:0;width:auto;max-width:104px}
+ .has-page .has-topbar .login-button{width:auto;min-width:0;max-width:104px;height:40px;padding:0;gap:5px}
+ .has-page .has-topbar .flight-account-name{flex:0 1 auto;min-width:0;max-width:52px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .has-page .has-topbar .flight-user-avatar{width:28px;height:28px}
  .has-page .has-topbar .login-button>span:last-child{flex:none}
 }
+.has-shell .has-bridge:disabled{opacity:1;cursor:not-allowed}
+.has-bridge-lock{position:absolute;top:12px;left:12px;width:20px;height:22px;color:#8fcbc0;pointer-events:none}
+.has-bridge:disabled+.has-bridge-reset{display:none}
+@media(max-width:760px){.has-bridge-lock{top:10px;left:10px;width:16px;height:18px}}
 
 .has-page .has-account-dropdown select{width:auto;min-width:130px;min-height:44px;padding:10px 32px 10px 15px;border:1px solid #75caff;border-radius:21px;color:#fff;background:linear-gradient(150deg,#6ce1ff,#168aff 65%,#176ee5);box-shadow:inset 0 2px 3px #ffffff99,0 4px 10px #168aff55;font-weight:700;cursor:pointer}.has-account-dropdown option{color:#17456c;background:#fff}
 

@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),express=require('express'),Database=require('better-sqlite3'),{chromium}=require('playwright');
+const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
+(async()=>{
+ const db=new Database(':memory:'),employees=createEmployeeStore(db,{seed:[{id:'lake',name:'Lake',position:'Supervisor',eid:'123',station:'LAX',account:'MU',additionalAccounts:[{station:'LAX',account:'CZ'}],pbbId:'1071',pbbExpiry:'2027-10-21'}]});
+ const app=express();app.use(express.json());const service=registerHasPbb(app,{store:{db,now:()=>new Date('2026-10-23T17:00:00Z')},employees,profiles:{status(){},linked:()=>employees.get().employees[0]},authenticate:async()=>({uid:'lake',email:'lake@mu.com'}),drive:{}});
+ app.get('/profile-api',(_req,res)=>res.json({state:'ready',profile:{name:'Lake',nickname:'Lake'},revision:1}));app.use(express.static(path.join(__dirname,'../public/public')));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true,channel:'msedge'}),output=path.join(__dirname,'../output/has-ops-lock');fs.mkdirSync(output,{recursive:true});
+ try{
+  const pair=(account,id)=>({id,station:'LAX',account,opsArrivalSpotter:account==='MU',inbound:{flightNo:account==='MU'?'MU583':'CZ327',days:[1,2,3,4,5,6,7]},outbound:{flightNo:account==='MU'?'MU586':'CZ328',days:[1,2,3,4,5,6,7]}});
+  await fetch(base+'/has-pbb-api/dashboard/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:1,pairs:[pair('MU','mu'),pair('CZ','cz')]})});
+  const page=await browser.newPage({viewport:{width:390,height:900}}),errors=[];page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(({base})=>{window.MU_API_BASE=base;const user={email:'lake@mu.com',displayName:'Lake',providerData:[],getIdToken:async()=>'lake'};window.firebase={apps:[{}],auth:()=>({currentUser:user,onAuthStateChanged:fn=>fn(user)})};},{base});
+  await page.route('https://www.gstatic.com/**',r=>r.fulfill({body:''}));await page.route('**/__/firebase/init.js',r=>r.fulfill({body:''}));await page.clock.install({time:new Date('2026-10-23T17:00:00Z')});await page.goto(base+'/has-pbb.html');
+  await page.locator('#has-flight-number').selectOption('MU583');await page.locator('input[name=gate]').fill('132');await page.locator('#confirm-gate').click();await page.locator('[data-bridge=L1]').waitFor();
+  await page.locator('[data-role=spotter]').click();
+  for(const b of ['L1','L2','L3']){assert(await page.locator('[data-bridge='+b+']').isDisabled());assert(await page.locator('[data-reset-bridge='+b+']').isDisabled());assert.equal(await page.locator('[data-reset-bridge='+b+']').isVisible(),false);}
+  assert.equal(await page.locator('.has-bridge-lock').count(),3);const card=await page.locator('[data-bridge=L1]').boundingBox(),lock=await page.locator('.has-bridge-lock').first().boundingBox();assert(lock.x-card.x<=14&&lock.y-card.y<=14,'Lock is in the top left corner');
+  for(const width of [320,390,760,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);if(width<=760){const box=await page.locator('#flight-account').boundingBox();assert(box.width<=104,'Compact profile at '+width);}await page.screenshot({path:path.join(output,'locked-'+width+'.png'),fullPage:true});}
+  await page.locator('#has-config-button').click();await page.locator('[name=flightNo]').first().waitFor();assert.equal(await page.locator('[data-pair-id]').count(),1);assert.equal(await page.locator('[name=account]').inputValue(),'MU');await page.locator('#save-schedule').click();await page.locator('#schedule-dialog').waitFor({state:'hidden'});
+  await page.locator('[data-role=driver]').click();assert.equal(await page.locator('[data-bridge=L1]').isEnabled(),true);await page.locator('[data-bridge=L1]').click();await page.locator('#back').waitFor();await page.locator('#back').click();
+  await page.locator('[data-account-scope]').filter({hasText:'CZ'}).click();await page.locator('#has-config-button').click();await page.locator('[name=flightNo]').first().waitFor();assert.equal(await page.locator('[name=account]').inputValue(),'CZ');assert.equal(await page.locator('[data-pair-id]').count(),1);await page.locator('#close-schedule').click();
+  assert.deepEqual(errors,[]);console.log('Real API browser checks passed: three Spotter locks, hidden disabled Reset, Driver access, Config save/switch isolation, 320/390/760/1440 layouts and compact profile.');
+ }finally{await browser.close();service.close();server.closeAllConnections();await new Promise(r=>server.close(r));db.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});
