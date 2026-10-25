@@ -4,6 +4,16 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require.resolve('../scripts/apps-script/BriefingPDF.gs'), 'utf8');
 
+test('arrival and departure export portrait Letter on one page with narrow margins',()=>{
+ const h=harness(),blob={getBytes:()=>[37,80,68,70,45],setName(){return this;},setContentType(){return this;}};
+ const urls=[];
+ h.ctx.ScriptApp.getOAuthToken=()=> 'token';
+ h.ctx.UrlFetchApp={fetch:url=>{urls.push(new URL(url));return {getResponseCode:()=>200,getBlob:()=>blob};}};
+ h.ctx.DriveApp={getFolderById:()=>({createFile:()=>({getId:()=> 'new',getName:()=> 'briefing.pdf'}),getFilesByName:()=>({hasNext:()=>false})})};
+ for(const gid of [1,2])h.ctx.createBriefingPDF({getId:()=> 'sheet'},{getSheetId:()=>gid},'briefing','A1:R67');
+ for(const url of urls){const q=url.searchParams;assert.equal(q.get('portrait'),'true');assert.equal(q.get('size'),'letter');assert.equal(q.get('scale'),'4');assert.equal(q.get('range'),'A1:R67');assert.equal(q.get('left_margin'),'0.10');assert.equal(q.get('right_margin'),'0.10');}
+});
+
 function harness() {
   let instant = '2026-07-01T15:48:00Z';
   let triggers = [];

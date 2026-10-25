@@ -5260,6 +5260,7 @@ app.listen(
     );
     syncTodayReportSheets();
     visaMonitor.start();
+    pbbService.startWheelchairMail();
     setInterval(syncTodayReportSheets, 30 * 60 * 1000);
     runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err));
     setInterval(() => runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err)), 60 * 60 * 1000);

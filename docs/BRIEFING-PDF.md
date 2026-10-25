@@ -16,7 +16,8 @@ and `%PDF-` signature. This is a transport check, not a full PDF parser.
 2. Replace the original Google Apps Script with
    [`scripts/apps-script/BriefingPDF.gs`](../scripts/apps-script/BriefingPDF.gs).
    Existing spreadsheet, folder, channel IDs and entry functions are preserved.
-   PDFs retain A1:R67, Letter landscape, fit to one page, and Drive backup.
+   PDFs use A1:R67, Letter portrait, fit to one page, 0.10-inch margins, and Drive backup.
+   Portrait matches the tall briefing tables and reduces the wide side gaps.
    New files no longer explicitly enable public link sharing; folder inheritance
    still applies. Discord receives a PDF attachment rather than a Drive link.
 3. Run `installBriefingPDFTrigger()` once in Apps Script and authorize it.

@@ -1,6 +1,6 @@
 // MU583 / MU586 BRIEFING SHEET — 完整 Google Apps Script
 // 先更新配套的服务器 /send 接口，然后用此文件替换原脚本。
-// 保留原来的触发器函数名、频道、Drive 备份和 PDF 版式。
+// 保留原来的触发器函数名、频道和 Drive 备份；PDF 改为纵向 Letter。
 
 const SPREADSHEET_ID = "1-BnQrtRj6-uTgoC89uj8zQ1dZTcSh96QFRH-_Tf4JEQ";
 const API_URL = "https://api.mufcapp.net/send";
@@ -8,10 +8,10 @@ const PDF_FOLDER_ID = "1NX1WCsYZqNvdz57J8oGb7h1yQWyt_O1S";
 
 const ARRIVAL_SHEET_NAME = "ARRIVAL";
 const ARRIVAL_FLIGHT_NUMBER = "MU583";
-const ARRIVAL_CHANNEL_ID = "1252032351131799654";
+const ARRIVAL_CHANNEL_ID = "1563411695936864447";
 const DEPARTURE_SHEET_NAME = "DEPARTURE";
 const DEPARTURE_FLIGHT_NUMBER = "MU586";
-const DEPARTURE_CHANNEL_ID = "1252032370920656907";
+const DEPARTURE_CHANNEL_ID = "1563411615351574528";
 const ARRIVAL_PDF_RANGE = "A1:R67";
 const DEPARTURE_PDF_RANGE = "A1:R67";
 // 本方案自己的大小上限，与配套服务器一致。
@@ -116,10 +116,11 @@ function createBriefingPDF(ss, sheet, pdfName, pdfRange) {
     throw new Error("Missing PDF parameters. Run sendArrivalPDFtoDiscord() " +
       "or sendDeparturePDFtoDiscord(), not createBriefingPDF() directly.");
   }
-  // Letter，横向，整张缩放到一页，保留原来的范围和页边距。
+  // 表格为纵向比例；横向纸张会因单页缩放产生大幅左右留白。
+  // Letter 纵向，整张缩放到一页，保留全部行列和窄页边距。
   const query = {
     format: "pdf", gid: sheet.getSheetId(), range: pdfRange,
-    size: "letter", portrait: false, scale: 4,
+    size: "letter", portrait: true, scale: 4,
     sheetnames: false, printtitle: false, pagenum: "UNDEFINED",
     gridlines: false, fzr: false,
     horizontal_alignment: "CENTER", vertical_alignment: "TOP",
