@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HAS Report</title>
 <link rel="stylesheet" href="/profile.css?v=20261018-header-sidebar"><link rel="stylesheet" href="/portal-cards.css?v=20261018-header-sidebar">
-<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script defer src="/__/firebase/init.js"></script><script defer src="/employee-profile-api.js"></script><script defer src="/flight-account.js?v=20261017-profile-access"></script><script defer src="/employee-phone.js"></script><link rel="stylesheet" href="/uniform.css?v=20261019-progress"><script defer src="/employee-positions.js?v=20261022-business-manager"></script><link rel="stylesheet" href="/profile-light.css?v=20261021-portal"><link rel="stylesheet" href="/portal-light.css?v=20261021-portal"><link rel="stylesheet" href="/request-workflow.css?v=20261021-personal-routes"><link rel="stylesheet" href="/incident-report.css?v=20261022-incident"><link rel="stylesheet" href="/my-approvals.css?v=20261022-approvals"><link rel="stylesheet" href="/expense-sheet.css?v=20261022-export"><link rel="stylesheet" href="/employee-sidebar-art.css?v=20261022-all-pages"><script defer src="/employee-sidebar-art.js?v=20261022-all-pages"></script><link rel="stylesheet" href="/request-inbox.css?v=20261023-action-names"><script defer src="/info-access.js?v=20261023-lax-hq"></script><script defer src="/has-report-access.js?v=20261025-sse"></script><link rel="stylesheet" href="/has-report.css?v=20261025-cell-editing"><script defer src="/has-report-math.js?v=20261025-cell-editing"></script><script defer src="/has-report-live.js?v=20261025-sse"></script><script defer src="/has-report.js?v=20261025-cell-editing"></script></head>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script defer src="/__/firebase/init.js"></script><script defer src="/employee-profile-api.js"></script><script defer src="/flight-account.js?v=20261017-profile-access"></script><script defer src="/employee-phone.js"></script><link rel="stylesheet" href="/uniform.css?v=20261019-progress"><script defer src="/employee-positions.js?v=20261022-business-manager"></script><link rel="stylesheet" href="/profile-light.css?v=20261021-portal"><link rel="stylesheet" href="/portal-light.css?v=20261021-portal"><link rel="stylesheet" href="/request-workflow.css?v=20261021-personal-routes"><link rel="stylesheet" href="/incident-report.css?v=20261022-incident"><link rel="stylesheet" href="/my-approvals.css?v=20261022-approvals"><link rel="stylesheet" href="/expense-sheet.css?v=20261022-export"><link rel="stylesheet" href="/employee-sidebar-art.css?v=20261022-all-pages"><script defer src="/employee-sidebar-art.js?v=20261022-all-pages"></script><link rel="stylesheet" href="/request-inbox.css?v=20261023-action-names"><script defer src="/info-access.js?v=20261023-lax-hq"></script><script defer src="/has-report-access.js?v=20261025-sse"></script><link rel="stylesheet" href="/has-report.css?v=20261025-row-removal-instructions"><script defer src="/has-report-math.js?v=20261025-row-removal-instructions"></script><script defer src="/has-report-live.js?v=20261025-sse"></script><script defer src="/has-report.js?v=20261025-row-removal-instructions"></script></head>
 <body class="profile-page">
 <svg class="profile-symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
 <symbol id="icon-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></symbol>
@@ -20,4 +20,63 @@
 <aside class="profile-sidebar" aria-label="Workspace navigation"><div class="sidebar-caption">WORKSPACE</div><nav>
 <a href="/admin.html" id="profile-admin-nav" hidden><svg><use href="#icon-people"/></svg>Admin</a><a href="/profile.html"><svg><use href="#icon-person"/></svg>Profile</a><a hidden data-info-access href="/info.html"><svg><use href="#icon-file"/></svg>Info</a><a href="/has-form.html"><svg><use href="#icon-file"/></svg>Form</a><a href="/has-report.html" class="is-active" aria-current="page" data-report-access hidden><svg><use href="#icon-file"/></svg>Report</a><a href="/read-sign.html"><svg><use href="#icon-file"/></svg>Read &amp; Sign</a><a hidden style="display:none" href="/attendance.html"><svg><use href="#icon-file"/></svg>Attendance</a>
 </nav><div class="sidebar-airport"><p>HAS</p><small>People. Operations. Together.</small><span>LAX · LOS ANGELES</span></div></aside>
-<main class="profile-shell report-shell"><p class="profile-eyebrow">REPORT</p><h1>Report</h1><p id="report-scope" class="info-note"></p><p id="report-status" role="status" aria-live="polite">Checking report access…</p><div id="report-controls" hidden><div class="report-toolbar"><label>Report<select id="report-kind"></select></label><label>Month<input id="report-month" type="month" min="2026-01" max="9999-12"></label><button id="report-export" type="button" disabled>Download Excel</button></div><div id="report-editor" class="report-editor" tabindex="0" aria-label="Report worksheet"></div><details class="report-hint"><summary>Recent changes</summary><ul id="report-history"></ul></details></div></main></body></html>
+<main class="profile-shell report-shell"><p class="profile-eyebrow">REPORT</p><h1>Report</h1><p id="report-scope" class="info-note"></p><p id="report-status" role="status" aria-live="polite">Checking report access…</p><div id="report-controls" hidden><div class="report-toolbar"><label>Report<select id="report-kind"></select></label><label>Month<input id="report-month" type="month" min="2026-01" max="9999-12"></label><button id="report-export" type="button" disabled>Download Excel</button><button id="report-instructions" type="button" hidden>Instructions</button></div><div id="report-editor" class="report-editor" tabindex="0" aria-label="Report worksheet"></div><details class="report-hint"><summary>Recent changes</summary><ul id="report-history"></ul></details></div></main><dialog id="report-instructions-dialog" class="report-instructions-dialog" aria-labelledby="report-instructions-title"><header><h2 id="report-instructions-title">WWH Instructions</h2><button id="report-instructions-close" type="button" aria-label="Close instructions">Close</button></header><div class="report-instructions-content"><h3>Start and end of time periods</h3>
+<p>First week of each month starts with the 1st day of the month and ends with Thursday (end of payroll cycle) E.g. Mon  to Thu</p>
+<h3>(pre-populated)</h3>
+<p>Following weeks start each Friday and end with Thursday (payroll cycles) E.g. Fri  to Thu</p>
+<p>Last week of the month starts with Friday and ends with the last day of the month E.g. Fri to Mon</p>
+<p>Next month therefore would be:  Tue 1Mar to Thu 3Mar</p>
+<h3>Budgeted hours per flight (Net hrs) or Daily</h3>
+<p>budgeted total labor hrs (given by Hosi) Always based on 1 flight. Weekly budget needs to be adjusted by the # of Actual flts + Rebilled Cancellations</p>
+<p>minus: allocated CBS hours (if applicable) (rebilled canx = full turn price)</p>
+<p>minus: allocated OPS hours (if applicable)</p>
+<p>plus: any additional hours for functions where we charge a regular flat fee.</p>
+<h3>Budgeted hours wk (per week)</h3>
+<p>Budgeted total labor automatically calculated  ( Actual flights + rebillable cancellation   X contracted hours daily)</p>
+<p>Do not add any hours which are regularly rebilled. Those hours will be credited again through the "rebill column" and will zero out the additional AE hours incurred.</p>
+<h3>Business Managers Hours</h3>
+<p>DO NOT PRORATE- 40 hours weekly will automatically be included into the AE hours.  Understanding is that the first week and last week of the month will be either under or over depending</p>
+<p>last day on calendar.</p>
+<h3>actual total AE hours:</h3>
+<p>formula, calculating total of all AE hours (excluding holiday hours, CTO)</p>
+<p>OT = multiplied by 1.5 and DT = multiplied by 2 / brings all hours to the basis of regular hours in order to compare with budgeted hours</p>
+<h3>actual AE hours:</h3>
+<p>Reg OT DT Training</p>
+<p>Include all hours from the AE report for your account for the particular time period: including Regular, Overtime, Double time, training</p>
+<p>Include B-Mngr hours for the particular time period</p>
+<p>CBS hours need to properly be transferred to the CBS account if there is not a dedicated CBS team and schedule (for LAX, SFO, HNL there is a dedicated team)</p>
+<p>exclude: SP, holiday hours, CTO (vacation/sick)</p>
+<p>exclude: any "assigned" hours not belonging to your account (if applicable) e.g. Regional Mngr etc</p>
+<p>Cross Utilized staff: if schedule is properly done, no action needed. If no schedule was done then hours need to be transferred in AE NOT in WWH reports</p>
+<h3>Total Hours Rebilled:</h3>
+<p>formula, calculating total of all rebillable hours:  OT = multiplied by 1.5 and DT = multiplied by 2</p>
+<p>brings all hours to the basis of regular hours in order to compare with budgeted hours</p>
+<h3>Rebillable hours:</h3>
+<p>Reg OT DT Training enter all rebillable hours for the particular time period (from the rebill xls given to the customer for signature)</p>
+<h3>Total hrs over / under budget:</h3>
+<p>formula, calculating total of all AE hours (basis regular hrs) compared to all rebillable hours (basis regular hrs)</p>
+<h3>Hallmark Delays:</h3>
+<p>only delays which are coded to Hallmark need to be indicated</p>
+<h3>Length of Delays:</h3>
+<p>only delays which are coded to Hallmark need to be indicated</p>
+<h3>Rebillable Delays:</h3>
+<p>refer to contract details: no grace period, 30min or 60min grace period to determine when a delay is rebillable</p>
+<h3>Non-Rebillable Delays:</h3>
+<p>refer to contract details: no grace period, 30min or 60min grace period to determine when a delay is rebillable</p>
+<h3>Non-Rebillable Cancelations :</h3>
+<p>refer to contract details: when Hallmark gets sufficient advance notice and not entire team is requested.</p>
+<p>If just additional labor is requested then it is a NON-rebillable delay, but additional hours are under rebill</p>
+<h3>Rebillable Cancelations:</h3>
+<p>refer to contract details: when Hallmark gets insufficient advance notice then full turn price is being charged (not under rebillable hours).</p>
+<h3>Planned Flights:</h3>
+<p>originally planned and scheduled flights</p>
+<h3>Actual Flights:</h3>
+<p>actual flights + cancellations (non-rebillable and billable canx) must match the number of planned flights.</p>
+<h3>Comments:</h3>
+<p>Operational comments // delayed flights/ safety concerns // Times that will impact the budget vs worked</p>
+<h3>Comments Training -</h3>
+<p>Must include training completed and name of trainees</p>
+<h3>Delays caused by Hallmark:</h3>
+<h3>SAFETY ( A/C damages, Equipment damages, Accidents, Injuries - Workers Comp Cases)</h3>
+<h3>Other Operational Issues:</h3>
+</div></dialog></body></html>

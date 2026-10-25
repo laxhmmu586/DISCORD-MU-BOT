@@ -3,7 +3,7 @@
  let model=null,busy=false,dirty=false,baseline={},saveTimer,paused=false,saveConflict=false,stopLive,liveKey='',pendingRevision,computed={};const invalid=new Set();
  const col=n=>{let s='';while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26);}return s;};
  const coord=a=>{const [,c,r]=a.match(/^([A-Z]+)(\d+)$/);return {r:+r,c:[...c].reduce((n,x)=>n*26+x.charCodeAt(0)-64,0)};};
- function setBusy(value){busy=value;for(const id of ['report-kind','report-month','report-export'])$(id).disabled=value;editor.querySelectorAll('[data-add-day]').forEach(b=>b.disabled=value);if(!value)flushRevision();}
+ function setBusy(value){busy=value;for(const id of ['report-kind','report-month','report-export'])$(id).disabled=value;editor.querySelectorAll('[data-add-day],[data-remove-day]').forEach(b=>b.disabled=value);if(!value)flushRevision();}
  function stopUpdates(){stopLive?.();stopLive=null;liveKey='';pendingRevision=null;}
  function flushRevision(){if(!pendingRevision||!model||busy||dirty||document.hidden)return;const latest=pendingRevision;pendingRevision=null;if(latest.revision!==model.revision||model.kind==='wwh'&&latest.daRevision!==model.daRevision)void load();}
  function startUpdates(){
@@ -29,6 +29,7 @@
   });return input;
  }
  function render(){
+  $('report-instructions').hidden=model.kind!=='wwh';
   editor.replaceChildren();invalid.clear();computed=math.calculate(model.cells);for(const [address,cell] of Object.entries(model.cells))cell.address=address;
   const table=document.createElement('table');table.className='report-sheet';const caption=document.createElement('caption');caption.textContent=(model.kind==='da'?'Daily Flight Activity':'Weekly Worked Hours')+' · '+model.month;table.append(caption);
   const cols=document.createElement('colgroup');model.widths.forEach((w,i)=>{const c=document.createElement('col');c.style.width=Math.max(64,w*8)+'px';if(model.hiddenColumns.includes(i+1))c.style.display='none';cols.append(c);});table.append(cols);
@@ -38,23 +39,23 @@
    for(const r of [2,12,19,27,31,33,38,40,47,49,50,52,53])span('A'+r,'AC'+r);
    for(const r of [...Array.from({length:6},(_,i)=>13+i),...Array.from({length:6},(_,i)=>20+i)])span('B'+r,'AC'+r);
    for(const r of [32,39,48,51])span('A'+r,'AC'+r);
-   span('B54','AC'+model.rows);
+   span('A54','AC'+model.rows);
    for(const r of [26,30])span('A'+r,'AC'+r);
    for(const r of [28,29])span('F'+r,'AC'+r);
    for(let r=27;r<=model.rows;r++)span('M'+r,'AC'+r);
-  }else span('A3','K3');
+  }else for(const r of [1,2,3])span('A'+r,'N'+r);
   const head=document.createElement('thead'),body=document.createElement('tbody');
   for(let r=1;r<=model.rows;r++){
-   const tr=document.createElement('tr'),day=model.kind==='da'?model.days.find(d=>r>=d.start&&r<=d.end):null;tr.style.height=Math.max(28,model.heights[r-1]*1.25)+'px';if(day){tr.dataset.day=day.day;tr.className=day.day%2?'report-day-odd':'report-day-even';}
+   const tr=document.createElement('tr'),day=model.kind==='da'?model.days.find(d=>r>=d.start&&r<=d.end):null;tr.style.height=Math.max(28,model.heights[r-1]*1.25)+'px';if(model.kind==='da'&&r<=3)tr.className='report-title-row';if(model.kind==='da'&&r===4)tr.className='report-account-row';if(day){tr.dataset.day=day.day;tr.className=day.day%2?'report-day-odd':'report-day-even';}
    for(let c=1;c<=model.columns;c++){
-    const address=col(c)+r;if(hidden.has(address))continue;const cell=model.cells[address];if(!cell)continue;const td=document.createElement('td');td.dataset.cell=address;if(spans[address]){td.rowSpan=spans[address].rows;td.colSpan=spans[address].cols;}td.title=cell.formula?'='+cell.formula:address;
+    const address=col(c)+r;if(hidden.has(address))continue;const inputAddress=model.kind==='wwh'&&address==='A54'?'B54':address,cell=model.cells[inputAddress];if(!cell)continue;const td=document.createElement('td');td.dataset.cell=address;if(spans[address]){td.rowSpan=spans[address].rows;td.colSpan=spans[address].cols;}td.title=cell.formula?'='+cell.formula:inputAddress;
     if(model.hiddenColumns.includes(c))td.style.display='none';if(model.kind==='wwh'&&r>=27&&c>=13||model.kind==='wwh'&&[28,29].includes(r)&&c===6)td.classList.add('report-unused');
     if(cell.style.background?.length===8&&cell.style.background!=='00000000')td.style.backgroundColor='#'+cell.style.background.slice(2);if(cell.style.bold)td.style.fontWeight='700';if(cell.style.align)td.style.textAlign=cell.style.align;
-    if(cell.editable){td.classList.add('report-editable');const input=inputFor(address,cell);if(cell.multiline&&spans[address]?.rows>1)input.rows=Math.min(10,spans[address].rows);td.append(input);}
+    if(cell.editable){td.classList.add('report-editable');const input=inputFor(inputAddress,cell);if(cell.multiline&&spans[address]?.rows>1)input.rows=Math.min(10,spans[address].rows);td.append(input);}
     else if(cell.formula){td.dataset.formula=address;td.classList.add('report-calculated');td.textContent=math.format(computed[address],cell);}
     else{td.textContent=math.format(cell.value,cell);if(cell.linked)td.title='Automatically summed from the saved DA for this week';}
     if(day&&c===1&&r===day.start)td.classList.add('report-date-cell');
-    if(day&&c===1&&r===day.end){td.classList.add('report-day-action');const button=document.createElement('button');button.type='button';button.className='report-add-row';button.dataset.addDay=day.day;button.textContent='+ row';button.setAttribute('aria-label','Add row for day '+day.day);button.onclick=()=>addRow(day.day);td.append(button);}
+    if(day&&c===1&&r===day.end){td.classList.add('report-day-action');for(const delta of model.extraRows?.[day.day]>0?[1,-1]:[1]){const button=document.createElement('button');button.type='button';button.className='report-add-row';button.dataset[delta>0?'addDay':'removeDay']=day.day;button.textContent=delta>0?'+ row':'− row';button.setAttribute('aria-label',(delta>0?'Add':'Remove')+' row for day '+day.day);button.onclick=()=>addRow(day.day,delta);td.append(button);}}
     tr.append(td);
    }(r<=(model.kind==='da'?5:4)?head:body).append(tr);
   }table.append(head,body);editor.append(table);requestAnimationFrame(()=>editor.querySelectorAll('textarea').forEach(fitTextarea));
@@ -73,8 +74,9 @@
   for(const [address,value] of Object.entries(result.values)){const cell=model.cells[address];if(!cell?.editable||Object.hasOwn(values,address)||cell.value!==baseline[address])continue;math.setInput(cell,value);baseline[address]=cell.value;}
   Object.assign(baseline,values);dirty=Object.entries(editableValues()).some(([a,v])=>baseline[a]!==v);recalculate();history(result.history);paused=false;status.textContent='Saved by '+result.updatedBy+' · '+new Date(result.updatedAt).toLocaleTimeString();if(dirty)scheduleSave();
  }
- async function addRow(day){if(busy||!model)return;setBusy(true);editor.inert=true;try{if(dirty)await save();await window.hasReportRequest('/da/'+model.month+'/rows',{day,revision:model.revision,layoutRevision:model.layoutRevision||0});}catch(error){status.textContent=error.message;editor.inert=false;setBusy(false);return;}editor.inert=false;setBusy(false);await load();}
+ async function addRow(day,delta=1){if(busy||!model)return;const block=model.days.find(d=>d.day===day),hasData=delta<0&&Object.entries(model.cells).some(([address,cell])=>coord(address).r===block.end&&cell.editable&&cell.value!==''&&cell.value!=null);if(hasData&&!confirm('Remove the last added row for day '+day+' and its contents?'))return;setBusy(true);editor.inert=true;try{if(dirty)await save();await window.hasReportRequest('/da/'+model.month+'/rows',{day,delta,confirmRemoval:hasData,revision:model.revision,layoutRevision:model.layoutRevision||0});}catch(error){status.textContent=error.message;editor.inert=false;setBusy(false);if(dirty&&!paused)scheduleSave(5000);return;}editor.inert=false;setBusy(false);await load();}
  $('report-kind').addEventListener('change',()=>load());$('report-month').addEventListener('change',()=>load());
+ $('report-instructions').onclick=()=>$('report-instructions-dialog').showModal();$('report-instructions-close').onclick=()=>$('report-instructions-dialog').close();
  $('report-export').onclick=async()=>{if(busy||!model)return;setBusy(true);editor.inert=true;try{if(dirty)await save();const blob=await window.hasReportRequest('/'+model.kind+'/'+model.month+'/export'),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=model.kind.toUpperCase()+'_'+model.scope.station+'_'+model.scope.account+'_'+model.month.slice(0,4)+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);status.textContent='';}catch(error){status.textContent=error.message;}finally{editor.inert=false;setBusy(false);if(dirty&&!paused)scheduleSave(5000);}};
  function accessError(message){window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:message}}));}
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)flushRevision();});window.addEventListener('pagehide',stopUpdates);window.addEventListener('pageshow',event=>{if(event.persisted&&model)startUpdates();});window.addEventListener('online',()=>{if(dirty&&!saveConflict){paused=false;scheduleSave(0);}});window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});

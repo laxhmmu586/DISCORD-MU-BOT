@@ -4,7 +4,7 @@ async function fixture(t){const db=new Database(':memory:'),app=express();app.us
 test('formulas evaluate references, ranges, common functions and conditional error branches without executing code',()=>{
  const cells={A1:{value:5},A2:{value:3},A3:{value:''},A4:{value:'text'},B1:{formula:'ROUND(SUM(A1:A4)*1.5,2)'},B2:{formula:'AVERAGE(A1:A4)'},B3:{formula:'MIN(A1:A4)'},B4:{formula:'COUNT(A1:A4)'},B5:{formula:'IF(A1>0,MAX(A1:A4),1/0)'},B6:{formula:'IFERROR(1/0,9)'},B7:{formula:'2^3+25%'}};
  assert.deepEqual(calculate(cells),{B1:12,B2:4,B3:3,B4:2,B5:5,B6:9,B7:8.25});assert.throws(()=>calculate({A1:{formula:'process.exit()'}}),/Unsupported/);assert.throws(()=>calculate({A1:{formula:'SUM(B1:ZZ99999)'}}),/too large/);assert.equal(calculate({A1:{formula:'B1'},B1:{formula:'A1'}}).A1,'#REF!');
- const cell={formulaAllowed:true,type:'time'};setInput(cell,1100);assert.equal(format(cell.value,cell),'11:00');setInput(cell,'11:30');assert.equal(format(cell.value,cell),'11:30');setInput(cell,'1210');assert.equal(format(cell.value,cell),'12:10');assert.equal(format(67.866,{numFmt:'0.00',displayDecimals:2}),'67.87');assert.equal(format(1.23456,{displayDecimals:2}),'1.23');assert.equal(shiftFormula('SUM($K$6:$K$10)+K12',11,1),'SUM($K$6:$K$11)+K13');assert.equal(shiftFormula('sum(k6:k10)+k12',11,1),'sum(k6:k11)+k13');
+ assert.equal(format('2026-10-01',{monthLabel:true}),'OCT-26');const cell={formulaAllowed:true,type:'time'};setInput(cell,1100);assert.equal(format(cell.value,cell),'11:00');setInput(cell,'11:30');assert.equal(format(cell.value,cell),'11:30');setInput(cell,'1210');assert.equal(format(cell.value,cell),'12:10');assert.equal(format(67.866,{numFmt:'0.00',displayDecimals:2}),'67.87');assert.equal(format(1.23456,{displayDecimals:2}),'1.23');assert.equal(shiftFormula('SUM($K$6:$K$10)+K12',11,1),'SUM($K$6:$K$11)+K13');assert.equal(shiftFormula('sum(k6:k10)+k12',11,1),'sum(k6:k11)+k13');
 });
 test('DA added rows shift data and formulas, reject stale layouts and update WWH and annual exports',async t=>{
  const request=await fixture(t),path='/da/2026-10';
@@ -17,6 +17,23 @@ test('DA added rows shift data and formulas, reject stale layouts and update WWH
  assert.equal((await request('agent',path+'/rows',{revision:3,day:1})).status,403);assert.equal((await request('lead',path+'/rows',{revision:3,day:32})).status,400);
  const da=await request('lead',path+'/export'),book=new Excel.Workbook();assert.equal(da.status,200);await book.xlsx.load(da.data);const sheet=book.getWorksheet('Oct');assert.equal(sheet.getCell('C11').value,'MU999');assert.equal(sheet.getCell('K8').formula,'K13');assert.equal(sheet.getCell('K11').result,20);assert.equal(sheet.getCell('K13').value,305);assert(sheet.model.merges.includes('L6:L11'));assert.equal(sheet.getCell('F6').numFmt,'hh:mm');assert.equal(sheet.getCell('F6').value.getUTCHours(),11);
  const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip'),zip=await JSZip.loadAsync(da.data);assert(!Object.keys(zip.files).some(n=>/comments\d+\.xml|vmlDrawing\d+\.vml/.test(n)),'No empty comment markers in exported workbook');for(const name of Object.keys(zip.files).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)))assert.doesNotMatch(await zip.file(name).async('string'),/legacyDrawing/);
+});
+test('DA removes only added rows, confirms nonempty rows and shifts formulas and summaries safely',async t=>{
+ const request=await fixture(t),path='/da/2027-01';
+ assert.equal((await request('lead',path+'/rows',{revision:0,day:1,delta:-1})).status,400);
+ assert.equal((await request('lead',path+'/rows',{revision:0,day:1,delta:2})).status,400);
+ await request('lead',path+'/rows',{revision:0,day:1});
+ await request('lead',path,{revision:1,layoutRevision:1,values:{K7:100,K11:20,K12:30,K8:'=K12',K9:'=K11',K10:'=SUM(K6:K11)'}});
+ assert.equal((await request('lead',path+'/rows',{revision:2,layoutRevision:1,day:1,delta:-1})).status,409);
+ assert.equal((await request('other',path+'/rows',{revision:0,day:1,delta:-1})).status,400);
+ assert.equal((await request('agent',path+'/rows',{revision:2,layoutRevision:1,day:1,delta:-1,confirmRemoval:true})).status,403);
+ const removed=await request('lead',path+'/rows',{revision:2,layoutRevision:1,day:1,delta:-1,confirmRemoval:true});assert.equal(removed.status,200);assert.equal(removed.data.layoutRevision,2);
+ const data=(await request('lead',path)).data;assert.equal(data.days[0].end,10);assert.equal(data.days[1].start,11);assert.equal(data.cells.K11.value,30);assert.equal(data.cells.K8.formula,'K11');assert.equal(data.cells.K9.formula,'#REF!');assert.equal(data.cells.K10.formula,'SUM(K6:K10)');assert.equal(data.calculated.K9,'#REF!');
+ assert.equal((await request('lead',path,{revision:3,layoutRevision:1,values:{K12:999}})).status,409);
+ await request('lead',path,{revision:3,layoutRevision:2,values:{K9:'',K10:''}});
+ assert.equal((await request('manager','/wwh/2027-01')).data.calculated.AA11,160);
+ const book=new Excel.Workbook();await book.xlsx.load((await request('lead',path+'/export')).data);const sheet=book.getWorksheet('Jan');for(const name of ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'])assert.equal(book.getWorksheet(name).getCell('I4').numFmt,'"'+name.toUpperCase()+'"-yy');assert.equal(sheet.getCell('K11').value,30);assert(sheet.model.merges.includes('L6:L10'));assert(!sheet.model.merges.includes('L6:L11'));
+ await request('lead',path+'/rows',{revision:4,layoutRevision:2,day:2});assert.equal((await request('lead',path+'/rows',{revision:5,layoutRevision:3,day:2,delta:-1})).status,200);
 });
 test('WWH only exposes useful fields and preserves formula precision and clean export results',async t=>{
  const request=await fixture(t);let w=(await request('manager','/wwh/2026-10')).data;
