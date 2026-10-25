@@ -1,15 +1,17 @@
-const path=require('node:path'),Excel=require('exceljs');
+const path=require('node:path'),fs=require('node:fs');
 const groups=require('./public/public/employee-account-groups'),positions=require('./public/public/employee-positions');
 const {calculate}=require('./public/public/has-report-math');
 const templateDir=path.join(__dirname,'data','has-report-templates');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
+const unavailable=()=>fail('Reports are temporarily unavailable. Please retry later.',503);
+function excel(){try{return require('exceljs');}catch(error){console.error('HAS report Excel dependency:',error);unavailable();}}
 const DA_ROLES=['Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'];
 function access(employee){const role=positions.normalize(employee?.position),main=employee&&!groups.isHeadquarter(employee);return {da:Boolean(main&&DA_ROLES.includes(role)),wwh:Boolean(main&&['Supervisor','Business Manager'].includes(role))};}
 async function template(kind,month,scope){
  if(!/^2026-(0[1-9]|1[0-2])$/.test(month))fail('Select a month in 2026, the supplied template year.');
  if(!['da','wwh'].includes(kind))fail('Unknown report type.',404);
  const cells={},year=2026,m=+month.slice(5),name=new Date(Date.UTC(year,m-1,1)).toLocaleString('en-US',{month:'short',timeZone:'UTC'});
- const workbook=new Excel.Workbook();await workbook.xlsx.readFile(path.join(templateDir,kind+'-2026.xlsx'));const sheet=workbook.getWorksheet(name),columns=kind==='wwh'?29:14,days=new Date(Date.UTC(year,m,0)).getUTCDate();
+ const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.readFile(path.join(templateDir,kind+'-2026.xlsx'));const sheet=workbook.getWorksheet(name),columns=kind==='wwh'?29:14,days=new Date(Date.UTC(year,m,0)).getUTCDate();
  // DA source contains hundreds of unused trailing rows; keep them in exports.
  let rows=sheet.rowCount;if(kind==='da'){rows=0;sheet.eachRow((row,n)=>{if(row.hasValues)rows=Math.max(rows,n);});}
  for(let r=1;r<=rows;r++)for(let c=1;c<=columns;c++){
@@ -23,14 +25,27 @@ async function template(kind,month,scope){
  const accountCell=kind==='wwh'?'B1':'C4';cells[accountCell].value=scope.account;cells[accountCell].editable=false;cells[accountCell].accountLocked=true;
  return {kind,month,rows,columns,cells,merges:sheet.model.merges,widths:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).width||12),hiddenColumns:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).hidden?i+1:0).filter(Boolean),heights:Array.from({length:rows},(_,i)=>sheet.getRow(i+1).height||20),sheetName:name,workbook};
 }
-function registerHasReports(app,{employees,profiles,authenticate,reportDb}){
- const db=reportDb||(process.env.HAS_REPORT_DB_PATH?new (require('better-sqlite3'))(process.env.HAS_REPORT_DB_PATH):employees.db);db.exec('CREATE TABLE IF NOT EXISTS has_reports(scope TEXT NOT NULL,kind TEXT NOT NULL,month TEXT NOT NULL,data TEXT NOT NULL,PRIMARY KEY(scope,kind,month))');
+function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHeartbeatMs}){
+ let db,ownsDatabase=false;
+ function database(){
+  if(db)return db;
+  let candidate,owned=false;
+  try{
+   const filename=process.env.HAS_REPORT_DB_PATH;
+   if(reportDb)candidate=reportDb;
+   else if(filename){if(filename!==':memory:')fs.mkdirSync(path.dirname(path.resolve(filename)),{recursive:true});candidate=new (require('better-sqlite3'))(filename);owned=true;}
+   else candidate=employees.db;
+   candidate.exec('CREATE TABLE IF NOT EXISTS has_reports(scope TEXT NOT NULL,kind TEXT NOT NULL,month TEXT NOT NULL,data TEXT NOT NULL,PRIMARY KEY(scope,kind,month))');
+   db=candidate;ownsDatabase=owned;return db;
+  }catch(error){if(owned&&candidate?.open)candidate.close();console.error('HAS report database initialization:',error);unavailable();}
+ }
  app.use('/has-report-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.reportUser=await authenticate(req);next();}catch{res.status(401).json({error:'Sign in required.'});}});
  const context=user=>{const employee=profiles.linked(user);if(!employee)fail('Link your employee profile first.',403);return {employee,scope:groups.scope(employee),permissions:access(employee)};};
  const authorize=req=>{const ctx=context(req.reportUser);if(!['da','wwh'].includes(req.params.kind))fail('Unknown report type.',404);if(!ctx.permissions[req.params.kind])fail('Report access denied for your Main Account position.',403);return ctx;};
  const key=scope=>JSON.stringify([scope.station,scope.account]);
- const read=(scope,kind,month)=>{const row=db.prepare('SELECT data FROM has_reports WHERE scope=? AND kind=? AND month=?').get(key(scope),kind,month);const data=row?JSON.parse(row.data):{revision:0,values:{}};delete data.values[kind==='wwh'?'B1':'C4'];return data;};
- const handler=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||400).json({error:e.message});}};
+ const read=(scope,kind,month)=>{const row=database().prepare('SELECT data FROM has_reports WHERE scope=? AND kind=? AND month=?').get(key(scope),kind,month);const data=row?JSON.parse(row.data):{revision:0,values:{}};delete data.values[kind==='wwh'?'B1':'C4'];return data;};
+ const live=require('./hasReportLive').createReportLive({context,read,heartbeatMs:liveHeartbeatMs});
+ const handler=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){const infrastructure=['ENOENT','EACCES','EPERM','ENOTDIR'].includes(e.code)||String(e.code||'').startsWith('SQLITE_');if(infrastructure)console.error('HAS report request:',e);const status=infrastructure?503:e.status||400;if(status===503)res.set('Retry-After','30');res.status(status).json({error:infrastructure?'Reports are temporarily unavailable. Please retry later.':e.message});}};
  const build=async req=>{const ctx=authorize(req),model=await template(req.params.kind,req.params.month,ctx.scope),saved=read(ctx.scope,model.kind,model.month);return {ctx,model,saved};};
  const apply=(model,values)=>{if(!values||typeof values!=='object'||Array.isArray(values))fail('Invalid report values.');for(const [address,value] of Object.entries(values)){const cell=model.cells[address];if(!cell?.editable)fail('This template cell cannot be edited: '+address);if(!['string','number'].includes(typeof value)||String(value).length>4000||typeof value==='number'&&!Number.isFinite(value))fail('Invalid cell value.');if(cell.literalFormula){if(typeof value==='string'&&value.startsWith('=')){if(!/^[\d\s.+*/()-]+$/.test(value.slice(1)))fail('Use numbers and arithmetic in this input formula.');cell.formula=value.slice(1);}else delete cell.formula;}cell.value=value;}return model;};
  app.get('/has-report-api/context',handler(async(req,res)=>{const {scope,permissions}=context(req.reportUser);res.json({scope,permissions,canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
@@ -52,7 +67,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb}){
   model.daRevision=saved.revision;return source;
  };
  app.get('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model,saved}=await build(req);apply(model,saved.values);await linkDA(model,ctx.scope);const {workbook,...view}=model;res.json({...view,...saved,scope:ctx.scope,calculated:calculate(model.cells)});}));
- const write=(ctx,model,user,body,action='Edited')=>db.transaction(()=>{
+ const write=(ctx,model,user,body,action='Edited')=>{const saved=database().transaction(()=>{
   const latest=read(ctx.scope,model.kind,model.month);apply(model,latest.values);
   const entries=Object.entries(body.values||{});if(!entries.length)fail('No cell changes to save.');
   if(body.revision!==latest.revision){
@@ -63,12 +78,13 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb}){
   const history=[...(latest.history||[]),{at,name,action,cells:entries.map(([a])=>a)}].slice(-30);
   const data={revision:latest.revision+1,values:{...latest.values,...body.values},updatedAt:at,updatedBy:name,history};
   db.prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),model.kind,model.month,JSON.stringify(data));return data;
- })();
+ })();live.publish(ctx.scope,model.kind,model.month);return saved;};
  app.post('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model}=await build(req);res.json(write(ctx,model,req.reportUser,req.body));}));
  app.get('/has-report-api/:kind/:month/updates',handler(async(req,res)=>{const ctx=authorize(req);const saved=read(ctx.scope,req.params.kind,req.params.month);res.json({scope:ctx.scope,revision:saved.revision,updatedBy:saved.updatedBy,daRevision:req.params.kind==='wwh'?read(ctx.scope,'da',req.params.month).revision:0});}));
+ app.get('/has-report-api/:kind/:month/stream',handler(async(req,res)=>{const ctx=authorize(req);if(!/^2026-(0[1-9]|1[0-2])$/.test(req.params.month))fail('Select a month in 2026.');live.subscribe(req,res,ctx);}));
  app.post('/has-report-api/:kind/:month/import',handler(async(req,res)=>{
   const {ctx,model}=await build(req);if(typeof req.body.file!=='string'||req.body.file.length>14000000)fail('Choose an Excel file up to 10 MB.');
-  const workbook=new Excel.Workbook();await workbook.xlsx.load(Buffer.from(req.body.file,'base64'));const sheet=workbook.getWorksheet(model.sheetName);if(!sheet)fail('The workbook has no sheet for the selected month.');
+  const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.load(Buffer.from(req.body.file,'base64'));const sheet=workbook.getWorksheet(model.sheetName);if(!sheet)fail('The workbook has no sheet for the selected month.');
   const expected=req.params.kind==='wwh'?'WEEK':'DATE';if(String(sheet.getCell(req.params.kind==='wwh'?'A3':'A5').text).trim()!==expected)fail('Choose the matching DA or WWH workbook.');
   const values={};for(const [address,cell] of Object.entries(model.cells))if(cell.editable){const source=sheet.getCell(address);let value=source.value;if(source.formula){if(cell.literalFormula&&/^[\d\s.+*/()-]+$/.test(source.formula))value='='+source.formula;else value=source.result??'';}if(value instanceof Date)value=(value.getTime()-Date.UTC(1899,11,30))/86400000;if(value?.richText)value=value.richText.map(t=>t.text).join('');if(value==null)value='';if(['string','number'].includes(typeof value))values[address]=value;}
   res.json(write(ctx,model,req.reportUser,{revision:req.body.revision,values},'Imported Excel'));
@@ -88,6 +104,6 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb}){
   model.workbook.calcProperties.fullCalcOnLoad=true;
   res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(filename+'.xlsx').send(Buffer.from(await model.workbook.xlsx.writeBuffer()));
  }));
- return {context};
+ return {context,close(){live.close();if(ownsDatabase&&db?.open)db.close();db=undefined;ownsDatabase=false;}};
 }
 module.exports={access,template,registerHasReports};

@@ -1,8 +1,23 @@
 (() => {
- const $=id=>document.getElementById(id),status=$('report-status'),editor=$('report-editor');let model=null,busy=false,dirty=false,loaded=false,baseline={},saveTimer,paused=false;
+ const $=id=>document.getElementById(id),status=$('report-status'),editor=$('report-editor');let model=null,busy=false,dirty=false,loaded=false,baseline={},saveTimer,paused=false,stopLive,liveKey='',pendingRevision;
  const col=n=>{let s='';while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26);}return s;};
  const coord=a=>{const [,c,r]=a.match(/^([A-Z]+)(\d+)$/);return {r:+r,c:[...c].reduce((n,x)=>n*26+x.charCodeAt(0)-64,0)};};
- const setBusy=value=>{busy=value;for(const id of ['report-kind','report-month','report-load','report-save','report-export','report-import'])$(id).disabled=value;};
+ const setBusy=value=>{busy=value;for(const id of ['report-kind','report-month','report-load','report-save','report-export','report-import'])$(id).disabled=value;if(!value)flushRevision();};
+ function stopUpdates(){stopLive?.();stopLive=null;liveKey='';pendingRevision=null;}
+ function flushRevision(){
+  if(!pendingRevision||!model||busy||dirty||document.hidden)return;
+  const latest=pendingRevision;pendingRevision=null;
+  if(latest.revision!==model.revision||model.kind==='wwh'&&latest.daRevision!==model.daRevision)void load();
+ }
+ function startUpdates(){
+  const key=JSON.stringify([model.scope.station,model.scope.account,model.kind,model.month]);if(key===liveKey)return;
+  stopUpdates();liveKey=key;
+  stopLive=window.watchHasReport({path:'/'+model.kind+'/'+model.month,onRevision:state=>{
+   if(key!==liveKey||!model)return;
+   if(state.scope.station!==model.scope.station||state.scope.account!==model.scope.account){window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:'Your Main Account changed. Reload the page.'}}));return;}
+   pendingRevision=state;flushRevision();
+  },onError:error=>{if(key===liveKey&&[401,403].includes(error.status))window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:error.message}}));}});
+ }
  const editableValues=()=>Object.fromEntries(Object.entries(model.cells).filter(([,c])=>c.editable).map(([a,c])=>[a,c.value]));
  function scheduleSave(){clearTimeout(saveTimer);if(paused)return;saveTimer=setTimeout(async()=>{if(busy){scheduleSave();return;}setBusy(true);try{await save();}catch(e){paused=true;status.textContent=e.message;}finally{setBusy(false);}},1000);}
  function history(rows){$('report-history').replaceChildren(...(rows||[]).slice(-10).reverse().map(row=>{const li=document.createElement('li');li.textContent=new Date(row.at).toLocaleString()+' · '+row.name+' · '+row.action+' · '+row.cells.length+' cells';return li;}));}
@@ -22,7 +37,7 @@
    if(model.hiddenColumns.includes(c))td.style.display='none';if(cell.linked)td.title='Automatically summed from the saved DA for this week';if(cell.style.background?.length===8&&cell.style.background!=='00000000')td.style.backgroundColor='#'+cell.style.background.slice(2);if(cell.style.bold)td.style.fontWeight='700';if(cell.style.align)td.style.textAlign=cell.style.align;
    if(cell.editable){const input=document.createElement('textarea');input.rows=1;input.value=cell.value;input.setAttribute('aria-label',address);input.spellcheck=false;input.addEventListener('input',()=>{const text=input.value;cell.value=/^-?\d+(\.\d+)?$/.test(text)?Number(text):text;if(cell.literalFormula){if(text.startsWith('='))cell.formula=text.slice(1);else delete cell.formula;}dirty=true;status.textContent='Saving changes…';try{recalculate();scheduleSave();}catch{clearTimeout(saveTimer);status.textContent='Complete the arithmetic formula before saving.';}});td.append(input);}else if(cell.formula){td.dataset.formula=address;td.classList.add('report-calculated');}else td.textContent=display(cell.value,cell.numFmt);tr.append(td);}body.append(tr);}table.append(body);editor.append(table);recalculate();
  }
- async function load(){if(busy)return;if(dirty&&!confirm('Discard unsaved changes and load this report?'))return;clearTimeout(saveTimer);setBusy(true);status.textContent='Loading report…';try{model=await window.hasReportRequest('/'+$('report-kind').value+'/'+$('report-month').value);render();baseline=editableValues();history(model.history);dirty=false;paused=false;loaded=true;status.textContent=model.updatedAt?'Saved by '+model.updatedBy+' · '+new Date(model.updatedAt).toLocaleString():'Shared report · Changes save automatically.';}catch(e){status.textContent=e.message;}finally{setBusy(false);$('report-save').disabled=$('report-export').disabled=!loaded;}}
+ async function load(){if(busy)return;if(dirty&&!confirm('Discard unsaved changes and load this report?'))return;clearTimeout(saveTimer);setBusy(true);status.textContent='Loading report…';try{model=await window.hasReportRequest('/'+$('report-kind').value+'/'+$('report-month').value);render();baseline=editableValues();history(model.history);dirty=false;paused=false;loaded=true;pendingRevision=null;startUpdates();status.textContent=model.updatedAt?'Saved by '+model.updatedBy+' · '+new Date(model.updatedAt).toLocaleString():'Shared report · Changes save automatically.';}catch(e){status.textContent=e.message;}finally{setBusy(false);$('report-save').disabled=$('report-export').disabled=!loaded;}}
  async function save(){
   clearTimeout(saveTimer);const values=Object.fromEntries(Object.entries(editableValues()).filter(([a,v])=>baseline[a]!==v));
   if(!Object.keys(values).length){dirty=false;status.textContent='All changes saved.';return;}
@@ -42,9 +57,11 @@
  $('report-export').onclick=async()=>{if(busy||!model)return;setBusy(true);try{if(dirty)await save();const blob=await window.hasReportRequest('/'+model.kind+'/'+model.month+'/export'),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=model.kind.toUpperCase()+'_'+model.scope.station+'_'+model.scope.account+'_'+model.month+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);status.textContent='';}catch(e){status.textContent=e.message;}finally{setBusy(false);}};
  $('report-import').onclick=()=>$('report-file').click();
  $('report-file').onchange=async()=>{const file=$('report-file').files[0];if(!file||busy||!model)return;if(file.size>10*1024*1024){status.textContent='Choose an Excel file up to 10 MB.';return;}if(!confirm('Import this month from Excel into the shared report? Existing values will be replaced.'))return;clearTimeout(saveTimer);setBusy(true);try{const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);await window.hasReportRequest('/'+model.kind+'/'+model.month+'/import',{revision:model.revision,file:btoa(binary)});dirty=false;}catch(e){status.textContent=e.message;setBusy(false);return;}setBusy(false);await load();$('report-file').value='';};
- setInterval(async()=>{if(!model||busy||dirty||document.hidden)return;try{const latest=await window.hasReportRequest('/'+model.kind+'/'+model.month+'/updates');if(latest.scope.station!==model.scope.station||latest.scope.account!==model.scope.account||latest.revision!==model.revision||model.kind==='wwh'&&latest.daRevision!==model.daRevision)await load();}catch(e){if([401,403].includes(e.status)){window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:e.message}}));}}},2500);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)flushRevision();});
+ window.addEventListener('pagehide',stopUpdates);
+ window.addEventListener('pageshow',event=>{if(event.persisted&&model)startUpdates();});
  window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
- window.addEventListener('has-report-context',event=>{const ctx=event.detail;if(ctx.error){status.textContent=ctx.error;editor.replaceChildren();$('report-controls').hidden=true;model=null;loaded=false;dirty=false;clearTimeout(saveTimer);return;}const kinds=Object.entries(ctx.permissions).filter(([,allowed])=>allowed).map(([kind])=>kind);if(!kinds.length){status.textContent='Report access is unavailable for your Main Account position.';$('report-controls').hidden=true;return;}$('report-controls').hidden=false;$('report-scope').textContent=ctx.scope.station+' · '+ctx.scope.account+' · Main Account';$('report-kind').replaceChildren(...kinds.map(kind=>new Option(kind==='da'?'DA · Daily Flight Activity':'WWH · Weekly Worked Hours',kind)));load();});
+ window.addEventListener('has-report-context',event=>{const ctx=event.detail;if(ctx.error){stopUpdates();status.textContent=ctx.error;editor.replaceChildren();$('report-controls').hidden=true;model=null;loaded=false;dirty=false;clearTimeout(saveTimer);return;}const kinds=Object.entries(ctx.permissions).filter(([,allowed])=>allowed).map(([kind])=>kind);if(!kinds.length){stopUpdates();status.textContent='Report access is unavailable for your Main Account position.';$('report-controls').hidden=true;return;}$('report-controls').hidden=false;$('report-scope').textContent=ctx.scope.station+' · '+ctx.scope.account+' · Main Account';$('report-kind').replaceChildren(...kinds.map(kind=>new Option(kind==='da'?'DA · Daily Flight Activity':'WWH · Weekly Worked Hours',kind)));load();});
  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit'}).formatToParts(new Date()),part=type=>parts.find(p=>p.type===type).value;$('report-month').value=part('year')==='2026'?'2026-'+part('month'):'2026-10';
  if(window.hasReportContext)window.dispatchEvent(new CustomEvent('has-report-context',{detail:window.hasReportContext}));
 })();

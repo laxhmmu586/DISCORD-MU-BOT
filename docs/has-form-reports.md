@@ -4,7 +4,9 @@
 
 Report access uses the authenticated employee's primary `station` and `account`. ACCOUNT is filled from that Main Account, is read-only, and uses the same value in downloaded files. Additional memberships, account selectors, request parameters and caller-supplied scope never grant report access. HQ has no report access. DA permits Lead, Supervisor, Senior Supervisor, Duty Manager, Business Manager, Airport Operations Manager, Airport Manager, Interim General Manager, General Manager and Regional Manager. WWH permits Supervisor and Business Manager (including legacy Manager) only. Agent/CSA cannot access either report. The same checks protect reading, updates, import, save and download.
 
-Each Main Account has one shared DA and WWH per month. Changes autosave after one second; other editors check for updates every 2.5 seconds. Independent cell changes merge. Concurrent changes to the same cell return a conflict and leave local edits intact. Recent changes show the editor, time, operation and number of changed cells. This is cell sharing with periodic synchronization, not a Google/SharePoint-hosted workbook or a presence/cursor service.
+Each Main Account has one shared DA and WWH per month. Changes autosave after one second. Other editors receive revision notifications over an authenticated SSE connection; healthy connections do not poll. Committed saves and imports notify subscribers for the same Main Account/month, and DA changes also notify the corresponding WWH. The client reloads updated data when it has no unsaved local edits. Independent cell changes merge. Concurrent changes to the same cell return a conflict and leave local edits intact. Recent changes show the editor, time, operation and number of changed cells. The files are stored by this application; they are not hosted in Google Sheets or SharePoint.
+
+SSE uses fetch with a Bearer header, never tokens in URLs. It rechecks Main Account and role on each push and 15-second heartbeat; changed/revoked access closes the connection. Streams reconnect at least every 30 minutes for fresh authentication. Heartbeats also reconcile revisions written by another backend process. Disconnected or stalled streams reconnect with backoff and temporarily poll every 10 seconds; reconnection stops fallback polling. Changing report/month, signing out or leaving the page closes the previous stream. Proxies must permit streaming: responses set `X-Accel-Buffering: no` and disable caching/transformation. Nginx buffering must honor that header, and upstream read timeouts must exceed the heartbeat interval. SSE still requires a functioning backend and does not repair an upstream 502 by itself.
 
 The supplied workbooks cover 2026. Their monthly tabs, merges, styles, hidden columns, row heights, column widths, print settings and core formulas are preserved in the downloaded Excel files. Downloads populate all twelve monthly tabs from the same Main Account's shared reports. WWH's last visible column is `# of PAXS`. Actual flights and PAX link to the same Main Account's saved DA using each WWH week's date range. Planned flights remain editable because DA does not contain a separate planned-flight field.
 
@@ -18,6 +20,10 @@ The GitHub repository is public. Never commit source operational workbooks or th
 
 The report store normally uses the persistent employee database. To deploy the prepared data, transfer the private `data/has-reports.db` to a persistent backend directory and set `HAS_REPORT_DB_PATH` to that absolute path before restarting the backend. Do not put it in Firebase hosting or the repository. Backend and Firebase hosting both need this PR's deployment. Do not claim production data is imported until the private DB is installed and authenticated reads are checked.
 
+Report storage and Excel support initialize only when a report operation needs them. The permission/context endpoint does not require either. An unavailable report dependency, database or template returns a report-only HTTP 503 with `Retry-After: 30`; it must not stop Profile, Read & Sign, HAS or the rest of the API from starting. Initialization can retry after the underlying problem is corrected. A configured database's parent directory is created when needed; failures never silently switch to another database. The report service closes only database connections it opened itself.
+
+On the backend host, run `npm ci --omit=dev` when deploying dependencies and ensure the service user can write the directory containing `HAS_REPORT_DB_PATH` (when set). Keep both template workbooks under `data/has-report-templates`. If the public API still returns Nginx 502 after deployment, inspect the actual process manager and Nginx error logs: DNS changes cannot diagnose a Node process that is not listening. The precise cause of a live outage requires those logs.
+
 To regenerate a private import database from authorized originals:
 
 ```powershell
@@ -30,6 +36,8 @@ The script overwrites all twelve months for the chosen Main Account and records 
 
 ```powershell
 node --test test/hasReports.test.js test/hasReportsCollaboration.test.js
+node --test test/hasReportsStartup.test.js
+node --test test/hasReportsLive.test.js test/hasReportLiveClient.test.js
 node test/hasReports.browser.cjs
 ```
 

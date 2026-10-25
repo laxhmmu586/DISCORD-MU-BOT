@@ -18,7 +18,7 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
-        "source": "/{has-form.html,has-report.html,has-report.js,has-report.css,has-report-access.js,has-report-math.js,attendance-request.html,request.html,request.css,request-light.css,request.js}",
+        "source": "/{has-form.html,has-report.html,has-report.js,has-report.css,has-report-access.js,has-report-math.js,has-report-live.js,attendance-request.html,request.html,request.css,request-light.css,request.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
