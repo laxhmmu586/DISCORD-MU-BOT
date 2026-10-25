@@ -84,10 +84,10 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   const year=+req.params.year,months=[];
   for(let m=1;m<=12;m++){
    const month=year+'-'+String(m).padStart(2,'0'),wwh=read(ctx.scope,'wwh',month),da=read(ctx.scope,'da',month);
-   const row={month,hasDA:da.revision>0,hasWWH:wwh.revision>0||read(ctx.scope,'rechargeable',month).revision>0,updatedAt:[da.updatedAt,wwh.updatedAt].filter(Boolean).sort().at(-1)||null};
+   const row={month,hasDA:da.revision>0,hasWWH:wwh.revision>0||recharge.isLinked(read(ctx.scope,'rechargeable',month)),updatedAt:[da.updatedAt,wwh.updatedAt].filter(Boolean).sort().at(-1)||null};
    const metrics=['budgetHours','actualHours','rechargeHours','balanceHours','netActualHours','flights','pax'];for(const metric of metrics)row[metric]=null;
    row.rechargeBreakdown=null;row.flightDelays=null;row.state='not-started';row.errors=[];
-   if(!row.hasDA&&!row.hasWWH&&!read(ctx.scope,'rechargeable',month).revision){months.push(row);continue;}
+   if(!row.hasDA&&!row.hasWWH){months.push(row);continue;}
    const model=await template('wwh',month,ctx.scope);apply(model,wwh.values,true);const source=await linkDA(model,ctx.scope),calculated=calculate(model.cells);if(row.hasDA)row.flightDelays=flightDelays(source);
    const numeric=address=>{const cell=model.cells[address],value=cell?.formula?calculated[address]:cell?.value;if(typeof value==='number'&&Number.isFinite(value))return value;row.errors.push(address);return null;};
    if(row.hasDA){row.flights=numeric('Z11');row.pax=numeric('AA11');}
