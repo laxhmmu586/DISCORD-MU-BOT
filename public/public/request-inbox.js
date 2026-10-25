@@ -6,7 +6,7 @@
  function profileCases(rows,groups){const host=document.getElementById('profile-request-cases');if(!host)return;host.replaceChildren();
   const priority=({r})=>r.canReview||r.needsRevision?0:r.status==='pending'?1:2;
   const sorted=rows.filter(({r})=>r.canDelete===true||r.employee?.id&&r.employee.id===r.viewerId).sort((a,b)=>priority(a)-priority(b)||String(b.r.updatedAt||b.r.submittedAt||'').localeCompare(String(a.r.updatedAt||a.r.submittedAt||'')));
-  for(const {kind,r} of sorted.slice(0,5)){const link=document.createElement('a');link.className='profile-case-entry';link.href='/request.html?request='+encodeURIComponent(r.id);const copy=document.createElement('span'),name=document.createElement('strong'),detail=document.createElement('small');name.textContent=title(kind,r);
+  for(const {kind,r} of sorted.slice(0,5)){const link=document.createElement('a');link.className='profile-case-entry';link.href='/has-form.html?request='+encodeURIComponent(r.id);const copy=document.createElement('span'),name=document.createElement('strong'),detail=document.createElement('small');name.textContent=title(kind,r);
    const state=r.needsRevision?'Returned for revision':r.canReview?'Awaiting your review':r.status==='pending'?'In Progress':({draft:'Draft',approved:'Approved',rejected:'Rejected'}[r.status]||r.status),at=r.updatedAt||r.submittedAt||r.createdAt;detail.textContent=state+(at&&!Number.isNaN(Date.parse(at))?' · '+new Date(at).toLocaleString('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' PT':'');copy.append(name,detail);link.append(copy);
    if(r.canReview||r.needsRevision){const alert=document.createElement('span');alert.className='request-alert';alert.textContent='!';alert.setAttribute('aria-label','This case requires your attention');link.append(alert);}host.append(link);
   }
@@ -22,7 +22,7 @@
    if(version!==sequence)return;const rows=groups.flatMap(g=>g.rows.map(r=>({kind:g.kind,r}))),count=rows.filter(({r})=>r.canReview||r.needsRevision).length;
    const nav=document.getElementById('profile-admin-nav'),position=groups.find(g=>g.position)?.position,isAdmin=['lake@mu.com','nextweek1216@gmail.com','tamsun10@gmail.com'].includes(String(user.email||'').trim().toLowerCase());if(nav&&(position||isAdmin))nav.hidden=!(isAdmin||['Supervisor','Business Manager','Manager'].includes(position));
    const memos=await signing;if(version!==sequence)return;const signCount=memos===null?(window.RequestInbox.data?.signCount||0):memos.filter(m=>['pending','overdue'].includes(m.myStatus)).length;
-   badge('.profile-sidebar a[href="/request.html"]',count,'requests requiring your attention');badge('.profile-sidebar a[href="/read-sign.html"],.activity-row[href="/read-sign.html"]',signCount,'documents awaiting your signature');profileCases(rows,groups);
+   badge('.profile-sidebar a[href="/has-form.html"]',count,'requests requiring your attention');badge('.profile-sidebar a[href="/read-sign.html"],.activity-row[href="/read-sign.html"]',signCount,'documents awaiting your signature');profileCases(rows,groups);
    window.RequestInbox.data={groups,rows,count,signCount};window.dispatchEvent(new CustomEvent('request-inbox-updated',{detail:window.RequestInbox.data}));return window.RequestInbox.data;
   })();try{return await pending;}finally{pending=null;if(refreshQueued){refreshQueued=false;load().catch(()=>{});}}
  }

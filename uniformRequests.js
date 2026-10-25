@@ -41,7 +41,7 @@ function createUniformStore({employees,profiles,now=()=>new Date()}){
 async function sendApprovalEmail(record,reviewer){
  const {gmail,userId}=require('./googleDrive').getNextDayInfoGmailClient();
  if(!emailOK(reviewer.companyEmail))throw Error('Company email is required.');
- const origin=process.env.PUBLIC_APP_URL||'https://www.mufcapp.net';const link=new URL('/request.html?request='+encodeURIComponent(record.id),origin).href;
+ const origin=process.env.PUBLIC_APP_URL||'https://www.mufcapp.net';const link=new URL('/has-form.html?request='+encodeURIComponent(record.id),origin).href;
  const text=`A uniform request is awaiting your ${record.stages[record.step]} approval.\n\nEmployee: ${record.employee.name} (${record.employee.eid})\nSubmitted: ${record.date}\n\nReview the request: ${link}\n\nSign in with your linked employee account to approve or reject it.`;
  const raw=[`To: ${reviewer.companyEmail}`,`Subject: Uniform approval required - ${record.employee.eid}`,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',Buffer.from(text).toString('base64')].join('\r\n');
  const sent=await gmail.users.messages.send({userId,requestBody:{raw:Buffer.from(raw).toString('base64url')}},{timeout:30000,retry:false});if(!sent.data.id)throw Error('No Gmail delivery acknowledgement.');
