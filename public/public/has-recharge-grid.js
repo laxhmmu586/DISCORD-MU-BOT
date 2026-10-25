@@ -13,6 +13,18 @@
  }
  function coordinate(address){const m=/^([A-N])(2[3-9]|[3-5][0-9])$/.exec(address||'');return m?{column:m[1].charCodeAt(0)-65,row:+m[2]}:null;}
  const address=(column,row)=>String.fromCharCode(65+column)+row;
+ function nextCell(current,key,shift=false){
+  const pos=coordinate(current);if(!pos)return null;let {row,column}=pos;
+  if(key==='Tab'){column+=shift?-1:1;if(column>13){column=0;row++;}else if(column<0){column=13;row--;}}
+  else if(key==='Enter')row+=shift?-1:1;
+  else if(key==='ArrowUp')row--;
+  else if(key==='ArrowDown')row++;
+  else if(key==='ArrowLeft')column--;
+  else if(key==='ArrowRight')column++;
+  else return null;
+  if(key==='Tab'&&(row<23||row>59))return null;
+  return address(Math.max(0,Math.min(13,column)),Math.max(23,Math.min(59,row)));
+ }
  function planPaste(start,text){
   const origin=coordinate(start);if(!origin)throw Error('Choose a cell in the daily charge table.');
   const rows=parseTSV(text),changes=[];
@@ -28,7 +40,7 @@
   return changes;
  }
  function attach({table,inputs,onNotice=()=>{}}){
-  const handle=document.createElement('button');handle.type='button';handle.className='recharge-fill-handle';handle.title='Drag down to copy this cell';handle.setAttribute('aria-label','Drag down to fill cells');
+  const handle=document.createElement('button');handle.type='button';handle.tabIndex=-1;handle.className='recharge-fill-handle';handle.title='Drag down to copy this cell';handle.setAttribute('aria-label','Drag down to fill cells');
   let active,drag,frame;
   const cells=Object.keys(inputs).filter(coordinate);
   function clearPreview(){for(const a of cells)inputs[a].parentElement.classList.remove('recharge-fill-preview');}
@@ -41,7 +53,7 @@
   });
   table.addEventListener('keydown',e=>{
    const pos=coordinate(e.target.dataset.rechargeCell);if(!pos)return;
-   if(e.key==='Enter'&&!e.isComposing){e.preventDefault();const row=pos.row+(e.shiftKey?-1:1);if(row>=23&&row<=59){const next=inputs[address(pos.column,row)];next.focus();next.select();}return;}
+   if(!e.isComposing&&!e.ctrlKey&&!e.metaKey&&!e.altKey){const target=nextCell(e.target.dataset.rechargeCell,e.key,e.shiftKey);if(target){e.preventDefault();const next=inputs[target];next.focus();next.select();return;}}
    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='d'&&pos.row>23){e.preventDefault();apply([{address:address(pos.column,pos.row),value:inputs[address(pos.column,pos.row-1)].value}]);}
   });
   function stop(){cancelAnimationFrame(frame);frame=null;clearPreview();drag=null;}
@@ -57,5 +69,5 @@
   table.closest('dialog')?.addEventListener('close',stop,{once:true});
   return {stop};
  }
- const api={parseTSV,planPaste,attach};if(typeof module==='object'&&module.exports)module.exports=api;else root.hasRechargeGrid=api;
+ const api={parseTSV,planPaste,nextCell,attach};if(typeof module==='object'&&module.exports)module.exports=api;else root.hasRechargeGrid=api;
 })(typeof window==='object'?window:globalThis);

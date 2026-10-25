@@ -1,5 +1,13 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {parseTSV,planPaste}=require('../public/public/has-recharge-grid');
+test('Arrow keys, Tab and Enter navigate grid cells with correct boundaries',()=>{
+ const {nextCell}=require('../public/public/has-recharge-grid');
+ for(const [key,target] of [['ArrowUp','C23'],['ArrowDown','C25'],['ArrowLeft','B24'],['ArrowRight','D24'],['Tab','D24'],['Enter','C25']])assert.equal(nextCell('C24',key),target);
+ assert.equal(nextCell('C24','Tab',true),'B24');assert.equal(nextCell('C24','Enter',true),'C23');
+ assert.equal(nextCell('N23','Tab'),'A24');assert.equal(nextCell('A24','Tab',true),'N23');
+ assert.equal(nextCell('A23','ArrowLeft'),'A23');assert.equal(nextCell('A23','ArrowUp'),'A23');assert.equal(nextCell('N59','ArrowRight'),'N59');assert.equal(nextCell('N59','ArrowDown'),'N59');
+ assert.equal(nextCell('N59','Tab'),null);assert.equal(nextCell('A23','Tab',true),null);assert.equal(nextCell('A16','ArrowDown'),null);
+});
 test('Excel paste keeps name rows, rectangular cells, CRLF and quoted values',()=>{
  assert.deepEqual(planPaste('A23','TAMSUN\r\nNORMA\r\nVICKY\r\n'),[{address:'A23',value:'TAMSUN'},{address:'A24',value:'NORMA'},{address:'A25',value:'VICKY'}]);
  assert.deepEqual(planPaste('B23','1.00\t2\r\n3\t4\r\n').map(x=>[x.address,x.value]),[['B23','1.00'],['C23','2'],['B24','3'],['C24','4']]);
