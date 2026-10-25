@@ -1,0 +1,4 @@
+/* Pearl-white canvas for the passenger contact and baggage entry pages. */
+html:has(body.pearl-white-page),body.aviation-page.pearl-white-page{background:#f8f7f3}
+body.aviation-page.pearl-white-page::before,body.aviation-page.pearl-white-page::after{content:none;display:none;background:none}
+body.pearl-white-page .mobile-aircraft-sky{display:none}
