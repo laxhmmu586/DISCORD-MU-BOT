@@ -8,3 +8,10 @@ test('persistent delivery claim prevents concurrent and restart duplicates',asyn
 test('missing DA is not sent as zero',async()=>{
  const db=new Database(':memory:');let sent=0;const mailer=createMailer({database:()=>db,read:()=>({values:{}}),now:()=>new Date('2026-10-16T16:00:00Z'),sendEmail:async()=>sent++});await mailer.tick();assert.equal(sent,0);db.close();
 });
+test('saved DA with blank wheelchair fields waits; explicitly entered zero is valid',async()=>{
+ const db=new Database(':memory:');let sent=0;const values={};const mailer=createMailer({database:()=>db,read:()=>({updatedAt:'saved',values}),template:async()=>({days:[{day:1,start:6,end:7}]}),now:()=>new Date('2026-10-16T16:00:00Z'),sendEmail:async m=>{assert.match(m.text,/Total: 0/);sent++;return 'zero-id';}});
+ await mailer.tick();assert.equal(sent,0);assert.equal(db.prepare('SELECT count(*) AS n FROM has_wheelchair_mail').get().n,0);values.O6=0;values.P7='0';await mailer.tick();assert.equal(sent,1);db.close();
+});
+test('restart on a non-scheduled date never sends a historical report',async()=>{
+ let reads=0,sent=0;const mailer=createMailer({database:()=>{throw Error('Should not open database');},read:()=>{reads++;},now:()=>new Date('2026-10-25T18:00:00Z'),sendEmail:async()=>sent++});await mailer.tick();assert.equal(reads,0);assert.equal(sent,0);
+});

@@ -27,3 +27,12 @@ test('wheelchair columns persist but are excluded from DA and WWH exports',async
 });
 
 test('wheelchair columns belong exclusively to LAX/MU DA',async()=>{for(const scope of [{station:'SFO',account:'MU'},{station:'LAX',account:'XX'}]){const model=await template('da','2026-10',scope);assert.equal(model.columns,14);assert.equal(model.cells.O6,undefined);}const w=await template('wwh','2026-10',{station:'LAX',account:'MU'});assert.equal(w.cells.O6.webOnly,undefined);});
+test('saved wheelchair values match the screenshot totals and survive day-row insertion',async t=>{
+ const {request}=await fixture(t),{count}=require('../hasWheelchairMail');
+ assert.equal((await request('lead','/da/2026-10',{revision:0,values:{O6:'3',P7:'18',O11:'7',P12:'13'}})).status,200);
+ const totals=model=>count(model,Object.fromEntries(Object.entries(model.cells).map(([a,c])=>[a,c.value])),{start:1,end:15});
+ assert.deepEqual(totals((await request('lead','/da/2026-10')).data),{arrival:10,departure:31,total:41});
+ for(const bad of [-1,1.5,'abc','=SUM(1,2)'])assert.equal((await request('lead','/da/2026-10',{revision:1,values:{O6:bad}})).status,400);
+ assert.equal((await request('lead','/da/2026-10/rows',{day:1,delta:1,revision:1,layoutRevision:0})).status,200);
+ const moved=(await request('lead','/da/2026-10')).data;assert.equal(moved.cells.O12.value,'7');assert.equal(moved.cells.P13.value,'13');assert.deepEqual(totals(moved),{arrival:10,departure:31,total:41});
+});
