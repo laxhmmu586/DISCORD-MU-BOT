@@ -5,8 +5,16 @@ async function fixture(t){const db=new Database(':memory:'),app=express();app.us
 test('future calendars update weekdays, Friday-Thursday reporting weeks, leap day and summary ranges',async()=>{
  const da=await template('da','2027-01',scope);assert.equal(da.cells.B6.value,'FRI');assert.equal(da.cells.A156.value,31);assert.equal(da.cells.B156.value,'SUN');assert.equal(da.cells.N6.formula,'SUM(L6:L20)');assert.equal(da.rows,163);assert.equal(da.workbook.getWorksheet('Jan').getCell('I4').value.getUTCFullYear(),2027);
  const wwh=await template('wwh','2027-01',scope);assert.equal(wwh.cells.B5.value,'1-7 JAN');assert.equal(wwh.cells.B9.value,'29-31 JAN');assert.equal(wwh.cells.B10.value,'');
+ const december=await template('wwh','2026-12',scope);assert.equal(december.cells.B5.value,'1-3 DEC');assert.equal(december.cells.B6.value,'4-10 DEC');assert.equal(december.cells.B9.value,'25-31 DEC');
  const leap=await template('da','2028-02',scope);assert.equal(leap.cells.A146.value,29);assert.equal(leap.cells.B146.value,'TUE');assert.equal(leap.rows,153);assert.equal(leap.cells.L152.formula,'SUM(L6:L150)');assert.doesNotThrow(()=>calculate(leap.cells));
  const century=await template('da','2100-02',scope);assert.equal(century.rows,148);assert.throws(()=>reportMonth('2025-12'),/2026 or later/);assert.throws(()=>reportMonth('2027-13'),/2026 or later/);
+});
+test('WWH periods cover every day once and follow Friday to Thursday across years',async()=>{
+ for(const year of [2026,2027,2028])for(let month=1;month<=12;month++){
+  const model=await template('wwh',year+'-'+String(month).padStart(2,'0'),scope),last=new Date(Date.UTC(year,month,0)).getUTCDate();let expected=1;
+  for(let row=5;row<=10;row++){const value=model.cells['B'+row].value;if(!value)continue;const match=/^(\d+)(?:\s*-\s*(\d+))?/.exec(value);assert(match);const start=+match[1],end=+(match[2]||match[1]);assert.equal(start,expected);if(start!==1)assert.equal(new Date(Date.UTC(year,month-1,start)).getUTCDay(),5);if(end!==last)assert.equal(new Date(Date.UTC(year,month-1,end)).getUTCDay(),4);expected=end+1;}
+  assert.equal(expected,last+1);
+ }
 });
 test('annual downloads include all twelve months from the selected year without mixing prior-year data',async t=>{
  const request=await fixture(t);

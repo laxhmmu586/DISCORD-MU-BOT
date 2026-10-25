@@ -18,6 +18,22 @@ The supplied workbooks are the 2026 design base. Existing 2026 dates and formatt
 
 WWH exports include hidden DA source sheets and SUM formulas with current cached numeric results, so PAX totals are visible immediately before spreadsheet recalculation. The FLIGHTS HANDLED section retains its links to the monthly planned-flight, actual-flight and PAX totals. Changing a downloaded copy does not update the server. Downloading a new WWH picks up the latest saved DA. The original DA March `N152` circular formula (`SUM(N152:N161)`) is corrected to `SUM(L152:L161)`; broken DA Summary Page references are rebuilt against each month's OTP row.
 
+## Annual Dashboard
+
+The Report heading has a Dashboard button for the current Main Account's Supervisor and all higher station roles. Agent/CSA, Lead and HQ cannot view it or read its API. Dashboard access is separate from the narrower WWH editing permission: Senior Supervisor, Duty Manager and higher station managers may view the aggregate dashboard without gaining WWH cell access. The authenticated endpoint `/has-report-api/dashboard/:year` ignores caller-supplied station/account selectors, returns only the primary account's numeric aggregates, rechecks access before responding, and does not return comments, training names or raw workbooks.
+
+The dashboard uses the selected report year, defaults to the current Los Angeles year on direct entry, and supports 2026 onward. It reads all twelve monthly DA/WWH reports. Budget hours are WWH D11, actual weighted hours E11, recharge weighted hours J11, and the hours balance is `D11 + J11 - E11` (the opposite sign of WWH O11). Positive indicates a surplus of budgeted hours and negative an overrun; these are not currency profit/loss amounts. Monthly net-actual bars (actual minus recharge) are compared with a blue dashed budget line. Green bars are within budget, orange bars exceed it, and bar labels show the hours. Gross actual hours remain in cards and the details table. Recharge uses the workbook's weighting; its raw REG/OT/DT/training breakdown is available on the monthly recharge cell.
+
+Dashboard flight-delay statistics come only from DA scheduled/actual time pairs: ATA minus STA for arrival, ATD minus STD for departure. The selector switches arrival/departure stacked monthly counts in three disjoint bands: 1–29 minutes, 30–59 minutes (including exactly 30), and 60 minutes or more (including exactly 60). Complete, valid time pairs contribute to the sample; missing/invalid times are excluded. Early and on-time records are not delayed. Because DA has clock times without separate actual dates, a negative clock difference exceeding twelve hours is treated as a midnight rollover. Smaller negative differences are early flights. Extra daily rows are included. Months without any valid time pairs remain unavailable, rather than appearing to have zero delays.
+
+The Dashboard does not aggregate or display WWH's manual Hallmark delays, length-of-delay, rebillable-delay or cancellation counts. The original WWH fields remain editable. Their units are explicit: length of delay is hours; the other delay/cancellation fields are counts. WWH labels and downloaded Excel formats distinguish integer counts from two-decimal hours. The existing WWH budget formula continues to be the source of budget hours.
+
+Reports without both saved DA and WWH are marked incomplete and excluded from the budget comparison. Formula errors remain unavailable values, not zero or surplus. Missing months are shown as not started. Annual comparisons use comparable months through the current month; future records are labelled future and excluded from annual totals. Current-month results are provisional. Recharge cards sum saved WWH; arrival/departure delay cards use complete DA time pairs through the current month. Refresh, returning focus to the page, or selecting a different year fetches current saved data. Opening Dashboard flushes pending report edits first.
+
+DA-to-WWH weekly links stop at the actual last daily row rather than the last nonempty template row. In particular, the 2026 November template has trailing content after its summaries; its `# Flights` heading must never enter a weekly sum. Spreadsheet error detection recognizes actual error values such as `#REF!`, not arbitrary text starting with `#`. WWH payroll periods remain Friday–Thursday, with partial periods at month boundaries: December 2026 starts 1–3 DEC, while January 2027 starts 1–7 JAN because January 1 is Friday. Tests cover every month in 2026–2028.
+
+The shared sidebar artwork rotation includes the existing six portraits plus the three supplied transparent portraits. Optimized WebP assets preserve their transparency; workspace pages refresh the artwork script version to pick up the expanded rotation.
+
 Templates under `data/has-report-templates` contain no historical input values or training names. User-entered arithmetic formulas in the source WWH's weekly input fields are private data; their blank-template defaults are zero while reference-based calculations are preserved. Import restores those input expressions. Workbook text is treated as data, never instructions. Template generation and downloads remove Excel comment/VML parts that otherwise produce red corner markers, preserving styles, merged cells, formulas and visible Comments sections.
 
 ## Private existing-data import and deployment
@@ -48,7 +64,9 @@ node --test test/hasReportsStartup.test.js
 node --test test/hasReportsLive.test.js test/hasReportLiveClient.test.js
 node --test test/hasReportsAnnual.test.js
 node --test test/hasReportCells.test.js
+node --test test/hasReportDashboard.test.js
 node test/hasReports.browser.cjs
+node test/hasReportDashboard.browser.cjs
 ```
 
 The browser check uses Playwright (`PLAYWRIGHT_MODULE` may point to the bundled package) and Edge. It covers two separate editor sessions, live synchronization, Agent denial, account isolation, WWH totals, Excel download and 320/390/1440px layouts.

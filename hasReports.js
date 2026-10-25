@@ -1,15 +1,17 @@
 const path=require('node:path'),fs=require('node:fs');
 const groups=require('./public/public/employee-account-groups'),positions=require('./public/public/employee-positions');
-const {calculate,setInput}=require('./public/public/has-report-math');
+const {calculate,setInput,isError}=require('./public/public/has-report-math');
 const {field,exportWorkbook}=require('./hasReportLayout');
 const {days,validateRows,applyExtraRows,moveValues}=require('./hasReportRows');
 const {reportMonth,prepareCalendar}=require('./hasReportCalendar');
+const {flightDelays}=require('./hasReportDelays');
 const templateDir=path.join(__dirname,'data','has-report-templates');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const unavailable=()=>fail('Reports are temporarily unavailable. Please retry later.',503);
 function excel(){try{return require('exceljs');}catch(error){console.error('HAS report Excel dependency:',error);unavailable();}}
 const DA_ROLES=['Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'];
 function access(employee){const role=positions.normalize(employee?.position),main=employee&&!groups.isHeadquarter(employee);return {da:Boolean(main&&DA_ROLES.includes(role)),wwh:Boolean(main&&['Supervisor','Business Manager'].includes(role))};}
+function canDashboard(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&DA_ROLES.filter(role=>role!=='Lead').includes(positions.normalize(employee.position)));}
 function monthFormat(cell,name){cell.style={...cell.style,numFmt:'"'+name.toUpperCase()+'"-yy'};}
 async function template(kind,month,scope,extraRows={}){
  const {year,name}=reportMonth(month);
@@ -18,14 +20,15 @@ async function template(kind,month,scope,extraRows={}){
  const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.readFile(path.join(templateDir,kind+'-2026.xlsx'));const sheet=workbook.getWorksheet(name),columns=kind==='wwh'?29:14;
  prepareCalendar(sheet,kind,year);if(kind==='da')monthFormat(sheet.getCell('I4'),name);
  if(kind==='da')applyExtraRows(sheet,extraRows);else for(const row of [47,50,53])sheet.getCell('A'+row).value=row===47?'ADDITIONAL COMMENTS:':'COMMENTS:';
+ if(kind==='wwh')for(const [address,label] of Object.entries({T4:'Delays (#)',U4:'Delay (hrs)',V4:'Delays (#)',W4:'CNXL FLT (#)',X4:'CNXL FLT (#)'}))sheet.getCell(address).value=label;
  // DA source contains hundreds of unused trailing rows; keep them in exports.
- let rows=sheet.rowCount;if(kind==='da'){rows=0;sheet.eachRow((row,n)=>{if(row.hasValues)rows=Math.max(rows,n);});}
+ let rows=sheet.rowCount;if(kind==='da')rows=days(sheet).at(-1).end+3;
  for(let r=1;r<=rows;r++)for(let c=1;c<=columns;c++){
   const cell=sheet.getCell(r,c);if(cell.isMerged&&cell.master!==cell)continue;
   let value=cell.value?.richText?cell.value.richText.map(t=>t.text).join(''):cell.value;
   if(value instanceof Date)value=value.toISOString().slice(0,10);
   const input=field(kind,r,c,cell.formula);if(kind==='da'&&r>=rows-2)input.editable=false;
-  cells[cell.address]={value:cell.formula?(input.inputFormula?'='+cell.formula:''):value??'',...(cell.formula?{formula:cell.formula}:{}),...input,monthLabel:kind==='da'&&r===4&&c===9,numFmt:input.type==='time'?'hh:mm':cell.numFmt||'',style:{background:cell.fill?.fgColor?.argb,color:cell.font?.color?.argb,bold:cell.font?.bold,align:cell.alignment?.horizontal}};
+  cells[cell.address]={value:cell.formula?(input.inputFormula?'='+cell.formula:''):value??'',...(cell.formula?{formula:cell.formula}:{}),...input,monthLabel:kind==='da'&&r===4&&c===9,numFmt:input.type==='time'?'hh:mm':input.unit==='count'?'0':input.unit==='hours'?'0.00':cell.numFmt||'',style:{background:cell.fill?.fgColor?.argb,color:cell.font?.color?.argb,bold:cell.font?.bold,align:cell.alignment?.horizontal}};
  }
  const accountCell=kind==='wwh'?'B1':'C4';cells[accountCell].value=scope.station+'/'+scope.account;cells[accountCell].editable=false;cells[accountCell].accountLocked=true;
  return {kind,month,rows,columns,cells,days:kind==='da'?days(sheet):[],extraRows,merges:sheet.model.merges,widths:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).width||12),hiddenColumns:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).hidden?i+1:0).filter(Boolean),heights:Array.from({length:rows},(_,i)=>sheet.getRow(i+1).height||20),sheetName:name,workbook};
@@ -53,24 +56,48 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  const handler=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){const infrastructure=['ENOENT','EACCES','EPERM','ENOTDIR'].includes(e.code)||String(e.code||'').startsWith('SQLITE_');if(infrastructure)console.error('HAS report request:',e);const status=infrastructure?503:e.status||400;if(status===503)res.set('Retry-After','30');res.status(status).json({error:infrastructure?'Reports are temporarily unavailable. Please retry later.':e.message});}};
  const build=async req=>{const ctx=authorize(req);reportMonth(req.params.month);const saved=read(ctx.scope,req.params.kind,req.params.month),model=await template(req.params.kind,req.params.month,ctx.scope,saved.extraRows);return {ctx,model,saved};};
  const apply=(model,values,stored=false)=>{if(!values||typeof values!=='object'||Array.isArray(values))fail('Invalid report values.');for(const [address,value] of Object.entries(values)){const cell=model.cells[address];if(!cell?.editable){if(stored)continue;fail('This template cell cannot be edited: '+address);}if(!['string','number'].includes(typeof value)||String(value).length>4000||typeof value==='number'&&!Number.isFinite(value))fail('Invalid cell value.');setInput(cell,value);}return model;};
- app.get('/has-report-api/context',handler(async(req,res)=>{const {scope,permissions}=context(req.reportUser);res.json({scope,permissions,canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
+ app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser);res.json({scope,permissions,canDashboard:canDashboard(employee),canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
  const linkDA=async(model,scope)=>{
   if(model.kind!=='wwh')return null;
   const saved=read(scope,'da',model.month),source=await template('da',model.month,scope,saved.extraRows);apply(source,saved.values,true);const sourceResults=calculate(source.cells);
   for(let r=5;r<=10;r++){
    const range=String(model.cells['B'+r]?.value||'').match(/^(\d+)(?:\s*-\s*(\d+))?/);if(!range)continue;
    const from=+range[1],to=+(range[2]||range[1]);
-   const dates=Object.entries(source.cells).filter(([a,c])=>/^A\d+$/.test(a)&&typeof c.value==='number'&&c.value>=1&&c.value<=31);
-   const dayRow=day=>dates.find(([,c])=>c.value===day)?.[0].slice(1);
-   const start=Number(dayRow(from)),end=dayRow(to+1)?Number(dayRow(to+1))-1:source.rows-3;
+   const start=source.days.find(day=>day.day===from)?.start,end=source.days.find(day=>day.day===to)?.end;
    if(!start)continue;
    for(const [target,column] of [['Z','L'],['AA','K']]){
-    let value=0;for(let row=start;row<=end;row++){const address=column+row,cell=source.cells[address],n=cell?.formula?sourceResults[address]:cell?.value;if(typeof n==='string'&&n.startsWith('#')){value=n;break;}value+=Number(n)||0;}
+    let value=0;for(let row=start;row<=end;row++){const address=column+row,cell=source.cells[address],n=cell?.formula?sourceResults[address]:cell?.value;if(isError(n)){value=n;break;}value+=Number(n)||0;}
     Object.assign(model.cells[target+r],{value,editable:false,linked:true,sourceFormula:`SUM('DA Source'!${column}${start}:${column}${end})`});
    }
   }
   model.daRevision=saved.revision;return source;
  };
+ app.get('/has-report-api/dashboard/:year',handler(async(req,res)=>{
+  const ctx=context(req.reportUser);if(!canDashboard(ctx.employee))fail('Dashboard access requires Supervisor or above in your Main Account.',403);
+  if(!/^\d{4}$/.test(req.params.year)||+req.params.year<2026)fail('Select a year from 2026 onward.');
+  const year=+req.params.year,months=[];
+  for(let m=1;m<=12;m++){
+   const month=year+'-'+String(m).padStart(2,'0'),wwh=read(ctx.scope,'wwh',month),da=read(ctx.scope,'da',month);
+   const row={month,hasDA:da.revision>0,hasWWH:wwh.revision>0,updatedAt:[da.updatedAt,wwh.updatedAt].filter(Boolean).sort().at(-1)||null};
+   const metrics=['budgetHours','actualHours','rechargeHours','balanceHours','netActualHours','flights','pax'];for(const metric of metrics)row[metric]=null;
+   row.rechargeBreakdown=null;row.flightDelays=null;row.state='not-started';row.errors=[];
+   if(!row.hasDA&&!row.hasWWH){months.push(row);continue;}
+   const model=await template('wwh',month,ctx.scope);apply(model,wwh.values,true);const source=await linkDA(model,ctx.scope),calculated=calculate(model.cells);if(row.hasDA)row.flightDelays=flightDelays(source);
+   const numeric=address=>{const cell=model.cells[address],value=cell?.formula?calculated[address]:cell?.value;if(typeof value==='number'&&Number.isFinite(value))return value;row.errors.push(address);return null;};
+   if(row.hasDA){row.flights=numeric('Z11');row.pax=numeric('AA11');}
+   if(row.hasWWH){
+    row.budgetHours=numeric('D11');row.actualHours=numeric('E11');row.rechargeHours=numeric('J11');
+    row.rechargeBreakdown={regular:numeric('K11'),overtime:numeric('L11'),doubleTime:numeric('M11'),training:numeric('N11')};
+    if(row.rechargeHours!==null&&row.actualHours!==null)row.netActualHours=row.actualHours-row.rechargeHours;
+    if(row.budgetHours!==null&&row.netActualHours!==null)row.balanceHours=row.budgetHours-row.netActualHours;
+    row.state=row.errors.length?'calculation-error':!row.hasDA?'incomplete':row.balanceHours>0.005?'surplus':row.balanceHours< -0.005?'overrun':'balanced';
+   }else row.state='incomplete';
+   if(!row.hasDA){row.balanceHours=null;row.budgetHours=null;}
+   months.push(row);
+  }
+  const latest=context(req.reportUser);if(!canDashboard(latest.employee)||key(latest.scope)!==key(ctx.scope))fail('Your Main Account access changed. Reload the page.',403);
+  res.json({year,scope:ctx.scope,months,generatedAt:new Date().toISOString(),basis:'budgetHours + rechargeHours - actualHours'});
+ }));
  app.get('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model,saved}=await build(req);apply(model,saved.values,true);await linkDA(model,ctx.scope);const {workbook,...view}=model;res.json({...view,...saved,scope:ctx.scope,calculated:calculate(model.cells)});}));
  const write=(ctx,model,user,body,action='Edited')=>{const saved=database().transaction(()=>{
   const latest=read(ctx.scope,model.kind,model.month);if((body.layoutRevision||0)!==(latest.layoutRevision||0))fail('Daily rows changed. Reload the report before continuing.',409);apply(model,latest.values,true);
@@ -110,7 +137,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
    if(model.kind==='wwh')for(const row of [47,50,53])sheet.getCell('A'+row).value=row===47?'ADDITIONAL COMMENTS:':'COMMENTS:';
    const sourceName=month===model.month?'DA Source':'DA Source '+current.sheetName;
    if(source){const data=model.workbook.addWorksheet(sourceName,{state:'hidden'}),computed=calculate(source.cells);for(const [address,cell] of Object.entries(source.cells))data.getCell(address).value=cell.formula?{formula:cell.formula,result:typeof computed[address]==='string'?{error:computed[address]}:computed[address]}:cell.value===''?null:cell.value;}
-   for(const [address,cell] of Object.entries(current.cells)){if(cell.sourceFormula)sheet.getCell(address).value={formula:cell.sourceFormula.replace("'DA Source'","'"+sourceName+"'"),result:typeof cell.value==='string'?{error:cell.value}:cell.value};else if(cell.formula)sheet.getCell(address).value={formula:cell.formula,result:typeof results[address]==='string'?{error:results[address]}:results[address]};else if(cell.editable||cell.accountLocked)sheet.getCell(address).value=cell.value===''?null:cell.value;if(cell.type==='time')sheet.getCell(address).numFmt='hh:mm';if(cell.monthLabel)monthFormat(sheet.getCell(address),current.sheetName);}
+   for(const [address,cell] of Object.entries(current.cells)){if(cell.sourceFormula)sheet.getCell(address).value={formula:cell.sourceFormula.replace("'DA Source'","'"+sourceName+"'"),result:typeof cell.value==='string'?{error:cell.value}:cell.value};else if(cell.formula)sheet.getCell(address).value={formula:cell.formula,result:typeof results[address]==='string'?{error:results[address]}:results[address]};else if(cell.editable||cell.accountLocked||model.kind==='wwh'&&['T4','U4','V4','W4','X4'].includes(address))sheet.getCell(address).value=cell.value===''?null:cell.value;if(cell.unit)sheet.getCell(address).style={...sheet.getCell(address).style,numFmt:cell.numFmt};if(cell.type==='time')sheet.getCell(address).numFmt='hh:mm';if(cell.monthLabel)monthFormat(sheet.getCell(address),current.sheetName);}
    if(model.kind==='da')for(const day of current.days)for(let row=day.start;row<=day.end;row++)for(let column=1;column<=13;column++)sheet.getCell(row,column).fill={type:'pattern',pattern:'solid',fgColor:{argb:day.day%2?'FFFFFFFF':'FFEDF5FF'}};
    if(model.kind==='da'){const summary=model.workbook.getWorksheet('Summary Page'),value=results['M'+current.rows];summary.getCell(m,2).value={formula:current.sheetName+'!M'+current.rows,result:typeof value==='string'?{error:value}:value};}
   }
