@@ -1,6 +1,7 @@
 const path=require('node:path'),fs=require('node:fs');
 const groups=require('./public/public/employee-account-groups'),positions=require('./public/public/employee-positions');
 const {calculate}=require('./public/public/has-report-math');
+const {reportMonth,prepareCalendar}=require('./hasReportCalendar');
 const templateDir=path.join(__dirname,'data','has-report-templates');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const unavailable=()=>fail('Reports are temporarily unavailable. Please retry later.',503);
@@ -8,10 +9,11 @@ function excel(){try{return require('exceljs');}catch(error){console.error('HAS 
 const DA_ROLES=['Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'];
 function access(employee){const role=positions.normalize(employee?.position),main=employee&&!groups.isHeadquarter(employee);return {da:Boolean(main&&DA_ROLES.includes(role)),wwh:Boolean(main&&['Supervisor','Business Manager'].includes(role))};}
 async function template(kind,month,scope){
- if(!/^2026-(0[1-9]|1[0-2])$/.test(month))fail('Select a month in 2026, the supplied template year.');
+ const {year,name}=reportMonth(month);
  if(!['da','wwh'].includes(kind))fail('Unknown report type.',404);
- const cells={},year=2026,m=+month.slice(5),name=new Date(Date.UTC(year,m-1,1)).toLocaleString('en-US',{month:'short',timeZone:'UTC'});
- const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.readFile(path.join(templateDir,kind+'-2026.xlsx'));const sheet=workbook.getWorksheet(name),columns=kind==='wwh'?29:14,days=new Date(Date.UTC(year,m,0)).getUTCDate();
+ const cells={};
+ const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.readFile(path.join(templateDir,kind+'-2026.xlsx'));const sheet=workbook.getWorksheet(name),columns=kind==='wwh'?29:14;
+ prepareCalendar(sheet,kind,year);
  // DA source contains hundreds of unused trailing rows; keep them in exports.
  let rows=sheet.rowCount;if(kind==='da'){rows=0;sheet.eachRow((row,n)=>{if(row.hasValues)rows=Math.max(rows,n);});}
  for(let r=1;r<=rows;r++)for(let c=1;c<=columns;c++){
@@ -81,7 +83,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  })();live.publish(ctx.scope,model.kind,model.month);return saved;};
  app.post('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model}=await build(req);res.json(write(ctx,model,req.reportUser,req.body));}));
  app.get('/has-report-api/:kind/:month/updates',handler(async(req,res)=>{const ctx=authorize(req);const saved=read(ctx.scope,req.params.kind,req.params.month);res.json({scope:ctx.scope,revision:saved.revision,updatedBy:saved.updatedBy,daRevision:req.params.kind==='wwh'?read(ctx.scope,'da',req.params.month).revision:0});}));
- app.get('/has-report-api/:kind/:month/stream',handler(async(req,res)=>{const ctx=authorize(req);if(!/^2026-(0[1-9]|1[0-2])$/.test(req.params.month))fail('Select a month in 2026.');live.subscribe(req,res,ctx);}));
+ app.get('/has-report-api/:kind/:month/stream',handler(async(req,res)=>{const ctx=authorize(req);reportMonth(req.params.month);live.subscribe(req,res,ctx);}));
  app.post('/has-report-api/:kind/:month/import',handler(async(req,res)=>{
   const {ctx,model}=await build(req);if(typeof req.body.file!=='string'||req.body.file.length>14000000)fail('Choose an Excel file up to 10 MB.');
   const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.load(Buffer.from(req.body.file,'base64'));const sheet=workbook.getWorksheet(model.sheetName);if(!sheet)fail('The workbook has no sheet for the selected month.');
@@ -90,12 +92,12 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   res.json(write(ctx,model,req.reportUser,{revision:req.body.revision,values},'Imported Excel'));
  }));
  app.get('/has-report-api/:kind/:month/export',handler(async(req,res)=>{
-  const {ctx,model}=await build(req),filename=`${model.kind.toUpperCase()}_${ctx.scope.station}_${ctx.scope.account}_${model.month}`;
+  const {ctx,model}=await build(req),year=model.month.slice(0,4),filename=`${model.kind.toUpperCase()}_${ctx.scope.station}_${ctx.scope.account}_${year}`;
   // The originals are annual workbooks. Populate every monthly tab from this
   // Main Account's shared records, including the selected month's live totals.
   for(let m=1;m<=12;m++){
-   const month='2026-'+String(m).padStart(2,'0'),current=month===model.month?model:await template(model.kind,month,ctx.scope);
-   apply(current,read(ctx.scope,current.kind,month).values);const source=await linkDA(current,ctx.scope),results=calculate(current.cells),sheet=model.workbook.getWorksheet(current.sheetName);
+   const month=year+'-'+String(m).padStart(2,'0'),current=month===model.month?model:await template(model.kind,month,ctx.scope);
+   apply(current,read(ctx.scope,current.kind,month).values);const source=await linkDA(current,ctx.scope),results=calculate(current.cells),sheet=model.workbook.getWorksheet(current.sheetName);prepareCalendar(sheet,model.kind,+year);
    const sourceName=month===model.month?'DA Source':'DA Source '+current.sheetName;
    if(source){const data=model.workbook.addWorksheet(sourceName,{state:'hidden'});for(const [address,cell] of Object.entries(source.cells))if(!cell.formula)data.getCell(address).value=cell.value===''?null:cell.value;}
    for(const [address,cell] of Object.entries(current.cells)){if(cell.sourceFormula)sheet.getCell(address).value={formula:cell.sourceFormula.replace("'DA Source'","'"+sourceName+"'"),result:cell.value};else if(cell.formula)sheet.getCell(address).value={formula:cell.formula,result:typeof results[address]==='string'?{error:results[address]}:results[address]};else if(cell.editable||cell.accountLocked)sheet.getCell(address).value=cell.value===''?null:cell.value;}
