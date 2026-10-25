@@ -36,6 +36,7 @@
   const hidden=new Set(),spans={};function span(start,end){const a=coord(start),b=coord(end);spans[start]={rows:b.r-a.r+1,cols:b.c-a.c+1};for(let r=a.r;r<=b.r;r++)for(let c=a.c;c<=b.c;c++)if(col(c)+r!==start)hidden.add(col(c)+r);}
   model.merges.forEach(range=>span(...range.split(':')));
   if(model.kind==='wwh'){
+   span('C1','AC1');
    for(const r of [2,12,19,27,31,33,38,40,47,49,50,52,53])span('A'+r,'AC'+r);
    for(const r of [...Array.from({length:6},(_,i)=>13+i),...Array.from({length:6},(_,i)=>20+i)])span('B'+r,'AC'+r);
    for(const r of [32,39,48,51])span('A'+r,'AC'+r);
@@ -49,6 +50,7 @@
    const tr=document.createElement('tr'),day=model.kind==='da'?model.days.find(d=>r>=d.start&&r<=d.end):null;tr.style.height=Math.max(28,model.heights[r-1]*1.25)+'px';if(model.kind==='da'&&r<=3)tr.className='report-title-row';if(model.kind==='da'&&r===4)tr.className='report-account-row';if(day){tr.dataset.day=day.day;tr.className=day.day%2?'report-day-odd':'report-day-even';}
    for(let c=1;c<=model.columns;c++){
     const address=col(c)+r;if(hidden.has(address))continue;const inputAddress=model.kind==='wwh'&&address==='A54'?'B54':address,cell=model.cells[inputAddress];if(!cell)continue;const td=document.createElement('td');td.dataset.cell=address;if(spans[address]){td.rowSpan=spans[address].rows;td.colSpan=spans[address].cols;}td.title=cell.formula?'='+cell.formula:inputAddress;
+    if(model.kind==='wwh'&&r===1)td.classList.add('report-wwh-account');if(model.kind==='wwh'&&(r===2||r===3&&c>=3))td.classList.add('report-header-divider');
     if(model.hiddenColumns.includes(c))td.style.display='none';if(model.kind==='wwh'&&r>=27&&c>=13||model.kind==='wwh'&&[28,29].includes(r)&&c===6)td.classList.add('report-unused');
     if(cell.style.background?.length===8&&cell.style.background!=='00000000')td.style.backgroundColor='#'+cell.style.background.slice(2);if(cell.style.bold)td.style.fontWeight='700';if(cell.style.align)td.style.textAlign=cell.style.align;
     if(cell.editable){td.classList.add('report-editable');const input=inputFor(inputAddress,cell);if(cell.multiline&&spans[address]?.rows>1)input.rows=Math.min(10,spans[address].rows);td.append(input);}
