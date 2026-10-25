@@ -22,6 +22,11 @@ test('adopts PDFs already sent manually today instead of resending on deployment
  const h=await fixture(t);h.time('2026-10-25T15:49:00Z');h.sends.push(...JOBS.map(j=>({channelId:j.channelId,name:'2026-10-25 '+j.flight+' '+j.sheet+' BRIEFING SHEET.pdf',id:'manual-'+j.flight})));
  await h.service.tick();assert.equal(h.sends.length,2);assert.equal(h.exports(),0);assert(h.db.prepare('SELECT state FROM briefing_deliveries').all().every(r=>r.state==='sent'));
 });
+test('a history lookup failure never makes an ambiguous send eligible for retry',async t=>{
+ const h=await fixture(t,{ambiguous:true});h.time('2026-10-25T15:49:00Z');await h.service.tick();
+ h.options.client.channels.fetch=async()=>{throw Error('history unavailable');};await h.service.tick();
+ assert(h.db.prepare('SELECT state FROM briefing_deliveries').all().every(r=>r.state==='uncertain'));assert.equal(h.sends.length,2);
+});
 test('exporter selects tab and requests single-page portrait Letter with narrow margins',async()=>{
  const bytes=await pdf();let request;
  const exporter=createGoogleExporter({getSheets:()=>({spreadsheets:{get:async()=>({data:{sheets:[{properties:{sheetId:17,title:'ARRIVAL'}}]}})}}),getClient:async()=>({request:async options=>{request=options;return {data:bytes};}})});

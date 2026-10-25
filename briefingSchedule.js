@@ -41,6 +41,7 @@ function createBriefingService({db,client,exportPdf,now=()=>new Date(),logger=co
      const old=db.prepare('SELECT * FROM briefing_deliveries WHERE date=? AND flight=?').get(date,job.flight);
      if(old?.state==='sent')continue;
      if(old&&['sending','uncertain'].includes(old.state)){
+      phase='sending';
       // A timeout/crash may already have posted. Reconcile; never blindly resend.
       const channel=await client.channels.fetch(job.channelId),found=await existing(channel,name);
       if(found)db.prepare("UPDATE briefing_deliveries SET state='sent',message_id=?,error=NULL WHERE date=? AND flight=?").run(found.id,date,job.flight);
