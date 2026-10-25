@@ -23,9 +23,14 @@ function count(model,values,range){
 function message(range,counts){return {to:TO,cc:CC,subject:'Wheelchair count summary for '+range.label,text:'Hello Laurence,\n\nI hope this message finds you well.\n\nPlease find below the summary of wheelchair orders for '+range.label+'.\n\nArrival: '+counts.arrival+'\nDeparture: '+counts.departure+'\nTotal: '+counts.total+'\n\nIf you require any further information or assistance, please feel free to reach out.\n\nThank you,\nLAX MU REPORT (BOT)'};}
 function createSender(getClient){return async(message,key)=>{
  const {gmail,userId}=await getClient(),id='<wheelchair-'+key.replace(/[^\w-]/g,'-')+'@mufcapp.net>';
- // Reconcile a previous send whose acknowledgement was lost.
- const existing=await gmail.users.messages.list({userId,q:'in:sent rfc822msgid:'+id.slice(1,-1),maxResults:1},{timeout:30000});
- if(existing.data.messages?.length)return existing.data.messages[0].id;
+ // Gmail may replace our Message-ID. Verify the period's subject and recipients
+ // in Sent instead of relying on that header to reconcile a lost acknowledgement.
+ const existing=await gmail.users.messages.list({userId,q:'in:sent to:'+TO+' subject:"'+message.subject.replace(/["\\]/g,'')+'"',maxResults:20},{timeout:30000});
+ for(const candidate of existing.data.messages||[]){
+  const found=await gmail.users.messages.get({userId,id:candidate.id,format:'metadata',metadataHeaders:['Subject','To','Cc']},{timeout:30000});
+  const headers=Object.fromEntries((found.data.payload?.headers||[]).map(h=>[h.name.toLowerCase(),h.value]));
+  if(headers.subject===message.subject&&String(headers.to||'').toLowerCase().includes(TO)&&String(headers.cc||'').toLowerCase().includes(CC))return candidate.id;
+ }
  const raw=['From: LAXHMMU PAX BOT <'+(userId==='me'?'laxhmmu@gmail.com':userId)+'>','To: '+TO,'Cc: '+CC,'Message-ID: '+id,'Subject: =?UTF-8?B?'+Buffer.from(message.subject).toString('base64')+'?=','MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',Buffer.from(message.text).toString('base64')].join('\r\n');
  const result=await gmail.users.messages.send({userId,requestBody:{raw:Buffer.from(raw).toString('base64url')}},{timeout:30000,retry:false});
  if(!result.data.id)throw Error('No Gmail delivery acknowledgement');return result.data.id;

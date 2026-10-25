@@ -11,10 +11,13 @@ test('Los Angeles 9am boundaries, year rollover and leap-year month end',()=>{
 test('Gmail request encodes the verified totals, recipients and stable Message-ID',async()=>{
  let request,search,sends=0;const sender=createSender(()=>({userId:'me',gmail:{users:{messages:{list:async q=>{search=q;return {data:{messages:[]}};},send:async(q,options)=>{request=q;assert.equal(options.retry,false);sends++;return {data:{id:'mail-id'}};}}}}}));
  const range=period(new Date('2026-10-16T16:00:00Z')),mail=message(range,{arrival:147,departure:125,total:272});assert.equal(await sender(mail,range.key),'mail-id');assert.equal(sends,1);
- const raw=Buffer.from(request.requestBody.raw,'base64url').toString(),body=Buffer.from(raw.split('\r\n\r\n')[1],'base64').toString();assert.match(raw,/To: laurence.chai@chinaeastern-usa.com/);assert.match(raw,/Cc: lake.xia@hallmark-aviation.com/);assert.match(raw,/Message-ID: <wheelchair-2026-10-1@mufcapp.net>/);assert.match(body,/Arrival: 147\nDeparture: 125\nTotal: 272/);assert.match(search.q,/rfc822msgid:wheelchair-2026-10-1@mufcapp.net/);
+ const raw=Buffer.from(request.requestBody.raw,'base64url').toString(),body=Buffer.from(raw.split('\r\n\r\n')[1],'base64').toString();assert.match(raw,/To: laurence.chai@chinaeastern-usa.com/);assert.match(raw,/Cc: lake.xia@hallmark-aviation.com/);assert.match(raw,/Message-ID: <wheelchair-2026-10-1@mufcapp.net>/);assert.match(body,/Arrival: 147\nDeparture: 125\nTotal: 272/);assert.match(search.q,/subject:/);
 });
-test('Gmail Sent reconciliation prevents sending a second copy',async()=>{
- let sends=0;const sender=createSender(()=>({userId:'me',gmail:{users:{messages:{list:async()=>({data:{messages:[{id:'existing'}]}}),send:async()=>{sends++;}}}}}));assert.equal(await sender({text:'unused'},'2026-10:1'),'existing');assert.equal(sends,0);
+test('Sent reconciliation works even when Gmail rewrites Message-ID',async()=>{
+ let sends=0;const subject='Wheelchair count summary for October 1–15, 2026';const sender=createSender(()=>({userId:'me',gmail:{users:{messages:{list:async()=>({data:{messages:[{id:'existing'}]}}),get:async()=>({data:{payload:{headers:[{name:'Subject',value:subject},{name:'To',value:'laurence.chai@chinaeastern-usa.com'},{name:'Cc',value:'lake.xia@hallmark-aviation.com'},{name:'Message-ID',value:'<rewritten@gmail.com>'}]}}}),send:async()=>{sends++;}}}}}));assert.equal(await sender({subject,text:'unused'},'2026-10:1'),'existing');assert.equal(sends,0);
+});
+test('a broad Gmail search result with a different subject does not suppress a report',async()=>{
+ let sends=0;const sender=createSender(()=>({userId:'me',gmail:{users:{messages:{list:async()=>({data:{messages:[{id:'unrelated'}]}}),get:async()=>({data:{payload:{headers:[{name:'Subject',value:'Other period'}]}}}),send:async()=>{sends++;return {data:{id:'new'}};}}}}}));assert.equal(await sender({subject:'Wheelchair count summary for November 1–15, 2026',text:'report'},'2026-11:1'),'new');assert.equal(sends,1);
 });
 test('count only period days, including inserted rows and separate arrival/departure',()=>{
  const model={days:[{day:1,start:6,end:11},{day:16,start:12,end:16}]};
