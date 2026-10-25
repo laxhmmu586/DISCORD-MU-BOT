@@ -1,7 +1,7 @@
 function createReportLive({context,read,heartbeatMs=15000}){
  const streams=new Set(),same=(a,b)=>a.station===b.station&&a.account===b.account;
  const allowed=sub=>{const current=context(sub.user);return current.permissions[sub.kind]&&same(current.scope,sub.scope);};
- const state=sub=>({scope:sub.scope,kind:sub.kind,month:sub.month,revision:read(sub.scope,sub.kind,sub.month).revision,daRevision:sub.kind==='wwh'?read(sub.scope,'da',sub.month).revision:0});
+ const state=sub=>({scope:sub.scope,kind:sub.kind,month:sub.month,revision:read(sub.scope,sub.kind,sub.month).revision,daRevision:sub.kind==='wwh'?read(sub.scope,'da',sub.month).revision:0,rechargeRevision:sub.kind==='wwh'?read(sub.scope,'rechargeable',sub.month).revision:0});
  function end(sub){clearInterval(sub.timer);streams.delete(sub);sub.res.end();}
  function send(sub){try{if(Date.now()-sub.opened>=1800000||!allowed(sub))return end(sub);const data=state(sub);if(!sub.res.write('event: revision\ndata: '+JSON.stringify(data)+'\n\n'))end(sub);}catch{end(sub);}}
  return {
