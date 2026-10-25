@@ -63,6 +63,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee)},canDashboard:canDashboard(employee),canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
  const linkDA=async(model,scope)=>{
   if(model.kind!=='wwh')return null;
+  for(let r=5;r<=10;r++)for(const c of ['I','N','T','U','V','W','X'])if(model.cells[c+r]&&!model.cells[c+r].formula&&model.cells[c+r].value==='')model.cells[c+r].value=0;
   recharge.link(model,read(scope,'rechargeable',model.month));
   const saved=read(scope,'da',model.month),source=await template('da',model.month,scope,saved.extraRows);apply(source,saved.values,true);const sourceResults=calculate(source.cells);
   for(let r=5;r<=10;r++){
