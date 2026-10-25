@@ -9,11 +9,11 @@ async function fixture(t,heartbeatMs){
  return {request,subscribe,users};
 }
 test('SSE publishes committed saves/imports and DA-to-WWH revisions only within the Main Account/month',async t=>{
- const {request,subscribe}=await fixture(t),da=await subscribe('one','/da/2026-10/stream?station=SFO&account=XX'),wwh=await subscribe('two','/wwh/2026-10/stream'),foreign=await subscribe('other','/da/2026-10/stream'),november=await subscribe('one','/da/2026-11/stream');
+ const {request,subscribe}=await fixture(t),da=await subscribe('one','/da/2026-10/stream?station=SFO&account=XX'),wwh=await subscribe('two','/wwh/2026-10/stream'),foreign=await subscribe('other','/da/2026-10/stream'),november=await subscribe('one','/da/2026-11/stream'),nextYear=await subscribe('one','/da/2027-10/stream');
  const initial=await da.wait(e=>e.revision===0);assert.deepEqual(initial.scope,{station:'LAX',account:'MU'});assert.equal('values' in initial,false);
- assert.equal((await request('two','/da/2026-10',{revision:0,values:{K7:292,L6:1}})).status,200);await da.wait(e=>e.revision===1);await wwh.wait(e=>e.daRevision===1);assert(foreign.events.every(e=>e.revision===0));assert(november.events.every(e=>e.revision===0));
+ assert.equal((await request('two','/da/2026-10',{revision:0,values:{K7:292,L6:1}})).status,200);await da.wait(e=>e.revision===1);await wwh.wait(e=>e.daRevision===1);assert(foreign.events.every(e=>e.revision===0));assert(november.events.every(e=>e.revision===0));assert(nextYear.events.every(e=>e.revision===0));
  const file=fs.readFileSync('data/has-report-templates/da-2026.xlsx').toString('base64');assert.equal((await request('two','/da/2026-10/import',{revision:1,file})).status,200);await da.wait(e=>e.revision===2);await wwh.wait(e=>e.daRevision===2);
- assert.equal((await request('agent','/da/2026-10/stream')).status,403);assert.equal((await request('agent','/wwh/2026-10/stream')).status,403);assert.equal((await request('','/da/2026-10/stream')).status,401);assert.equal((await request('one','/da/2027-01/stream')).status,400);
+ assert.equal((await request('agent','/da/2026-10/stream')).status,403);assert.equal((await request('agent','/wwh/2026-10/stream')).status,403);assert.equal((await request('','/da/2026-10/stream')).status,401);assert.equal((await request('one','/da/2025-01/stream')).status,400);
 });
 test('SSE rechecks permissions and ends streams when Main Account changes or role is revoked',async t=>{
  const {subscribe,users}=await fixture(t,50),one=await subscribe('one','/da/2026-10/stream'),two=await subscribe('two','/wwh/2026-10/stream');await one.wait(()=>true);await two.wait(()=>true);
