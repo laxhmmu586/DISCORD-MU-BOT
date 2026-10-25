@@ -2,7 +2,13 @@
 
 `has-form.html` is the Form page. Existing `request.html` links redirect and preserve the request query/hash. Workspace sidebars place Report below Form.
 
-Report access uses the authenticated employee's primary `station` and `account`. ACCOUNT is filled from that Main Account, is read-only, and uses the same value in downloaded files. Additional memberships, account selectors, request parameters and caller-supplied scope never grant report access. HQ has no report access. DA permits Lead, Supervisor, Senior Supervisor, Duty Manager, Business Manager, Airport Operations Manager, Airport Manager, Interim General Manager, General Manager and Regional Manager. WWH permits Supervisor and Business Manager (including legacy Manager) only. Agent/CSA cannot access either report. The same checks protect reading, updates, import, save and download.
+Report access uses the authenticated employee's primary `station` and `account`. ACCOUNT displays `station/account` (for example, `LAX/MU`), is read-only, and uses the same value in downloaded files. Additional memberships, account selectors, request parameters and caller-supplied scope never grant report access. HQ has no report access. DA permits Lead, Supervisor, Senior Supervisor, Duty Manager, Business Manager, Airport Operations Manager, Airport Manager, Interim General Manager, General Manager and Regional Manager. WWH permits Supervisor and Business Manager (including legacy Manager) only. Agent/CSA cannot access either report. The same checks protect reading, updates, import, save and download.
+
+The toolbar contains report and month selectors and Download Excel. Changing either selector automatically saves pending edits and displays the selected report; no Load, Save or Import button is required. Table headings remain visible while scrolling. Editable fields fill the grid cells without nested borders or resize handles. WWH exposes only meaningful input cells, with one wide field per weekly comment or training comment and section-specific notes below the summary.
+
+Numeric input fields support arithmetic, absolute/relative cell references, ranges and SUM, AVERAGE, MIN, MAX, COUNT, ROUND, IF, IFERROR and ABS within the current monthly sheet. Expressions are parsed without executing JavaScript. A focused cell shows its original expression or full precision; otherwise it shows the calculated result. WWH displays at most two decimal places while retaining the original precision for storage and calculations. DA time cells display HH:mm. Invalid expressions remain local until corrected and block saving/downloading incomplete values.
+
+DA alternates the background color of whole days. A `+ row` control at the bottom of each day adds a line to that day, including its shared color and merged daily totals. Added lines persist, shift later cells and formula references, and participate in WWH summaries and annual downloads. Limits are 20 extra rows per day and 200 per month. A layout revision prevents a stale editor from saving values to addresses shifted by another editor's insertion.
 
 Each Main Account has one shared annual DA workbook and one shared annual WWH workbook, with twelve monthly reports per year. Periods from January 2026 onward are supported. Monthly records remain independent across years. Changes autosave after one second; there is no manual Save button. Transient save failures retry automatically, and reconnecting the browser resumes saving. Validation errors retry after the user corrects the input; conflicting changes stay local with a visible warning rather than overwriting another editor. Downloading Excel flushes any pending changes first. Other editors receive revision notifications over an authenticated SSE connection; healthy connections do not poll. Committed saves and imports notify subscribers for the same Main Account/month/year, and DA changes also notify the corresponding WWH. The client reloads updated data when it has no unsaved local edits. Independent cell changes merge. Recent changes show the editor, time, operation and number of changed cells. The files are stored by this application; they are not hosted in Google Sheets or SharePoint.
 
@@ -12,7 +18,7 @@ The supplied workbooks are the 2026 design base. Existing 2026 dates and formatt
 
 WWH exports include hidden DA source sheets and SUM formulas with current cached numeric results, so PAX totals are visible immediately before spreadsheet recalculation. The FLIGHTS HANDLED section retains its links to the monthly planned-flight, actual-flight and PAX totals. Changing a downloaded copy does not update the server. Downloading a new WWH picks up the latest saved DA. The original DA March `N152` circular formula (`SUM(N152:N161)`) is corrected to `SUM(L152:L161)`; broken DA Summary Page references are rebuilt against each month's OTP row.
 
-Templates under `data/has-report-templates` contain no historical input values or training names. User-entered arithmetic formulas in the source WWH's weekly input fields are private data; their blank-template defaults are zero while reference-based calculations are preserved. Import restores those input expressions. Workbook text is treated as data, never instructions.
+Templates under `data/has-report-templates` contain no historical input values or training names. User-entered arithmetic formulas in the source WWH's weekly input fields are private data; their blank-template defaults are zero while reference-based calculations are preserved. Import restores those input expressions. Workbook text is treated as data, never instructions. Template generation and downloads remove Excel comment/VML parts that otherwise produce red corner markers, preserving styles, merged cells, formulas and visible Comments sections.
 
 ## Private existing-data import and deployment
 
@@ -32,7 +38,7 @@ To regenerate a private import database from authorized originals:
 node scripts/import-has-reports.cjs data/has-reports.db 'PATH/DAILY_FLIGHT_ACTIVITY_Y2026_MU.xlsx' 'PATH/WWH Report 2026_Template_MU.xlsx' LAX MU
 ```
 
-The script overwrites all twelve months for the chosen Main Account and records imports. Use a fresh destination for a new migration. The page's Import Excel button imports only the selected monthly tab into the current Main Account and checks the current revision before replacing values.
+The script overwrites all twelve months for the chosen Main Account and records imports. Use a fresh destination for a new migration. The authenticated monthly import API remains available for existing tooling and checks the current revision before replacing values; the page does not expose an Import Excel button.
 
 ## Verification
 
@@ -41,6 +47,7 @@ node --test test/hasReports.test.js test/hasReportsCollaboration.test.js
 node --test test/hasReportsStartup.test.js
 node --test test/hasReportsLive.test.js test/hasReportLiveClient.test.js
 node --test test/hasReportsAnnual.test.js
+node --test test/hasReportCells.test.js
 node test/hasReports.browser.cjs
 ```
 

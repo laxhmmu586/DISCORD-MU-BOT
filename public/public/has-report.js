@@ -1,67 +1,83 @@
 (() => {
- const $=id=>document.getElementById(id),status=$('report-status'),editor=$('report-editor');let model=null,busy=false,dirty=false,loaded=false,baseline={},saveTimer,paused=false,saveConflict=false,stopLive,liveKey='',pendingRevision;
+ const $=id=>document.getElementById(id),status=$('report-status'),editor=$('report-editor'),math=window.hasReportMath;
+ let model=null,busy=false,dirty=false,baseline={},saveTimer,paused=false,saveConflict=false,stopLive,liveKey='',pendingRevision,computed={};const invalid=new Set();
  const col=n=>{let s='';while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26);}return s;};
  const coord=a=>{const [,c,r]=a.match(/^([A-Z]+)(\d+)$/);return {r:+r,c:[...c].reduce((n,x)=>n*26+x.charCodeAt(0)-64,0)};};
- const setBusy=value=>{busy=value;for(const id of ['report-kind','report-month','report-load','report-export','report-import'])$(id).disabled=value;if(!value)flushRevision();};
+ function setBusy(value){busy=value;for(const id of ['report-kind','report-month','report-export'])$(id).disabled=value;editor.querySelectorAll('[data-add-day]').forEach(b=>b.disabled=value);if(!value)flushRevision();}
  function stopUpdates(){stopLive?.();stopLive=null;liveKey='';pendingRevision=null;}
- function flushRevision(){
-  if(!pendingRevision||!model||busy||dirty||document.hidden)return;
-  const latest=pendingRevision;pendingRevision=null;
-  if(latest.revision!==model.revision||model.kind==='wwh'&&latest.daRevision!==model.daRevision)void load();
- }
+ function flushRevision(){if(!pendingRevision||!model||busy||dirty||document.hidden)return;const latest=pendingRevision;pendingRevision=null;if(latest.revision!==model.revision||model.kind==='wwh'&&latest.daRevision!==model.daRevision)void load();}
  function startUpdates(){
-  const key=JSON.stringify([model.scope.station,model.scope.account,model.kind,model.month]);if(key===liveKey)return;
-  stopUpdates();liveKey=key;
-  stopLive=window.watchHasReport({path:'/'+model.kind+'/'+model.month,onRevision:state=>{
-   if(key!==liveKey||!model)return;
-   if(state.scope.station!==model.scope.station||state.scope.account!==model.scope.account){window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:'Your Main Account changed. Reload the page.'}}));return;}
-   pendingRevision=state;flushRevision();
-  },onError:error=>{if(key===liveKey&&[401,403].includes(error.status))window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:error.message}}));}});
+  const key=JSON.stringify([model.scope.station,model.scope.account,model.kind,model.month]);if(key===liveKey)return;stopUpdates();liveKey=key;
+  stopLive=window.watchHasReport({path:'/'+model.kind+'/'+model.month,onRevision:state=>{if(key!==liveKey||!model)return;if(state.scope.station!==model.scope.station||state.scope.account!==model.scope.account){accessError('Your Main Account changed. Reload the page.');return;}pendingRevision=state;flushRevision();},onError:error=>{if(key===liveKey&&[401,403].includes(error.status))accessError(error.message);}});
  }
  const editableValues=()=>Object.fromEntries(Object.entries(model.cells).filter(([,c])=>c.editable).map(([a,c])=>[a,c.value]));
- function scheduleSave(delay=1000){clearTimeout(saveTimer);if(paused)return;saveTimer=setTimeout(async()=>{if(busy){scheduleSave();return;}setBusy(true);try{await save();}catch(e){saveConflict=e.status===409;paused=saveConflict||e.status===400;status.textContent=e.message;if([401,403].includes(e.status))window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:e.message}}));else if(!paused&&dirty)scheduleSave(5000);}finally{setBusy(false);}},delay);}
+ function conflictNotice(message='Another editor changed these cells. Your edits remain local.'){status.textContent=message+' ';const review=document.createElement('button');review.type='button';review.textContent='Review latest version';review.onclick=()=>load(true);status.append(review);}
+ function saveError(error){saveConflict=error.status===409;paused=saveConflict||error.status===400;if(saveConflict)conflictNotice(error.message);else status.textContent=error.message;if([401,403].includes(error.status))accessError(error.message);else if(!paused&&dirty)scheduleSave(5000);}
+ function scheduleSave(delay=1000){clearTimeout(saveTimer);if(paused||invalid.size)return;saveTimer=setTimeout(async()=>{if(busy){scheduleSave();return;}setBusy(true);try{await save();}catch(error){saveError(error);}finally{setBusy(false);}},delay);}
  function history(rows){$('report-history').replaceChildren(...(rows||[]).slice(-10).reverse().map(row=>{const li=document.createElement('li');li.textContent=new Date(row.at).toLocaleString()+' · '+row.name+' · '+row.action+' · '+row.cells.length+' cells';return li;}));}
- function display(value,format){if(typeof value!=='number')return String(value??'');if(format.includes('%'))return (value*100).toFixed(1)+'%';if(format.includes('$'))return '$'+value.toFixed(2);if(format.includes('.00'))return value.toFixed(2);return String(Math.round(value*10000)/10000);}
- function recalculate(){const values=window.hasReportMath.calculate(model.cells);editor.querySelectorAll('[data-formula]').forEach(el=>{el.textContent=display(values[el.dataset.formula],model.cells[el.dataset.formula].numFmt);});}
- function render(){
-  editor.replaceChildren();const table=document.createElement('table');table.className='report-sheet';const caption=document.createElement('caption');caption.textContent=(model.kind==='da'?'Daily Flight Activity':'Weekly Worked Hours')+' · '+model.month;table.append(caption);
-  const cols=document.createElement('colgroup');model.widths.forEach((w,i)=>{const c=document.createElement('col');c.style.width=Math.max(64,w*8)+'px';if(model.hiddenColumns.includes(i+1))c.style.display='none';cols.append(c);});table.append(cols);
-  const hidden=new Set(),spans={};for(const merge of model.merges){const [start,end]=merge.split(':'),a=coord(start),b=coord(end);spans[start]={rows:b.r-a.r+1,cols:b.c-a.c+1};for(let r=a.r;r<=b.r;r++)for(let c=a.c;c<=b.c;c++)if(col(c)+r!==start)hidden.add(col(c)+r);}
-  // Excel lets the unmerged title overflow across empty cells. Reproduce that
-  // readable title in HTML while leaving the exported workbook unchanged.
-  if(model.kind==='wwh'){
-   for(const r of [2,12,19]){spans['A'+r]={rows:1,cols:model.columns};for(let c=2;c<=model.columns;c++)hidden.add(col(c)+r);}
-   for(const r of [...Array.from({length:6},(_,i)=>13+i),...Array.from({length:6},(_,i)=>20+i)]){spans['B'+r]={rows:1,cols:model.columns-1};for(let c=3;c<=model.columns;c++)hidden.add(col(c)+r);}
-  }
-  const body=document.createElement('tbody');for(let r=1;r<=model.rows;r++){const tr=document.createElement('tr');tr.style.height=Math.max(28,model.heights[r-1]*1.25)+'px';for(let c=1;c<=model.columns;c++){const address=col(c)+r;if(hidden.has(address))continue;const cell=model.cells[address];if(!cell)continue;const td=document.createElement('td');if(spans[address]){td.rowSpan=spans[address].rows;td.colSpan=spans[address].cols;}td.title=cell.formula?'='+cell.formula:address;
-   if(model.hiddenColumns.includes(c))td.style.display='none';if(cell.linked)td.title='Automatically summed from the saved DA for this week';if(cell.style.background?.length===8&&cell.style.background!=='00000000')td.style.backgroundColor='#'+cell.style.background.slice(2);if(cell.style.bold)td.style.fontWeight='700';if(cell.style.align)td.style.textAlign=cell.style.align;
-   if(cell.editable){const input=document.createElement('textarea');input.rows=1;input.value=cell.value;input.setAttribute('aria-label',address);input.spellcheck=false;input.addEventListener('input',()=>{const text=input.value;cell.value=/^-?\d+(\.\d+)?$/.test(text)?Number(text):text;if(cell.literalFormula){if(text.startsWith('='))cell.formula=text.slice(1);else delete cell.formula;}dirty=true;if(!saveConflict)paused=false;status.textContent=saveConflict?'Your edits are not saved because another editor changed the same cells. Reload the report to review them.':'Saving changes…';try{recalculate();scheduleSave();}catch{clearTimeout(saveTimer);status.textContent='Complete the arithmetic formula before saving.';}});td.append(input);}else if(cell.formula){td.dataset.formula=address;td.classList.add('report-calculated');}else td.textContent=display(cell.value,cell.numFmt);tr.append(td);}body.append(tr);}table.append(body);editor.append(table);recalculate();
+ const visibleValue=cell=>math.format(cell.formula?computed[cell.address]:cell.value,cell);
+ function fitTextarea(input){if(input.tagName==='TEXTAREA'){input.style.height='auto';input.style.height=Math.max(32,input.scrollHeight)+'px';}}
+ function recalculate(){computed=math.calculate(model.cells);editor.querySelectorAll('[data-formula]').forEach(el=>el.textContent=math.format(computed[el.dataset.formula],model.cells[el.dataset.formula]));editor.querySelectorAll('[data-cell-input]').forEach(input=>{if(document.activeElement!==input&&!invalid.has(input.dataset.cellInput))input.value=visibleValue(model.cells[input.dataset.cellInput]);fitTextarea(input);});}
+ function inputFor(address,cell){
+  const input=document.createElement(cell.multiline?'textarea':'input');if(cell.multiline)input.rows=1;else input.type='text';input.dataset.cellInput=address;input.setAttribute('aria-label',address);input.spellcheck=false;input.value=visibleValue(cell);
+  input.addEventListener('focus',()=>{input.value=cell.formula?'='+cell.formula:cell.type==='time'?math.format(cell.value,cell):String(cell.value??'');});
+  input.addEventListener('blur',()=>{if(!invalid.has(address))input.value=visibleValue(cell);fitTextarea(input);});
+  input.addEventListener('input',()=>{
+   const text=input.value,value=(cell.formulaAllowed||cell.type==='time')&&/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(text)?Number(text):text;dirty=true;cell.value=value;if(!saveConflict)paused=false;
+   try{math.setInput(cell,value);invalid.delete(address);input.removeAttribute('aria-invalid');recalculate();if(saveConflict)conflictNotice();else status.textContent='Saving changes…';scheduleSave();}
+   catch(error){invalid.add(address);input.setAttribute('aria-invalid','true');clearTimeout(saveTimer);status.textContent=error.message;}
+  });return input;
  }
- async function load(){if(busy)return;if(dirty&&!confirm('Discard unsaved changes and load this report?'))return;clearTimeout(saveTimer);setBusy(true);status.textContent='Loading report…';try{model=await window.hasReportRequest('/'+$('report-kind').value+'/'+$('report-month').value);render();baseline=editableValues();history(model.history);dirty=false;paused=false;saveConflict=false;loaded=true;pendingRevision=null;startUpdates();status.textContent=model.updatedAt?'Saved by '+model.updatedBy+' · '+new Date(model.updatedAt).toLocaleString():'Shared report · Changes save automatically.';}catch(e){status.textContent=e.message;}finally{setBusy(false);$('report-export').disabled=!loaded;}}
+ function render(){
+  editor.replaceChildren();invalid.clear();computed=math.calculate(model.cells);for(const [address,cell] of Object.entries(model.cells))cell.address=address;
+  const table=document.createElement('table');table.className='report-sheet';const caption=document.createElement('caption');caption.textContent=(model.kind==='da'?'Daily Flight Activity':'Weekly Worked Hours')+' · '+model.month;table.append(caption);
+  const cols=document.createElement('colgroup');model.widths.forEach((w,i)=>{const c=document.createElement('col');c.style.width=Math.max(64,w*8)+'px';if(model.hiddenColumns.includes(i+1))c.style.display='none';cols.append(c);});table.append(cols);
+  const hidden=new Set(),spans={};function span(start,end){const a=coord(start),b=coord(end);spans[start]={rows:b.r-a.r+1,cols:b.c-a.c+1};for(let r=a.r;r<=b.r;r++)for(let c=a.c;c<=b.c;c++)if(col(c)+r!==start)hidden.add(col(c)+r);}
+  model.merges.forEach(range=>span(...range.split(':')));
+  if(model.kind==='wwh'){
+   for(const r of [2,12,19,27,31,33,38,40,47,49,50,52,53])span('A'+r,'AC'+r);
+   for(const r of [...Array.from({length:6},(_,i)=>13+i),...Array.from({length:6},(_,i)=>20+i)])span('B'+r,'AC'+r);
+   for(const r of [32,39,48,51])span('A'+r,'AC'+r);
+   span('B54','AC'+model.rows);
+   for(const r of [26,30])span('A'+r,'AC'+r);
+   for(const r of [28,29])span('F'+r,'AC'+r);
+   for(let r=27;r<=model.rows;r++)span('M'+r,'AC'+r);
+  }else span('A3','K3');
+  const head=document.createElement('thead'),body=document.createElement('tbody');
+  for(let r=1;r<=model.rows;r++){
+   const tr=document.createElement('tr'),day=model.kind==='da'?model.days.find(d=>r>=d.start&&r<=d.end):null;tr.style.height=Math.max(28,model.heights[r-1]*1.25)+'px';if(day){tr.dataset.day=day.day;tr.className=day.day%2?'report-day-odd':'report-day-even';}
+   for(let c=1;c<=model.columns;c++){
+    const address=col(c)+r;if(hidden.has(address))continue;const cell=model.cells[address];if(!cell)continue;const td=document.createElement('td');td.dataset.cell=address;if(spans[address]){td.rowSpan=spans[address].rows;td.colSpan=spans[address].cols;}td.title=cell.formula?'='+cell.formula:address;
+    if(model.hiddenColumns.includes(c))td.style.display='none';if(model.kind==='wwh'&&r>=27&&c>=13||model.kind==='wwh'&&[28,29].includes(r)&&c===6)td.classList.add('report-unused');
+    if(cell.style.background?.length===8&&cell.style.background!=='00000000')td.style.backgroundColor='#'+cell.style.background.slice(2);if(cell.style.bold)td.style.fontWeight='700';if(cell.style.align)td.style.textAlign=cell.style.align;
+    if(cell.editable){td.classList.add('report-editable');const input=inputFor(address,cell);if(cell.multiline&&spans[address]?.rows>1)input.rows=Math.min(10,spans[address].rows);td.append(input);}
+    else if(cell.formula){td.dataset.formula=address;td.classList.add('report-calculated');td.textContent=math.format(computed[address],cell);}
+    else{td.textContent=math.format(cell.value,cell);if(cell.linked)td.title='Automatically summed from the saved DA for this week';}
+    if(day&&c===1&&r===day.start)td.classList.add('report-date-cell');
+    if(day&&c===1&&r===day.end){td.classList.add('report-day-action');const button=document.createElement('button');button.type='button';button.className='report-add-row';button.dataset.addDay=day.day;button.textContent='+ row';button.setAttribute('aria-label','Add row for day '+day.day);button.onclick=()=>addRow(day.day);td.append(button);}
+    tr.append(td);
+   }(r<=(model.kind==='da'?5:4)?head:body).append(tr);
+  }table.append(head,body);editor.append(table);requestAnimationFrame(()=>editor.querySelectorAll('textarea').forEach(fitTextarea));
+ }
+ async function load(manual=false){
+  if(busy)return;const target={kind:$('report-kind').value,month:$('report-month').value};clearTimeout(saveTimer);setBusy(true);editor.inert=true;
+  try{
+   if(dirty){if((saveConflict||invalid.size)&&manual&&confirm('Discard local edits and reload the shared report?')){dirty=false;invalid.clear();}else await save();}
+   status.textContent='Loading report…';const next=await window.hasReportRequest('/'+target.kind+'/'+target.month),changed=!model||model.kind!==next.kind||model.month!==next.month;model=next;render();if(changed){editor.scrollTop=0;editor.scrollLeft=0;}baseline=editableValues();history(model.history);dirty=false;paused=false;saveConflict=false;pendingRevision=null;startUpdates();status.textContent=model.updatedAt?'Saved by '+model.updatedBy+' · '+new Date(model.updatedAt).toLocaleString():'Shared report · Changes save automatically.';
+  }catch(error){if(model){$('report-kind').value=model.kind;$('report-month').value=model.month;}status.textContent=error.message;}
+  finally{editor.inert=false;setBusy(false);$('report-export').disabled=!model;if(dirty&&!paused)scheduleSave(5000);}
+ }
  async function save(){
-  clearTimeout(saveTimer);const values=Object.fromEntries(Object.entries(editableValues()).filter(([a,v])=>baseline[a]!==v));
-  if(!Object.keys(values).length){dirty=false;status.textContent='All changes saved.';return;}
-  const baseValues=Object.fromEntries(Object.keys(values).map(a=>[a,baseline[a]]));
-  const result=await window.hasReportRequest('/'+model.kind+'/'+model.month,{revision:model.revision,values,baseValues});model.revision=result.revision;
-  // Incorporate remote changes returned by a merged save without replacing
-  // any input the local editor has changed while the request was in flight.
-  for(const [address,value] of Object.entries(result.values)){
-   const cell=model.cells[address];if(!cell?.editable||Object.hasOwn(values,address)||cell.value!==baseline[address])continue;
-   cell.value=value;baseline[address]=value;if(cell.literalFormula){if(typeof value==='string'&&value.startsWith('='))cell.formula=value.slice(1);else delete cell.formula;}
-   const input=editor.querySelector('textarea[aria-label="'+address+'"]');if(input)input.value=value;
-  }
+  clearTimeout(saveTimer);if(invalid.size)throw Object.assign(Error('Complete the highlighted formulas before continuing.'),{status:400});const values=Object.fromEntries(Object.entries(editableValues()).filter(([a,v])=>baseline[a]!==v));if(!Object.keys(values).length){dirty=false;return;}
+  const baseValues=Object.fromEntries(Object.keys(values).map(a=>[a,baseline[a]]));const result=await window.hasReportRequest('/'+model.kind+'/'+model.month,{revision:model.revision,layoutRevision:model.layoutRevision||0,values,baseValues});model.revision=result.revision;
+  for(const [address,value] of Object.entries(result.values)){const cell=model.cells[address];if(!cell?.editable||Object.hasOwn(values,address)||cell.value!==baseline[address])continue;math.setInput(cell,value);baseline[address]=cell.value;}
   Object.assign(baseline,values);dirty=Object.entries(editableValues()).some(([a,v])=>baseline[a]!==v);recalculate();history(result.history);paused=false;status.textContent='Saved by '+result.updatedBy+' · '+new Date(result.updatedAt).toLocaleTimeString();if(dirty)scheduleSave();
  }
- $('report-load').onclick=load;
- $('report-export').onclick=async()=>{if(busy||!model)return;setBusy(true);try{if(dirty)await save();const blob=await window.hasReportRequest('/'+model.kind+'/'+model.month+'/export'),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=model.kind.toUpperCase()+'_'+model.scope.station+'_'+model.scope.account+'_'+model.month.slice(0,4)+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);status.textContent='';}catch(e){status.textContent=e.message;}finally{setBusy(false);if(dirty&&!paused)scheduleSave(5000);}};
- $('report-import').onclick=()=>$('report-file').click();
- $('report-file').onchange=async()=>{const file=$('report-file').files[0];if(!file||busy||!model)return;if(file.size>10*1024*1024){status.textContent='Choose an Excel file up to 10 MB.';return;}if(!confirm('Import this month from Excel into the shared report? Existing values will be replaced.'))return;clearTimeout(saveTimer);setBusy(true);try{const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);await window.hasReportRequest('/'+model.kind+'/'+model.month+'/import',{revision:model.revision,file:btoa(binary)});dirty=false;}catch(e){status.textContent=e.message;setBusy(false);return;}setBusy(false);await load();$('report-file').value='';};
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)flushRevision();});
- window.addEventListener('pagehide',stopUpdates);
- window.addEventListener('pageshow',event=>{if(event.persisted&&model)startUpdates();});
- window.addEventListener('online',()=>{if(dirty&&!saveConflict){paused=false;scheduleSave(0);}});
- window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
- window.addEventListener('has-report-context',event=>{const ctx=event.detail;if(ctx.error){stopUpdates();status.textContent=ctx.error;editor.replaceChildren();$('report-controls').hidden=true;model=null;loaded=false;dirty=false;clearTimeout(saveTimer);return;}const kinds=Object.entries(ctx.permissions).filter(([,allowed])=>allowed).map(([kind])=>kind);if(!kinds.length){stopUpdates();status.textContent='Report access is unavailable for your Main Account position.';$('report-controls').hidden=true;return;}$('report-controls').hidden=false;$('report-scope').textContent=ctx.scope.station+' · '+ctx.scope.account+' · Main Account';$('report-kind').replaceChildren(...kinds.map(kind=>new Option(kind==='da'?'DA · Daily Flight Activity':'WWH · Weekly Worked Hours',kind)));load();});
- const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit'}).formatToParts(new Date()),part=type=>parts.find(p=>p.type===type).value;$('report-month').value=Number(part('year'))>=2026?part('year')+'-'+part('month'):'2026-01';
- if(window.hasReportContext)window.dispatchEvent(new CustomEvent('has-report-context',{detail:window.hasReportContext}));
+ async function addRow(day){if(busy||!model)return;setBusy(true);editor.inert=true;try{if(dirty)await save();await window.hasReportRequest('/da/'+model.month+'/rows',{day,revision:model.revision,layoutRevision:model.layoutRevision||0});}catch(error){status.textContent=error.message;editor.inert=false;setBusy(false);return;}editor.inert=false;setBusy(false);await load();}
+ $('report-kind').addEventListener('change',()=>load());$('report-month').addEventListener('change',()=>load());
+ $('report-export').onclick=async()=>{if(busy||!model)return;setBusy(true);editor.inert=true;try{if(dirty)await save();const blob=await window.hasReportRequest('/'+model.kind+'/'+model.month+'/export'),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=model.kind.toUpperCase()+'_'+model.scope.station+'_'+model.scope.account+'_'+model.month.slice(0,4)+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);status.textContent='';}catch(error){status.textContent=error.message;}finally{editor.inert=false;setBusy(false);if(dirty&&!paused)scheduleSave(5000);}};
+ function accessError(message){window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:message}}));}
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)flushRevision();});window.addEventListener('pagehide',stopUpdates);window.addEventListener('pageshow',event=>{if(event.persisted&&model)startUpdates();});window.addEventListener('online',()=>{if(dirty&&!saveConflict){paused=false;scheduleSave(0);}});window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+ window.addEventListener('has-report-context',event=>{const ctx=event.detail;if(ctx.error){stopUpdates();status.textContent=ctx.error;editor.replaceChildren();$('report-controls').hidden=true;model=null;dirty=false;clearTimeout(saveTimer);return;}const kinds=Object.entries(ctx.permissions).filter(([,allowed])=>allowed).map(([kind])=>kind);if(!kinds.length){stopUpdates();status.textContent='Report access is unavailable for your Main Account position.';$('report-controls').hidden=true;return;}$('report-controls').hidden=false;$('report-scope').textContent=ctx.scope.station+'/'+ctx.scope.account+' · Main Account';$('report-kind').replaceChildren(...kinds.map(kind=>new Option(kind==='da'?'DA · Daily Flight Activity':'WWH · Weekly Worked Hours',kind)));load();});
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit'}).formatToParts(new Date()),part=type=>parts.find(p=>p.type===type).value;$('report-month').value=Number(part('year'))>=2026?part('year')+'-'+part('month'):'2026-01';if(window.hasReportContext)window.dispatchEvent(new CustomEvent('has-report-context',{detail:window.hasReportContext}));
 })();
