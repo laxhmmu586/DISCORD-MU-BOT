@@ -55,14 +55,21 @@ function createService({ db, getClient, channel, now = Date.now }) {
       const { gmail, userId } = await getClient();
       const api = gmail.users.messages;
       let pageToken;
+      let latest;
       do {
         const list = await api.list({ userId, q: `from:${SENDER} subject:LDM subject:CPM after:${Math.floor(read.get('started').progress / 1000) - 1}`, maxResults: 100, pageToken }, { timeout: 30000 });
         for (const item of list.data.messages || []) {
-          const key = `${userId}:${item.id}`;
-          let progress = read.get(key)?.progress || 0;
-          if (progress === -1) continue;
           const { data: mail } = await api.get({ userId, id: item.id, format: 'full' }, { timeout: 30000 });
           if (Number(mail.internalDate) < read.get('started').progress || !matches(mail.payload?.headers || [])) continue;
+          if (!latest || Number(mail.internalDate) > Number(latest.mail.internalDate)) latest = { item, mail };
+        }
+        pageToken = list.data.nextPageToken;
+      } while (pageToken);
+      if (latest) {
+          const { item, mail } = latest;
+          const key = `${userId}:${item.id}`;
+          let progress = read.get(key)?.progress || 0;
+          if (progress === -1) return;
           const text = await bodyText(mail.payload, async id => {
             const response = await api.attachments.get({ userId, messageId: item.id, id }, { timeout: 30000 });
             return response.data.data;
@@ -76,9 +83,7 @@ function createService({ db, getClient, channel, now = Date.now }) {
             write.run(key, progress + 1);
           }
           write.run(key, -1);
-        }
-        pageToken = list.data.nextPageToken;
-      } while (pageToken);
+      }
     } finally { busy = false; }
   }
   return {

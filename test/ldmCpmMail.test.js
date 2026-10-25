@@ -38,3 +38,18 @@ test('paginates, retries failed chunks, and persists deduplication across recrea
   assert.equal(sent.join(''), 'LDM CPM MU583\n\n' + 'A'.repeat(2500));
   db.close();
 });
+test('only forwards newest receipt across pages and never backfills older mail', async () => {
+  const db = new Database(':memory:');
+  const sent = [];
+  const service = createService({ db, now: () => 1000,
+    getClient: () => ({ userId: 'me', gmail: { users: { messages: {
+      list: async ({ pageToken }) => ({ data: pageToken ? { messages: [{ id: 'new' }] } : { messages: [{ id: 'old' }], nextPageToken: 'next' } }),
+      get: async ({ id }) => ({ data: { internalDate: id === 'new' ? '3000' : '2000', payload: {
+        headers: headers('CPM LDM MU583'), mimeType: 'text/plain', body: { data: Buffer.from(id).toString('base64url') }
+      } } })
+    } } } }), channel: async () => ({ send: async message => sent.push(message.content) }) });
+  await service.poll();
+  await service.poll();
+  assert.deepEqual(sent, ['CPM LDM MU583\n\nnew']);
+  db.close();
+});
