@@ -14,3 +14,5 @@
  .report-sheet-compact-da .report-editable{padding:0}
  .report-sheet-compact-da :is(input,textarea){padding:6px 3px}
 }
+
+.recharge-panel button,.recharge-dialog button{padding:8px 14px;margin:4px;border:1px solid #c7d7e9;border-radius:7px;background:#fff;color:#174679;cursor:pointer}.recharge-dialog{border:1px solid #c7d7e9;border-radius:12px;background:#fff;color:#172c46}.recharge-dialog::backdrop{background:rgba(19,40,67,.4)}.recharge-dialog input:focus{outline:2px solid #217346!important}.recharge-panel .report-sheet th{padding:8px;border:1px solid #bcc9d8;min-width:75px}.recharge-dialog fieldset label{display:inline-block;margin:6px}.recharge-dialog input[type=number]{font-variant-numeric:tabular-nums}

@@ -5,6 +5,7 @@ const {field,exportWorkbook}=require('./hasReportLayout');
 const {days,validateRows,applyExtraRows,moveValues}=require('./hasReportRows');
 const {reportMonth,prepareCalendar}=require('./hasReportCalendar');
 const {flightDelays}=require('./hasReportDelays');
+const recharge=require('./hasRecharge');
 const templateDir=path.join(__dirname,'data','has-report-templates');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const unavailable=()=>fail('Reports are temporarily unavailable. Please retry later.',503);
@@ -32,6 +33,7 @@ async function template(kind,month,scope,extraRows={}){
  }
  // Browser-only cells use the shared report storage but never enter Excel exports.
  if(wheelchair)for(let r=1;r<=rows;r++)for(const column of ['O','P'])cells[column+r]={value:r===4&&column==='O'?'WHEELCHAIR':r===5?(column==='O'?'Arrival':'Departure'):'',editable:r>=6&&r<rows-2,type:'text',formulaAllowed:false,webOnly:true,style:{align:'center',bold:r===4}};
+ if(kind==='wwh')for(let r=5;r<=10;r++)for(const c of ['I','N','T','U','V','W','X'])if(cells[c+r]&&!cells[c+r].formula&&(cells[c+r].value===''||cells[c+r].value==null))cells[c+r].value=0;
  const accountCell=kind==='wwh'?'B1':'C4';cells[accountCell].value=scope.station+'/'+scope.account;cells[accountCell].editable=false;cells[accountCell].accountLocked=true;
  return {kind,month,rows,columns:wheelchair?16:columns,cells,days:kind==='da'?days(sheet):[],extraRows,merges:wheelchair?[...sheet.model.merges,'O4:P4']:sheet.model.merges,widths:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).width||12).concat(wheelchair?[12,12]:[]),hiddenColumns:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).hidden?i+1:0).filter(Boolean),heights:Array.from({length:rows},(_,i)=>sheet.getRow(i+1).height||20),sheetName:name,workbook};
 }
@@ -58,9 +60,10 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  const handler=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){const infrastructure=['ENOENT','EACCES','EPERM','ENOTDIR'].includes(e.code)||String(e.code||'').startsWith('SQLITE_');if(infrastructure)console.error('HAS report request:',e);const status=infrastructure?503:e.status||400;if(status===503)res.set('Retry-After','30');res.status(status).json({error:infrastructure?'Reports are temporarily unavailable. Please retry later.':e.message});}};
  const build=async req=>{const ctx=authorize(req);reportMonth(req.params.month);const saved=read(ctx.scope,req.params.kind,req.params.month),model=await template(req.params.kind,req.params.month,ctx.scope,saved.extraRows);return {ctx,model,saved};};
  const apply=(model,values,stored=false)=>{if(!values||typeof values!=='object'||Array.isArray(values))fail('Invalid report values.');for(const [address,value] of Object.entries(values)){const cell=model.cells[address];if(!cell?.editable){if(stored)continue;fail('This template cell cannot be edited: '+address);}if(!['string','number'].includes(typeof value)||String(value).length>4000||typeof value==='number'&&!Number.isFinite(value))fail('Invalid cell value.');if(cell.webOnly&&value!==''&&(!Number.isSafeInteger(Number(value))||Number(value)<0))fail('Wheelchair counts must be non-negative whole numbers.');setInput(cell,value);}return model;};
- app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser);res.json({scope,permissions,canDashboard:canDashboard(employee),canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
+ app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee)},canDashboard:canDashboard(employee),canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
  const linkDA=async(model,scope)=>{
   if(model.kind!=='wwh')return null;
+  recharge.link(model,read(scope,'rechargeable',model.month));
   const saved=read(scope,'da',model.month),source=await template('da',model.month,scope,saved.extraRows);apply(source,saved.values,true);const sourceResults=calculate(source.cells);
   for(let r=5;r<=10;r++){
    const range=String(model.cells['B'+r]?.value||'').match(/^(\d+)(?:\s*-\s*(\d+))?/);if(!range)continue;
@@ -80,10 +83,10 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   const year=+req.params.year,months=[];
   for(let m=1;m<=12;m++){
    const month=year+'-'+String(m).padStart(2,'0'),wwh=read(ctx.scope,'wwh',month),da=read(ctx.scope,'da',month);
-   const row={month,hasDA:da.revision>0,hasWWH:wwh.revision>0,updatedAt:[da.updatedAt,wwh.updatedAt].filter(Boolean).sort().at(-1)||null};
+   const row={month,hasDA:da.revision>0,hasWWH:wwh.revision>0||read(ctx.scope,'rechargeable',month).revision>0,updatedAt:[da.updatedAt,wwh.updatedAt].filter(Boolean).sort().at(-1)||null};
    const metrics=['budgetHours','actualHours','rechargeHours','balanceHours','netActualHours','flights','pax'];for(const metric of metrics)row[metric]=null;
    row.rechargeBreakdown=null;row.flightDelays=null;row.state='not-started';row.errors=[];
-   if(!row.hasDA&&!row.hasWWH){months.push(row);continue;}
+   if(!row.hasDA&&!row.hasWWH&&!read(ctx.scope,'rechargeable',month).revision){months.push(row);continue;}
    const model=await template('wwh',month,ctx.scope);apply(model,wwh.values,true);const source=await linkDA(model,ctx.scope),calculated=calculate(model.cells);if(row.hasDA)row.flightDelays=flightDelays(source);
    const numeric=address=>{const cell=model.cells[address],value=cell?.formula?calculated[address]:cell?.value;if(typeof value==='number'&&Number.isFinite(value))return value;row.errors.push(address);return null;};
    if(row.hasDA){row.flights=numeric('Z11');row.pax=numeric('AA11');}
@@ -100,9 +103,11 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   const latest=context(req.reportUser);if(!canDashboard(latest.employee)||key(latest.scope)!==key(ctx.scope))fail('Your Main Account access changed. Reload the page.',403);
   res.json({year,scope:ctx.scope,months,generatedAt:new Date().toISOString(),basis:'budgetHours + rechargeHours - actualHours'});
  }));
+ recharge.register(app,{context,database,read,key,handler,template,live});
  app.get('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model,saved}=await build(req);apply(model,saved.values,true);await linkDA(model,ctx.scope);const {workbook,...view}=model;res.json({...view,...saved,scope:ctx.scope,calculated:calculate(model.cells)});}));
  const write=(ctx,model,user,body,action='Edited')=>{const saved=database().transaction(()=>{
   const latest=read(ctx.scope,model.kind,model.month);if((body.layoutRevision||0)!==(latest.layoutRevision||0))fail('Daily rows changed. Reload the report before continuing.',409);apply(model,latest.values,true);
+  if(model.kind==='wwh')recharge.link(model,read(ctx.scope,'rechargeable',model.month));
   const entries=Object.entries(body.values||{});if(!entries.length)fail('No cell changes to save.');
   if(body.revision!==latest.revision){
    if(!body.baseValues||entries.some(([a])=>!Object.hasOwn(body.baseValues,a)||body.baseValues[a]!==model.cells[a]?.value))fail('Another editor changed these cells. Your changes have not been overwritten. Reload to review the latest report.',409);
@@ -120,10 +125,10 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
    const data={...latest,revision:latest.revision+1,layoutRevision:(latest.layoutRevision||0)+1,extraRows,values:moveValues(latest.values,block.end+(delta>0?1:0),delta,model),updatedAt:at,updatedBy:name,history:[...(latest.history||[]),{at,name,action:(delta>0?'Added row to day ':'Removed row from day ')+day,cells:['A'+block.start]}].slice(-30)};database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),'da',model.month,JSON.stringify(data));return data;
   })();live.publish(ctx.scope,'da',model.month);res.json({revision:saved.revision,layoutRevision:saved.layoutRevision,extraRows:saved.extraRows});
  }));
- app.get('/has-report-api/:kind/:month/updates',handler(async(req,res)=>{const ctx=authorize(req);const saved=read(ctx.scope,req.params.kind,req.params.month);res.json({scope:ctx.scope,revision:saved.revision,updatedBy:saved.updatedBy,daRevision:req.params.kind==='wwh'?read(ctx.scope,'da',req.params.month).revision:0});}));
+ app.get('/has-report-api/:kind/:month/updates',handler(async(req,res)=>{const ctx=authorize(req);const saved=read(ctx.scope,req.params.kind,req.params.month);res.json({scope:ctx.scope,revision:saved.revision,updatedBy:saved.updatedBy,daRevision:req.params.kind==='wwh'?read(ctx.scope,'da',req.params.month).revision:0,rechargeRevision:req.params.kind==='wwh'?read(ctx.scope,'rechargeable',req.params.month).revision:0});}));
  app.get('/has-report-api/:kind/:month/stream',handler(async(req,res)=>{const ctx=authorize(req);reportMonth(req.params.month);live.subscribe(req,res,ctx);}));
  app.post('/has-report-api/:kind/:month/import',handler(async(req,res)=>{
-  const {ctx,model}=await build(req);if(typeof req.body.file!=='string'||req.body.file.length>14000000)fail('Choose an Excel file up to 10 MB.');
+  const {ctx,model}=await build(req);if(model.kind==='wwh')recharge.link(model,read(ctx.scope,'rechargeable',model.month));if(typeof req.body.file!=='string'||req.body.file.length>14000000)fail('Choose an Excel file up to 10 MB.');
   const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.load(Buffer.from(req.body.file,'base64'));const sheet=workbook.getWorksheet(model.sheetName);if(!sheet)fail('The workbook has no sheet for the selected month.');
   const expected=req.params.kind==='wwh'?'WEEK':'DATE';if(String(sheet.getCell(req.params.kind==='wwh'?'A3':'A5').text).trim()!==expected)fail('Choose the matching DA or WWH workbook.');
   const values={};for(const [address,cell] of Object.entries(model.cells))if(cell.editable&&!cell.webOnly){const source=sheet.getCell(address);let value=source.value;if(source.formula){if(cell.formulaAllowed)value='='+source.formula;else value=source.result??'';}if(value instanceof Date)value=(value.getTime()-Date.UTC(1899,11,30))/86400000;if(value?.richText)value=value.richText.map(t=>t.text).join('');if(value==null)value='';if(['string','number'].includes(typeof value))values[address]=value;}
@@ -139,7 +144,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
    if(model.kind==='wwh')for(const row of [47,50,53])sheet.getCell('A'+row).value=row===47?'ADDITIONAL COMMENTS:':'COMMENTS:';
    const sourceName=month===model.month?'DA Source':'DA Source '+current.sheetName;
    if(source){const data=model.workbook.addWorksheet(sourceName,{state:'hidden'}),computed=calculate(source.cells);for(const [address,cell] of Object.entries(source.cells))if(!cell.webOnly)data.getCell(address).value=cell.formula?{formula:cell.formula,result:typeof computed[address]==='string'?{error:computed[address]}:computed[address]}:cell.value===''?null:cell.value;}
-   for(const [address,cell] of Object.entries(current.cells)){if(cell.webOnly)continue;if(cell.sourceFormula)sheet.getCell(address).value={formula:cell.sourceFormula.replace("'DA Source'","'"+sourceName+"'"),result:typeof cell.value==='string'?{error:cell.value}:cell.value};else if(cell.formula)sheet.getCell(address).value={formula:cell.formula,result:typeof results[address]==='string'?{error:results[address]}:results[address]};else if(cell.editable||cell.accountLocked||model.kind==='wwh'&&['T4','U4','V4','W4','X4'].includes(address))sheet.getCell(address).value=cell.value===''?null:cell.value;if(cell.unit)sheet.getCell(address).style={...sheet.getCell(address).style,numFmt:cell.numFmt};if(cell.type==='time')sheet.getCell(address).numFmt='hh:mm';if(cell.monthLabel)monthFormat(sheet.getCell(address),current.sheetName);}
+   for(const [address,cell] of Object.entries(current.cells)){if(cell.webOnly)continue;if(cell.sourceFormula)sheet.getCell(address).value={formula:cell.sourceFormula.replace("'DA Source'","'"+sourceName+"'"),result:typeof cell.value==='string'?{error:cell.value}:cell.value};else if(cell.formula)sheet.getCell(address).value={formula:cell.formula,result:typeof results[address]==='string'?{error:results[address]}:results[address]};else if(cell.linked||cell.editable||cell.accountLocked||model.kind==='wwh'&&['T4','U4','V4','W4','X4'].includes(address))sheet.getCell(address).value=cell.value===''?null:cell.value;if(cell.unit)sheet.getCell(address).style={...sheet.getCell(address).style,numFmt:cell.numFmt};if(cell.type==='time')sheet.getCell(address).numFmt='hh:mm';if(cell.monthLabel)monthFormat(sheet.getCell(address),current.sheetName);}
    if(model.kind==='da')for(const day of current.days)for(let row=day.start;row<=day.end;row++)for(let column=1;column<=13;column++)sheet.getCell(row,column).fill={type:'pattern',pattern:'solid',fgColor:{argb:day.day%2?'FFFFFFFF':'FFEDF5FF'}};
    if(model.kind==='da'){const summary=model.workbook.getWorksheet('Summary Page'),value=results['M'+current.rows];summary.getCell(m,2).value={formula:current.sheetName+'!M'+current.rows,result:typeof value==='string'?{error:value}:value};}
   }
