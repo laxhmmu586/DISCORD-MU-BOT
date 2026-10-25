@@ -171,7 +171,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }));
  // Retry interrupted work after restart; completed delivery targets are skipped.
  for(const r of store.list())if(r.completedAt&&(r.delivery.drive.status!=='sent'||r.delivery.discord.status!=='sent'))void deliver(r.id);
- return {store,employees,profiles,deliver,close(){hasReportService.close();hasPbbService.close();readSignService.close();for(const sub of lobbyStreams)sub.res.end();for(const clients of streams.values())for(const res of clients)res.end();}};
+ return {store,employees,profiles,deliver,startWheelchairMail:()=>hasReportService.startWheelchairMail(),close(){hasReportService.close();hasPbbService.close();readSignService.close();for(const sub of lobbyStreams)sub.res.end();for(const clients of streams.values())for(const res of clients)res.end();}};
 }
 module.exports={createStore,registerPbb,validateInfo,discordMessage};
 

@@ -31,8 +31,8 @@
  function render(){
   $('report-instructions').hidden=model.kind!=='wwh';
   editor.replaceChildren();invalid.clear();computed=math.calculate(model.cells);for(const [address,cell] of Object.entries(model.cells))cell.address=address;
-  const table=document.createElement('table');table.className='report-sheet';const caption=document.createElement('caption');caption.textContent=(model.kind==='da'?'Daily Flight Activity':'Weekly Worked Hours')+' · '+model.month;table.append(caption);
-  const cols=document.createElement('colgroup');model.widths.forEach((w,i)=>{const c=document.createElement('col');c.style.width=Math.max(64,w*8)+'px';if(model.hiddenColumns.includes(i+1))c.style.display='none';cols.append(c);});table.append(cols);
+  const table=document.createElement('table');const compact=model.kind==='da'&&model.scope.station==='LAX'&&model.scope.account==='MU';table.className='report-sheet'+(compact?' report-sheet-compact-da':'');const caption=document.createElement('caption');caption.textContent=(model.kind==='da'?'Daily Flight Activity':'Weekly Worked Hours')+' · '+model.month;table.append(caption);
+  const cols=document.createElement('colgroup');model.widths.forEach((w,i)=>{const c=document.createElement('col');c.style.width=compact?[3,3.5,5.5,6,4.5,4.5,4.5,4.5,5,28.5,5.5,5,3,5,6,6][i]+'%':Math.max(64,w*8)+'px';if(model.hiddenColumns.includes(i+1))c.style.display='none';cols.append(c);});table.append(cols);
   const hidden=new Set(),spans={};function span(start,end){const a=coord(start),b=coord(end);spans[start]={rows:b.r-a.r+1,cols:b.c-a.c+1};for(let r=a.r;r<=b.r;r++)for(let c=a.c;c<=b.c;c++)if(col(c)+r!==start)hidden.add(col(c)+r);}
   model.merges.forEach(range=>span(...range.split(':')));
   if(model.kind==='wwh'){

@@ -5567,6 +5567,7 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
+  exportBriefingPdf: require('./briefingSchedule').createGoogleExporter({getClient:()=>auth.getClient(),getSheets:()=>google.sheets({version:'v4',auth})}),
   readEtabSchedule: require('./etabSchedule').createScheduleReader(),
   getNextDayInfoGmailClient,
   seedBoardingLive,

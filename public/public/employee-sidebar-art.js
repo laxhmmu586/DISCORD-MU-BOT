@@ -1,5 +1,5 @@
 (() => {
- const choices=['tablet-asian-man','welcome-woman','wave-asian-woman','arms-asian-man','arms-woman','arms-asian-woman','arms-purple-scarf-woman','arms-glenn-man','arms-glasses-man'];
+ const choices=['tablet-asian-man','welcome-woman','wave-asian-woman','arms-asian-man','arms-woman','arms-asian-woman','arms-purple-scarf-woman','arms-glenn-man','arms-glasses-man','arms-grace-woman','arms-kelven-man','arms-glasses-woman','arms-victoria-woman'];
  const key='has-pbb-sidebar-v1';
  for(const footer of document.querySelectorAll('.profile-sidebar .sidebar-airport,.has-sidebar .has-sidebar-bottom')){
   let image=footer.querySelector('#has-sidebar-employee');

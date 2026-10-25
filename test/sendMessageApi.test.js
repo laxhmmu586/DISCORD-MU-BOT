@@ -51,6 +51,11 @@ test('retains text/embed sanitization and ETAB suppression', async () => {
   assert.equal(skipped.fetches(), 0);
 });
 
+test('legacy briefing script calls cannot duplicate system-managed briefing posts',async()=>{
+ const h=harness();const res=await h.request({channelId:'1252032370920656907',file:file()});
+ assert.equal(res.body.skipped,true);assert.equal(h.fetches(),0);assert.equal(h.sends.length,0);
+});
+
 test('rejects malformed attachment data before accessing Discord', async () => {
   const invalidFiles = [null, {}, { ...file(), name: '../briefing.pdf' },
     { ...file(), name: 'briefing\n.pdf' }, { ...file(), name: 'briefing.txt' },

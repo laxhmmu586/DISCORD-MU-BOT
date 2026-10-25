@@ -1333,6 +1333,7 @@ const client =
 // ===============================
 // Jet Bridge checklist and restricted employee administration
 const pbbService = require('./pbb').registerPbb(app, { client });
+const briefingService = require('./briefingSchedule').createBriefingService({db:pbbService.store.db,client,exportPdf:require('./googleDrive').exportBriefingPdf});
 require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, profiles:pbbService.profiles, db: pbbService.store.db });
 const etabAdvisory = require('./etabAdvisory');
@@ -5260,6 +5261,8 @@ app.listen(
     );
     syncTodayReportSheets();
     visaMonitor.start();
+    pbbService.startWheelchairMail();
+    briefingService.start();
     setInterval(syncTodayReportSheets, 30 * 60 * 1000);
     runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err));
     setInterval(() => runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err)), 60 * 60 * 1000);
