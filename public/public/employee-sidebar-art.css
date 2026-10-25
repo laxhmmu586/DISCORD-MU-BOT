@@ -1,9 +1,9 @@
 /* Shared decorative employee artwork for the two workspace sidebar layouts. */
 .profile-sidebar,.has-dashboard-page .has-sidebar{overflow-y:auto}
 .profile-sidebar nav,.profile-sidebar .sidebar-airport,.has-sidebar-bottom{flex-shrink:0}
-.has-sidebar-employee{display:block;width:100%;max-width:156px;height:clamp(160px,32vh,290px);object-fit:contain;object-position:center bottom;margin:0 auto 14px}
-/* These wide canvases contain transparent side padding. Fill the same portrait
-   height as the original artwork while cropping only that empty padding. */
-.has-sidebar-employee:is([src*="sidebar-arms-grace-woman-"],[src*="sidebar-arms-kelven-man-"],[src*="sidebar-arms-glasses-woman-"],[src*="sidebar-arms-victoria-woman-"]){object-fit:cover}
+.has-sidebar-employee{display:block;width:100%;max-width:156px;height:auto;aspect-ratio:424 / 900;max-height:clamp(160px,32vh,290px);object-fit:contain;object-position:center bottom;margin:0 auto 14px}
+.has-sidebar-employee-frame{display:block;position:relative;overflow:hidden;width:100%;max-width:156px;height:auto;aspect-ratio:424 / 900;max-height:clamp(160px,32vh,290px);margin:0 auto 14px}
+.has-sidebar-employee-frame .has-sidebar-employee{position:absolute;left:50%;top:calc(-100% * var(--portrait-top));width:auto;max-width:none;height:calc(100% * var(--portrait-height));max-height:none;aspect-ratio:auto;margin:0;transform:translateX(calc(-100% * var(--portrait-center)))}
+.has-sidebar-employee-frame[hidden]{display:none}
 .has-sidebar-employee[hidden]{display:none}
-@media(max-height:650px),(max-width:760px){.has-sidebar-employee{display:none}}
+@media(max-height:650px),(max-width:760px){.has-sidebar-employee,.has-sidebar-employee-frame{display:none}}
