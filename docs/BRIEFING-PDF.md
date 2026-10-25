@@ -1,43 +1,31 @@
-# Briefing PDF attachments and schedule
+# System-managed briefing PDFs
 
-The `/send` API accepts an optional `file` object with `name`, `contentType:
-"application/pdf"`, and `base64`. It uploads the decoded bytes to Discord and
-returns `success`, `messageId`, and `attachmentCount`. Text and embed requests
-remain supported, including the existing ETAB suppression and boarding cleanup.
-The integration limits PDFs to 8 MiB and validates the filename, Base64 encoding,
-and `%PDF-` signature. This is a transport check, not a full PDF parser.
+The MUFC backend generates and sends both briefing PDFs itself. No Google Apps
+Script installation, synchronization, authorization, or trigger is required.
+The existing Google spreadsheet remains the data source; the system uses its
+existing Google service account connection to read it and export each tab.
 
-## Rollout
+Every day at UTC 15:49 (Los Angeles 08:49 PDT / 07:49 PST), the backend exports
+ARRIVAL and DEPARTURE, range A1:R67, as portrait Letter PDFs with single-page
+scaling and 0.10-inch margins. This replaces the landscape layout that left wide
+blank side areas. A restart after the scheduled time catches up the current day.
 
-1. Deploy the backend from this PR using the existing backend deployment process.
-   No dependency or environment variable changes are required. The default JSON
-   limit is already 60mb. If overridden, allow at least 12mb. The reverse proxy
-   must also allow 12 MiB requests (Nginx: `client_max_body_size 12m;`).
-2. Replace the original Google Apps Script with
-   [`scripts/apps-script/BriefingPDF.gs`](../scripts/apps-script/BriefingPDF.gs).
-   Existing spreadsheet, folder, channel IDs and entry functions are preserved.
-   PDFs use A1:R67, Letter portrait, fit to one page, 0.10-inch margins, and Drive backup.
-   Portrait matches the tall briefing tables and reduces the wide side gaps.
-   New files no longer explicitly enable public link sharing; folder inheritance
-   still applies. Discord receives a PDF attachment rather than a Drive link.
-3. Run `installBriefingPDFTrigger()` once in Apps Script and authorize it.
-   It installs a minute checker and does not immediately send messages.
-   Every day at UTC 15:49 it sends MU583 then MU586 to their existing channels:
-   Los Angeles 08:49 PDT / 07:49 PST. Google scheduling may be delayed;
-   the checker accepts a 15-minute catch-up window, through UTC 16:03.
-4. Remove previous briefing send triggers in the Apps Script trigger UI.
-   Installation replaces only this account's `scheduledBriefingPDFs` triggers;
-   it cannot remove another account's triggers. Use one installing account.
+- MU583 Arrival: Discord channel 1563411695936864447
+- MU586 Departure: Discord channel 1563411615351574528
 
-The script serializes scheduled execution with a lock and records each flight's
-daily attempt before sending. A failed flight does not prevent the other flight
-from sending. It does not automatically retry failures because a timed-out
-request may already have posted. Inspect execution logs and the channel before
-manually running `sendArrivalPDFtoDiscord()` or `sendDeparturePDFtoDiscord()`.
-Trigger status is stored in script properties under `BRIEFING_PDF_MU583_*` and
-`BRIEFING_PDF_MU586_*`. Each status is `sending`, `sent`, or `failed: ...`.
+Delivery state persists in briefing_deliveries in the existing system SQLite
+database. Completed flights are skipped across restarts. Export failures retry
+after five minutes without blocking the other flight. An ambiguous Discord send
+is reconciled against the bot's recent PDF attachments; it is never blindly
+resent. Unconfirmed deliveries remain uncertain for investigation.
 
-`testArrivalPDFOnly()` and `testDeparturePDFOnly()` generate Drive backups only.
-The other test entry points send real messages. `removeBriefingPDFTrigger()`
-removes the new schedule. Backend deployment does not install Google triggers;
-the Apps Script update and authorization are separate required steps.
+The /send endpoint ignores legacy Apps Script briefing uploads for the known
+briefing channels to prevent duplicate posts. Other text, embed, and PDF requests
+retain their existing behavior and 8 MiB PDF attachment limit.
+
+Deploy the backend through the existing process. The existing Google service
+account must have read access to spreadsheet
+1-BnQrtRj6-uTgoC89uj8zQ1dZTcSh96QFRH-_Tf4JEQ. The Discord bot must be able to view
+channel history and send attachments in the two destination channels.
+Old Google briefing triggers may be removed later, but the system does not rely
+on them and ignores their duplicate send requests.
