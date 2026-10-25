@@ -30,17 +30,15 @@ The generated sheets were separated into individual sprites, trimmed to their tr
 
 ## Shared workspace sidebar series
 
-Six additional full-body transparent WebP portraits are stored in the same asset folder:
+The sidebar uses only the eight user-supplied full-body portraits from October 25, 2026, encoded as transparent WebP files at 600 × 900 pixels. The previous sidebar portraits have been removed.
 
-- `sidebar-tablet-asian-man-v1.webp`
-- `sidebar-welcome-woman-v1.webp`
-- `sidebar-wave-asian-woman-v1.webp`
-- `sidebar-arms-asian-man-v1.webp`
-- `sidebar-arms-woman-v1.webp`
-- `sidebar-arms-asian-woman-v1.webp`
+- `sidebar-wave-glasses-woman-v2.webp`
+- `sidebar-welcome-grace-woman-v2.webp`
+- `sidebar-tablet-kelven-man-v2.webp`
+- `sidebar-thumbs-up-glasses-man-v2.webp`
+- `sidebar-welcome-glasses-man-v2.webp`
+- `sidebar-wave-glenn-man-v2.webp`
+- `sidebar-arms-victoria-woman-v2.webp`
+- `sidebar-arms-purple-scarf-woman-v2.webp`
 
-These were generated with the built-in image tool from the supplied full-body company employee illustration and the approved purple-scarf status portrait. Final prompt specifications: one three-person full-body series, in a row with transparent gutters, wearing charcoal suits, patterned purple ties or white/purple company scarves, gold nameplates and blue ID lanyards. The first series uses tablet-holding, welcoming and waving poses; the second series uses both arms folded across the chest for all three employees. Preserve complete hands, feet, adult proportions, soft studio lighting and the approved premium 3D character style; no text, UI, props beyond the first employee's tablet, scenery or background.
-
-The six sidebar poses cycle on page entry using session storage. Statistics refreshes, filter changes and chart resizing do not change the selected employee. The illustration stays above the sidebar brand at the bottom of the desktop sidebar. The existing mobile navigation hides the bottom area; short desktop viewports hide only the illustration so navigation remains available.
-
-The shared `employee-sidebar-art.js` and `employee-sidebar-art.css` also serve the five requested employee pages: `admin.html`, `profile.html`, `info.html`, `request.html`, and `read-sign.html`. They insert one decorative image above the existing bottom-left HAS brand and reuse the Dashboard session rotation key, so navigation between these pages advances the same six-image series. Initialization is idempotent, and unavailable session storage does not prevent a portrait from loading. Application APIs, authentication, employee identities, forms and navigation destinations are unchanged.
+The shared `employee-sidebar-art.js` and `employee-sidebar-art.css` cycle through all eight portraits on page entry across workspace sidebars. The selected image stays stable during page updates. Session storage advances the selection across pages, with a random choice when storage is unavailable. Initialization is idempotent. Mobile and short desktop viewports hide the artwork to keep navigation available. Versioned assets and page references refresh cached artwork.
