@@ -17,3 +17,9 @@ Storage uses the existing scoped has_reports SQLite table, with revision conflic
 Validation: `test/hasRecharge.test.js` covers permissions, scope, conflicts, monthly allocation reconciliation, WWH totals, defaults, edits/deletes and Excel round trips/layout. `test/hasRecharge.browser.cjs` covers the complete editable form, save/reload, dated blank forms, print signatures, linked WWH values and desktop/mobile layouts. Browser tests use mocked authentication and a temporary local database. Physical printers and production deployment are outside local verification.
 
 Monthly allocation guidance shows the allocated and charged totals for each category. Validation reports both totals and explains how to reconcile them or turn off Monthly charge for an ordinary daily charge.
+
+Unspecified flights default to MU586/MU583 in the summary, daily forms and Excel export. Existing nonempty flight entries and explicit saved summary overrides remain intact. Defaults do not create charge records or overwrite WWH inputs.
+
+The daily grid accepts Excel tab/newline pastes for names and rectangular cell ranges. Invalid hours or out-of-bounds pastes are rejected before any cells change. A selected cell exposes a green corner handle for copying its value down; Ctrl+D copies the cell above. Enter moves to the next row in the same column, Shift+Enter moves up, and Enter on the final row does not submit the form. Numeric spinner controls are hidden. Pasted names without charged hours are retained on save and in Excel.
+
+The general recharge reason and individual row remarks are independent. General reasons are never copied into row remarks. Legacy row text that exactly duplicates the general reason (ignoring newlines) is suppressed in the editor, print view and Excel export. Different legacy remarks remain intact; newly saved explicit remarks may match the general reason without being removed.
