@@ -5,7 +5,8 @@ function field(kind,row,column,formula){
  const comment=(column===2&&(row>=13&&row<=18||row>=20&&row<=25))||(column===1&&[32,39,48,51].includes(row))||(row===54&&column===2);
  const delay=row>=35&&row<=37&&[2,3,4,5,6,10].includes(column),safety=row>=42&&row<=46&&[2,3,4,6,10].includes(column);
  const editable=inputFormula||!formula&&(weekly||comment||delay||safety||row===4&&[16,17,18,19,28].includes(column));
- return {editable:Boolean(editable),formulaAllowed:weekly||delay&&column===5||row===4&&[16,17,18,19,28].includes(column),multiline:comment||delay&&[6,10].includes(column)||safety&&[4,6,10].includes(column),type:'text',inputFormula,displayDecimals:2};
+ const unit=row>=5&&row<=11&&column>=20&&column<=27?(column===21?'hours':'count'):undefined;
+ return {editable:Boolean(editable),formulaAllowed:weekly||delay&&column===5||row===4&&[16,17,18,19,28].includes(column),multiline:comment||delay&&[6,10].includes(column)||safety&&[4,6,10].includes(column),type:'text',inputFormula,displayDecimals:unit==='count'?0:2,...(unit?{unit}:{} )};
 }
 async function exportWorkbook(workbook){
  const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip'),zip=await JSZip.loadAsync(await workbook.xlsx.writeBuffer());
