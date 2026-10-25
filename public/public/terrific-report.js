@@ -2,7 +2,7 @@
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let data,selected=null,busy=false,historyVersion=0;
  const host=document.createElement('section');host.className='profile-panel personal-panel terrific-report';host.hidden=true;document.querySelector('#uniform-content').append(host);
- const api=async(path='',body)=>{const user=firebase.auth().currentUser;if(!user)throw Error('Sign in required.');const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/terrific-api'+path,{method:body?'POST':'GET',cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken(),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const result=await response.json();if(!response.ok)throw Object.assign(Error(result.error||'Unable to save report.'),{status:response.status});if(body)window.dispatchEvent(new Event('request-changed'));return result;};
+ const api=async(path='',body)=>{const user=firebase.auth().currentUser;if(!user)throw Error('Sign in required.');const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/terrific-api'+path,{method:body?'POST':'GET',cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken(),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const result=await response.json().catch(()=>({}));if(!response.ok)throw Object.assign(Error(result.error||'Unable to save report.'),{status:response.status});if(body)window.dispatchEvent(new Event('request-changed'));return result;};
  const labels=['Manager','General Manager','VP','Badge Coordinator'];
  let lines={};
  const numeric=new Set(['amount','companyCard','breakfast','lunch','dinner','sundry','days','dailyRate','foreignAmount','exchangeRate']);
@@ -29,13 +29,13 @@
  window.addEventListener('start-new-request',()=>{selected=data?.canCreate?blank():null;});
  window.addEventListener('open-report-request',async event=>{if(event.detail.kind!=='terrific')return;host.hidden=false;try{data=await api();selected=data.reports.find(r=>r.id===event.detail.id);if(!selected)throw Error('Request is no longer available. Refresh the list.');draw();host.scrollIntoView({block:'start'});}catch(e){host.textContent=e.message;}});
  const picker=document.querySelector('#request-type');
- function enableType(){if(!picker.querySelector('[value="terrific"]'))picker.add(new Option('Terrific Ten Distribution Form','terrific'));}
+ function enableType(unavailable=false){let option=picker.querySelector('[value="terrific"]');if(!option){option=new Option('Terrific Ten Distribution Form','terrific');picker.add(option);}option.disabled=unavailable;option.textContent='Terrific Ten Distribution Form'+(unavailable?' — temporarily unavailable':'');}
  picker.addEventListener('change',()=>{host.hidden=picker.value!=='terrific';if(!host.hidden&&data)draw();});
  firebase.auth().onAuthStateChanged(async user=>{
   if(!user){host.hidden=true;return;}
   let early=false;
-  if(window.requestProfileReady&&window.requestFormDefinitions){const profile=await window.requestProfileReady;data=window.requestFormDefinitions('terrific',profile);if(data.canCreate){early=true;enableType();if(picker.value==='terrific'){host.hidden=false;draw();}}}
+  if(window.requestProfileReady&&window.requestFormDefinitions){const profile=await window.requestProfileReady;if(profile){data=window.requestFormDefinitions('terrific',profile);if(data.canCreate){early=true;enableType();if(picker.value==='terrific'){host.hidden=false;draw();}}}}
   const version=historyVersion;try{const loaded=await api();if(version!==historyVersion)return;data=loaded;if(!data.canCreate&&!data.reports.length)return;enableType();if(early){updateHistory();if(selected)bindReportNodes(host,selected,data,{api,onSaved:async()=>{data=await api();selected=data.reports.find(report=>report.id===selected.id);draw();}});}else if(picker.value==='terrific'){host.hidden=false;draw();}}
-  catch(e){if(version!==historyVersion)return;if(early){data.historyLoading=false;data.historyError=true;updateHistory();}else if(e.status!==403)console.error('Report unavailable:',e.message);}
+  catch(e){if(version!==historyVersion)return;if(early){data.historyLoading=false;data.historyError=true;updateHistory();}else if(e.status!==403){enableType(true);document.querySelector('#uniform-status').textContent='Unable to connect. Some form types are temporarily unavailable. Please reload to retry.';}}
  });
 })();
