@@ -17,5 +17,6 @@ function applyExtraRows(sheet,counts={}){
  }
  const last=days(sheet).at(-1);if(last&&Object.values(counts).some(Boolean))sheet.pageSetup.printArea='A1:N'+(last.end+3);
 }
-function moveValues(values,at,count,model){return Object.fromEntries(Object.entries(values).map(([address,value])=>[move(address,at,count),typeof value==='string'&&value.startsWith('=')&&model.cells[address]?.formulaAllowed?'='+shiftFormula(value.slice(1),at,count):value]));}
+function removeFormula(formula,at){return formula.replace(/(\$?[A-Z]+\$?\d+):(\$?[A-Z]+\$?\d+)|(\$?[A-Z]+\$?\d+)/gi,(text,start,end,single)=>{const row=ref=>+ref.match(/\d+$/)[0],shift=ref=>ref.replace(/\d+$/,n=>String(+n>at?+n-1:+n));if(single)return row(single)===at?'#REF!':shift(single);if(row(start)===at&&row(end)===at)return '#REF!';return shift(start)+':'+end.replace(/\d+$/,n=>String(+n>=at?+n-1:+n));});}
+function moveValues(values,at,count,model){return Object.fromEntries(Object.entries(values).filter(([address])=>count>=0||coordinates(address).row!==at).map(([address,value])=>[move(address,at,count),typeof value==='string'&&value.startsWith('=')&&model.cells[address]?.formulaAllowed?'='+(count<0?removeFormula(value.slice(1),at):shiftFormula(value.slice(1),at,count)):value]));}
 module.exports={days,validateRows,applyExtraRows,moveValues,shiftFormula};
