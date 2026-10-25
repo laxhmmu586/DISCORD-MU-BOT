@@ -1333,6 +1333,12 @@ const client =
 // ===============================
 // Jet Bridge checklist and restricted employee administration
 const pbbService = require('./pbb').registerPbb(app, { client });
+const ldmCpmMail = require('./ldmCpmMail');
+const ldmCpmMailService = ldmCpmMail.createService({
+  db: pbbService.store.db,
+  getClient: require('./googleDrive').getNextDayInfoGmailClient,
+  channel: () => client.channels.fetch(ldmCpmMail.CHANNEL_ID)
+});
 const briefingService = require('./briefingSchedule').createBriefingService({db:pbbService.store.db,client,exportPdf:require('./googleDrive').exportBriefingPdf});
 require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, profiles:pbbService.profiles, db: pbbService.store.db });
@@ -1378,6 +1384,7 @@ client.once(
     );
     // Explicit cutover switch prevents duplicate posts while the Apps Script is still active.
     if (process.env.ETAB_ADVISORY_ENABLED === 'true') etabService.start();
+    ldmCpmMailService.start();
     refreshWchcAlerts().catch((err) => console.error('WCHC alert refresh failed:', err));
     setInterval(() => refreshWchcAlerts().catch((err) => console.error('WCHC alert refresh failed:', err)), 60 * 1000);
   }
