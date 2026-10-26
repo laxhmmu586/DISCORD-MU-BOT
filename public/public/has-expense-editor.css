@@ -1,0 +1,26 @@
+.report-editor.report-expense-mode{max-height:none;overflow:visible;border:0;background:transparent;border-radius:0}
+.expense-editor{color:#243b55;font:14px/1.5 Arial,sans-serif;max-width:1200px;margin:0 auto}
+.expense-editor h2{font-size:21px;margin:0 0 3px}.expense-period{color:#697c91;margin:0 0 20px}
+.expense-section{min-width:0;margin:0 0 16px;padding:22px;background:#fff;border:1px solid #dce4ed;border-radius:12px;box-sizing:border-box}
+.expense-section h3,.expense-section summary{font-size:15px;font-weight:700;margin:0;color:#243b55}
+.expense-section summary{cursor:pointer;list-style-position:inside}.expense-section[open] summary{margin-bottom:20px}
+.expense-section h3{margin-bottom:18px}.expense-fields{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+.expense-fields label{display:flex;flex-direction:column;gap:7px;min-width:0;font-size:12px;color:#5c7086}
+.expense-fields label:first-child{grid-column:span 3}.expense-fields label:nth-child(5){grid-column:span 4}
+.expense-editor :is(input,textarea){display:block;width:100%;min-width:0;min-height:40px;box-sizing:border-box;padding:9px 11px;border:1px solid #cbd6e2;border-radius:6px;background:#fff;color:#243b55;font:14px/1.5 Arial,sans-serif;resize:vertical;box-shadow:none}
+.expense-editor textarea{height:42px;min-height:42px;overflow:auto}.expense-editor :is(input,textarea):focus{outline:2px solid #397cca;outline-offset:-1px;border-color:#397cca}
+.expense-table-wrap{max-width:100%;overflow-x:auto;border:1px solid #dde5ed;border-radius:7px}
+.expense-table{border-collapse:collapse;width:100%;min-width:800px;table-layout:fixed;font-size:12px}
+.expense-table th{padding:10px;text-align:left;vertical-align:middle;font-weight:600;color:#586c81;background:#f5f7fa;border-bottom:1px solid #dce4ed;white-space:normal}
+.expense-table td{padding:6px;border-bottom:1px solid #e8edf3;vertical-align:top}.expense-table tr:last-child td{border-bottom:0}
+.expense-table td.expense-result{padding:15px 10px;color:#6c7c8c;background:#fafbfd;font-variant-numeric:tabular-nums}
+.expense-table :is(input,textarea){font-size:13px;padding:7px;min-height:37px;border-color:#e0e6ee;border-radius:4px}
+.expense-table textarea{height:38px;min-height:38px}.expense-table output{white-space:nowrap}
+.expense-add-line{margin:12px 0 0;padding:7px 12px;border:1px solid #cfdae5;border-radius:6px;background:#fff;color:#245c96;font:13px Arial,sans-serif;cursor:pointer}
+.expense-subtotals{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:24px;margin-top:16px;color:#65778b;font-size:12px}
+.expense-subtotals>span{display:flex;gap:12px}.expense-subtotals output{font-weight:700;color:#243b55}
+.expense-summary{background:#f8fafc}.expense-total-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.expense-total-grid label{display:flex;flex-direction:column;gap:6px;color:#63758a;font-size:12px}.expense-total-grid output{font-size:20px;font-weight:700;color:#243b55;font-variant-numeric:tabular-nums}
+.expense-editor [hidden]{display:none!important}.expense-editor [aria-invalid=true]{border-color:#b52323;outline-color:#b52323}
+@media(max-width:760px){.expense-section{padding:16px}.expense-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.expense-fields label:first-child,.expense-fields label:nth-child(5){grid-column:1/-1}.expense-total-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.expense-subtotals{justify-content:flex-start;gap:12px}.expense-subtotals>span{gap:6px}}
+@media(max-width:760px){.expense-table-wrap{border:0;overflow:visible}.expense-table{display:block;width:100%;min-width:0!important}.expense-table colgroup,.expense-table thead{display:none}.expense-table tbody{display:grid;gap:12px}.expense-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px;border:1px solid #dce4ed;border-radius:7px;background:#fafbfd}.expense-table td{display:block;min-width:0;padding:0;border:0}.expense-table td:first-child{grid-column:1/-1}.expense-table td::before{content:attr(data-label);display:block;margin-bottom:6px;font-size:12px;color:#63758a}.expense-table td.expense-result{padding:0}.expense-table :is(input,textarea){background:#fff;min-height:40px}.expense-fields input[type=date]{max-width:100%;width:100%;min-width:0}}
