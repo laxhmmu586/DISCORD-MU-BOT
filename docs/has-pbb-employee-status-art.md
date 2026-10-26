@@ -30,7 +30,7 @@ The generated sheets were separated into individual sprites, trimmed to their tr
 
 ## Shared workspace sidebar series
 
-The sidebar uses only the eight user-supplied full-body portraits from October 25, 2026, encoded as transparent WebP files at 600 × 900 pixels. The previous sidebar portraits have been removed.
+The sidebar uses only the ten user-supplied full-body portraits from October 25, 2026, encoded as transparent WebP files at 600 × 900 pixels. The previous sidebar portraits have been removed.
 
 - `sidebar-wave-glasses-woman-v2.webp`
 - `sidebar-welcome-grace-woman-v2.webp`
@@ -40,5 +40,7 @@ The sidebar uses only the eight user-supplied full-body portraits from October 2
 - `sidebar-wave-glenn-man-v2.webp`
 - `sidebar-arms-victoria-woman-v2.webp`
 - `sidebar-arms-purple-scarf-woman-v2.webp`
+- `sidebar-arms-white-tie-man-v2.webp`
+- `sidebar-welcome-blue-scarf-woman-v2.webp`
 
-The shared `employee-sidebar-art.js` and `employee-sidebar-art.css` cycle through all eight portraits on page entry across workspace sidebars. The selected image stays stable during page updates. Session storage advances the selection across pages, with a random choice when storage is unavailable. Initialization is idempotent. Mobile and short desktop viewports hide the artwork to keep navigation available. Versioned assets and page references refresh cached artwork.
+The shared `employee-sidebar-art.js` and `employee-sidebar-art.css` cycle through all ten portraits on page entry across workspace sidebars. The selected image stays stable during page updates. Session storage advances the selection across pages, with a random choice when storage is unavailable. Initialization is idempotent. Mobile and short desktop viewports hide the artwork to keep navigation available. Versioned assets and page references refresh cached artwork.

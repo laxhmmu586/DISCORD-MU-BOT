@@ -1,5 +1,5 @@
 (() => {
- const choices=["wave-glasses-woman","welcome-grace-woman","tablet-kelven-man","thumbs-up-glasses-man","welcome-glasses-man","wave-glenn-man","arms-victoria-woman","arms-purple-scarf-woman"];
+ const choices=["wave-glasses-woman","welcome-grace-woman","tablet-kelven-man","thumbs-up-glasses-man","welcome-glasses-man","wave-glenn-man","arms-victoria-woman","arms-purple-scarf-woman","arms-white-tie-man","welcome-blue-scarf-woman"];
  const key='has-pbb-sidebar-v2';
  for(const footer of document.querySelectorAll('.profile-sidebar .sidebar-airport,.has-sidebar .has-sidebar-bottom')){
   let image=footer.querySelector('#has-sidebar-employee');
