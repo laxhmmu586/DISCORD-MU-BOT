@@ -1,5 +1,5 @@
-/* Flight operations dashboard: Earth horizon and a single scrollable status rail. */
-body::before { background-image:url("mission-earth.png"); background-size:cover; background-position:center; }
+/* Flight operations dashboard: Airport check-in hall and a single scrollable status rail. */
+body::before { background-image:url("airport-counter-hd.png"); background-size:cover; background-position:center; }
 body::after { background:linear-gradient(180deg,rgba(0,5,15,.15),transparent 55%,rgba(0,6,16,.35)); }
 .topbar { height:66px; background:rgba(0,5,12,.87); }
 main { padding-top:66px; }

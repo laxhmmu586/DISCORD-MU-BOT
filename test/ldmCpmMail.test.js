@@ -53,3 +53,15 @@ test('only forwards newest receipt across pages and never backfills older mail',
   assert.deepEqual(sent, ['CPM LDM MU583\n\nnew']);
   db.close();
 });
+
+test('removes the LAXOPS signature and Swissport footer while preserving all SI data', async () => {
+  const operation = 'CPM\nMU0583/26OCT26\nSI\nBJ IN 36R/41L\nBT IN 34R/35L';
+  const disclaimer = 'Important Note: This email is confidential. If you have received this email by error, please notify the sender. Swissport International Ltd. disclaims any liability.';
+  for (const footer of ['Regards/LAXOPS/RA\n'+disclaimer, disclaimer, '  regards / LAXOPS / RA\n'+disclaimer]) {
+    const payload = {mimeType:'text/plain',body:{data:Buffer.from(operation+'\r\n\r\n'+footer).toString('base64url')}};
+    assert.equal(await bodyText(payload), operation);
+  }
+  const html = '<p>'+operation.replace(/\n/g,'<br>')+'</p><p>Regards/LAXOPS/RA</p><p>'+disclaimer+'</p>';
+  assert.equal(await bodyText({mimeType:'text/html',body:{data:Buffer.from(html).toString('base64url')}}),operation);
+  assert.equal(await bodyText({mimeType:'text/plain',body:{data:Buffer.from(operation).toString('base64url')}}),operation);
+});

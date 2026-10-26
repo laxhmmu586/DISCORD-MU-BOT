@@ -10,7 +10,7 @@ main{width:min(1020px,calc(100% - 40px));margin:0 auto 32px;gap:18px}
 .heading-icon{flex:none;display:grid;place-items:center;width:66px;height:66px;border-radius:14px;color:var(--brand);background:#e8f2ff;font-size:32px}
 h1{font-size:clamp(22px,2.8vw,30px);line-height:1.2;letter-spacing:-.035em;margin:0 0 9px}
 .scan-heading p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
-.earth-banner{position:absolute;right:-26px;top:-30px;bottom:0;width:44%;height:auto;pointer-events:none;background:url('/assets/earth-night-background.png') center 62%/cover no-repeat;mask-image:linear-gradient(90deg,transparent,#000 38%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 38%)}
+.earth-banner{position:absolute;right:-26px;top:-30px;bottom:0;width:44%;height:auto;pointer-events:none;background:url('/assets/airport-counter-hd.png') center 62%/cover no-repeat;mask-image:linear-gradient(90deg,transparent,#000 38%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 38%)}
 .scan-heading{max-width:100%}.scan-heading>.heading-icon,.scan-heading>div:not(.earth-banner){position:relative;z-index:1}.scan-heading>div:not(.earth-banner){max-width:78%}
 .scan-heading h1,.scan-heading p{text-shadow:0 1px 8px white,0 0 18px white}
 .camera-wrap{border:2px solid #168aff;background:radial-gradient(ellipse,#122d43,#03111f);box-shadow:0 0 0 3px #e2f2ff,0 0 16px #278fff55;min-height:120px}

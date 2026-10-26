@@ -1,0 +1,10 @@
+/* Request and Report share their table and expense-card presentation. */
+.request-report-editor { margin: 20px 0; }
+.request-report-editor .expense-fields > label { margin: 0; min-width: 0; }
+.request-report-editor .expense-fields :is(input,textarea) { display:block; width:100%; margin-top:8px; }
+.request-report-editor > button { margin: 8px 8px 8px 0; }
+.request-report-editor .expense-table th { white-space:nowrap; }
+.request-terrific-sheet { max-height:none; }
+.request-terrific-sheet th { padding:12px 8px; border:1px solid #bcc9d8; text-align:left; background:#f2f6fb; }
+.request-terrific-sheet textarea { min-height:64px; }
+.request-report-editor :is(input,textarea):disabled { opacity:1; color:#243b55; }
