@@ -87,7 +87,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  require('./expenseReports').registerExpenseReports(app,{employees,profiles,authenticate});
  require('./terrificReports').registerTerrificReports(app,{employees,profiles,authenticate});
  const readSignService=require('./readSign').registerReadSign(app,{employees,profiles,authenticate});
- require('./employees').registerEmployees(app,{store:employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
+ require('./employees').registerEmployees(app,{store:employees,authenticate,profiles,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  store.db.exec('CREATE TABLE IF NOT EXISTS pbb_guest_sessions (token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, expires INTEGER NOT NULL)');
  app.post('/pbb-api/session',(_req,res)=>{const token='pbb_guest_'+crypto.randomBytes(32).toString('hex'),uid='guest-'+crypto.randomUUID(),expires=Date.now()+86400000;store.db.prepare('DELETE FROM pbb_guest_sessions WHERE expires<?').run(Date.now());store.db.prepare('INSERT INTO pbb_guest_sessions VALUES(?,?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),uid,expires);res.set('Cache-Control','no-store').json({token,uid,expires});});
  const streams=new Map(),jobs=new Map(),lobbyStreams=new Set();
