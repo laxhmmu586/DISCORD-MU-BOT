@@ -2003,7 +2003,11 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
       const range = text.match(/BOARDING NUMBER RANGE:\s*(\d{1,3})\s*--?\s*(\d{1,3})\b/i);
       const deletion = text.match(/(\d+)\s+BOARDING NUMBER\(S\) DELETED:\s*\n((?:[ \t]*\d[^\n]*\n?)*)/i);
       const removed = [];
-      let validDeletion = Boolean(deletion);
+      // With no deleted BNs the terminal omits the deletion block entirely.
+      // NONLAX marks the next field, so a range-only truncated response still
+      // cannot masquerade as a complete snapshot with zero deletions.
+      const noDeletions = !/BOARDING NUMBER\(S\) DELETED/i.test(text) && /^\s*NONLAX:/im.test(text);
+      let validDeletion = Boolean(deletion) || noDeletions;
       // BND compresses consecutive deleted BNs, e.g. 72-76 means five passes.
       for (const token of (deletion?.[2] || '').trim().split(/\s+/).filter(Boolean)) {
         const numbers = token.match(/^(\d{1,3})(?:-(\d{1,3}))?$/);
@@ -2012,7 +2016,7 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
         for (let bn = first; bn <= last; bn++) removed.push(bn);
       }
       const start = Number(range?.[1]), end = Number(range?.[2]);
-      if (range && start > 0 && end >= start && validDeletion && removed.length === Number(deletion[1])
+      if (range && start > 0 && end >= start && validDeletion && removed.length === (noDeletions ? 0 : Number(deletion?.[1]))
         && new Set(removed).size === removed.length && removed.every(bn => bn >= start && bn <= end)) {
         bnd = { start, end, removed, ts: parseSectionTimestamp(section.timestamp) };
       }
