@@ -30,15 +30,15 @@ async function exportForm(model){
   if(typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&/[dy]/i.test(cell.numFmt))value=(Date.parse(value)-Date.UTC(1899,11,30))/86400000;
   const contents=cell.formula?'<f>'+escape(cell.formula)+'</f>'+(typeof value==='number'?'<v>'+value+'</v>':'<v>'+escape(value)+'</v>'):typeof value==='number'?'<v>'+value+'</v>':'<is><t xml:space="preserve">'+escape(value??'')+'</t></is>';
   const type=cell.formula?(typeof value==='number'?'':' t="e"'):typeof value==='number'?'':' t="inlineStr"';
-  const pattern=new RegExp('<c\\b([^>]*\\br="'+address+'"[^>]*)(?:/>|>[\\s\\S]*?</c>)');
+  const pattern=new RegExp('<c\\b([^>]*\\br="'+address+'"[^>]*?)(?:/>|>[\\s\\S]*?</c>)');
   if(pattern.test(xml))xml=xml.replace(pattern,(_,attrs)=>'<c'+attrs.replace(/\/$/,'').replace(/\s+t="[^"]*"/g,'')+type+'>'+contents+'</c>');
   else xml=xml.replace(new RegExp('(<row\\b[^>]*\\br="'+address.match(/\d+/)[0]+'"[^>]*>)([\\s\\S]*?)(</row>)'),(_,start,body,end)=>start+body+'<c r="'+address+'"'+type+'>'+contents+'</c>'+end);
  }
  // Newly populated cells must retain ascending column order for Excel.
  xml=xml.replace(/(<row\b[^>]*>)([\s\S]*?)(<\/row>)/g,(_,start,body,end)=>{
-  const cells=body.match(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/g)||[];
+  const cells=body.match(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g)||[];
   const column=cell=>[...cell.match(/\br="([A-Z]+)\d+"/)[1]].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0);
-  return start+cells.sort((a,b)=>column(a)-column(b)).join('')+body.replace(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/g,'')+end;
+  return start+cells.sort((a,b)=>column(a)-column(b)).join('')+body.replace(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g,'')+end;
  });
  zip.file(name,xml);return zip.generateAsync({type:'nodebuffer'});
 }

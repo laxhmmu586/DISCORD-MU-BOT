@@ -1,6 +1,13 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),Excel=require('exceljs'),express=require('express'),Database=require('better-sqlite3');
 const forms=require('../hasReportForms'),{registerHasReports}=require('../hasReports'),{calculate}=require('../public/public/has-report-math');
 const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip');
+test('every editable form cell survives export, including empty styled cells and later lines',async()=>{
+ for(const kind of forms.kinds){const model=await forms.template(kind,'2026-10',{}),expected={};
+  for(const [address,cell] of Object.entries(model.cells))if(cell.editable)expected[address]=cell.value=cell.formulaAllowed?1.25:'Entry '+address;
+  const book=new Excel.Workbook();await book.xlsx.load(await forms.exportForm(model));
+  for(const [address,value] of Object.entries(expected))assert.equal(book.worksheets[0].getCell(address).value,value,kind+' '+address);
+ }
+});
 test('forms retain template structure and formulas with blank private inputs',async()=>{
  for(const kind of forms.kinds){
   const model=await forms.template(kind,'2026-10',{station:'LAX',account:'MU'});
