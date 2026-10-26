@@ -2,6 +2,9 @@
  const choices=["wave-glasses-woman","welcome-grace-woman","tablet-kelven-man","thumbs-up-glasses-man","welcome-glasses-man","wave-glenn-man","arms-victoria-woman","arms-purple-scarf-woman","arms-white-tie-man","welcome-blue-scarf-woman"];
  const key='has-pbb-sidebar-v2';
  for(const footer of document.querySelectorAll('.profile-sidebar .sidebar-airport,.has-sidebar .has-sidebar-bottom')){
+  if(!footer.parentElement.querySelector('.sidebar-pbb-checklist')){
+   const link=document.createElement('a');link.className='sidebar-pbb-checklist';link.href='/has-pbb.html';link.textContent='PBB checklist';footer.before(link);
+  }
   let image=footer.querySelector('#has-sidebar-employee');
   if(image?.dataset.employeeArtInitialized==='true')continue;
   if(!image){image=document.createElement('img');image.id='has-sidebar-employee';footer.prepend(image);}

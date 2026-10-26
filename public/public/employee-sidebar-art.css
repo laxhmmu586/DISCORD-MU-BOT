@@ -1,7 +1,12 @@
 /* Shared decorative employee artwork for the two workspace sidebar layouts. */
 .profile-sidebar,.has-dashboard-page .has-sidebar{overflow-y:auto}
 .profile-sidebar nav,.profile-sidebar .sidebar-airport,.has-sidebar-bottom{flex-shrink:0}
+.sidebar-pbb-checklist{display:flex;align-items:center;justify-content:center;flex-shrink:0;margin:auto 0 16px;padding:11px 12px;border:1px solid #b9d6fa;border-radius:8px;background:#edf5ff;color:#1763ab;font-size:12px;font-weight:600;text-decoration:none}
+.sidebar-pbb-checklist:hover{background:#deedff;border-color:#83b9f4}
+.sidebar-pbb-checklist:focus-visible{outline:2px solid #087cff;outline-offset:3px}
+.profile-sidebar .sidebar-pbb-checklist + .sidebar-airport,.sidebar-pbb-checklist + .has-sidebar-bottom{margin-top:0}
 /* Compensate for the transparent sides of the 600 x 900 portraits. */
 .has-sidebar-employee{display:block;position:relative;left:50%;transform:translateX(-50%);width:calc(100% + 64px);max-width:200px;height:clamp(160px,32vh,290px);object-fit:contain;object-position:center bottom;margin:0 0 14px}
 .has-sidebar-employee[hidden]{display:none}
 @media(max-height:650px),(max-width:760px){.has-sidebar-employee{display:none}}
+@media(max-width:760px){.profile-sidebar:has(>.sidebar-pbb-checklist){flex-direction:row;gap:6px;align-items:center}.profile-sidebar:has(>.sidebar-pbb-checklist) nav{flex:1;min-width:0}.sidebar-pbb-checklist{margin:0;padding:9px 10px;font-size:11px}.has-sidebar>.sidebar-pbb-checklist{margin-top:8px}}

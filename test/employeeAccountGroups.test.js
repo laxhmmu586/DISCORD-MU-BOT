@@ -18,15 +18,18 @@ test('accounts persist empty, reject duplicates and can only be deleted while em
  const cleared=f.store.get();cleared.employees=cleared.employees.filter(e=>e.id!=='new');f.store.save(cleared,admin);r=await f.request('/accounts/delete',{revision:f.store.get().revision,station:'LAX',account:'ZZ'});assert.equal(r.status,200);assert(!r.data.accounts.some(a=>a.account==='ZZ'));assert.equal(r.data.employees.length,before.employees.length);
  for(const scope of [{station:'HQ',account:'HQ'},{station:'bad space',account:'MU'}])assert.equal((await f.request('/accounts',{revision:r.data.revision,...scope})).status,400);
 });
-test('Business Manager can read the own-account card but only edit own Agents PBB fields',async t=>{
+test('Business Manager edits existing own-account employees but cannot add, reassign or promote them',async t=>{
  const f=await fixture(t),email='manager@example.test',view=(await f.request('',undefined,email)).data;
- assert.deepEqual(view.accounts,[{station:'LAX',account:'MU'}]);assert.deepEqual(view.employees.map(e=>e.id),['manager','supervisor','agent']);assert.equal(view.access.mode,'business-manager');
- const agent=view.employees.find(e=>e.id==='agent'),saved=await f.request('',{revision:view.revision,employees:[{...agent,name:'FORGED NAME',eid:'99999',station:'SFO',pbbId:'PBB-TEST',pbbExpiry:'2027-10-22'}]},email);assert.equal(saved.status,200);const actual=f.store.get().employees.find(e=>e.id==='agent');assert.equal(actual.name,agent.name);assert.equal(actual.eid,agent.eid);assert.equal(actual.station,'LAX');assert.equal(actual.pbbId,'PBB-TEST');
- for(const id of ['hq','supervisor','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED',pbbExpiry:'2027-10-22'}]},email)).status,403,id);
+ assert.deepEqual(view.accounts,[{station:'LAX',account:'MU'}]);assert.deepEqual(view.employees.map(e=>e.id),['manager','supervisor','agent']);assert.equal(view.access.canAddEmployee,false);assert.equal(view.access.canAssignAccounts,false);
+ const agent=view.employees.find(e=>e.id==='agent');let saved=await f.request('',{revision:view.revision,employees:[{...agent,name:'UPDATED NAME',nickname:'New',pbbId:'PBB-TEST',pbbExpiry:'2027-10-22'}]},email);assert.equal(saved.status,200);assert.equal(f.store.get().employees.find(e=>e.id==='agent').name,'UPDATED NAME');
+ for(const patch of [{station:'SFO'},{additionalAccounts:[{station:'SFO',account:'MU'}]},{position:'Business Manager'},{loginId:'lake@mu.com'}])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{...agent,...patch}]},email)).status,403);
+ for(const id of ['hq','other','station','unknown'])assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{id,pbbId:'FORGED'}]},email)).status,403,id);
+ const supervisor=view.employees.find(e=>e.id==='supervisor');assert.equal((await f.request('',{revision:f.store.get().revision,employees:[{...supervisor,nickname:'Updated supervisor'}]},email)).status,200);
  for(const path of ['/accounts','/accounts/delete'])assert.equal((await f.request(path,{revision:f.store.get().revision,station:'LAX',account:'ZZ'},email)).status,403);
  assert.equal((await f.request('',undefined,'agent@example.test')).status,403);
- const changed=f.store.get();changed.employees.find(e=>e.id==='manager').position='Agent';f.store.save(changed,admin);assert.equal((await f.request('',undefined,email)).status,403,'Revocation applies to the next request');
+ const changed=f.store.get();changed.employees.find(e=>e.id==='manager').position='Agent';f.store.save(changed,admin);assert.equal((await f.request('',undefined,email)).status,403);
 });
+
 test('HeadQuarter titles do not create normal account groups or leak into Business Manager views',()=>{
  const db=new Database(':memory:');try{const store=createEmployeeStore(db,{seed:[{id:'hq',position:'President',name:'HQ FIXTURE',station:'LAX',account:'MU',attach:false,detach:false,spotter:false}]});assert.deepEqual(store.get().accounts,[]);}finally{db.close();}
 });
@@ -41,20 +44,12 @@ test('one employee may belong to three accounts without duplication and addition
  forged.employees.find(e=>e.id==='agent').additionalAccounts=Array(3).fill({station:'LAX',account:'XX'});assert.throws(()=>store.save(forged,admin),/at most/);
 });
 
-test('Business Manager checks an EID and explicitly links an existing Agent rather than duplicating identity',async t=>{
- const {store,request}=await fixture(t),email='manager@example.test';let data=store.get();data.employees.forEach((e,i)=>e.eid=String(9000+i));store.save(data,admin);const target=store.get().employees.find(e=>e.id==='other'),before={...target};
- let checked=await request('/employee-check',{station:'LAX',account:'MU',eid:target.eid},email);assert.equal(checked.status,200);assert.equal(checked.data.existing.slot,'second');assert.deepEqual(Object.keys(checked.data.existing).sort(),['alreadyMember','eid','full','id','name','slot']);
- let result=await request('/add-employee',{station:'LAX',account:'MU',eid:target.eid,revision:checked.data.revision},email);assert.equal(result.status,409,'Existing employee requires confirmation');
- result=await request('/add-employee',{station:'LAX',account:'MU',eid:target.eid,revision:checked.data.revision,existingId:target.id,name:'FORGED'},email);assert.equal(result.status,200);assert(result.data.employees.some(e=>e.id===target.id));let actual=store.get().employees.find(e=>e.id===target.id);assert.equal(actual.name,before.name);assert.equal(actual.loginId,before.loginId);assert.equal(actual.id,before.id);assert.deepEqual(actual.additionalAccounts,[{station:'LAX',account:'MU'}]);assert.equal(store.get().employees.length,6);
- checked=await request('/employee-check',{station:'LAX',account:'MU',eid:target.eid},email);assert.equal(checked.data.existing.alreadyMember,true);
- assert.equal((await request('/employee-check',{station:'SFO',account:'MU',eid:target.eid},email)).status,403);assert.equal((await request('/employee-check',{station:'LAX',account:'MU',eid:target.eid},'agent@example.test')).status,403);
- data=store.get();data.employees.find(e=>e.id==='manager').additionalAccounts=[{station:'SFO',account:'MU'}];store.save(data,admin);checked=await request('/employee-check',{station:'SFO',account:'MU',eid:target.eid},email);assert.equal(checked.status,403);assert.equal((await request('/add-employee',{station:'SFO',account:'MU',eid:target.eid,existingId:target.id,revision:store.get().revision},email)).status,403);assert.equal(store.get().employees.find(e=>e.id===target.id).additionalAccounts.length,1);checked=await request('/employee-check',{station:'SFO',account:'MU',eid:target.eid});assert.equal((await request('/add-employee',{station:'SFO',account:'MU',eid:target.eid,existingId:target.id,revision:checked.data.revision})).status,200);
- store.changeAccount({revision:store.get().revision,station:'ORD',account:'TEST'},admin);checked=await request('/employee-check',{station:'ORD',account:'TEST',eid:target.eid});assert.equal(checked.data.existing.full,true);assert.equal((await request('/add-employee',{station:'ORD',account:'TEST',eid:target.eid,existingId:target.id,revision:checked.data.revision})).status,409);
- checked=await request('/employee-check',{station:'LAX',account:'MU',eid:'99999'},email);assert.equal(checked.data.existing,null);assert.equal((await request('/add-employee',{station:'LAX',account:'MU',eid:'99999',revision:checked.data.revision,name:'NEW FICTIONAL AGENT',position:'President'},email)).status,200);assert.equal(store.get().employees.find(e=>e.eid==='99999').position,'Agent');
- assert.equal((await request('/add-employee',{station:'LAX',account:'MU',eid:'99998',revision:checked.data.revision,name:'STALE'},email)).status,409);
- data=store.get();data.employees.find(e=>e.id==='agent').eid=target.eid;store.save(data,admin);assert.equal((await request('/employee-check',{station:'LAX',account:'MU',eid:target.eid},email)).status,409,'Ambiguous EID fails closed');
+test('Business Manager cannot create employees or attach existing employees through either add endpoint',async t=>{
+ const f=await fixture(t),email='manager@example.test',before=f.store.get();
+ for(const eid of ['99999','00123'])for(const path of ['/employee-check','/add-employee'])assert.equal((await f.request(path,{station:'LAX',account:'MU',eid,name:'NEW EMPLOYEE',existingId:'other',revision:before.revision},email)).status,403);
+ assert.equal((await f.request('',{revision:before.revision,employees:[{id:'new',position:'Agent',name:'NEW EMPLOYEE',station:'LAX',account:'MU'}]},email)).status,403);
+ assert.deepEqual(f.store.get(),before);
 });
-
 
 test('Supervisor edits all lower-level employee information and account assignments within the original scope',async t=>{
  const f=await fixture(t),email='supervisor@example.test',view=(await f.request('',undefined,email)).data;

@@ -2,7 +2,7 @@ const {randomUUID}=require('node:crypto');
 const path=require('node:path');
 const {reportMonth}=require('./hasReportCalendar');
 const detailFields=['B9','F9','I9','M9','P9','S9','B10','F10','I10','M10','P10','S10','B12','F12','I12','M12','P12','S12','B13','F13','I13','M13','P13','S13','A17','A18','A19'];
-const DEFAULT_FLIGHT='MU586/MU583';
+const DEFAULT_FLIGHT='';
 function summaryFlight(entries,flights,day){return flights[day]??([...new Set(entries.filter(e=>e.day===day).map(e=>e.flight).filter(Boolean))].join('/')||DEFAULT_FLIGHT);}
 const categories=['ST','T5','DT','TRAIN'],roles=['Agent','Supervisor','Duty Manager'];
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
