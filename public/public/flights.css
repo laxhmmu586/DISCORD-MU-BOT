@@ -19,5 +19,5 @@
 
 .flight-plane.flight-pbb-link{transform:none;color:#c6e6ff;width:34px;height:34px}.flight-pbb-link svg{stroke-width:3;fill:none}
 
-/* Keep loading text over the empty foreground, above the service links. */
-.flight-loading>span{position:absolute;left:50%;top:min(82%,calc(100% - 180px));transform:translate(-50%,-50%);white-space:nowrap}
+/* Center loading text in the viewport. */
+.flight-loading>span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap}
