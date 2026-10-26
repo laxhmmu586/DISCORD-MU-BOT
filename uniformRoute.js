@@ -3,12 +3,13 @@ const positions=require('./public/public/employee-positions');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 function nodes(record){return record.stages.map((position,i)=>({id:record.nodeIds?.[i]||'legacy-'+i,position,employeeId:record.assignees?.[i]||null,selectionRequired:(record.selectionNodeIds||[]).includes(record.nodeIds?.[i]),required:record.requiredNodeIds?record.requiredNodeIds.includes(record.nodeIds[i]):true}));}
 function template(workflow){return workflow.stages.map((position,i)=>({id:'template-'+workflow.revision+'-'+i,position,employeeId:null,required:true,selectionRequired:workflow.selectNextApprover===true&&i===1}));}
-function validate(input,{base,completed=0,employees,approvals=[]}){
+function validate(input,{base,completed=0,employees,approvals=[],requester}){
  if(!Array.isArray(input)||!input.length||input.length>positions.maxWorkflowStages)fail('Choose 1–20 approval nodes.');
  const ids=new Set(),assigned=new Set(),required=base.filter(n=>n.required),rows=employees.get().employees;
- const result=input.map(n=>{const id=String(n.id||crypto.randomUUID()),position=n.position,employeeId=n.employeeId||null;
+ const result=input.map((n,i)=>{const id=String(n.id||crypto.randomUUID()),position=n.position,employeeId=n.employeeId||null;
   if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||!positions.valid(position))fail('Check approval node references and positions.');ids.add(id);
   if(employeeId&&(!rows.some(e=>e.id===employeeId&&e.name)||assigned.has(employeeId)))fail('Choose existing, distinct employees for approval nodes.');
+  if(requester&&i>=completed&&employeeId&&!require('./approvalAccountScope').eligible(position,rows.find(e=>e.id===employeeId),requester,employees))fail('Choose the Business Manager from the requester Main Account.',403);
   if(employeeId)assigned.add(employeeId);
   const selectionRequired=base.some(b=>b.id===id&&b.selectionRequired);if(selectionRequired&&!employeeId)fail('Select the next uniform approver after Business Manager.');return {id,position,employeeId,required:required.some(b=>b.id===id),selectionRequired};
  });

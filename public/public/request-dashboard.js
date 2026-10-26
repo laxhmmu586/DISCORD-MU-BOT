@@ -5,7 +5,7 @@
  content.before(tabs);document.querySelector('.my-approvals-entry')?.remove();
  const panel=document.createElement('section');panel.className='profile-panel personal-panel request-dashboard-list';panel.hidden=true;content.before(panel);
  let active='new',data=window.RequestInbox?.data,openedLink=false;
- function clearDetail(){legacy.hidden=true;content.querySelectorAll('.incident-report,.expense-report,.terrific-report').forEach(h=>h.hidden=true);document.querySelector('#uniform-new-request').hidden=true;}
+ function clearDetail(){legacy.hidden=true;content.querySelectorAll('.incident-report,.expense-report,.terrific-report,.new-access-report').forEach(h=>h.hidden=true);document.querySelector('#uniform-new-request').hidden=true;}
  function choose(key){active=key;clearDetail();tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.requestTab===key)));picker.hidden=key!=='new';content.hidden=key!=='new';panel.hidden=key==='new';if(key==='new'){document.querySelector('#request-type').value='';window.dispatchEvent(new Event('start-new-request'));}draw();}
  function openRecord(kind,r){clearDetail();content.hidden=false;picker.hidden=true;if(kind==='uniform'){legacy.hidden=false;window.dispatchEvent(new CustomEvent('open-uniform-request',{detail:r.id}));}else window.dispatchEvent(new CustomEvent('open-report-request',{detail:{kind,id:r.id}}));}
  function draw(){
@@ -13,7 +13,7 @@
   const employeeId=data.profileId,rows=data.rows;
   const sets={pending:rows.filter(({r})=>r.canReview),mine:rows.filter(({r})=>r.employee?.id===employeeId),approved:rows.filter(({r})=>(r.approvals||[]).some(a=>a.employeeId===employeeId&&a.action==='approve')||(r.history||[]).some(h=>h.approvals?.some(a=>a.employeeId===employeeId&&a.action==='approve')))};
   for(const key of ['pending','mine','approved'])tabs.querySelector(`[data-count="${key}"]`).textContent=sets[key].length+(key==='pending'?' awaiting review':' requests');
-  for(const key of ['pending','mine']){const count=key==='pending'?sets.pending.length:sets.mine.filter(({r})=>r.needsRevision).length,alert=tabs.querySelector('[data-request-tab='+key+'] .request-card-alert');alert.hidden=!count;alert.setAttribute('aria-label',count+(key==='pending'?' requests awaiting your review':' requests returned for revision'));}
+  for(const key of ['pending','mine']){const count=key==='pending'?sets.pending.length:sets.mine.filter(({r})=>r.needsRevision||r.canComplete).length,alert=tabs.querySelector('[data-request-tab='+key+'] .request-card-alert');alert.hidden=!count;alert.setAttribute('aria-label',count+(key==='pending'?' requests awaiting your review':' requests requiring your action'));}
   if(active==='new')return;panel.replaceChildren();const heading=document.createElement('div');heading.className='profile-panel-title';const h=document.createElement('h2');h.textContent={pending:'Pending approvals',mine:'My requests',approved:'My approvals'}[active];const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Refresh';refresh.onclick=()=>window.RequestInbox.load().catch(()=>{});heading.append(h,refresh);panel.append(heading);
   const errors=data.groups.filter(g=>g.error);if(errors.length){const p=document.createElement('p');p.setAttribute('role','alert');p.textContent='Unable to load: '+errors.map(g=>g.name).join(', ')+'. Use Refresh to retry.';panel.append(p);}
   for(const {kind,r} of sets[active]){
@@ -22,7 +22,7 @@
    const actionLabel=document.createElement('span');actionLabel.className='request-action-label';actionLabel.textContent='Action';
    const value=document.createElement('span');value.className='request-action-value';
    if(r.status==='pending'&&!r.needsRevision){value.classList.add('request-case-status');const ring=document.createElement('span');ring.className='request-status-ring';ring.setAttribute('aria-hidden','true');value.append(ring);}
-   value.append(document.createTextNode(r.needsRevision?'Returned for revision':({pending:'In Progress',approved:'Approved',rejected:'Rejected',draft:'Draft'}[r.status]||r.status)));
+   value.append(document.createTextNode(r.needsRevision?'Returned for revision':({pending:'In Progress',approved:kind==='new-access'?'Awaiting requester completion':'Approved',completed:'Completed',rejected:'Rejected',draft:'Draft'}[r.status]||r.status)));
    action.append(actionLabel,value);
    const button=document.createElement('button');button.type='button';button.className='request-summary-row';
    const title=document.createElement('strong');title.textContent=RequestInbox.title(kind,r);button.append(title);button.onclick=()=>openRecord(kind,r);

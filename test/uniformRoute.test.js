@@ -16,7 +16,7 @@ test('Manager is intermediate when higher stages follow, and templates support m
  r=store.decide(users[2],r.id,{revision:r.revision,action:'approve'});assert.equal(r.status,'approved');assert.equal(r.manager.id,'e2');
 });
 test('requester selects named people before submission and only the assigned person may review',t=>{
- const {store,users}=fixture(t),data=store.list(users[0]),route=routeTools.template(data.workflow);route[0].employeeId='e2';route[1].employeeId='e3';route.push(add('Regional Manager','e4'));
+ const {store,users}=fixture(t),data=store.list(users[0]),route=routeTools.template(data.workflow);route[0].employeeId='e2';route[0].position='Supervisor';route[1].employeeId='e3';route.push(add('Regional Manager','e4'));
  let r=store.create(users[0],{...body(),route,workflowRevision:data.workflow.revision});
  assert.deepEqual(r.nextApprovers.map(e=>e.id),['e2']);assert.throws(()=>store.decide(users[1],r.id,{revision:1,action:'approve'}),e=>e.status===403);
  r=store.decide(users[2],r.id,{revision:1,action:'approve'});r=store.decide(users[3],r.id,{revision:2,action:'approve'});assert.equal(r.status,'pending');r=store.decide(users[4],r.id,{revision:3,action:'approve'});assert.equal(r.status,'approved');
@@ -25,7 +25,7 @@ test('pending node edits preserve completed/default nodes, enforce ownership/rev
  const {store,users}=fixture(t);let r=store.create(users[0],body());r=store.decide(users[1],r.id,{revision:1,action:'approve'});const original=routeTools.nodes(r);
  const bad=structuredClone(original);bad[0].employeeId='e2';assert.throws(()=>store.updateRoute(users[0],r.id,{revision:2,route:bad}),/Completed/);
  assert.throws(()=>store.updateRoute(users[0],r.id,{revision:2,route:original.slice(0,1)}),/default/);
- const edited=structuredClone(original);edited[1].employeeId='e2';edited.push(add('Regional Manager','e4'));
+ const edited=structuredClone(original);edited[1].employeeId='e2';edited[1].position='Supervisor';edited.push(add('Regional Manager','e4'));
  assert.throws(()=>store.updateRoute(users[3],r.id,{revision:2,route:edited}),e=>e.status===403);
  assert.throws(()=>store.updateRoute(users[0],r.id,{revision:1,route:edited}),e=>e.status===409);
  r=store.updateRoute(users[0],r.id,{revision:2,route:edited});assert.deepEqual(r.approvals.map(a=>a.employeeId),['e1']);assert.equal(r.routeHistory.length,1);assert.equal(r.routeHistory[0].name,'EXAMPLE 0');assert.equal(r.routeHistory[0].after[1].name,'EXAMPLE 2');assert.deepEqual(r.nextApprovers.map(e=>e.id),['e2']);assert.equal(store.list(users[3]).requests.length,0);
@@ -33,19 +33,19 @@ test('pending node edits preserve completed/default nodes, enforce ownership/rev
 });
 test('custom routes reject forged/deleted/duplicate people, removed defaults and stale templates',t=>{
  const {store,users}=fixture(t),route=routeTools.template(store.workflow());route[0].employeeId='missing';assert.throws(()=>store.create(users[0],{...body(),workflowRevision:store.workflow().revision,route}),/existing/);
- route[0].employeeId='e1';route[1].employeeId='e1';assert.throws(()=>store.create(users[0],{...body(),workflowRevision:store.workflow().revision,route}),/distinct/);
+ route[0].employeeId='e1';route[0].position='Supervisor';route[1].employeeId='e1';assert.throws(()=>store.create(users[0],{...body(),workflowRevision:store.workflow().revision,route}),/distinct/);
  route[1].employeeId='e3';assert.throws(()=>store.create(users[0],{...body(),workflowRevision:0,route}),e=>e.status===409);
  assert.throws(()=>store.create(users[0],{...body(),workflowRevision:store.workflow().revision,route:[route[0]]}),/default/);
 });
 test('route reassignment sends a fresh notification and revokes the old current approver',async t=>{
  const f=fixture(t),sent=[],app=express(),service=registerUniform(app,{...f,authenticate:async()=>f.users[0],notify:async(r,e)=>sent.push(e.id),send:async()=>{}});t.after(service.close);
- const route=routeTools.template(service.store.workflow());route[0].employeeId='e1';route[1].employeeId='e3';const r=service.store.create(f.users[0],{...body(),workflowRevision:service.store.workflow().revision,route});await service.notifyPending(r.id);await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
+ const route=routeTools.template(service.store.workflow());route[0].employeeId='e1';route[0].position='Supervisor';route[1].employeeId='e3';const r=service.store.create(f.users[0],{...body(),workflowRevision:service.store.workflow().revision,route});await service.notifyPending(r.id);await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
  const changed=routeTools.nodes(r);changed[0].employeeId='e2';service.store.updateRoute(f.users[0],r.id,{revision:1,route:changed});await service.notifyPending(r.id);assert.deepEqual(sent,['e1','e2']);assert.equal(service.store.canReview(service.store.get(r.id),f.employees.get().employees[1]),false);
 });
 
 test('withdrawal stops approval reminders and resubmission notifies the same approver again',async t=>{
  const f=fixture(t),sent=[],service=registerUniform(express(),{...f,authenticate:async()=>f.users[0],notify:async(r,e)=>sent.push(e.id),send:async()=>{}});t.after(service.close);
- const route=routeTools.template(service.store.workflow());route[0].employeeId='e1';route[1].employeeId='e3';const b={...body(),workflowRevision:service.store.workflow().revision,route};let r=service.store.create(f.users[0],b);await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
+ const route=routeTools.template(service.store.workflow());route[0].employeeId='e1';route[0].position='Supervisor';route[1].employeeId='e3';const b={...body(),workflowRevision:service.store.workflow().revision,route};let r=service.store.create(f.users[0],b);await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
  r=service.store.lifecycle(f.users[0],r.id,{revision:r.revision,action:'withdraw'});await service.notifyPending(r.id);assert.deepEqual(sent,['e1']);
  r=service.store.create(f.users[0],{...b,revision:r.revision});await service.notifyPending(r.id);await service.notifyPending(r.id);assert.deepEqual(sent,['e1','e1']);
  service.store.lifecycle(f.users[0],r.id,{revision:r.revision,action:'delete'});await service.retry();assert.deepEqual(sent,['e1','e1']);

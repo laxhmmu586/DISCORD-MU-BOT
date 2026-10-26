@@ -3,8 +3,14 @@
  const time=value=>value?new Date(value).toLocaleString('en-US',{timeZone:'America/Los_Angeles'}):'—';
  const elapsed=(start,end)=>{if(!start||!end)return '—';const mins=Math.max(0,Math.floor((Date.parse(end)-Date.parse(start))/60000));return `${Math.floor(mins/1440)}d ${Math.floor(mins%1440/60)}h ${mins%60}m`;};
  const displayPosition=value=>employeePositions.normalize(value);
+ const allowedApprover=(person,scope,position=person.position)=>{
+  const manager=displayPosition(person.position)==='Business Manager',norm=value=>String(value||'').trim().toUpperCase();
+  if(displayPosition(position)!=='Business Manager'&&!manager)return true;
+  return manager&&norm(person.station||'LAX')===norm(scope?.station||'LAX')&&norm(person.account||'MU')===norm(scope?.account||'MU')&&!['HQ','HEADQUARTER','HEADQUARTERS'].includes(norm(person.account));
+ };
  const roles=current=>employeePositions.choices(displayPosition(current)).map(p=>`<option>${esc(p)}</option>`).join('');
  function render({record:r,directory=[],onDraftChange,onSave,onNew,defaultRoute,showForm=true,stateKey,onDecision}){
+  directory=directory.filter(p=>allowedApprover(p,r.approvalScope||r.employee));
   const timeline=r.timeline||[],draft=r.status==='draft',key=stateKey||(draft?'draft':r.id),state=states.get(key)||{editing:false};states.set(key,state);
   const host=document.createElement('div');
   const route=(r.approvalRoute||[]).map(node=>({...node,position:displayPosition(node.position)})),canEdit=draft||r.canEditRoute,locked=draft?0:r.step;
@@ -23,7 +29,7 @@
    const start=host.querySelector('[data-new-request]');if(start)start.onclick=onNew;
   }
   function drawEditor(container){
-   container.innerHTML=`<header><div><h4>Approval nodes</h4><p>Change node positions, choose people or add nodes. Completed nodes are locked.</p></div>${draft?'<button type="button" data-reset-route>Reset to default</button>':''}<button type="button" data-add-node ${state.route.length>=employeePositions.maxWorkflowStages?'disabled':''}>+ Add node</button></header><div class="request-node-rows">${state.route.map((n,i)=>`<div class="request-node-row" data-node-index="${i}"><span class="request-node-index">${i+1}</span><label>Node position<select data-node-position ${i<locked?'disabled':''}>${roles(n.position)}</select></label><label>Approver<select data-node-person ${i<locked?'disabled':''}><option value="">${n.selectionRequired?'Select next approver (required)':'Any eligible '+esc(n.position)}</option>${directory.map(e=>`<option value="${esc(e.id)}">${esc(e.name)} · ${esc(displayPosition(e.position))}</option>`).join('')}</select></label><div class="request-node-controls"><button type="button" data-insert-node="${i+1}" aria-label="Add node after node ${i+1}" ${i<locked-1||state.route.length>=employeePositions.maxWorkflowStages?'disabled':''}>+</button><button type="button" data-remove-node="${i}" aria-label="Remove node ${i+1}" ${n.required||i<locked?'disabled':''}>×</button></div></div>`).join('')}</div><p class="request-route-error" role="status"></p><div class="request-route-actions"><button type="button" data-cancel-route>Cancel</button><button type="button" data-save-route>${draft?'Use these nodes':'Save node changes'}</button></div>`;
+   container.innerHTML=`<header><div><h4>Approval nodes</h4><p>Change node positions, choose people or add nodes. Completed nodes are locked.</p></div>${draft?'<button type="button" data-reset-route>Reset to default</button>':''}<button type="button" data-add-node ${state.route.length>=employeePositions.maxWorkflowStages?'disabled':''}>+ Add node</button></header><div class="request-node-rows">${state.route.map((n,i)=>`<div class="request-node-row" data-node-index="${i}"><span class="request-node-index">${i+1}</span><label>Node position<select data-node-position ${i<locked?'disabled':''}>${roles(n.position)}</select></label><label>Approver<select data-node-person ${i<locked?'disabled':''}><option value="">${n.selectionRequired?'Select next approver (required)':'Any eligible '+esc(n.position)}</option>${directory.filter(e=>allowedApprover(e,r.approvalScope||r.employee,n.position)).map(e=>`<option value="${esc(e.id)}">${esc(e.name)} · ${esc(displayPosition(e.position))}</option>`).join('')}</select></label><div class="request-node-controls"><button type="button" data-insert-node="${i+1}" aria-label="Add node after node ${i+1}" ${i<locked-1||state.route.length>=employeePositions.maxWorkflowStages?'disabled':''}>+</button><button type="button" data-remove-node="${i}" aria-label="Remove node ${i+1}" ${n.required||i<locked?'disabled':''}>×</button></div></div>`).join('')}</div><p class="request-route-error" role="status"></p><div class="request-route-actions"><button type="button" data-cancel-route>Cancel</button><button type="button" data-save-route>${draft?'Use these nodes':'Save node changes'}</button></div>`;
    container.querySelectorAll('[data-node-index]').forEach(row=>{const i=Number(row.dataset.nodeIndex),n=state.route[i],position=row.querySelector('[data-node-position]'),personSelect=row.querySelector('[data-node-person]');position.value=displayPosition(n.position);personSelect.value=n.employeeId||'';position.onchange=()=>{n.position=position.value;n.employeeId=null;draw();};personSelect.onchange=()=>{n.employeeId=personSelect.value||null;if(n.selectionRequired&&n.employeeId){n.position=displayPosition(directory.find(e=>e.id===n.employeeId).position);draw();}};});
    const reset=container.querySelector('[data-reset-route]');if(reset)reset.onclick=()=>{state.route=(defaultRoute||route).map(({id,position,employeeId,required,selectionRequired})=>({id,position:displayPosition(position),employeeId:employeeId||null,required,selectionRequired}));draw();};
    const insert=index=>{state.route.splice(index,0,{id:crypto.randomUUID(),position:'Supervisor',employeeId:null,required:false});draw();};
@@ -36,5 +42,5 @@
   }
   draw();return host;
  }
- window.RequestWorkflow={render,resetDraft:()=>states.delete('draft')};
+ window.RequestWorkflow={render,allowedApprover,resetDraft:()=>states.delete('draft')};
 })();
