@@ -36,12 +36,16 @@ body.airport-scene .flight-loading > span {
   transform: translate(-50%, -50%);
 }
 @media (max-width: 760px) {
-  body.airport-scene::before { background-position: 52% center; }
-}
-/* Keep animated dots from shifting the centered THINKING label. */
-body.airport-scene :is(.loading-overlay,.flight-loading) > span::after {
-  position: absolute;
-  left: 100%;
+  body.airport-scene { background: linear-gradient(180deg, #01050b, #061939 65%, #031127); }
+  /* A shorter scene shows roughly twice as much of the counter on phones. */
+  body.airport-scene::before {
+    inset: 18svh 0 auto;
+    height: max(48svh, 56.25vw);
+    background-size: auto 100%;
+    background-position: center;
+    mask-image: linear-gradient(transparent, #000 12%, #000 86%, transparent);
+    -webkit-mask-image: linear-gradient(transparent, #000 12%, #000 86%, transparent);
+  }
 }
 
 /* Leave room for the service shortcuts on short viewports. */
