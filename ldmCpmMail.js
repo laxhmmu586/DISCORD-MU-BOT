@@ -8,6 +8,11 @@ function matches(headers) {
     && /\bLDM\b/i.test(header('subject')) && /\bCPM\b/i.test(header('subject'));
 }
 
+function stripFooter(text) {
+  // The operational SI lines precede the sender signature and legal footer.
+  return text.split(/(?:^|\n)[ \t]*(?:Regards\s*\/\s*LAXOPS\s*\/\s*RA\b|Important\s+Note:\s*This email is confidential\b)/i, 1)[0].trim();
+}
+
 async function bodyText(payload, readAttachment) {
   const plain = [], html = [];
   async function walk(part) {
@@ -20,11 +25,11 @@ async function bodyText(payload, readAttachment) {
     for (const child of part.parts || []) await walk(child);
   }
   await walk(payload);
-  if (plain.length) return plain.join('\n').replace(/\r/g, '').trim();
-  return html.join('\n').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+  if (plain.length) return stripFooter(plain.join('\n').replace(/\r/g, ''));
+  return stripFooter(html.join('\n').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
     .replace(/<br\s*\/?>|<\/(?:div|p|tr|li)>/gi, '\n').replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/gi, ' ').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"').replace(/&#39;/g, "'").replace(/&amp;/gi, '&').trim();
+    .replace(/&quot;/gi, '"').replace(/&#39;/g, "'").replace(/&amp;/gi, '&').trim());
 }
 
 function chunks(text) {

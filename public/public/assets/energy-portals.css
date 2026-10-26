@@ -3,7 +3,8 @@
   --energy-color: #00d9ff;
   --energy-partner: #207cff;
   --energy-speed: 1.4s;
-  background: transparent;
+  background: linear-gradient(110deg, rgba(0, 0, 0, .94), rgba(0, 0, 0, .62));
+  background-clip: padding-box;
   box-shadow: none;
   overflow: visible;
   animation: none;

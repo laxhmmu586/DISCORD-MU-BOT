@@ -1,0 +1,50 @@
+/* Keep the native PNG sharp: no blur, animated scaling or color filters. */
+body.airport-scene {
+  isolation: isolate;
+  background: #01050b;
+}
+body.airport-scene::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: url("airport-counter-hd.png") center / cover no-repeat;
+  filter: none;
+  transform: none;
+  animation: none;
+  will-change: auto;
+}
+/* Dark at the upper left, fading right and down before the staff faces. */
+body.airport-scene::after,
+body.airport-scene.is-loading::after {
+  content: "";
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,0,0,.94), rgba(0,0,0,.58) 42%, rgba(0,0,0,.08));
+  mask-image: linear-gradient(#000 0%, #000 18%, transparent 42%);
+  -webkit-mask-image: linear-gradient(#000 0%, #000 18%, transparent 42%);
+}
+body.airport-scene .loading-overlay > span,
+body.airport-scene .flight-loading > span {
+  position: absolute;
+  left: 50%;
+  top: 78%;
+  transform: translate(-50%, -50%);
+}
+@media (max-width: 760px) {
+  body.airport-scene::before { background-position: 52% center; }
+}
+/* Keep animated dots from shifting the centered THINKING label. */
+body.airport-scene :is(.loading-overlay,.flight-loading) > span::after {
+  position: absolute;
+  left: 100%;
+}
+
+/* Leave room for the service shortcuts on short viewports. */
+@media (max-height: 600px) {
+  body.airport-scene .flight-loading > span { top: 69%; }
+}

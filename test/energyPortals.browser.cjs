@@ -8,7 +8,7 @@ await context.route('**/*',async route=>{
  const url=new URL(route.request().url());
  if(url.hostname==='unpkg.com')return route.fulfill({contentType:'text/javascript',body:''});
  if(url.hostname==='www.gstatic.com')return route.fulfill({contentType:'text/javascript',body:''});
- if(url.pathname==='/__/firebase/init.js')return route.fulfill({contentType:'text/javascript',body:`const user={email:'test@example.com',getIdToken:async()=>'fixture'};const fixtureAuth=()=>({currentUser:user,setPersistence:async()=>{},onAuthStateChanged:fn=>{setTimeout(()=>fn(user),0);return()=>{};}});fixtureAuth.Auth={Persistence:{LOCAL:'local',SESSION:'session'}};window.firebase={apps:[{}],auth:fixtureAuth};`});
+ if(url.pathname==='/__/firebase/init.js')return route.fulfill({contentType:'text/javascript',body:`const user={email:'test@example.com',providerData:[],getIdToken:async()=>'fixture'};const fixtureAuth=()=>({currentUser:user,setPersistence:async()=>{},onAuthStateChanged:fn=>{setTimeout(()=>fn(user),0);return()=>{};}});fixtureAuth.Auth={Persistence:{LOCAL:'local',SESSION:'session'}};window.firebase={apps:[{}],auth:fixtureAuth};`});
  if(url.hostname==='api.mufcapp.net'){
   const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'America/Los_Angeles',day:'2-digit',month:'short',year:'2-digit'}).formatToParts(new Date()).map(p=>[p.type,p.value]));
   return route.fulfill({contentType:'application/json',body:JSON.stringify({sy:{flightNo:'MU586',flightDate:p.day+p.month.toUpperCase()+p.year,gate:'134',bdt:'1230',sd:'1245',ed:'1300'},flights:[{flightNo:'MU586',flightDate:p.day+p.month.toUpperCase()+p.year,origin:'LAX',destination:'PVG',gate:'134',bdt:'1230',sd:'1245',ed:'1300',aircraftType:'777-773L',aircraftRegistration:'B7367'}],rows:[]})});
@@ -44,7 +44,7 @@ for(const width of [1920,1365,1024,820,390,320]) {
   const glow=getComputedStyle(e.querySelector('.energy-glow'));
   const rim=getComputedStyle(e.querySelector('.energy-ring'));
   return {width:r.width,height:r.height,y:r.y,font:text.fontSize,filter:text.filter,
-   center:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).getPropertyValue('--energy-color').trim(),
+   center:getComputedStyle(e).backgroundImage,color:getComputedStyle(e).getPropertyValue('--energy-color').trim(),
    glowFilter:glow.filter,glowMask:glow.maskImage,rimMask:rim.maskImage,animation:rim.animationDuration,
    textAnimation:text.animationName,ringDisplay:getComputedStyle(e.querySelector('.metric-rings')).display};
  }));
@@ -53,7 +53,7 @@ for(const width of [1920,1365,1024,820,390,320]) {
  for(const p of portals){
   assert.equal(p.width,portals[0].width);assert.equal(p.height,portals[0].height);assert.equal(p.y,portals[0].y);
   assert.equal(p.font,portals[0].font);assert.equal(p.filter,'none');assert.equal(p.textAnimation,'none');
-  assert.equal(p.center,'rgba(0, 0, 0, 0)');assert.equal(p.glowFilter,'blur(8px)');
+  assert.match(p.center,/linear-gradient/);assert.equal(p.glowFilter,'blur(8px)');
   assert.equal(p.glowMask,'none');assert.match(p.rimMask,/radial-gradient/);
   assert.equal(p.animation,'1.4s');assert.equal(p.ringDisplay,'none');
  }
@@ -76,5 +76,5 @@ await page.evaluate(()=>clearSyDashboard());
 assert.equal(await page.locator('#metric-etd').textContent(),'----');
 assert.deepEqual(errors,[]);
 await browser.close();
-console.log('PASS gradient portals: estimated departure refresh/reset, six viewport sizes, matched colors, unclipped outer glow, transparent centers, static text, rotation, reduced motion and flight menu');
+console.log('PASS gradient portals: estimated departure refresh/reset, six viewport sizes, matched colors, unclipped outer glow, dark gradient centers, static text, rotation, reduced motion and flight menu');
 })().catch(e=>{console.error(e);process.exit(1)});
