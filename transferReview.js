@@ -1,7 +1,8 @@
 const routes=require('./uniformRoute');
-function transferReview(r,reviewer,target,note,at){
+function transferReview(r,reviewer,target,note,at,employees){
  const fail=message=>{throw Object.assign(Error(message),{status:400});};
  if(!target||!target.name)fail('Choose an eligible employee to transfer this request to.');
+ if(!require('./approvalAccountScope').eligible(target.position,target,r.employee,employees))fail('Choose the Business Manager from the requester Main Account.');
  if(target.id===reviewer.id||target.id===r.employee.id||r.approvals.some(a=>a.employeeId===target.id))fail('Choose someone other than the requester or a completed reviewer.');
  const nodes=routes.nodes(r),existing=nodes.findIndex((n,i)=>i>r.step&&(n.employeeId===target.id||!n.employeeId&&require('./public/public/employee-positions').same(n.position,target.position)));
  const next=existing>=0?nodes.splice(existing,1)[0]:{id:require('node:crypto').randomUUID(),required:false};
