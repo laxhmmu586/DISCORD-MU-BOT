@@ -18,6 +18,22 @@ const parse = log => findBoardingBoxInfo(scopedLog(log, 'MU586', '16OCT26'), 'MU
 const rangeFixture = require('node:fs').readFileSync(require('node:path').join(__dirname,'fixtures/boarding-box-bnd-ranges.log'),'utf8');
 const parseRanges = log => findBoardingBoxInfo(scopedLog(log,'MU586','19OCT26'),'MU586','19OCT26');
 
+test('October 26 BND with no deletion block includes all 292 BNs', () => {
+  const supplied = require('node:fs').readFileSync(require('node:path').join(__dirname,'fixtures/boarding-box-no-deletions.log'),'utf8');
+  const parse = log => findBoardingBoxInfo(scopedLog(log,'MU586','26OCT26'),'MU586','26OCT26');
+  const data = parse(supplied);
+  assert.ok(data);
+  assert.equal(data.source,'BND'); assert.equal(data.maxBn,292);
+  assert.deepEqual(data.bns,Array.from({length:292},(_,i)=>i+1));
+  assert.equal(data.expectedPassengers,292); assert.equal(data.expectedInfants,2);
+  assert.equal(data.total,294); assert.equal(data.matched,true);
+  assert.ok(groupBns(data.bns,data.maxBn).groups.every(group=>!group.absent.length));
+  assert.equal(parse(supplied.replace(/  NONLAX:[^\n]*/,'')),null);
+  for (const declaration of ['1 BOARDING NUMBER(S) DELETED:', 'BOARDING NUMBER(S) DELETED:']) {
+    assert.equal(parse(supplied.replace('  NONLAX:',` ${declaration}\n  NONLAX:`)),null);
+  }
+});
+
 test('supplied October 19 BND expands deleted ranges and preserves NONLAX numbers', () => {
   for (const log of [rangeFixture, rangeFixture.replace('48  72-76  82','48  72-76\n    82')]) {
     const data = parseRanges(log);

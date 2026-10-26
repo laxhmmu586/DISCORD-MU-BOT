@@ -48,6 +48,19 @@ test('supplied ranged BND loads a cold BOX and supports manual delete/restore', 
   assert.equal(restored.passengers,298);assert.ok(restored.bns.includes(73));
   await cache.refresh();assert.deepEqual(cache.snapshot('MU586','19OCT26').bns,restored.bns);
 });
+
+test('October 26 BND without deletions repopulates a cleared BOX and publishes it', async t => {
+  const supplied=fs.readFileSync(require('node:path').join(__dirname,'fixtures/boarding-box-no-deletions.log'),'utf8');
+  const {cache}=setup(t,async()=>supplied,{now:()=>Date.parse('2026-10-26T19:35:00Z')});
+  const events=[];
+  cache.subscribe('MU586','26OCT26',data=>events.push(data));
+  cache.invalidate();
+  assert.equal(events[0].reset,true);
+  const data=await cache.read('MU586','26OCT26');
+  assert.ok(data); assert.equal(data.passengers,292); assert.equal(data.total,294);
+  assert.equal(data.matched,true); assert.equal(events.length,2);
+  assert.deepEqual(events[1],data); assert.ok(data.updatedAt>events[0].updatedAt);
+});
 test('concurrent cold viewers share one log download and flights stay isolated', async t => {
   let calls=0,release;
   const {cache} = setup(t,()=>{calls++;return new Promise(resolve=>{release=resolve;});});
