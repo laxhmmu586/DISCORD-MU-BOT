@@ -86,3 +86,9 @@ body.report-admin-page {
   .report-admin-page .test-search-form {grid-template-columns:minmax(0,1fr);}
   .report-admin-page .test-form-grid {grid-template-columns:minmax(0,1fr);}
 }
+/* Preserve the Report/Baggage full-page tint over the shared airport scene. */
+body.report-admin-page.airport-scene::after {
+  background: linear-gradient(145deg, #010b24e8, #061b3bdc 55%, #031229e3);
+  mask-image: none;
+  -webkit-mask-image: none;
+}
