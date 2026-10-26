@@ -1,6 +1,7 @@
 /* Shared decorative employee artwork for the two workspace sidebar layouts. */
 .profile-sidebar,.has-dashboard-page .has-sidebar{overflow-y:auto}
 .profile-sidebar nav,.profile-sidebar .sidebar-airport,.has-sidebar-bottom{flex-shrink:0}
-.has-sidebar-employee{display:block;width:100%;max-width:156px;height:auto;aspect-ratio:600 / 900;max-height:clamp(160px,32vh,290px);object-fit:contain;object-position:center bottom;margin:0 auto 14px}
+/* Compensate for the transparent sides of the 600 x 900 portraits. */
+.has-sidebar-employee{display:block;position:relative;left:50%;transform:translateX(-50%);width:calc(100% + 64px);max-width:200px;height:clamp(160px,32vh,290px);object-fit:contain;object-position:center bottom;margin:0 0 14px}
 .has-sidebar-employee[hidden]{display:none}
 @media(max-height:650px),(max-width:760px){.has-sidebar-employee{display:none}}
