@@ -38,3 +38,6 @@
 .schedule-grid .month-tint{background-color:var(--month-color)}
 .schedule-grid thead .month-heading th.month-tint,.schedule-grid thead .date-heading th.month-tint{background-color:var(--month-color)}
 #preview-employee{max-width:300px}
+
+/* Friday begins each budget period. */
+.schedule-grid .week-start{border-left:3px solid #df6865}
