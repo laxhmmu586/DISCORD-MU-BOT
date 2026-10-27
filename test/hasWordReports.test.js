@@ -17,11 +17,24 @@ test('Word packages fill every declared slot and preserve all non-content parts'
   const values=Object.fromEntries(spec.fields.map((f,i)=>[f.key,f.type==='checkbox'?true:f.type==='date'?'2026-10-27':f.type==='textarea'?'Review & follow up\nSecond line <verified>':`Field ${i}`]));
   const blank=await JSZip.loadAsync(await Word.exportWord(kind)),filled=await JSZip.loadAsync(await Word.exportWord(kind,values)),xml=await filled.file('word/document.xml').async('string');
   assert.doesNotMatch(xml,/\{\{[a-z0-9_]+\}\}/);
-  for(const field of spec.fields)if(!['checkbox','date'].includes(field.type))assert.ok(xml.includes(field.type==='textarea'?'Review &amp; follow up':values[field.key]),kind+': '+field.key);
+  for(const field of spec.fields)if(!['checkbox','date'].includes(field.type)){if(field.printOnly)assert.ok(!xml.includes(values[field.key]),kind+': printable signature remains blank');else assert.ok(xml.includes(field.type==='textarea'?'Review &amp; follow up':values[field.key]),kind+': '+field.key);}
   assert.match(xml,/<w:br\/>/);for(const name of Object.keys(source.files))if(!source.files[name].dir&&name!=='word/document.xml')assert.deepEqual(await filled.file(name).async('nodebuffer'),await source.file(name).async('nodebuffer'),kind+': '+name);
   if(kind==='cos'){assert.ok(spec.fields.every(field=>field.fallback===''));assert.doesNotMatch(await blank.file('word/document.xml').async('string'),/\{\{[a-z0-9_]+\}\}/);}
  }
  assert.throws(()=>Word.validate('cos',{bad:'value'}),/Unknown/);assert.throws(()=>Word.validate('cos',{status_0:'true'}),/checkbox/);assert.throws(()=>Word.validate('cos',{notice:'2026-02-30'}),/date/);assert.throws(()=>Word.validate('cos',{name:'\u0000'}),/Invalid/);
+});
+test('Investigation defaults to current Main Account and author; Ref No is optional; signatures are print-only',async t=>{
+ const {request}=await fixture(t);
+ const investigation=await (await request('Business Manager','/word/investigation')).json();
+ assert.equal(investigation.values.detail_1_0,'LAX/MU');assert.equal(investigation.values.detail_2_0,'Business Manager');assert.equal(investigation.values.detail_2_1,'Business Manager');
+ const saved=await request('Business Manager','/word/investigation',{revision:0,values:{detail_0_0:''}});assert.equal(saved.status,200);
+ const data=await saved.json();assert.equal(data.values.detail_0_0,'');assert.equal(data.values.detail_1_0,'LAX/MU');
+ for(const kind of ['paf','discussion']){
+  const form=await (await request('Supervisor','/word/'+kind)).json();assert.ok(form.layout.length);assert.ok(form.fields.every(f=>!f.printOnly));
+  const hidden=Word.definition(kind).fields.find(f=>f.printOnly);assert.equal((await request('Supervisor','/word/'+kind,{revision:0,values:{[hidden.key]:'typed signature'}})).status,400);
+  const exported=await JSZip.loadAsync(await Word.exportWord(kind,{[hidden.key]:'legacy signature'}));const xml=await exported.file('word/document.xml').async('string');assert.doesNotMatch(xml,/legacy signature|\{\{/);
+ }
+ const cos=await (await request('Supervisor','/word/cos')).json(),layout=JSON.stringify(cos.layout);assert.ok(layout.indexOf('status_0')<layout.indexOf('notice'));assert.ok(layout.indexOf('check_9_0_1')<layout.indexOf('"field":"from"'));assert.ok(layout.includes('"tag":"table"'));
 });
 test('All Supervisor+ Word forms use only primary Main Account; deny lower roles and stale edits',async t=>{
  const {request,users}=await fixture(t);

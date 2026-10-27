@@ -163,6 +163,7 @@ def prepare(sources):
     for table, cols in [(40,[(1,'Employee Signature'),(3,'Employee signature date'),(5,'Management Signature'),(7,'Management signature date')]),(43,[(1,'Witness Signature'),(3,'Witness signature date')])]:
         for c,label in cols:
             t.slot(t.cell(table,0,c),f'sign_{table}_{c}',label,'date' if 'date' in label else 'text')
+            t.fields[-1]['printOnly']=True
     specs.append(t.save())
 
     t = Template(sources[3], 'discussion', 'Record of Discussion', 'HR')
@@ -181,6 +182,8 @@ def prepare(sources):
             text=''.join(t.body[p].xpath('.//w:t/text()',namespaces=NS))
             match=re.search('_{2,}',text)
             t.slot(t.body[p],f'detail_{p}_{i}',label,'date' if 'date' in label.lower() or label.startswith('Date') else 'text',fallback=match.group(),pattern='_{2,}')
+            if p in [12,13,15]:
+                t.fields[-1]['printOnly']=True
     for i,label in enumerate(['Performance','Conduct/Behavior','Safety Concern','Attendance','Grooming','Policy Violation','Follow up','Other']):
         t.slot(t.body[6],f'purpose_{i}',label,'checkbox',fallback='☐',pattern='☐')
     t.slot(t.body[6],'other','Other purpose',fallback='__________________________',pattern='_{2,}')
