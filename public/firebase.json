@@ -6,6 +6,10 @@
     ],
     "headers": [
       {
+        "source": "/{schedule.html,schedule.css,schedule.js}",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
         "source": "/{has-network.js,service-common.js,has-pbb-config.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },

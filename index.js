@@ -1020,6 +1020,8 @@ app.use((req, res, next) => {
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
 app.use('/has-pbb-api', express.json({limit:'2mb'}));
 app.use('/profile-api', express.json({limit:'3mb'}));
+app.use('/staff-schedule-api', express.json({limit:'32kb'}));
+app.get(['/schedule.html','/schedule.css','/schedule.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.use('/read-sign-api', express.json({limit:'15mb'}));
 app.use('/feedback-api', express.json({limit:'24kb'}));
 
