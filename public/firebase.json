@@ -6,7 +6,11 @@
     ],
     "headers": [
       {
-        "source": "/{schedule.html,schedule.css,schedule.js}",
+        "source": "/flight-account.js",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
+        "source": "/{schedule.html,schedule.css,schedule.js,schedule-summary.js,schedule-grid.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
