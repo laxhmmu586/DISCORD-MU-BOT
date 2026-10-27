@@ -188,7 +188,7 @@ const FSC_RATE_SHEET_ID =
 const FSC_RATE_SHEET_GID =
   Number(process.env.FSC_RATE_SHEET_GID || 1436143706);
 const FSC_RATE_CELL =
-  process.env.FSC_RATE_CELL || 'I8';
+  process.env.FSC_RATE_CELL || 'J8';
 const SY_BOOKING_SHEET_ID =
   process.env.SY_BOOKING_SHEET_ID || FSC_RATE_SHEET_ID;
 const SY_BOOKING_SHEET_GID =
