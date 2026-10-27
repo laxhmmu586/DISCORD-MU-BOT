@@ -10,6 +10,14 @@ ARRIVAL and DEPARTURE, range A1:R67, as portrait Letter PDFs with single-page
 scaling and 0.10-inch margins. This replaces the landscape layout that left wide
 blank side areas. A restart after the scheduled time catches up the current day.
 
+Each Discord message includes both the PDF attachment and an **Open briefing
+sheet** link to the matching ARRIVAL or DEPARTURE tab in the source Google
+spreadsheet. The link lets recipients open the online sheet when their PDF
+viewer cannot open the attachment. It shows the live sheet, while the attachment
+is the dated PDF snapshot. Existing Google sharing permissions still apply.
+The exporter resolves the tab ID from Google metadata so each flight links to
+the same tab used for its PDF. No Drive upload or new public sharing is required.
+
 - MU583 Arrival: Discord channel 1563411695936864447
 - MU586 Departure: Discord channel 1563411615351574528
 
