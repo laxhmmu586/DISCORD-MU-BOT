@@ -34,3 +34,7 @@
 .schedule-grid .weekly-summary td,.schedule-grid .daily-estimate td{font-size:16px}
 .schedule-grid .daily-budget input{font-size:14px}
 #coverage-panel .schedule-budgets{margin:16px 0}
+
+.schedule-grid .month-tint{background-color:var(--month-color)}
+.schedule-grid thead .month-heading th.month-tint,.schedule-grid thead .date-heading th.month-tint{background-color:var(--month-color)}
+#preview-employee{max-width:300px}
