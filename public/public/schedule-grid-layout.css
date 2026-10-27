@@ -42,12 +42,14 @@
 /* Friday begins each budget period. */
 .schedule-grid .week-start{border-left:3px solid #df6865}
 
-/* Date badges hang above their day instead of tiny captions below it. */
+/* Hanging tags float beside the date without increasing calendar row height. */
 .schedule-grid thead th.current-day:after{content:none;display:none}
-.schedule-grid .date-heading th:not(.employee-cell){vertical-align:bottom;height:auto}
-.schedule-grid .date-review-button{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;padding:5px 1px 8px;overflow:visible;min-height:126px}
-.schedule-grid .date-badges{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:72px;width:100%;margin-bottom:3px}
-.schedule-grid .date-status{display:block;box-sizing:border-box;max-width:100%;padding:4px 3px;margin:0;border-radius:5px;background:#374151;color:#fff;font-size:12px;font-weight:700;line-height:15px;letter-spacing:0;white-space:normal;overflow-wrap:break-word;text-align:center;text-shadow:none}
+.schedule-grid .date-heading th:not(.employee-cell){vertical-align:middle;height:60px;overflow:visible;z-index:4}
+.schedule-grid .date-heading th:has(.date-status){z-index:5}
+.schedule-grid .date-review-button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 0;overflow:visible;min-height:0;height:60px}
+.schedule-grid .date-badges{position:absolute;left:calc(100% - 9px);top:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:max-content;max-width:none;min-height:0;margin:0;z-index:8;pointer-events:none;transform:rotate(-12deg);transform-origin:0 10px;filter:drop-shadow(0 2px 2px #15223830)}
+.schedule-grid .date-status{position:relative;display:block;box-sizing:border-box;width:max-content;max-width:none;padding:3px 9px 3px 20px;margin:0;border-radius:2px 5px 5px 2px;background:#374151;color:#fff;font-size:12px;font-weight:700;line-height:16px;letter-spacing:0;white-space:nowrap;text-align:center;text-shadow:none;clip-path:polygon(10px 0,100% 0,100% 100%,10px 100%,0 50%)}
+.schedule-grid .date-status:before{content:"";position:absolute;left:8px;top:8px;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #0002}
 .schedule-grid .date-status-today{background:#d52235;color:#fff}
 .schedule-grid .date-status-holiday{background:#237244;color:#fff}
 .schedule-grid .date-status-pay{background:#6740a1;color:#fff}
