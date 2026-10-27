@@ -6,16 +6,18 @@ test('coverage follows operational duties: Management counts D only and combined
  assignments.deletedEmployee={code:'D'};
  const result=counts([{assignments},{}],employees);
  assert.equal(result[0].label,'Management');assert.deepEqual(result[0].counts,[2,0]);
- for(const code of ['C','CL','A','GS','BL','B','FL','F','Q','EC'])assert.deepEqual(result.find(row=>row.codes.includes(code)).counts,[1,0]);
+ for(const code of ['CL','A','GS','BL','B','FL','F','Q'])assert.deepEqual(result.find(row=>row.codes.includes(code)).counts,[1,0]);
+ assert.deepEqual(result.find(row=>row.label==='Check-in').counts,[2,0]);
+ assert.equal(result.some(row=>row.label==='Early Checkin'),false);
  assert.equal(result.some(row=>row.codes.some(code=>['K','X','VAC'].includes(code))),false);
 });
 test('Daily Hour applies the ten duty weights without adding the period charge to any day',()=>{
  const codes=['D','C','CL','A','GS','BL','B','FL','F','Q','K','EC','X','VAC'];
  const employees=codes.map((_,i)=>({id:'e'+i})),assignments=Object.fromEntries(codes.map((code,i)=>['e'+i,{code}]));
  assignments.removedEmployee={code:'D'};
- assert.equal(dailyTotal({assignments},employees),58);
+ assert.equal(dailyTotal({assignments},employees),62);
  assert.equal(dailyTotal({assignments:{}},employees),0);
- assignments.e0.code='X';assert.equal(dailyTotal({assignments},employees),50);
+ assignments.e0.code='X';assert.equal(dailyTotal({assignments},employees),54);
 });
 test('Friday–Thursday period adds 40 exactly once, including an empty period',()=>{
  const days=values=>values.map(planned=>({planned}));
