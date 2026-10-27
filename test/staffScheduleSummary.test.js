@@ -15,9 +15,9 @@ test('Daily Hour applies the ten duty weights without adding the period charge t
  const codes=['D','C','CL','A','GS','BL','B','FL','F','Q','K','EC','X','VAC'];
  const employees=codes.map((_,i)=>({id:'e'+i})),assignments=Object.fromEntries(codes.map((code,i)=>['e'+i,{code}]));
  assignments.removedEmployee={code:'D'};
- assert.equal(dailyTotal({assignments},employees),62);
+ assert.equal(dailyTotal({assignments},employees),58);
  assert.equal(dailyTotal({assignments:{}},employees),0);
- assignments.e0.code='X';assert.equal(dailyTotal({assignments},employees),54);
+ assignments.e0.code='X';assert.equal(dailyTotal({assignments},employees),50);
 });
 test('Friday–Thursday period adds 40 exactly once, including an empty period',()=>{
  const days=values=>values.map(planned=>({planned}));
@@ -32,4 +32,12 @@ test('Friday–Thursday period adds 40 exactly once, including an empty period',
  assert.equal(weekly(days([0,0,0,0,0,0,0])).total,40);
  assert.equal(periodStart('2026-10-27'),'2026-10-23');assert.equal(periodStart('2026-10-30'),'2026-10-30');assert.equal(periodStart('2027-01-01'),'2027-01-01');
  assert.deepEqual(periods([{date:'2026-10-29'},{date:'2026-10-30'}]).map(p=>p.start),['2026-10-23','2026-10-30']);
+});
+
+test('coverage color thresholds and non-budget Arrival Card Assistant',()=>{
+ const {coverageColor,formula}=require('../public/public/schedule-summary');
+ const cases={C:[[4,'#ff0000'],[5,'#45818e'],[6,null]],A:[[1,'#ff0000'],[2,'#93c47d'],[3,null],[4,'#9900ff']],GS:[[0,'#ffffff'],[1,'#93c47d'],[2,'#ff0000'],[3,null]],BL:[[0,null],[1,'#46bdc6'],[2,'#ffd966']],B:[[0,'#ff0000'],[1,'#46bdc6'],[2,'#ffd966']],FL:[[0,'#ffffff'],[1,'#46bdc6'],[2,'#ff0000']],F:[[0,null],[1,'#46bdc6'],[2,null]],Q:[[0,null],[1,'#46bdc6'],[2,null]]};
+ for(const [code,values] of Object.entries(cases))for(const [count,color] of values)assert.equal(coverageColor(code,count),color,code+' '+count);
+ assert.equal(dailyTotal({assignments:{q:{code:'Q'}}},[{id:'q'}]),0);
+ assert(!formula.includes('Q'));
 });

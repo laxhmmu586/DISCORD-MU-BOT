@@ -24,3 +24,13 @@
 .schedule-grid thead th.current-day:after{width:fit-content;margin:2px auto;padding:2px 4px;border-radius:4px;background:#8d73e6;color:#fff}
 .schedule-grid .current-day .duty{box-shadow:0 0 0 2px #8d73e633}
 @media(max-width:600px){.schedule-grid .employee-cell{position:static}.schedule-grid .month-label{left:5px}}
+
+/* Readable calendar labels and coverage totals. */
+.schedule-grid .duty{font-size:14px!important}
+.schedule-grid .date-review-button{font-size:15px}
+.schedule-grid th small{font-size:11px}
+.schedule-grid thead .month-heading th{font-size:13px}
+.schedule-grid .coverage-count{font-size:18px;font-weight:700}
+.schedule-grid .weekly-summary td,.schedule-grid .daily-estimate td{font-size:16px}
+.schedule-grid .daily-budget input{font-size:14px}
+#coverage-panel .schedule-budgets{margin:16px 0}
