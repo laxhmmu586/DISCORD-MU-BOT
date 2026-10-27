@@ -16,10 +16,13 @@
  ];
  const valid=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0;
  const round=value=>Number(value.toFixed(2));
- function weekly(days,dailyBudget=61){const complete=days.length===7&&days.every(day=>valid(day.planned)),budget=round(days.reduce((sum,day)=>sum+(valid(day.budget)?day.budget:dailyBudget),0)),total=complete?round(days.reduce((sum,day)=>sum+day.planned,0)):null;return {complete,total,budget,variance:complete?round(total-budget):null};}
+ function weekly(days,dailyBudget=61){const complete=days.length===7&&days.every(day=>valid(day.planned)),budget=round(days.reduce((sum,day)=>sum+(valid(day.budget)?day.budget:dailyBudget),0)),total=complete?round(days.reduce((sum,day)=>sum+day.planned,0)+40):null;return {complete,total,budget,variance:complete?round(total-budget):null};}
  function counts(days,employees){const ids=new Set(employees.map(e=>e.id));return rows.map(row=>({...row,counts:days.map(day=>Object.entries(day.assignments||{}).filter(([id,assignment])=>ids.has(id)&&row.codes.includes(assignment.code)).length)}));}
- const baseHours=40;
+ const baseHours=0;
+ const addDays=(value,n)=>{const d=new Date(value+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+ const periodStart=value=>addDays(value,-((new Date(value+'T12:00:00Z').getUTCDay()+2)%7));
  function dailyTotal(day,employees){return counts([day],employees).reduce((sum,row)=>sum+row.counts[0]*row.hours,baseHours);}
- const formula=rows.filter(row=>row.hours).map(row=>row.codes[0]+' × '+row.hours).join(' + ')+' + '+baseHours;
- return {rows,weekly,counts,dailyTotal,baseHours,formula};
+ const formula=rows.filter(row=>row.hours).map(row=>row.codes[0]+' × '+row.hours).join(' + ');
+ function periods(days){const groups=[];for(const day of days){const start=periodStart(day.date);let group=groups.at(-1);if(group?.start!==start){group={start,end:addDays(start,6),visible:[]};groups.push(group);}group.visible.push(day);}return groups;}
+ return {rows,weekly,counts,dailyTotal,baseHours,periodHours:40,formula,periodStart,periods,addDays};
 });

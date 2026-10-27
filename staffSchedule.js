@@ -1,47 +1,52 @@
-const groups=require('./public/public/employee-account-groups');
-const positions=require('./public/public/employee-positions');
-const summary=require('./public/public/schedule-summary');
-const {orderRoster}=require('./staffScheduleRoster');
-const roles={K:'K',D:'Management',C:'Check-in',CL:'Check in + Lost and Found',FL:'Flight control + lost and found',F:'Flight Control',B:'Bag room',BL:'Bag room + Lost and Found',A:'Arrival',GS:'Gate Specialist',Q:'Arrival Card Assistant',EC:'Early Checkin',X:'Rest',VAC:'Vacation 🏖️'};
-const colors={K:'#ffff00',D:'#ffff00',C:'#99ff00',CL:'#77933c',FL:'#3333ff',F:'#9999ff',B:'#66b3c2',BL:'#66b3c2',A:'#4f6200',GS:'#9371c7',Q:'#4b183c',EC:'#a9c48b',X:'#ffffff',VAC:'#fff2cc'};
+const groups=require('./public/public/employee-account-groups'),positions=require('./public/public/employee-positions');
+const summary=require('./public/public/schedule-summary'),{orderRoster}=require('./staffScheduleRoster');
+const {createScheduleSync}=require('./staffScheduleSync');
+const roles={K:'K',D:'Management',C:'Check-in',CL:'Check in + Lost and Found',FL:'Flight control + lost and found',F:'Flight Control',B:'Bag room',BL:'Bag room + Lost and Found',A:'Arrival',GS:'Gate Specialist',Q:'Arrival Card Assistant',EC:'Early Checkin',X:'Rest',VAC:'Vacation 🏖️',N:'No call / no show',CS:'Call sick',CO:'Call off',TK:'TK'};
+const colors={K:'#ffff00',D:'#ffff00',C:'#99ff00',CL:'#77933c',FL:'#3333ff',F:'#9999ff',B:'#66b3c2',BL:'#66b3c2',A:'#4f6200',GS:'#9371c7',Q:'#4b183c',EC:'#a9c48b',X:'#ffffff',VAC:'#fff2cc',N:'#ffb3b3',CS:'#ffd7b5',CO:'#d8def5',TK:'#dddddd'};
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
-const allowed=row=>Boolean(row&&groups.same(row,{station:'LAX',account:'MU'})&&!groups.isHeadquarter(row));
+const excluded=row=>[row?.name,row?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));
+const allowed=row=>Boolean(row&&!excluded(row)&&groups.same(row,{station:'LAX',account:'MU'})&&!groups.isHeadquarter(row));
 const canEdit=(user,row)=>['Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'].includes(positions.normalize(row.position));
+const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function date(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value)fail('Choose a valid date.');return value;}
-function registerStaffSchedule(app,{employees,profiles,authenticate=require('./pbbAuth').authenticate}){
+function registerStaffSchedule(app,{employees,profiles,authenticate=require('./pbbAuth').authenticate,sync:provided,env=process.env}){
  const db=employees.db;
- db.exec(`CREATE TABLE IF NOT EXISTS staff_schedule_days(date TEXT PRIMARY KEY,revision INTEGER NOT NULL,data TEXT NOT NULL);`);
- const read=day=>{const row=db.prepare('SELECT * FROM staff_schedule_days WHERE date=?').get(day);const record=row?{date:day,revision:row.revision,...JSON.parse(row.data)}:{date:day,revision:0,assignments:{}};return {...record,budget:record.budget??61};};
- const roster=()=>orderRoster(employees.get().employees.filter(row=>row.name&&groups.belongs(row,{station:'LAX',account:'MU'})));
+ db.exec('CREATE TABLE IF NOT EXISTS staff_schedule_days(date TEXT PRIMARY KEY,revision INTEGER NOT NULL,data TEXT NOT NULL)');
+ const read=day=>{const row=db.prepare('SELECT * FROM staff_schedule_days WHERE date=?').get(day);return {date:day,revision:row?.revision||0,budget:61,assignments:{},dateColor:null,labels:[],...(row?JSON.parse(row.data):{})};};
+ const put=day=>db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,?,?)').run(day.date,day.revision,JSON.stringify({assignments:day.assignments,budget:day.budget,dateColor:day.dateColor||null,labels:day.labels||[]}));
+ const roster=()=>orderRoster(employees.get().employees.filter(row=>row.name&&!excluded(row)&&groups.belongs(row,{station:'LAX',account:'MU'})));
+ const setCodes=changes=>{const map=new Map(changes.map(c=>[c.id,c.code])),current=employees.get();if(!current.employees.some(row=>map.has(row.id)&&(row.code||'')!==map.get(row.id)))return;employees.save({...current,employees:current.employees.map(row=>map.has(row.id)?{...row,code:map.get(row.id)}:row)},{email:'Google Sheet schedule sync'});};
+ const sync=provided&&typeof provided==='object'?provided:createScheduleSync({db,roster,read,put,setCodes,roles,colors,env:provided===false?{...env,STAFF_SCHEDULE_SYNC_ENABLED:'false'}:env});
  const calculated=day=>({...day,planned:summary.dailyTotal(day,roster())});
- app.use('/staff-schedule-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');let user;try{user=await authenticate(req);}catch{return res.status(401).json({error:'Sign in required.'});}const row=profiles.linked(user);if(!allowed(row))return res.status(403).json({error:'Schedule is available only for LAX / MU.'});req.scheduleAccess={user,employeeId:row.id,canEdit:canEdit(user,row)};next();});
- app.get('/staff-schedule-api',(req,res)=>{try{const access=req.scheduleAccess,start=date(req.query.start),days=Array.from({length:14},(_,i)=>{const day=new Date(start+'T12:00:00Z');day.setUTCDate(day.getUTCDate()+i);const record=read(day.toISOString().slice(0,10));return access.canEdit?calculated(record):{date:record.date,assignments:record.assignments[access.employeeId]?{[access.employeeId]:record.assignments[access.employeeId]}:{}};});const avatar=db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?');res.json({canEdit:access.canEdit,canViewAll:access.canEdit,roles,colors,...(access.canEdit?{dailyBudget:61}:{}),days,employees:roster().filter(row=>access.canEdit||row.id===access.employeeId).map(row=>({id:row.id,name:row.name,nickname:row.nickname,code:row.code||'',position:row.position,scheduleGroup:row.scheduleGroup,avatar:avatar.get(row.id)?.data||''}))});}catch(error){res.status(error.status||400).json({error:error.message});}});
- app.post('/staff-schedule-api/code',(req,res)=>{try{
-  if(!req.scheduleAccess.canEdit)fail('Only schedule managers can edit employee codes.',403);
-  const body=req.body||{};if(typeof body.code!=='string'||body.code.trim().length>40||/[\x00-\x1f\x7f]/.test(body.code))fail('Enter an employee code of up to 40 characters.');
-  if(!roster().some(row=>row.id===body.employeeId))fail('Employee is not in LAX / MU.',403);
-  const current=employees.get(),target=current.employees.find(row=>row.id===body.employeeId);if(body.currentCode!==(target.code||''))fail('Employee code changed. Refresh before saving.',409);
-  const code=body.code.trim();employees.save({...current,employees:current.employees.map(row=>row.id===target.id?{...row,code}:row)},req.scheduleAccess.user);res.json({employeeId:target.id,code});
- }catch(error){res.status(error.status||400).json({error:error.message});}});
- const paste=db.transaction(body=>{
-  if(!Array.isArray(body.changes)||!body.changes.length||body.changes.length>7000||!body.revisions||typeof body.revisions!=='object')fail('Select up to 7,000 schedule cells.');
-  const ids=new Set(roster().map(row=>row.id)),days=new Map(),cells=new Set();
-  for(const change of body.changes){
-   if(!change||!ids.has(change.employeeId))fail('Employee is not in LAX / MU.');const key=date(change.date),cell=JSON.stringify([change.employeeId,key]);if(cells.has(cell))fail('Duplicate schedule cell.');cells.add(cell);
-   if(change.code!==null&&(!Object.hasOwn(roles,change.code)||typeof change.color!=='string'||!/^#[0-9a-f]{6}$/i.test(change.color)))fail('Choose a valid duty and color.');
-   if(!days.has(key)){if(days.size>=14)fail('Paste into no more than 14 dates at once.');const day=read(key);if(day.revision!==body.revisions[key])fail('Schedule changed. Refresh before pasting.',409);days.set(key,day);}
-  }
-  for(const change of body.changes){const day=days.get(change.date);if(change.code===null)delete day.assignments[change.employeeId];else day.assignments[change.employeeId]={code:change.code,color:change.color};}
-  const result=[];for(const day of days.values()){day.revision++;db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,?,?)').run(day.date,day.revision,JSON.stringify({assignments:day.assignments,budget:day.budget}));result.push(calculated(day));}return {days:result};
- });
- app.post('/staff-schedule-api/paste',(req,res)=>{try{if(!req.scheduleAccess.canEdit)fail('Only schedule managers can paste assignments.',403);res.json(paste(req.body||{}));}catch(error){res.status(error.status||400).json({error:error.message});}});
- const save=db.transaction(body=>{
-  const day=read(date(body.date));if(day.revision!==body.revision)fail('Schedule changed. Refresh before saving.',409);
-  if(body.employeeId!==undefined){if(!roster().some(row=>row.id===body.employeeId))fail('Employee is not in LAX / MU.');if(!Object.hasOwn(roles,body.code)||typeof body.color!=='string'||!/^#[0-9a-f]{6}$/i.test(body.color))fail('Choose a valid duty and color.');day.assignments[body.employeeId]={code:body.code,color:body.color};}
-  else if(Object.hasOwn(body,'budget')){if(typeof body.budget!=='number'||!Number.isFinite(body.budget)||body.budget<0||body.budget>100000)fail('Enter a valid daily budget.');day.budget=body.budget;}
-  else fail('Choose an assignment or daily budget change. Daily Hour is calculated automatically.');
-  day.revision++;db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,?,?)').run(day.date,day.revision,JSON.stringify({assignments:day.assignments,budget:day.budget}));return calculated(day);
- });
- app.post('/staff-schedule-api',(req,res)=>{try{if(!req.scheduleAccess.canEdit)fail('Only schedule managers can edit the schedule.',403);res.json(save(req.body||{}));}catch(error){res.status(error.status||400).json({error:error.message});}});
+ const period=start=>{const days=Array.from({length:7},(_,i)=>calculated(read(summary.addDays(start,i))));return {start,end:summary.addDays(start,6),...summary.weekly(days)};};
+ const decorated=day=>({...calculated(day),period:period(summary.periodStart(day.date))});
+ const requireManager=req=>{if(!req.scheduleAccess.canEdit)fail('Only Supervisor and higher can edit schedules or view team details.',403);};
+ const handler=fn=>async(req,res)=>{try{res.json(await sync.run(()=>fn(req)));}catch(error){res.status(error.status||400).json({error:error.message});}};
+ app.use('/staff-schedule-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');let user;try{user=await authenticate(req);}catch{return res.status(401).json({error:'Sign in required.'});}const row=profiles.linked(user);if(!allowed(row))return res.status(403).json({error:'Schedule is available only for eligible LAX / MU employees.'});req.scheduleAccess={user,employeeId:row.id,canEdit:canEdit(user,row)};next();});
+ app.get('/staff-schedule-api',handler(async req=>{
+  await sync.refresh(Boolean(req.query.refresh));const access=req.scheduleAccess,month=req.query.month;let start,end;
+  if(month!==undefined){if(typeof month!=='string'||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))fail('Choose a valid history month.');start=month+'-01';const d=new Date(start+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(0);end=d.toISOString().slice(0,10);}
+  else{start=date(req.query.start||today());end=[sync.status().horizon,summary.addDays(start,13)].filter(Boolean).sort().at(-1);}
+  const length=Math.round((Date.parse(end)-Date.parse(start))/86400000)+1;if(length<1||length>3660)fail('Schedule dates are out of range.');
+  const days=Array.from({length},(_,i)=>{const record=read(summary.addDays(start,i));return access.canEdit?calculated(record):{date:record.date,dateColor:record.dateColor,labels:record.labels,assignments:record.assignments[access.employeeId]?{[access.employeeId]:record.assignments[access.employeeId]}:{}};});
+  const avatar=db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?');return {schemaVersion:2,canEdit:access.canEdit,canViewAll:access.canEdit,roles,colors,start,end,horizon:sync.status().horizon||end,...(access.canEdit?{dailyBudget:61,periods:summary.periods(days).map(p=>period(p.start)),sync:sync.status()}:{}),days,employees:roster().filter(row=>access.canEdit||row.id===access.employeeId).map(row=>({id:row.id,name:row.name,nickname:row.nickname,code:row.code||'',position:row.position,scheduleGroup:row.scheduleGroup,avatar:avatar.get(row.id)?.data||''}))};
+ }));
+ app.post('/staff-schedule-api/sync',handler(async req=>{requireManager(req);return {sync:await sync.configure(req.body||{})};}));
+ app.get('/staff-schedule-api/sync',(req,res)=>{try{requireManager(req);res.json({sync:sync.status()});}catch(error){res.status(error.status||400).json({error:error.message});}});
+ app.post('/staff-schedule-api/months',handler(async req=>{requireManager(req);await sync.refresh(true);const current=sync.status().horizon||summary.addDays(today(),13);if(req.body?.expectedEnd!==current)fail('The latest schedule month changed. Refresh before adding a month.',409);const d=new Date(current+'T12:00:00Z'),last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).toISOString().slice(0,10);if(current===last)d.setUTCMonth(d.getUTCMonth()+1,1);d.setUTCMonth(d.getUTCMonth()+1,0);const end=d.toISOString().slice(0,10);return {end,sync:await sync.extend(end)};}));
+ const saveCode=db.transaction((body,user)=>{if(typeof body.code!=='string'||body.code.trim().length>40||/[\x00-\x1f\x7f]/.test(body.code))fail('Enter a code of up to 40 characters.');if(!roster().some(row=>row.id===body.employeeId))fail('Employee is not eligible for LAX / MU schedules.',403);const current=employees.get(),target=current.employees.find(row=>row.id===body.employeeId);if(body.currentCode!==(target.code||''))fail('Employee code changed. Refresh before saving.',409);const code=body.code.trim();employees.save({...current,employees:current.employees.map(row=>row.id===target.id?{...row,code}:row)},user);sync.queue('','code',target.id,code);return {employeeId:target.id,code};});
+ app.post('/staff-schedule-api/code',handler(async req=>{requireManager(req);await sync.refresh();const result=saveCode(req.body||{},req.scheduleAccess.user);sync.requestFlush();return {...result,sync:sync.status()};}));
+ function validAssignment(body){if(!Object.hasOwn(roles,body.code)||typeof body.color!=='string'||!/^#[0-9a-f]{6}$/i.test(body.color))fail('Choose a valid duty and color.');body.color=body.color.toLowerCase();}
+ const save=db.transaction(body=>{const day=read(date(body.date));if(day.revision!==body.revision)fail('Schedule changed. Refresh before saving.',409);
+  if(body.employeeId!==undefined){if(!roster().some(row=>row.id===body.employeeId))fail('Employee is not eligible for LAX / MU schedules.');validAssignment(body);day.assignments[body.employeeId]={code:body.code,color:body.color};sync.queue(day.date,'assignment',body.employeeId,day.assignments[body.employeeId]);}
+  else if(Object.hasOwn(body,'budget')){if(typeof body.budget!=='number'||!Number.isFinite(body.budget)||body.budget<0||body.budget>100000)fail('Enter a valid daily budget.');day.budget=body.budget;sync.queue(day.date,'budget','',day.budget);}
+  else if(Object.hasOwn(body,'dateColor')){if(typeof body.dateColor!=='string'||!/^#[0-9a-f]{6}$/i.test(body.dateColor)||!Array.isArray(body.labels)||body.labels.length>4||body.labels.some(v=>typeof v!=='string'||v.trim().length>30||/[\x00-\x1f\x7f]/.test(v)))fail('Choose a date color and up to four short labels.');day.dateColor=body.dateColor;day.labels=[...new Set(body.labels.map(v=>v.trim()).filter(Boolean))];sync.queue(day.date,'meta','',{dateColor:day.dateColor,labels:day.labels});}
+  else fail('Choose an assignment, budget or date setting. Daily Hour is calculated automatically.');day.revision++;put(day);return day.date;});
+ app.post('/staff-schedule-api',handler(async req=>{requireManager(req);await sync.refresh();const target=save(req.body||{});sync.requestFlush();return {...decorated(read(target)),sync:sync.status()};}));
+ const paste=db.transaction(body=>{if(!Array.isArray(body.changes)||!body.changes.length||body.changes.length>7000||!body.revisions||typeof body.revisions!=='object')fail('Select up to 7,000 schedule cells.');const ids=new Set(roster().map(row=>row.id)),days=new Map(),cells=new Set();
+  for(const change of body.changes){if(!change||!ids.has(change.employeeId))fail('Employee is not eligible for LAX / MU schedules.');const day=date(change.date),cell=JSON.stringify([change.employeeId,day]);if(cells.has(cell))fail('Duplicate schedule cell.');cells.add(cell);if(change.code!==null)validAssignment(change);if(!days.has(day)){const record=read(day);if(record.revision!==body.revisions[day])fail('Schedule changed. Refresh before pasting.',409);days.set(day,record);}}
+  for(const change of body.changes){const day=days.get(change.date);if(change.code===null)delete day.assignments[change.employeeId];else day.assignments[change.employeeId]={code:change.code,color:change.color};sync.queue(day.date,'assignment',change.employeeId,day.assignments[change.employeeId]||null);}for(const day of days.values()){day.revision++;put(day);}return [...days.keys()];});
+ app.post('/staff-schedule-api/paste',handler(async req=>{requireManager(req);await sync.refresh();const dates=paste(req.body||{});sync.requestFlush();return {days:dates.map(d=>decorated(read(d))),sync:sync.status()};}));
+ return {close:()=>sync.close(),read,period,sync};
 }
-module.exports={registerStaffSchedule,allowed,canEdit,roles,colors};
+module.exports={registerStaffSchedule,allowed,canEdit,roles,colors,excluded};
