@@ -1909,7 +1909,7 @@ function worldTracerUpdateEmail(record, fileNumber) {
   if (isDpr && cbsEmailIsChinese(record)) return {
     emailContext:{...record,template:'worldTracerUpdateEmail',worldTracerFileNumber:fileNumber},
     subject: `【请勿回复】行李案件建案确认通知 – WorldTracer 案件编号：${fileNumber}`,
-    html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件已成功建立。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p>我们将根据您所提供的信息进行后续查询及跟进。如案件有进一步进展，我们会主动与您联系并提供最新信息，请您耐心等候。</p><p><strong>如果您在建案后 7 天内仍未收到我们的进一步通知，请发送邮件至 <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> 与我们联系，以便我们进一步跟进您的案件。</strong></p><p><strong>此邮件为系统自动发送，请勿直接回复此邮件。</strong></p><p>感谢您的耐心与理解。</p><p>此致<br><strong>中国东方航空</strong></p>`
+    html: `<p>尊敬的旅客：</p><p>您好！</p><p>您的行李案件已成功建立。</p><p><strong>WorldTracer 案件编号：${reference}</strong></p><p><strong>如果您在建案后 7 天内仍未收到我们的进一步通知，请发送邮件至 <a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a> 与我们联系，以便我们进一步跟进您的案件。</strong></p><p><strong>此邮件为系统自动发送，请勿直接回复此邮件。</strong></p><p>感谢您的耐心与理解。</p><p>此致<br><strong>中国东方航空</strong></p>`
   };
   if (isDpr) return {
     emailContext:{...record,template:'worldTracerUpdateEmail',worldTracerFileNumber:fileNumber},
