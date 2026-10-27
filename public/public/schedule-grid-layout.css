@@ -83,3 +83,13 @@
 @media(max-width:600px){body:has(.personal-calendar) .profile-sidebar{display:none}.personal-calendar #refresh{display:none}.personal-calendar .schedule-toolbar:has(>button#employee-view[hidden]){display:none}.personal-calendar .profile-shell{margin-top:0}}
 
 @media(max-width:600px){.schedule-shell.personal-calendar{margin-top:64px;padding-top:16px}.mobile-day-tags{position:absolute;top:-8px;left:-4px;z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:2px;transform:rotate(-12deg);transform-origin:left top;pointer-events:none}.mobile-day-tags .mobile-day-label{font-size:11px;line-height:15px;padding:2px 6px 2px 12px;max-width:none;white-space:nowrap;clip-path:polygon(7px 0,100% 0,100% 100%,7px 100%,0 50%)}.mobile-day-label:before{content:"";position:absolute;left:5px;top:7px;width:4px;height:4px;border-radius:50%;background:#fff}.mobile-day-label{position:relative}.mobile-day-tags .mobile-day-today{background:#d52235}}
+
+@media(max-width:600px){
+ .mobile-calendar-card{padding:12px 8px}
+ .mobile-calendar-scroll{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:18px 0 8px;-webkit-overflow-scrolling:touch}
+ .mobile-calendar-days{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:calc((100% - 24px)/7);gap:4px}
+ .mobile-calendar-day{min-height:106px;background:var(--month-color);padding:8px 0;gap:5px}
+ .mobile-calendar-day .mobile-date{font-size:11px;font-weight:700;white-space:nowrap}
+ .mobile-calendar-day .mobile-weekday{font-size:10px;padding:0;line-height:14px}
+ .mobile-calendar-day.period-start{border-left:3px solid #df6865;scroll-snap-align:start}
+}
