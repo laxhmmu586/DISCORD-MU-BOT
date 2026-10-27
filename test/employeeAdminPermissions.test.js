@@ -15,6 +15,7 @@ test('linked Google Business Manager gets current own-account access without mat
  const url='http://127.0.0.1:'+server.address().port+'/employee-admin-api';
  const response=await fetch(url);assert.equal(response.status,200);const view=await response.json();assert.equal(view.access.employeeId,'bm');assert.deepEqual(view.employees.map(e=>e.id),['bm','agent']);
  const saved=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:view.revision,employees:[{...view.employees[1],nickname:'Edited by Google manager'}]})});assert.equal(saved.status,200);
+  const supervisorDraft=store.get();supervisorDraft.employees.find(e=>e.id==='bm').position='Supervisor';store.save(supervisorDraft,{email:'lake@mu.com'});const add=await fetch(url+'/add-employee',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:store.get().revision,station:'LAX',account:'CZ',name:'NEW AGENT'})});assert.equal(add.status,200);const added=store.get().employees.find(e=>e.name==='NEW AGENT');assert.equal(added.eid,'');assert.equal(added.phone,'');
  const draft=store.get();draft.employees.find(e=>e.id==='bm').position='Agent';store.save(draft,{email:'lake@mu.com'});assert.equal((await fetch(url)).status,403);
 });
 test('existing and Gmail employee administrators can read and save records; other accounts cannot',async t=>{

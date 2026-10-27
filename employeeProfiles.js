@@ -38,7 +38,7 @@ function createProfileStore(employees){
   if(/^[^@\s]+@mu\.com$/i.test(user.email))return {state:'external'};
   if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
   const match=candidate(user);
-  return match?{state:'confirm',profile:profile(match),revision:employees.get().revision}:{state:'needs_eid'};
+  return match?{state:'confirm',profile:profile(match),revision:employees.get().revision}:{state:'select_account',accounts:employees.get().accounts.filter(a=>a.station!=='HQ'&&a.account!=='HQ'),revision:employees.get().revision};
  }
  function attempt(user){
   const now=Date.now(),old=db.prepare('SELECT * FROM employee_link_attempts WHERE uid=?').get(user.uid);
@@ -70,6 +70,20 @@ function createProfileStore(employees){
   db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run(user.uid,id,user.provider||'password',new Date().toISOString());
   return status(user);
  });
+ const selectAccount=db.transaction((user,body)=>{
+  requireProfileAccess(user);
+  if(linked(user))return status(user);
+  if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
+  const current=employees.get();if(body.revision!==current.revision)fail('Employee details changed. Reload and choose your account again.',409);
+  const match=candidate(user);
+  if(match){if(match.station!==body.station||match.account!==body.account)fail('Choose the account assigned to your employee record.',403);return link(user,{revision:current.revision});}
+  const scope=current.accounts.find(a=>a.station===body.station&&a.account===body.account&&a.station!=='HQ'&&a.account!=='HQ');
+  if(!scope)fail('Choose an existing Main Account.');
+  const id=require('node:crypto').randomUUID();
+  current.employees.push({id,eid:'',...scope,name:'',loginId:user.email||'',position:'Agent',attach:false,detach:false,spotter:false});
+  employees.save(current,user,{editableLoginIds:new Set([id])});
+  db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run(user.uid,id,user.provider||'password',new Date().toISOString());return status(user);
+ });
  async function update(user,body){
   requireProfileAccess(user);
   const row=linked(user);if(!row)fail('Link your employee account first.',403);
@@ -92,7 +106,7 @@ function createProfileStore(employees){
    return status(user);
   })();
  }
- return {status,linked,link,register,update,preview(user,eid){attempt(user);eid=String(eid||'').trim();if(!/^\d{1,12}$/.test(eid))fail('Enter a valid employee ID.');const row=candidate(user,eid,true);if(!row)return {state:'register',eid,accounts:employees.get().accounts.filter(a=>a.station!=='HQ'&&a.account!=='HQ'),revision:employees.get().revision};return {state:'confirm',profile:profile(row),revision:employees.get().revision};},attempt};
+ return {status,linked,link,register,selectAccount,update,preview(user,eid){attempt(user);eid=String(eid||'').trim();if(!/^\d{1,12}$/.test(eid))fail('Enter a valid employee ID.');const row=candidate(user,eid,true);if(!row)return {state:'register',eid,accounts:employees.get().accounts.filter(a=>a.station!=='HQ'&&a.account!=='HQ'),revision:employees.get().revision};return {state:'confirm',profile:profile(row),revision:employees.get().revision};},attempt};
 }
 function registerProfiles(app,{employees,authenticate,onChange=()=>{}}){
  const profiles=createProfileStore(employees);
@@ -100,6 +114,7 @@ function registerProfiles(app,{employees,authenticate,onChange=()=>{}}){
  app.use('/profile-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.profileUser=await authenticate(req,{allowUnlinkedGoogle:true});next();}catch{res.status(401).json({error:'Sign in required.'});}});
  const handler=fn=>async(req,res)=>{try{res.json(await fn(req));}catch(error){res.status(error.status||400).json({error:error.message});}};
  app.get('/profile-api',handler(req=>profiles.status(req.profileUser)));
+ app.post('/profile-api/select-account',handler(req=>{profiles.attempt(req.profileUser);const saved=profiles.selectAccount(req.profileUser,req.body);onChange();return saved;}));
  app.post('/profile-api/lookup',handler(req=>profiles.preview(req.profileUser,req.body.eid)));
  app.post('/profile-api/link',handler(req=>{profiles.attempt(req.profileUser);return profiles.link(req.profileUser,req.body);}));
  app.post('/profile-api/register',handler(req=>{profiles.attempt(req.profileUser);const saved=profiles.register(req.profileUser,req.body);onChange();return saved;}));

@@ -115,3 +115,5 @@ body.profile-page .flight-password button{color:#fff;background:#087cff;border-c
 .profile-page .profile-dashboard{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start;max-width:none}.profile-dashboard>.profile-personal-column,.profile-dashboard>.profile-pbb-column,.profile-dashboard>.profile-side-panels{min-width:0;margin-top:0;max-width:none}.profile-dashboard .profile-pbb-column>.profile-panel{margin-top:0}.profile-dashboard>.profile-activity-panels:has(>section[hidden]){display:none}
 @media(max-width:1100px){.profile-page .profile-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-dashboard>.profile-side-panels{grid-column:1/-1}}
 @media(max-width:850px){.profile-page .profile-dashboard{grid-template-columns:minmax(0,1fr)}.profile-dashboard>.profile-side-panels{grid-column:auto}}
+
+.profile-page .profile-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:850px){.profile-page .profile-dashboard{grid-template-columns:minmax(0,1fr)}}
