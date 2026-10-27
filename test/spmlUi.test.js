@@ -22,8 +22,8 @@ test('mobile meal table fits the viewport without a forced wide canvas', () => {
   assert.doesNotMatch(html, /\.reservation-table \{ min-width:500px; \}/);
 });
 
-test('security check is available from the flight menu', () => {
-  assert.match(html, /class="flight-menu"[\s\S]*id="security-check-button"[^>]*>Security Check</);
+test('removed passenger detail pages are absent from the flight menu', () => {
+  assert.doesNotMatch(html, /id="(?:security-check|seat-map)-button"/);
 });
 
 test('desktop and mobile navigation label the baggage system as LBS', () => {

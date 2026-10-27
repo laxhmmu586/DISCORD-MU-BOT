@@ -115,9 +115,6 @@ const {
   findCbsPnrRecordsByBagTag,
   appendTransit240Record,
   appendRecordScanRecord,
-  appendRecordCase,
-  getRecordCases,
-  updateRecordCase,
   readNotesDriveStore,
   writeNotesDriveStore
 
@@ -3363,97 +3360,6 @@ app.post('/record-scan', async (req, res) => {
   }
 });
 
-function normalizeRecordBn(value) {
-  const digits = String(value || '').replace(/\D/g, '');
-  return digits && digits.length <= 3 ? digits.padStart(3, '0') : '';
-}
-
-async function recordPassengerByBn(bn) {
-  const log = await getLatestFlightLog();
-  if (log) parseIncrementalLog(log);
-  return passengers[bn] || null;
-}
-
-const irrCaseStreamClients = new Set();
-
-function writeIrrCaseEvent(res, event, data) {
-  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-}
-
-function broadcastIrrCaseUpdate(record) {
-  for (const client of irrCaseStreamClients) writeIrrCaseEvent(client, 'case-update', { record });
-}
-
-app.get('/irr-cases/stream', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders?.();
-  irrCaseStreamClients.add(res);
-  writeIrrCaseEvent(res, 'connected', { at:new Date().toISOString() });
-  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15000);
-  keepAlive.unref?.();
-  req.on('close', () => {
-    clearInterval(keepAlive);
-    irrCaseStreamClients.delete(res);
-  });
-});
-
-app.post('/irr-form-submissions', async (req, res) => {
-  try {
-    const bn = normalizeRecordBn(req.body?.bn);
-    const companionBns = [...new Set((Array.isArray(req.body?.companionBns) ? req.body.companionBns : String(req.body?.companionBns || '').split(/[,\s]+/)).map(normalizeRecordBn).filter(Boolean))];
-    const travelParty = req.body?.travelParty === 'companions' ? 'companions' : 'individual';
-    const phone = String(req.body?.phone || '').trim().slice(0, 80);
-    const email = String(req.body?.email || '').trim().slice(0, 180);
-    const intention = String(req.body?.intention || '').trim().slice(0, 1000);
-    if (!bn || !phone || !isValidEmail(email) || !intention || (travelParty === 'companions' && !companionBns.length)) return res.status(400).json({ error:'Please complete all required fields.' });
-    const passenger = await recordPassengerByBn(bn);
-    if (!passenger) return res.status(404).json({ error:'BN was not found in today’s flight record.', code:'BN_NOT_FOUND' });
-    // The main lookup has already refreshed today's record. Reuse the parsed
-    // in-memory passenger map for every companion in this submission.
-    const companions = companionBns.map((number) => ({ bn:number, passenger:passengers[number] || null }));
-    const missing = companions.filter((item) => !item.passenger).map((item) => item.bn);
-    if (missing.length) return res.status(404).json({ error:`Companion BN not found: ${missing.join(', ')}`, code:'COMPANION_BN_NOT_FOUND' });
-    const submittedAt = new Date().toISOString();
-    const saved = await appendRecordCase({ submittedAt, status:'Waiting', bn, passengerName:passenger.name || '', phone, email, travelParty,
-      companionBns:companionBns.join(', '), companionPnrRecords:companions.map((item) => `BN ${item.bn} — ${item.passenger.name || ''}\n${item.passenger.sourceText || ''}`).join('\n\n'),
-      intention, finalDestination:'', pnrRecord:passenger.sourceText || '' });
-    broadcastIrrCaseUpdate(saved);
-    return res.status(201).json({ created:true, record:saved });
-  } catch (err) {
-    console.error('Record form submission failed:', err);
-    return res.status(500).json({ error:err?.message || 'Submission failed.' });
-  }
-});
-
-app.get('/irr-cases', async (_req, res) => {
-  try { return res.json({ rows:await getRecordCases() }); }
-  catch (err) { return res.status(500).json({ error:err?.message || 'Cases could not be loaded.' }); }
-});
-
-const irrCaseUpdateQueues = new Map();
-function serializeIrrCaseUpdate(rowNumber, operation) {
-  const key = String(rowNumber);
-  const previous = irrCaseUpdateQueues.get(key) || Promise.resolve();
-  const current = previous.catch(() => {}).then(operation);
-  irrCaseUpdateQueues.set(key, current);
-  current.finally(() => { if (irrCaseUpdateQueues.get(key) === current) irrCaseUpdateQueues.delete(key); }).catch(() => {});
-  return current;
-}
-
-app.post('/irr-cases/:rowNumber', async (req, res) => {
-  try {
-    // Only serialize the same row: different cases can still be handled at the
-    // same time, while stale edits to one case are rejected deterministically.
-    const record = await serializeIrrCaseUpdate(req.params.rowNumber, () => updateRecordCase(req.params.rowNumber, req.body || {}));
-    broadcastIrrCaseUpdate(record);
-    return res.json({ updated:true, record });
-  } catch (err) { return res.status(err?.code === 'EDIT_CONFLICT' ? 409 : 422).json({ error:err?.message || 'Case could not be updated.', code:err?.code }); }
-});
-
-
 const boardingNbrdSnapshots = new Map();
 let boardingNbrdSequence = 0;
 function boardingNbrdSnapshotVersion(flight, date, log) {
@@ -4797,6 +4703,10 @@ app.get(
         /^SY(\+)?(?:\s+([A-Z]{2}\d{1,4}[A-Z]?))?(?:\/(\d{2}[A-Z]{3})(\d{2})?)?$/i
       );
       const isSYRawQuery = Boolean(syRawMatch);
+      if (!isSYRawQuery) {
+        return res.status(410).json({ error: 'Passenger lookup is unavailable. Only SY flight queries are supported.' });
+      }
+
 
       // =========================
       // Load Log
@@ -4944,182 +4854,6 @@ app.get(
       }
 
 
-      let pax = null;
-      const normalizedFF =
-        q.replace(
-          /\s+/g,
-          ''
-        );
-
-      // =========================
-      // BN Search
-      // =========================
-      if (
-        /^\d{1,3}$/.test(q)
-      ) {
-
-        const bn =
-          q.padStart(3, '0');
-
-        pax =
-          passengers[bn] ||
-          findPassengerFromPRRecord(log, 'BN', bn);
-      }
-
-      // =========================
-      // Ticket Search
-      // =========================
-      else if (
-        /^\d{13}$/.test(q)
-      ) {
-
-        pax =
-          Object.values(passengers)
-            .find(p => {
-
-              return (
-                p.ticketNumber === q
-              );
-            });
-      }
-
-      // =========================
-      // Bagtag Search
-      // Examples:
-      // 3781829629
-      // DL861161
-      // =========================
-      else if (
-        /^(?:\d{5,12}|[A-Z]{1,3}\s*\d{3,12})$/i.test(q)
-      ) {
-
-        pax =
-          findByBagtag(q);
-      }
-
-      // =========================
-      // Seat Search
-      // =========================
-      else if (
-        /^\d+[A-Z]$/i.test(q)
-      ) {
-
-        pax =
-          findBySeat(q) ||
-          findPassengerFromPRRecord(log, 'SEAT', q);
-      }
-
-      // =========================
-      // FF Search
-      // =========================
-      else if (
-
-        /^[A-Z]{2}\s*\d+$/i
-          .test(q)
-
-      ) {
-
-        pax =
-          findByFFNumber(normalizedFF);
-
-        if (!pax) {
-
-          pax =
-            findPDByFFNumber(normalizedFF);
-        }
-
-        if (pax && pax.name === 'PD MEMBER') {
-          pax =
-            findPDPassengerByFFFromLog(
-              log,
-              normalizedFF
-            ) || pax;
-        }
-
-        if (!pax) {
-          pax =
-            findPassengerByFFFromRecord(
-              log,
-              normalizedFF
-            );
-        }
-      }
-
-      // =========================
-      // Name Search
-      // =========================
-      else {
-
-        pax =
-          findByName(q) ||
-          findPassengerFromPRRecord(log, 'NAME', q);
-      }
-
-      // =========================
-      // Not Found
-      // =========================
-      if (!pax) {
-
-        return res.json({
-
-          error:
-            'Passenger not found'
-        });
-      }
-
-      // =========================
-      // Membership Status
-      // =========================
-      let membershipStatus = '';
-
-      if (pax.ffTier === 'V') {
-
-        membershipStatus =
-          'Platinum';
-      }
-
-      else if (
-        pax.ffTier === 'G'
-      ) {
-
-        membershipStatus =
-          'Gold';
-      }
-
-      else if (
-        pax.ffTier === 'S'
-      ) {
-
-        membershipStatus =
-          'Silver';
-      }
-
-      if (normalizeBoardingFlight(selectedFlight)) {
-        boardingLive.saveNbrd(selectedFlight, nbrdEntriesFromFb([pax]), {}, selectedDate);
-      }
-
-      const authContext =
-        await resolveAuthContextFromRequest(req);
-      const permissions = authContext.permissions;
-
-      pax.membershipStatus =
-        permissions.canViewMembership ? membershipStatus : null;
-
-      const info240 =
-        permissions.canView240Info
-          ? await get240InfoByBnAndFlightDate({
-              bn: pax.bn,
-              flightDate: pax.flightDate
-            })
-          : null;
-
-      res.json(
-        applyPermissionFilter(
-          pax,
-          permissions,
-          info240
-        )
-      );
 
     }
 

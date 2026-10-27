@@ -2078,14 +2078,7 @@
         font-weight: 950;
         letter-spacing: 0.5px;
         text-transform: uppercase;
-        cursor: pointer;
-      }
-
-      .bn-button:hover,
-      .bn-button:focus-visible {
-        border-color: rgba(255, 255, 255, 1);
-        background: rgba(255, 255, 255, 0.08);
-        outline: none;
+        cursor: default;
       }
 
       .bn-button.is-pass,
@@ -4574,8 +4567,6 @@
               </button>
               <div class="flight-menu" aria-hidden="true">
                 <button id="sales-report-button" type="button">Sales Report</button>
-                <button id="seat-map-button" type="button">Seat Map</button>
-                <button id="security-check-button" type="button">Security Check</button>
                 <button id="emergency-board-button" type="button" onclick="location.href='scan2.html'">Emergency Boarding</button>
               </div>
             </div>
@@ -4809,8 +4800,6 @@
       const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
-      const securityCheckButton = document.querySelector("#security-check-button");
-      const seatMapButton = document.querySelector("#seat-map-button");
       const reportNavLink = document.querySelector("#report-nav-link");
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
       const testNavLink = document.querySelector("#test-nav-link");
@@ -5999,31 +5988,6 @@
         });
       }
 
-      function showPassengerModal(data, title = "Passenger Record", anchor = null) {
-        document.querySelector(".passenger-modal-backdrop")?.remove();
-        const overlay = document.createElement("div");
-        overlay.className = "passenger-modal-backdrop";
-        const modalBnNumber = data?.bn || data?.passengerRecord?.bn || "---";
-        overlay.dataset.passengerBn = String(modalBnNumber || "").replace(/^BN/i, "");
-        overlay.dataset.passengerTitle = title;
-        overlay.innerHTML = `<article class="passenger-modal" role="dialog" aria-modal="true"><button class="panel-close" type="button" data-close-modal>×</button><div class="passenger-modal-mobile-title"><span>${escapeHtml(title)}</span><strong>BN${escapeHtml(String(modalBnNumber).replace(/^BN/i, "") || "---")}</strong></div>${passengerRecordCard(data || {}, title)}</article>`;
-        document.body.appendChild(overlay);
-        enablePassengerModalDragScroll(overlay);
-        if (anchor && window.innerWidth > 760) {
-          const modal = overlay.querySelector(".passenger-modal");
-          const rect = anchor.getBoundingClientRect();
-          overlay.style.placeItems = "start";
-          modal.style.position = "fixed";
-          const viewportGap = 16;
-          const modalWidth = Math.min(620, window.innerWidth - (viewportGap * 2));
-          const left = Math.min(Math.max(viewportGap, rect.left), window.innerWidth - modalWidth - viewportGap);
-          const modalHeight = Math.min(modal.offsetHeight || 360, window.innerHeight - (viewportGap * 2));
-          const aboveTop = rect.top - modalHeight - 10;
-          const belowTop = rect.bottom + 10;
-          modal.style.left = `${left}px`;
-          modal.style.top = `${aboveTop >= viewportGap ? aboveTop : Math.min(belowTop, window.innerHeight - modalHeight - viewportGap)}px`;
-        }
-      }
 
       function closePassengerModal() {
         document.querySelector(".passenger-modal-backdrop")?.remove();
@@ -6039,7 +6003,7 @@
         return `<div class="bn-button-list">${rows.map((row, index) => {
           const label = labelFn ? labelFn(row, index) : bnCircleLabel(row.bn || row.seat, String(index + 1).padStart(3, "0"));
           const extraClass = classFn ? classFn(row, index) : "";
-          return `<button class="bn-button ${escapeHtml(extraClass)}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}" title="${escapeHtml(reasonFn ? reasonFn(row) : passengerName(row) || row.bn || "Passenger")}">${escapeHtml(label)}</button>`;
+          return `<span class="bn-button ${escapeHtml(extraClass)}">${escapeHtml(label)}</span>`;
         }).join("")}</div>`;
       }
 
@@ -6270,10 +6234,6 @@
         }).sort((a, b) => a.nameKey.localeCompare(b.nameKey) || Number(a.bn || 9999) - Number(b.bn || 9999));
       }
 
-      function renderPassenger(data) {
-        resetPanelState();
-        showPassengerModal(data, "Passenger Record");
-      }
 
       async function refreshSalesReportButton(sy) {
         if (!salesReportButton) return;
@@ -6749,6 +6709,10 @@
       async function searchPassenger() {
         const raw = queryInput.value.trim();
         if (!raw) return;
+        if (!isSyQuery(raw)) {
+          renderPanel("Search unavailable", "", `<p class="panel-muted">Only SY flight queries are supported. Passenger lookup is unavailable.</p>`);
+          return;
+        }
         latestQuery = raw;
         const isSySearch = isSyQuery(raw);
         setLoadingState(true);
@@ -6764,7 +6728,7 @@
             activeSyQuery = normalizeSyQuery(raw);
             if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
             else stopSyAutoRefresh();
-          } else renderPassenger(data);
+          } else throw new Error("Only SY flight queries are supported.");
         } catch (error) {
           if (isSySearch) {
             clearSyDashboard();
@@ -7077,8 +7041,8 @@
           const ackList = row.acknowledgements || [];
           const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
-          return `<div class="warning-card ${ownAck ? "is-acknowledged" : ""}" data-warning-card="${index}"><button class="bn-button ${ownAck ? "" : "is-warning"}" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`;
-        }).join("")}</div></article><div class="panel-side inline-record-side" style="margin-top:14px"><p class="panel-muted">Click a BN button to view the passenger record.</p></div>` : `<p class="panel-muted">No WARNING records found.</p>`;
+          return `<div class="warning-card ${ownAck ? "is-acknowledged" : ""}" data-warning-card="${index}"><span class="bn-button ${ownAck ? "" : "is-warning"}">${escapeHtml(bnCircleLabel(row.bn))}</span><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`;
+        }).join("")}</div></article>` : `<p class="panel-muted">No WARNING records found.</p>`;
         renderPanel("WARNING", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
         updateWarningActionState(rows);
@@ -7176,7 +7140,7 @@
           const lines = (Array.isArray(row.psmLines) ? row.psmLines : [row.text || row.raw || row.message].filter(Boolean))
             .filter((line) => /^\s*(?:PSM|MSG)/i.test(line) && targetMsgCodes.some((code) => String(line).toUpperCase().replace(/\s+/g, "").includes(code)));
           const type = lines.some((line) => /^\s*MSG/i.test(line)) ? "MSG" : "PSM";
-          return `<article class="psm-card"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">${escapeHtml(bnCircleLabel(row.bn))}</button><div class="psm-card-main"><div class="psm-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="psm-card-row"><b>Bags</b>${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></div><span class="psm-badge">${escapeHtml(type)}</span></article>`;
+          return `<article class="psm-card"><span class="bn-button is-warning">${escapeHtml(bnCircleLabel(row.bn))}</span><div class="psm-card-main"><div class="psm-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="psm-card-row"><b>Bags</b>${escapeHtml(compactValue(row.bagtags) || "-")}</div><div class="psm-card-row"><b>Detail</b><br>${lines.map((line) => escapeHtml(line)).join("<br>")}</div></div><span class="psm-badge">${escapeHtml(type)}</span></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No PSM/MSG records found.</p>`;
         renderPanel("PSM/MSG", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
@@ -7262,7 +7226,7 @@
           const ackList = row.acknowledgements || [];
           const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
-          return `<article class="psm-card ckin-nbrd-card"><div class="ckin-nbrd-head"><button class="bn-button is-warning" type="button" data-passenger-index="${index}" data-passenger-bn="${escapeHtml(row.bn || "")}">BN${escapeHtml(row.bn || "---")}</button><div class="ckin-nbrd-passenger"><span class="ckin-nbrd-name">${escapeHtml(passengerName(row) || "Passenger")}</span><span class="ckin-nbrd-seat">${escapeHtml([row.seat ? `Seat ${row.seat}` : "No seat", row.cabin].filter(Boolean).join(" • "))}</span></div></div><div class="ckin-nbrd-detail"><b>Detail</b>${detailLines.map((line) => `<span class="ckin-nbrd-line">${escapeHtml(line)}</span>`).join("")}</div><div class="ckin-nbrd-meta"><span class="psm-badge">CKIN/NBRD</span><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
+          return `<article class="psm-card ckin-nbrd-card"><div class="ckin-nbrd-head"><span class="bn-button is-warning">BN${escapeHtml(row.bn || "---")}</span><div class="ckin-nbrd-passenger"><span class="ckin-nbrd-name">${escapeHtml(passengerName(row) || "Passenger")}</span><span class="ckin-nbrd-seat">${escapeHtml([row.seat ? `Seat ${row.seat}` : "No seat", row.cabin].filter(Boolean).join(" • "))}</span></div></div><div class="ckin-nbrd-detail"><b>Detail</b>${detailLines.map((line) => `<span class="ckin-nbrd-line">${escapeHtml(line)}</span>`).join("")}</div><div class="ckin-nbrd-meta"><span class="psm-badge">CKIN/NBRD</span><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></article>`;
         }).join("")}</div>` : `<p class="panel-muted">No NBRD/CKIN issue found.</p>`;
         renderPanel("CKIN/NBRD", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);
@@ -8602,17 +8566,6 @@
         return `<article class="record-card ${tone === "warning" ? "is-warning" : tone === "fail" ? "is-fail" : ""}"><div class="record-title"><span>BN${escapeHtml(row.bn || "---")}</span><span class="record-badge">${escapeHtml(row.deleted || row.offloaded || row.status === "DELETED" ? "DELETED" : tone === "pass" ? "PASS" : tone === "fail" ? "FAIL" : "WARNING")}</span></div><div class="security-check-list">${rows}</div>${reviewButtons}${reviewLine}${policyReview}</article>${passengerRecordCard(passenger, "Passenger Record", tone)}`;
       }
 
-      function showSecurityModal(row) {
-        showPassengerModal(row, "Security Check");
-        const overlay = document.querySelector(".passenger-modal-backdrop");
-        overlay.classList.add("security-modal-backdrop");
-        delete overlay.dataset.passengerBn;
-        const modal = overlay.querySelector(".passenger-modal");
-        modal.setAttribute("aria-label", `Security Check BN${row?.bn || "---"}`);
-        modal.innerHTML = securityCard(row);
-        overlay.addEventListener("click", handleResultPanelClick);
-      }
-
       function visaPolicyReviewForm(row) {
         const visa=row?.visaDecision;
         if(!visa||['citizen','manual_twov'].includes(visa.requirement)||visa.nationality==='UNK'||visa.destinationCountry==='UNK'||!visa.nationality||!visa.destinationCountry||row.offloaded||row.deleted)return "";
@@ -8669,96 +8622,12 @@
             message.textContent="政策已保存并启用，正在更新 BN 判断…";
             const bn=form.dataset.visaBn;
             const data=await fetchSearch(activeSyQuery||"SY",{realtime:true});
-            if(data.sy&&data.sy.flightNo===currentSy?.flightNo&&data.sy.flightDate===currentSy?.flightDate){updateFlightFromSy(data.sy);await renderSecurityCheck(bn);}
+            if(data.sy&&data.sy.flightNo===currentSy?.flightNo&&data.sy.flightDate===currentSy?.flightDate){updateFlightFromSy(data.sy);}
             else message.textContent="政策已保存并启用。刷新当前航班后可查看新判断。";
           }
         } catch(error) {message.textContent=published?`政策已保存并启用，但当前航班刷新失败：${error.message}`:(error.message||"保存失败，规则未启用。");}
         finally {button.disabled=false;}
         return true;
-      }
-
-      async function renderSecurityCheck() {
-        const rows = await loadSecurityReviews(currentSy?.bnAudit || []);
-        const passCount = rows.filter((row) => securityTone(row) === "pass").length;
-        const warningCount = rows.filter((row) => securityTone(row) === "warning").length;
-        const failCount = rows.filter((row) => securityTone(row) === "fail").length;
-        const byBn = new Map(rows.map((row) => [String(row.bn || "").padStart(3, "0"), row]));
-        const allRows = Array.from({ length: 320 }, (_, index) => {
-          const bn = String(index + 1).padStart(3, "0");
-          return byBn.get(bn) || { bn, missing: true };
-        });
-        const buttons = `<div class="security-grid">${allRows.map((row, index) => `<button class="bn-button ${row.missing || row.deleted || row.offloaded || row.status === "DELETED" ? "is-deleted" : `is-${securityCircleTone(row)}`}" type="button" data-security-index="${index}" aria-label="BN ${escapeHtml(row.bn)}${securityCircleTone(row) === "visa-warning" ? ": VISA warning" : ""}">${escapeHtml(row.bn)}</button>`).join("")}</div>`;
-        const stats = `<div class="panel-stats"><span class="status-ok">${passCount} pass</span><span class="status-warn">${warningCount} warning</span><span class="status-fail">${failCount} fail</span></div>`;
-        renderPanel("Security Check", currentSy?.flightNo || "SY", `${stats}<div class="security-bn-list">${buttons}</div>`, { panelClass: "is-full-page" });
-        setPanelPassengerRows(allRows);
-      }
-
-      function seatNumber(value) {
-        const match = String(value || "").match(/^(\d{1,2})([A-Z])$/i);
-        return match ? { row: Number(match[1]), letter: match[2].toUpperCase() } : null;
-      }
-
-      function seatTone(record) {
-        if (!record) return "";
-        const passenger = record.passengerRecord || {};
-        const services = [
-          ...(record.specialServices || []),
-          ...(record.specialMeals || []),
-          ...(record.codes || []),
-          ...(record.psmLines || []),
-          ...(passenger.specialServices || []),
-          ...(passenger.specialMeals || []),
-          ...(passenger.codes || []),
-          ...(passenger.psmLines || []),
-        ].join("/");
-        if (/INF|INFT/i.test(services) || record.hasInfant || passenger.hasInfant) return "infant";
-        if (/WCH/i.test(services)) return "wheelchair";
-        if (/CHD|CHLD/i.test(services) || record.isChild || passenger.isChild || record.hasChdCode || passenger.hasChdCode || (Number(record.ageYears ?? passenger.ageYears) >= 2 && Number(record.ageYears ?? passenger.ageYears) < 12)) return "child";
-        return "occupied";
-      }
-
-      function seatLayoutForRow(rowNo) {
-        const alignedPremium = ["blank", "blank", "A", "aisle", "blank", "D", "H", "blank", "aisle", "L", "blank", "blank"];
-        const economyFull = ["A", "B", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "K", "L"];
-        if (rowNo === 1) return { cabin: "First Class", premium: true, slots: ["blank", "blank", "A", "wide", "wide", "wide", "wide", "wide", "wide", "L", "blank", "blank"] };
-        if (rowNo === 2) return { cabin: "First Class", premium: true, slots: alignedPremium };
-        if ([6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20].includes(rowNo)) return { cabin: "Business Class", premium: true, slots: alignedPremium };
-        if (rowNo === 31) return { cabin: "Economy Class", slots: ["blank", "blank", "blank", "aisle", "D", "F", "G", "H", "aisle", "blank", "blank", "blank"] };
-        if (rowNo >= 70 && rowNo <= 73) return { cabin: "Economy Class", slots: ["A", "blank", "C", "aisle", "D", "F", "G", "H", "aisle", "J", "blank", "L"] };
-        if (rowNo === 74) return { cabin: "Economy Class", slots: ["A", "blank", "C", "aisle", "blank", "blank", "blank", "blank", "aisle", "blank", "blank", "blank"] };
-        if (rowNo >= 31 && rowNo <= 44) return { cabin: "Economy Class", slots: economyFull };
-        if (rowNo >= 61 && rowNo <= 69) return { cabin: "Economy Class", slots: economyFull };
-        return null;
-      }
-
-      function configuredSeatRows() {
-        return [1, 2, "galley-first", 6, 7, "galley-business", 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, "galley-economy", ...Array.from({ length: 14 }, (_, i) => 31 + i), "galley-mid", ...Array.from({ length: 14 }, (_, i) => 61 + i)];
-      }
-
-      function renderSeatMap() {
-        const passengerByBn = passengerLookupByBn();
-        const records = (currentSy?.seatMapRecords || []).map((row) => ({ ...(passengerByBn.get(String(row.bn || "").padStart(3, "0")) || {}), ...row }));
-        const seats = new Map(records.map((row) => [String(row.seat || "").toUpperCase(), row]));
-        const bodyRows = [];
-        let lastCabin = "";
-        for (const rowNo of configuredSeatRows()) {
-          if (String(rowNo).startsWith("galley")) { bodyRows.push(`<div class="seat-galley">Galley</div>`); continue; }
-          const layout = seatLayoutForRow(rowNo);
-          if (!layout) continue;
-          if (layout.cabin !== lastCabin) { bodyRows.push(`<div class="seat-cabin-label">${escapeHtml(layout.cabin)}</div>`); lastCabin = layout.cabin; }
-          bodyRows.push(`<div class="seat-row ${layout.premium ? "is-premium" : ""}"><div class="seat-row-number">${rowNo}</div>${layout.slots.map((letter) => {
-            if (letter === "wide") return `<div class="seat-aisle is-wide" aria-hidden="true"></div>`;
-            if (letter === "aisle") return `<div class="seat-aisle" aria-hidden="true"></div>`;
-            if (letter === "blank") return `<div class="seat-blank" aria-hidden="true"></div>`;
-            const seat = `${rowNo}${letter}`;
-            const record = seats.get(seat);
-            const tone = seatTone(record);
-            return `<button class="seat-cell ${record ? "is-occupied" : ""} ${record && tone !== "occupied" ? `is-${tone}` : ""}" type="button" ${record ? `data-seat="${escapeHtml(seat)}"` : "disabled"} title="${escapeHtml(record ? `${seat} BN ${record.bn || ""} ${passengerName(record)}` : seat)}">${escapeHtml(record?.bn || seat)}</button>`;
-          }).join("")}</div>`);
-        }
-        const legend = `<div class="panel-stats"><span style="color:#8fd0ff">Wheelchair</span><span style="color:#d7bdff">Child</span><span style="color:#ffbf86">Infant</span></div>`;
-        renderPanel("Seat Map", currentSy?.flightNo || "SY", `${legend}<div class="panel-workspace seat-map-workspace"><div class="seat-map-shell"><div class="seat-map-plane">${bodyRows.join("")}</div></div><div class="panel-side seat-record-side"><p class="panel-muted">Click a seat to view the passenger record.</p></div></div>`, { panelClass: "is-full-page" });
-        setPanelPassengerRows(records);
       }
 
       function renderStepPanel(key) {
@@ -8939,7 +8808,6 @@
           if (panel === "psm") renderPsmPanel();
           if (panel === "duplicate-bags") renderDuplicateBagsPanel();
           if (panel === "duplicate-names") renderDuplicateNamesPanel();
-          if (panel === "security") renderSecurityCheck();
           if (panel === "jcsy") renderJcsyPanel();
         });
       });
@@ -9107,11 +8975,9 @@
       reportForm.addEventListener("submit", generateReport);
       reportDownloadButton.addEventListener("click", downloadCurrentReportCsv);
       reportPdfDownloadButton?.addEventListener("click", downloadAuthorizationReportPdf);
-      securityCheckButton?.addEventListener("click", closeFlightMenuAfterAction(renderSecurityCheck));
       document.querySelectorAll("[data-meal-day]").forEach((tab) => {
         tab.addEventListener("click", () => selectMealOrderDay(tab.dataset.mealDay));
       });
-      seatMapButton.addEventListener("click", closeFlightMenuAfterAction(renderSeatMap));
 
       mobilePanel.addEventListener("click", (event) => {
         if (event.target.closest("a, button")) closeMobilePanel();
@@ -9128,31 +8994,6 @@
           applyPendingSyRefresh();
           return;
         }
-        const reviewButton = event.target.closest("[data-review-status]");
-        if (reviewButton) {
-          const rows = resultPanel._passengerRows || [];
-          const bn = reviewButton.dataset.reviewBn;
-          const row = rows.find((item) => String(item.bn || "") === String(bn));
-          if (row) {
-            reviewButton.textContent = "Saving...";
-            await saveSecurityReview(row, reviewButton.dataset.reviewStatus);
-            updateOperationReviewNodesFromRows(rows);
-            const scrollTop = resultPanel.scrollTop;
-            const gridScrollTop = resultPanel.querySelector(".security-grid")?.scrollTop || 0;
-            await renderSecurityCheck();
-            resultPanel.scrollTop = scrollTop;
-            resultPanel.querySelector(".security-grid").scrollTop = gridScrollTop;
-            updateOperationReviewNodesFromRows(resultPanel._passengerRows || rows);
-          }
-          return;
-        }
-        const securityButton = event.target.closest("[data-security-index]");
-        if (securityButton) {
-          const rows = resultPanel._passengerRows || [];
-          const row = rows[Number(securityButton.dataset.securityIndex)];
-          showSecurityModal(row);
-          return;
-        }
         const warningAckButton = event.target.closest("[data-warning-ack]");
         if (warningAckButton) {
           const rows = resultPanel._passengerRows || [];
@@ -9165,41 +9006,7 @@
           }
           return;
         }
-        const passengerButton = event.target.closest("[data-passenger-index]");
-        if (passengerButton) {
-          const rows = resultPanel._passengerRows || [];
-          const index = Number(passengerButton.dataset.passengerIndex);
-          const bn = passengerButton.dataset.passengerBn;
-          const row = (bn && rows.find((item) => String(item.bn || "") === bn)) || rows[index] || { bn };
-          const inlineSide = resultPanel.querySelector(".inline-record-side");
-          const recordData = { ...(row.passengerRecord || {}), ...row, passengerRecord: row.passengerRecord };
-          const recordHtml = passengerRecordCard(recordData, "Passenger Record", row._panelCard === "gov" ? "warning" : "pass");
-          if (inlineSide) inlineSide.innerHTML = recordHtml;
-          else showPassengerModal(recordData, "Passenger Record", passengerButton);
-          return;
-        }
-        const seatButton = event.target.closest("[data-seat]");
-        if (seatButton) {
-          const seat = seatButton.dataset.seat;
-          const rows = resultPanel._passengerRows || [];
-          const row = rows.find((item) => String(item.seat || "").toUpperCase() === seat) || { seat };
-          const enriched = { ...(passengerLookupByBn().get(String(row.bn || "").padStart(3, "0")) || {}), ...(row.passengerRecord || row) };
-          const side = resultPanel.querySelector(".seat-record-side");
-          if (side) {
-            side.innerHTML = passengerRecordCard(enriched, "Passenger Record");
-            const workspace = resultPanel.querySelector(".seat-map-workspace");
-            if (workspace && window.matchMedia("(min-width: 761px)").matches) {
-              const seatRect = seatButton.getBoundingClientRect();
-              const workspaceTop = workspace.getBoundingClientRect().top;
-              const cardHeight = side.querySelector(".record-card")?.offsetHeight || 0;
-              const offset = Math.max(0, seatRect.top + (seatRect.height / 2) - workspaceTop - (cardHeight / 2));
-              side.style.marginTop = `${offset}px`;
-            } else {
-              side.style.marginTop = "";
-            }
-          }
-          else showPassengerModal(row.passengerRecord || row, "Passenger Record", seatButton);
-        }
+
       }
       resultPanel.addEventListener("click", handleResultPanelClick);
 

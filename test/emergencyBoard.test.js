@@ -26,7 +26,7 @@ test('emergency scanner and board use their isolated endpoints and multi-format 
   assert.match(board, /records\/entered/);
 });
 
-test('Emergency Boarding remains in the flight menu after IRR moves to flight services', () => {
+test('Emergency Boarding remains in the flight menu after IRR removal', () => {
   const home = read('public/public/index.html');
   assert.match(home, /id="emergency-board-button"[^>]*>Emergency Boarding<\/button>/);
   assert.doesNotMatch(home, /id="irr-button"/);
