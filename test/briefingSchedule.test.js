@@ -1,16 +1,35 @@
 const test=require('node:test'),assert=require('node:assert/strict'),Database=require('better-sqlite3');
 const {PDFDocument}=require('../vendor/pdf-lib/pdf-lib');
-const {createBriefingService,createGoogleExporter,isLegacyBriefing,validatePdf,JOBS}=require('../briefingSchedule');
+const {createBriefingService,createGoogleExporter,isLegacyBriefing,validatePdf,JOBS,SPREADSHEET_ID}=require('../briefingSchedule');
 async function pdf(width=612,height=792){const doc=await PDFDocument.create();doc.addPage([width,height]);return Buffer.from(await doc.save());}
 async function fixture(t,{failExport=false,ambiguous=false}={}){
  const db=new Database(':memory:');t.after(()=>db.close());let instant=new Date('2026-10-25T15:48:00Z'),exports=0;const sends=[];
- const bytes=await pdf(),client={user:{id:'bot'},channels:{fetch:async channelId=>({messages:{fetch:async()=>({find:fn=>sends.map(s=>({id:s.id,author:{id:'bot'},attachments:new Map([[0,{name:s.name}]])})).find(fn)})},send:async options=>{const item={channelId,name:options.files[0].name,id:'id-'+(sends.length+1)};sends.push(item);if(ambiguous)throw Error('timeout');return {id:item.id,attachments:new Map([[0,options.files[0]]])};}})}};
- const options={db,client,now:()=>instant,logger:{error(){}},exportPdf:async job=>{exports++;if(failExport&&job.flight==='MU583')throw Error('export unavailable');return bytes;}};
+ const bytes=await pdf(),client={user:{id:'bot'},channels:{fetch:async channelId=>({messages:{fetch:async()=>({find:fn=>sends.map(s=>({id:s.id,author:{id:'bot'},attachments:new Map([[0,{name:s.name}]])})).find(fn)})},send:async options=>{const item={channelId,name:options.files[0].name,id:'id-'+(sends.length+1),content:options.content,files:options.files,allowedMentions:options.allowedMentions};sends.push(item);if(ambiguous)throw Error('timeout');return {id:item.id,attachments:new Map([[0,options.files[0]]])};}})}};
+ const options={db,client,now:()=>instant,logger:{error(){}},exportPdf:async job=>{exports++;if(failExport&&job.flight==='MU583')throw Error('export unavailable');return {bytes,viewUrl:'https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/edit#gid='+(job.flight==='MU583'?17:29)};}};
  return {db,sends,options,service:createBriefingService(options),time:s=>instant=new Date(s),exports:()=>exports};
 }
 test('system sends both briefings at UTC 15:49 once daily across restart',async t=>{
  const h=await fixture(t);await h.service.tick();assert.equal(h.sends.length,0);h.time('2026-10-25T15:49:00Z');await h.service.tick();await h.service.tick();await createBriefingService(h.options).tick();assert.equal(h.sends.length,2);assert.equal(h.exports(),2);assert.deepEqual(h.sends.map(s=>s.channelId),JOBS.map(j=>j.channelId));assert.match(h.sends[0].name,/2026-10-25 MU583 ARRIVAL/);
  h.time('2026-12-01T15:49:00Z');await h.service.tick();assert.equal(h.sends.length,4);
+});
+
+test('each Discord message includes the matching online sheet link and PDF attachment together',async t=>{
+ const h=await fixture(t);h.time('2026-10-26T15:49:00Z');await h.service.tick();
+ assert.equal(h.sends.length,2);
+ for(const [i,sent] of h.sends.entries()){
+  assert(sent.content.includes('2026-10-26 '+JOBS[i].flight+' '+JOBS[i].sheet+' BRIEFING SHEET.pdf'));
+  assert(sent.content.includes('https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/edit#gid='+(i===0?17:29)));
+  assert.equal(sent.files.length,1);assert.equal(sent.files[0].name,sent.name);assert.equal(sent.files[0].attachment.subarray(0,5).toString(),'%PDF-');
+  assert.deepEqual(sent.allowedMentions,{parse:[]});
+ }
+});
+
+test('a missing or invalid fallback link fails before posting either message',async t=>{
+ const h=await fixture(t),bytes=await pdf();h.time('2026-10-26T15:49:00Z');
+ for(const viewUrl of [undefined,'https://example.test/briefing','https://docs.google.com/spreadsheets/d/other/edit#gid=17']){
+  h.options.exportPdf=async()=>({bytes,viewUrl});await createBriefingService(h.options).tick();assert.equal(h.sends.length,0);
+  h.db.prepare('DELETE FROM briefing_deliveries').run();
+ }
 });
 test('failed export does not block the other flight; retries respect backoff',async t=>{
  const h=await fixture(t,{failExport:true});h.time('2026-10-25T15:49:00Z');await h.service.tick();assert.equal(h.sends.length,1);assert.equal(h.sends[0].channelId,JOBS[1].channelId);await h.service.tick();assert.equal(h.exports(),2);h.time('2026-10-25T15:55:00Z');await h.service.tick();assert.equal(h.exports(),3);assert.equal(h.sends.length,1);
@@ -30,7 +49,7 @@ test('a history lookup failure never makes an ambiguous send eligible for retry'
 test('exporter selects tab and requests single-page portrait Letter with narrow margins',async()=>{
  const bytes=await pdf();let request;
  const exporter=createGoogleExporter({getSheets:()=>({spreadsheets:{get:async()=>({data:{sheets:[{properties:{sheetId:17,title:'ARRIVAL'}}]}})}}),getClient:async()=>({request:async options=>{request=options;return {data:bytes};}})});
- assert.deepEqual(await exporter(JOBS[0]),bytes);const q=new URL(request.url).searchParams;assert.equal(q.get('gid'),'17');assert.equal(q.get('portrait'),'true');assert.equal(q.get('scale'),'4');assert.equal(q.get('range'),'A1:R67');assert.equal(q.get('left_margin'),'0.10');assert.equal(q.get('right_margin'),'0.10');
+ const result=await exporter(JOBS[0]);assert.deepEqual(result.bytes,bytes);assert.equal(result.viewUrl,'https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/edit#gid=17');const q=new URL(request.url).searchParams;assert.equal(q.get('gid'),'17');assert.equal(q.get('portrait'),'true');assert.equal(q.get('scale'),'4');assert.equal(q.get('range'),'A1:R67');assert.equal(q.get('left_margin'),'0.10');assert.equal(q.get('right_margin'),'0.10');
  await assert.rejects(validatePdf(await pdf(792,612)),/portrait/);await assert.rejects(validatePdf(Buffer.from('not a PDF')),/Invalid/);
 });
 test('recognizes legacy briefing calls only in configured channels',()=>{

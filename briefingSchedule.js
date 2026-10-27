@@ -20,7 +20,7 @@ function createGoogleExporter({getSheets,getClient}){
   const sheet=meta.data.sheets.find(s=>s.properties.title===job.sheet);if(!sheet)throw Error('Missing briefing sheet: '+job.sheet);
   const query=new URLSearchParams({format:'pdf',gid:String(sheet.properties.sheetId),range:'A1:R67',size:'letter',portrait:'true',scale:'4',sheetnames:'false',printtitle:'false',pagenum:'UNDEFINED',gridlines:'false',fzr:'false',horizontal_alignment:'CENTER',vertical_alignment:'TOP',top_margin:'0.10',bottom_margin:'0.10',left_margin:'0.10',right_margin:'0.10'});
   const client=await getClient(),response=await client.request({url:'https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/export?'+query,responseType:'arraybuffer',timeout:30000,retry:false});
-  return validatePdf(Buffer.from(response.data));
+  return {bytes:await validatePdf(Buffer.from(response.data)),viewUrl:'https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/edit#gid='+sheet.properties.sheetId};
  };
 }
 function createBriefingService({db,client,exportPdf,now=()=>new Date(),logger=console}){
@@ -54,9 +54,11 @@ function createBriefingService({db,client,exportPdf,now=()=>new Date(),logger=co
      if(typeof channel?.send!=='function')throw Error('Briefing channel unavailable: '+job.channelId);
      const found=await existing(channel,name);
      if(found){db.prepare("UPDATE briefing_deliveries SET state='sent',message_id=?,error=NULL WHERE date=? AND flight=?").run(found.id,date,job.flight);continue;}
-     const bytes=await validatePdf(await exportPdf(job));
+     const exported=await exportPdf(job),bytes=await validatePdf(exported.bytes);
+     const viewUrl=new URL(exported.viewUrl);
+     if(viewUrl.origin!=='https://docs.google.com'||viewUrl.pathname!=='/spreadsheets/d/'+SPREADSHEET_ID+'/edit'||!/^#gid=\d+$/.test(viewUrl.hash))throw Error('Invalid briefing sheet link');
      db.prepare("UPDATE briefing_deliveries SET state='sending' WHERE date=? AND flight=?").run(date,job.flight);phase='sending';
-     const result=await channel.send({content:'📄 '+name,files:[{attachment:bytes,name}]});
+     const result=await channel.send({content:'📄 '+name+'\n🔗 Open briefing sheet: '+viewUrl.href,files:[{attachment:bytes,name}],allowedMentions:{parse:[]}});
      if(!result.id||result.attachments?.size!==1)throw Error('Discord did not acknowledge the briefing PDF attachment');
      db.prepare("UPDATE briefing_deliveries SET state='sent',message_id=?,error=NULL WHERE date=? AND flight=?").run(result.id,date,job.flight);
     }catch(error){db.prepare('UPDATE briefing_deliveries SET state=?,error=? WHERE date=? AND flight=?').run(phase==='sending'?'uncertain':'failed',String(error.message).slice(0,500),date,job.flight);logger.error('Briefing PDF '+job.flight+':',error.message);}
