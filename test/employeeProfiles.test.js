@@ -17,7 +17,7 @@ test('Profile saves a normalized US phone number to the shared employee database
 test('@mu.com external employees do not need an employee record or EID confirmation',t=>{
  const {profiles,employees}=fixture(t);for(const provider of ['password','google.com'])assert.deepEqual(profiles.status({...google,uid:'external',email:'External@MU.COM',provider}),{state:'external'});
  assert.equal(employees.db.prepare('SELECT COUNT(*) AS count FROM employee_accounts').get().count,0);
- assert.equal(profiles.status({...google,email:'external@mu.com.attacker.example'}).state,'needs_eid');
+ assert.equal(profiles.status({...google,email:'external@mu.com.attacker.example'}).state,'select_account');
 });
 test('verified email matches case insensitively, requires confirmation and persists UID association after email edits',async t=>{
  const {profiles,employees}=fixture(t);assert.equal(profiles.linked(google),undefined);assert.equal(profiles.status(google).state,'confirm');const ready=confirm(profiles);assert.equal(ready.state,'ready');
@@ -26,7 +26,7 @@ test('verified email matches case insensitively, requires confirmation and persi
 });
 test('unknown Google email requires EID and rejects missing, invalid, duplicate and already linked IDs',t=>{
  const {profiles,employees}=fixture(t),other={...google,uid:'other',email:'other@gmail.com'};
- assert.deepEqual(profiles.status(other),{state:'needs_eid'});assert.equal(profiles.preview(other,'123').state,'register');assert.throws(()=>profiles.preview(other,''),/Enter/);
+ assert.equal(profiles.status(other).state,'select_account');assert.equal(profiles.preview(other,'123').state,'register');assert.throws(()=>profiles.preview(other,''),/Enter/);
  const preview=profiles.preview(other,'00123');assert.equal(preview.profile.id,'one');profiles.link(other,{eid:'00123',revision:preview.revision});assert.throws(()=>profiles.status(google),/already has/);
  const data=employees.get();data.employees[1].eid='00123';employees.save(data,{email:'admin@example.com'});assert.throws(()=>profiles.preview({...other,uid:'third'},'00123'),/ambiguous/);
 });
@@ -73,4 +73,18 @@ test('new identity registers under an existing main account without granting emp
  assert.equal(profiles.register(user,body).profile.id,row.id);assert.equal(employees.get().employees.length,3);
  assert.equal(createProfileStore(employees).status(user).profile.id,row.id);
  assert.throws(()=>profiles.register({...user,uid:'another',email:'another@gmail.com'},{...body,revision:employees.get().revision}),/already has/);
+});
+
+test('account-only setup creates a UID-linked Agent without employee ID or contact fields',t=>{
+ const {profiles,employees}=fixture(t),user={...google,uid:'account-only',email:'new-account@gmail.com'};
+ const setup=profiles.status(user);assert.equal(setup.state,'select_account');
+ assert.throws(()=>profiles.selectAccount({...user,emailVerified:false},{revision:setup.revision,station:'LAX',account:'MU'}),/verified/);
+ assert.throws(()=>profiles.selectAccount(user,{revision:setup.revision,station:'HQ',account:'HQ'}),/existing Main Account/);
+ assert.throws(()=>profiles.selectAccount(user,{revision:0,station:'LAX',account:'MU'}),/changed/);
+ const saved=profiles.selectAccount(user,{revision:setup.revision,station:'LAX',account:'MU'});assert.equal(saved.state,'ready');assert.equal(saved.profile.eid,'');
+ const row=employees.get().employees.find(e=>e.id===saved.profile.id);assert.equal(row.position,'Agent');assert.equal(row.loginId,user.email);assert.equal(row.email,'');assert.equal(row.phone,'');assert.equal(row.attach,false);
+ assert.equal(profiles.selectAccount(user,{station:'LAX',account:'MU'}).profile.id,row.id);
+});
+test('account selection links only an email-matched employee, never another employee by ID',t=>{
+ const {profiles,employees}=fixture(t);assert.throws(()=>profiles.selectAccount(google,{revision:employees.get().revision,station:'LAX',account:'CZ'}),/assigned to your employee record/);const saved=profiles.selectAccount(google,{revision:employees.get().revision,station:'LAX',account:'MU',eid:'999'});assert.equal(saved.profile.id,'one');assert.equal(employees.get().employees.length,2);
 });

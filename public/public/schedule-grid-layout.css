@@ -47,7 +47,7 @@
 .schedule-grid .date-heading th:not(.employee-cell){vertical-align:middle;height:60px;overflow:visible;z-index:4}
 .schedule-grid .date-heading th:has(.date-status){z-index:5}
 .schedule-grid .date-review-button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 0;overflow:visible;min-height:0;height:60px}
-.schedule-grid .date-badges{position:absolute;left:calc(100% - 9px);top:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:max-content;max-width:none;min-height:0;margin:0;z-index:8;pointer-events:none;transform:rotate(-12deg);transform-origin:0 10px;filter:drop-shadow(0 2px 2px #15223830)}
+.schedule-grid .date-badges{position:absolute;left:-5px;top:-9px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:max-content;max-width:none;min-height:0;margin:0;z-index:8;pointer-events:none;transform:rotate(-12deg);transform-origin:0 10px;filter:drop-shadow(0 2px 2px #15223830)}
 .schedule-grid .date-status{position:relative;display:block;box-sizing:border-box;width:max-content;max-width:none;padding:3px 9px 3px 20px;margin:0;border-radius:2px 5px 5px 2px;background:#374151;color:#fff;font-size:12px;font-weight:700;line-height:16px;letter-spacing:0;white-space:nowrap;text-align:center;text-shadow:none;clip-path:polygon(10px 0,100% 0,100% 100%,10px 100%,0 50%)}
 .schedule-grid .date-status:before{content:"";position:absolute;left:8px;top:8px;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #0002}
 .schedule-grid .date-status-today{background:#d52235;color:#fff}
@@ -56,3 +56,30 @@
 .schedule-grid .date-number{font-size:16px;font-weight:700;line-height:20px}
 .schedule-grid .date-review-button small{margin:0;font-size:11px;line-height:15px}
 .schedule-grid thead .month-heading th{font-size:15px}
+
+#mobile-schedule{display:none}
+@media(max-width:600px){
+ .personal-calendar #mobile-schedule:not([hidden]){display:block}
+ .personal-calendar>.schedule-heading,.personal-calendar #personal-identity,.personal-calendar #schedule-table,.personal-calendar #schedule-table:empty,.personal-calendar #schedule-help{display:none}
+ .personal-calendar #schedule-table{visibility:hidden}
+ .personal-calendar .schedule-grid:has(#schedule-table){display:none}
+ .personal-calendar .schedule-dates{display:none}
+ .personal-calendar .schedule-toolbar{margin:0 0 12px}
+ .personal-calendar .mobile-schedule-hero{padding:12px 6px 24px;color:#173959;background:none}
+ .mobile-schedule-hero span{font-size:16px;font-weight:600}.mobile-schedule-hero h2{font-size:25px;margin:4px 0}
+ .mobile-calendar-card{position:relative;margin-top:-14px;border-radius:18px;background:#fff;padding:12px 8px;box-shadow:0 8px 30px #234b7812}
+ .mobile-calendar-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;color:#123c75}.mobile-calendar-nav strong{font-size:15px}.schedule-shell .mobile-calendar-nav button{border:0;background:transparent;font-size:26px;padding:0 12px;color:#1671ef}
+ .mobile-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+ .mobile-weekday{text-align:center;font-size:10px;color:#213b69;font-weight:600;padding:6px 0}
+ .mobile-calendar-day{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:82px;padding:5px 1px;gap:4px;border-radius:10px;background:#f6f9fe;border:1px solid transparent;box-sizing:border-box}
+ .mobile-calendar-day small{font-size:11px;color:#254171}.mobile-calendar-day.sunday small{color:#ed354b}.mobile-calendar-day.outside-month{opacity:.35}.mobile-calendar-day.is-today{border-color:#6578ff;box-shadow:0 0 0 2px #a5b1ff30}
+ .mobile-calendar-day .duty{display:grid;place-items:center;width:28px;height:28px;border-radius:6px;font-size:12px;font-weight:700;box-shadow:0 3px 6px #183a6815}
+ .mobile-day-label{font-size:9px;line-height:12px;background:#6740a1;color:white;border-radius:3px;padding:1px 2px;max-width:100%;overflow-wrap:anywhere}
+ .personal-calendar .schedule-legend{margin-top:14px;padding:14px;border-radius:16px}.personal-calendar .schedule-legend>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}.personal-calendar .legend-entry{font-size:10px}.personal-calendar .legend-chip{min-width:22px;height:22px}
+}
+
+.mobile-schedule-bottom{display:none}@media(max-width:600px){.personal-calendar{padding-bottom:80px}.personal-calendar .mobile-schedule-bottom{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:20;justify-content:space-around;background:#fff;border-top:1px solid #e4eaf5;padding:10px 6px max(10px,env(safe-area-inset-bottom))}.mobile-schedule-bottom a{display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;color:#7990b0;font-size:23px}.mobile-schedule-bottom a[aria-current]{color:#1671ef}.mobile-schedule-bottom span{font-size:10px}}
+
+@media(max-width:600px){body:has(.personal-calendar) .profile-sidebar{display:none}.personal-calendar #refresh{display:none}.personal-calendar .schedule-toolbar:has(>button#employee-view[hidden]){display:none}.personal-calendar .profile-shell{margin-top:0}}
+
+@media(max-width:600px){.schedule-shell.personal-calendar{margin-top:64px;padding-top:16px}.mobile-day-tags{position:absolute;top:-8px;left:-4px;z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:2px;transform:rotate(-12deg);transform-origin:left top;pointer-events:none}.mobile-day-tags .mobile-day-label{font-size:11px;line-height:15px;padding:2px 6px 2px 12px;max-width:none;white-space:nowrap;clip-path:polygon(7px 0,100% 0,100% 100%,7px 100%,0 50%)}.mobile-day-label:before{content:"";position:absolute;left:5px;top:7px;width:4px;height:4px;border-radius:50%;background:#fff}.mobile-day-label{position:relative}.mobile-day-tags .mobile-day-today{background:#d52235}}

@@ -371,21 +371,17 @@
           .catch(() => {});
         const dialog=document.createElement('dialog');
         dialog.className='auth-confirm';dialog.setAttribute('aria-labelledby','confirm-title');dialog.setAttribute('aria-describedby','link-help');
-        dialog.innerHTML='<form id="link-form"><header class="confirm-heading"><div class="confirm-brand">MUFC<span>GOOGLE SIGN-IN</span></div><span class="confirm-step">01 / ACCOUNT</span></header><div class="confirm-body"><div class="confirm-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8v3H8zM7 5H5v16h14V5h-2M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p class="confirm-eyebrow">YOUR EMPLOYEE RECORD</p><h2 id="confirm-title">Confirm your details</h2><p class="confirm-subtitle">确认员工资料</p><p id="link-help"></p><label id="eid-label">EMPLOYEE ID <span>/ 员工编号</span><input id="link-eid" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}" autocomplete="off" placeholder="Enter your EID" required></label><label id="main-account-label" hidden>MAIN ACCOUNT / 所属主账户<select id="link-main-account"></select></label><dl id="link-details"></dl><p id="link-status" role="status" aria-live="polite"></p><div class="confirm-actions"><button id="link-submit" type="submit">Find employee</button><button id="link-cancel" type="button">Sign out<span>退出登录</span></button></div><p class="confirm-footnote">MUFC · Employee access</p></div></form>';
+        dialog.innerHTML='<form id="link-form"><header class="confirm-heading"><div class="confirm-brand">MUFC<span>GOOGLE SIGN-IN</span></div><span class="confirm-step">01 / ACCOUNT</span></header><div class="confirm-body"><div class="confirm-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8v3H8zM7 5H5v16h14V5h-2M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p class="confirm-eyebrow">YOUR EMPLOYEE RECORD</p><h2 id="confirm-title">Confirm your details</h2><p class="confirm-subtitle">确认员工资料</p><p id="link-help"></p><label id="main-account-label" hidden>MAIN ACCOUNT / 所属主账户<select id="link-main-account"></select></label><dl id="link-details"></dl><p id="link-status" role="status" aria-live="polite"></p><div class="confirm-actions"><button id="link-submit" type="submit">Find employee</button><button id="link-cancel" type="button">Sign out<span>退出登录</span></button></div><p class="confirm-footnote">MUFC · Employee access</p></div></form>';
         document.body.append(dialog);let pending,busy=false;
         function showLink(data){
           pending=data;
-          const registering=data.state==='register',select=dialog.querySelector('#link-main-account');
-          dialog.querySelector('#main-account-label').hidden=!registering;select.required=registering;select.replaceChildren(new Option('Select Main Account / 选择主账户',''));
-          for(const scope of data.accounts||[])select.add(new Option(scope.station+' / '+scope.account,JSON.stringify(scope)));
-          dialog.querySelector('#eid-label').hidden=data.state!=='needs_eid';dialog.querySelector('#link-eid').required=data.state==='needs_eid';
-          dialog.querySelector('#confirm-title').textContent=data.state==='needs_eid'?'Find your employee record':'Confirm your details';
-          dialog.querySelector('.confirm-subtitle').textContent=data.state==='needs_eid'?'关联员工资料':'确认员工资料';
-          dialog.querySelector('#link-help').textContent=data.state==='needs_eid'?'Enter your EID to find your record or register with your Main Account. / 输入 EID 关联资料，或选择主账户完成新员工登记。':'Please review the information below to continue. / 请核对以下资料后继续。';
-          const details=dialog.querySelector('#link-details');details.replaceChildren();
-          if(data.profile)for(const [label,key] of [['FULL NAME / 姓名','name'],['NICKNAME / 昵称','nickname'],['EMPLOYEE ID / EID','eid'],['PHONE / 电话','phone'],['EMAIL / 邮箱','email']]){const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');row.className='confirm-detail confirm-detail-'+key;dt.textContent=label;dd.textContent=data.profile[key]||'—';row.append(dt,dd);details.append(row);}
-          dialog.querySelector('#link-submit').textContent=data.state==='needs_eid'?'Find employee / 查找员工':'Confirm & continue / 确认并继续';
-          if(registering){dialog.querySelector('#confirm-title').textContent='Employee setup';dialog.querySelector('.confirm-subtitle').textContent='完善员工资料';dialog.querySelector('#link-help').textContent='EID '+data.eid+' · Choose your Main Account to create your employee record. / 选择所属主账户后完成登记。';dialog.querySelector('#link-submit').textContent='Save & continue / 保存并继续';}
+          const select=dialog.querySelector('#link-main-account');
+          dialog.querySelector('#main-account-label').hidden=false;select.required=true;select.replaceChildren(new Option('Select Account / 选择账户',''));
+          const accounts=data.accounts||(data.profile?[{station:data.profile.station,account:data.profile.account}]:[]);
+          for(const scope of accounts)select.add(new Option(scope.station+' / '+scope.account,JSON.stringify(scope)));
+          dialog.querySelector('#confirm-title').textContent='Choose your account';dialog.querySelector('.confirm-subtitle').textContent='选择所属账户';
+          dialog.querySelector('#link-help').textContent='Select your Main Account to continue. / 选择所属主账户后继续。';
+          dialog.querySelector('#link-details').replaceChildren();dialog.querySelector('#link-submit').textContent='Continue / 继续';
           if(!dialog.open)dialog.showModal();
         }
         async function finishLogin(user){
@@ -406,9 +402,7 @@
         dialog.querySelector('form').onsubmit=async event=>{
           event.preventDefault();const button=dialog.querySelector('#link-submit'),status=dialog.querySelector('#link-status');button.disabled=true;status.textContent='Checking…';
           try{
-            if(pending.state==='needs_eid'){showLink(await employeeProfileApi('/lookup',{eid:dialog.querySelector('#link-eid').value.trim()}));status.textContent='';}
-            else if(pending.state==='register'){await employeeProfileApi('/register',{eid:pending.eid,revision:pending.revision,...JSON.parse(dialog.querySelector('#link-main-account').value)});dialog.close();await finishLogin(auth.currentUser);}
-            else{await employeeProfileApi('/link',{eid:pending.profile.eid,revision:pending.revision});dialog.close();await finishLogin(auth.currentUser);}
+            await employeeProfileApi('/select-account',{revision:pending.revision,...JSON.parse(dialog.querySelector('#link-main-account').value)});dialog.close();await finishLogin(auth.currentUser);
           }catch(error){status.textContent=error.message;if(error.status===409){try{showLink(await employeeProfileApi());}catch{}}}
           finally{button.disabled=false;}
         };
