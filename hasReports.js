@@ -7,6 +7,7 @@ const {reportMonth,prepareCalendar}=require('./hasReportCalendar');
 const {flightDelays}=require('./hasReportDelays');
 const recharge=require('./hasRecharge');
 const forms=require('./hasReportForms');
+const wordForms=require('./hasWordReports');
 const templateDir=path.join(__dirname,'data','has-report-templates');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const unavailable=()=>fail('Reports are temporarily unavailable. Please retry later.',503);
@@ -62,7 +63,9 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  const handler=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){const infrastructure=['ENOENT','EACCES','EPERM','ENOTDIR'].includes(e.code)||String(e.code||'').startsWith('SQLITE_');if(infrastructure)console.error('HAS report request:',e);const status=infrastructure?503:e.status||400;if(status===503)res.set('Retry-After','30');res.status(status).json({error:infrastructure?'Reports are temporarily unavailable. Please retry later.':e.message});}};
  const build=async req=>{const ctx=authorize(req);reportMonth(req.params.month);const saved=read(ctx.scope,req.params.kind,req.params.month),model=await template(req.params.kind,req.params.month,ctx.scope,saved.extraRows);return {ctx,model,saved};};
  const apply=(model,values,stored=false)=>{if(!values||typeof values!=='object'||Array.isArray(values))fail('Invalid report values.');for(const [address,value] of Object.entries(values)){const cell=model.cells[address];if(!cell?.editable){if(stored)continue;fail('This template cell cannot be edited: '+address);}if(!['string','number'].includes(typeof value)||String(value).length>4000||typeof value==='number'&&!Number.isFinite(value))fail('Invalid cell value.');if(cell.webOnly&&value!==''&&(!Number.isSafeInteger(Number(value))||Number(value)<0))fail('Wheelchair counts must be non-negative whole numbers.');setInput(cell,value);}return model;};
- app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee)},canDashboard:canDashboard(employee),canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
+ app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser),supervisor=canDashboard(employee);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee),...Object.fromEntries(wordForms.kinds.map(kind=>[kind,supervisor]))},canChecklist:require('./hasChecklists').allowed(employee),canDashboard:supervisor,canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
+ wordForms.register(app,{context,database,read,key,handler,allowed:canDashboard});
+ require('./hasChecklists').register(app,{context,handler,supervisor:canDashboard,database,read,key});
  const linkDA=async(model,scope)=>{
   if(model.kind!=='wwh')return null;
   for(let r=5;r<=10;r++)for(const c of ['I','N','T','U','V','W','X'])if(model.cells[c+r]&&!model.cells[c+r].formula&&model.cells[c+r].value==='')model.cells[c+r].value=0;

@@ -1,0 +1,41 @@
+const assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip');
+(async()=>{
+ const db=new Database(':memory:'),app=express(),scope={station:'LAX',account:'MU'},users={s:{...scope,position:'Supervisor',name:'Test Supervisor'},a:{...scope,position:'Agent',name:'Test Agent'},l:{...scope,position:'Lead'},b:{...scope,position:'Business Manager'},other:{station:'SFO',account:'XX',position:'Business Manager'}};
+ app.use(express.json({limit:'16mb'}));const reports=require('../hasReports').registerHasReports(app,{employees:{db},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!users[uid])throw Error();return {uid};}});app.use(express.static('public/public'));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true}),errors=[];
+ const output=path.resolve('.verification/report-templates');fs.mkdirSync(output,{recursive:true});
+ async function pageFor(id,url='/has-report.html'){
+  const p=await browser.newPage({viewport:{width:1440,height:1100}});p.on('pageerror',error=>errors.push(error.message));
+  await p.route('https://www.gstatic.com/**',r=>r.fulfill({body:'',contentType:'text/javascript'}));
+  await p.route('**/__/firebase/init.js',r=>r.fulfill({contentType:'text/javascript',body:`window.MU_API_BASE=${JSON.stringify(base)};const u={...${JSON.stringify(users[id])},uid:${JSON.stringify(id)},providerData:[],getIdToken:async()=>${JSON.stringify(id)}};const auth={currentUser:u,onAuthStateChanged:fn=>{setTimeout(()=>fn(u),0);return()=>{};}};window.firebase={apps:[{}],auth:()=>auth};`}));
+  await p.goto(base+url);return p;
+ }
+ try{
+  const p=await pageFor('s');await p.locator('[data-cell-input="K7"]').waitFor();
+  assert.deepEqual(await p.locator('#report-kind optgroup').evaluateAll(groups=>groups.map(g=>g.label)),['Weekly & Monthly','General','Safety','HR']);
+  assert.equal(await p.locator('[data-report-access]').evaluate(a=>a.nextElementSibling.textContent.trim()),'Checklist');
+  assert.equal(await p.locator('[data-checklist-access]').evaluate(a=>a.nextElementSibling.getAttribute('href')),'/read-sign.html');
+  for(const kind of ['investigation','cos','paf','discussion']){
+   await p.selectOption('#report-kind',kind);await p.locator('[data-word-field]').first().waitFor();assert.equal(await p.locator('.report-month-field').isVisible(),false);
+   const narrative=p.locator('textarea[data-word-field]').first();await narrative.fill('Browser saved '+kind+' & follow up.');
+   await p.getByRole('button',{name:'Save form',exact:true}).click();await p.waitForFunction(()=>document.querySelector('#report-status').textContent.startsWith('Saved by'));
+   await p.reload();await p.locator('[data-cell-input="K7"]').waitFor();await p.selectOption('#report-kind',kind);await p.locator('textarea[data-word-field]').first().waitFor();assert.equal(await p.locator('textarea[data-word-field]').first().inputValue(),'Browser saved '+kind+' & follow up.');
+   const downloadPromise=p.waitForEvent('download');await p.getByRole('button',{name:'Download Word',exact:true}).click();const download=await downloadPromise;const filename=path.join(output,'browser-'+kind+'.docx');await download.saveAs(filename);const zip=await JSZip.loadAsync(fs.readFileSync(filename));assert.match(await zip.file('word/document.xml').async('string'),new RegExp('Browser saved '+kind+' &amp; follow up'));
+  }
+  await p.screenshot({path:path.join(output,'report-HR-desktop.png'),fullPage:true});await p.setViewportSize({width:390,height:844});await p.screenshot({path:path.join(output,'report-HR-mobile.png'),fullPage:true});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.setViewportSize({width:1440,height:1100});
+  await p.selectOption('#report-kind','rechargeable');await p.locator('[data-role-heading]').first().waitFor();
+  for(let i=0;i<3;i++){const input=p.locator('[data-role-heading="'+i+'"]');await input.fill(['Ground Staff','Team Leader','Duty Lead'][i]);await input.press('Tab');await p.waitForFunction(()=>document.querySelector('#report-status').textContent==='Headings saved.');}
+  await p.reload();await p.locator('[data-cell-input="K7"]').waitFor();await p.selectOption('#report-kind','rechargeable');await p.locator('[data-role-heading]').first().waitFor();assert.deepEqual(await p.locator('[data-role-heading]').evaluateAll(nodes=>nodes.map(n=>n.value)),['Ground Staff','Team Leader','Duty Lead']);
+  const downloadPromise=p.waitForEvent('download');await p.getByRole('button',{name:'Download Excel',exact:true}).click();const download=await downloadPromise;await download.saveAs(path.join(output,'headings.xlsx'));const Excel=require('exceljs'),book=new Excel.Workbook();await book.xlsx.readFile(path.join(output,'headings.xlsx'));assert.deepEqual(['C10','G10','K10'].map(a=>book.worksheets[0].getCell(a).value),['Ground Staff','Team Leader','Duty Lead']);
+  await p.locator('[data-checklist-access]').click();await p.locator('.checklist-card').nth(5).waitFor();assert.deepEqual(await p.locator('#checklist-content>h2').allTextContents(),['SAFETY','Workers Comp']);
+  await p.getByRole('button',{name:'View / Edit',exact:true}).click();await p.locator('[data-emergency-field="paragraph_11"]').fill('Phone: 555-0199 — LAX/MU');await p.getByRole('button',{name:'Save changes',exact:true}).click();await p.waitForFunction(()=>document.querySelector('#checklist-status').textContent==='Emergency procedure saved.');
+  await p.reload();await p.getByRole('button',{name:'View / Edit',exact:true}).click();assert.equal(await p.locator('[data-emergency-field="paragraph_11"]').inputValue(),'Phone: 555-0199 — LAX/MU');
+  await p.screenshot({path:path.join(output,'checklist-editor-desktop.png'),fullPage:true});await p.setViewportSize({width:390,height:844});await p.screenshot({path:path.join(output,'checklist-mobile.png'),fullPage:true});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  for(const id of ['a','l']){const q=await pageFor(id,'/has-checklist.html');await q.locator('.checklist-card').nth(1).waitFor();assert.equal(await q.locator('.checklist-card').count(),2);assert.deepEqual(await q.locator('#checklist-content>h2').allTextContents(),['SAFETY']);await q.getByRole('button',{name:'View',exact:true}).click();assert.equal(await q.locator('[data-emergency-field="paragraph_11"]').inputValue(),'Phone: 555-0199 — LAX/MU');assert.equal(await q.locator('[data-emergency-field="paragraph_11"]').getAttribute('readonly'),'');assert.equal(await q.getByRole('button',{name:'Save changes',exact:true}).count(),0);if(id==='a')assert.equal(await q.locator('[data-report-access]').isVisible(),false);}
+  const other=await pageFor('other','/has-checklist.html');await other.getByRole('button',{name:'View / Edit',exact:true}).click();assert.equal(await other.locator('[data-emergency-field="paragraph_11"]').inputValue(),'Phone:');
+  await p.setViewportSize({width:1440,height:1100});await p.locator('.checklist-card').filter({hasText:'Bomb Threat Checklist'}).getByRole('button',{name:'Preview',exact:true}).click();await p.locator('#checklist-preview iframe').waitFor();assert.match(await p.locator('#checklist-preview iframe').getAttribute('src'),/^blob:/);await p.screenshot({path:path.join(output,'checklist-preview.png')});
+  assert.deepEqual(errors,[]);console.log('Browser passed: all four Word forms, save/reload/download, editable recharge headings/Excel, Checklist order and per-item permissions, scoped emergency save/read, PDF preview, desktop/mobile.');
+ }finally{await browser.close();reports.close();server.close();db.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});
