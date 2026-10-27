@@ -1,0 +1,12 @@
+/* Keep calendar geometry independent of cached base theme versions. */
+.schedule-grid{overflow:auto;max-width:100%;box-sizing:border-box}
+.schedule-grid #schedule-table,.schedule-grid #coverage-table{table-layout:fixed;border-spacing:0}
+.schedule-grid col:not(.employee-column){width:28px}
+.schedule-grid .date-heading th:not(.employee-cell),.schedule-grid tbody tr:not(.team-heading)>td{padding:0;overflow:hidden;box-sizing:border-box}
+.schedule-grid .duty,.schedule-grid .date-review-button{width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:0;padding:0;overflow:hidden}
+.schedule-grid .duty{border:0;border-radius:0!important;font-size:10px}
+.schedule-grid .date-review-button{padding:6px 0;font-size:11px}
+.schedule-grid thead .month-heading th{top:0;height:27px}
+.schedule-grid thead .date-heading th{top:27px}
+.schedule-grid .daily-budget input{width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:2px 0;font-size:10px;text-align:center}
+.schedule-grid .weekly-summary td{overflow:hidden;padding:2px 0;font-size:11px}

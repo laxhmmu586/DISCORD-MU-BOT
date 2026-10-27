@@ -10,7 +10,7 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
-        "source": "/{schedule.html,schedule.css,schedule.js,schedule-summary.js,schedule-grid.js}",
+        "source": "/{schedule.html,schedule.css,schedule-grid-layout.css,schedule.js,schedule-summary.js,schedule-grid.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
