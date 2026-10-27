@@ -3,7 +3,7 @@
  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const friendly=value=>new Date(value+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});
  const ink=hex=>{const [r,g,b]=hex.slice(1).match(/../g).map(v=>parseInt(v,16));return (r*299+g*587+b*114)/1000>145?'#17202d':'#ffffff';};
- let mobilePeriod='',sourceData,previewEmployee='',data,historyMonth='',reviewDate='',range=null,gridEmployees=[],dragging=false,moved=false,busy=false,lastCopy=null,session=0,loading=0,selectedColor,selectedCode,selectedDate,syncPoll=null;
+ let mobileFetching=false,mobilePeriod='',sourceData,previewEmployee='',data,historyMonth='',reviewDate='',range=null,gridEmployees=[],dragging=false,moved=false,busy=false,lastCopy=null,session=0,loading=0,selectedColor,selectedCode,selectedDate,syncPoll=null;
  const grid=$('schedule-table').parentElement,coverageGrid=$('coverage-table').parentElement,menu=$('duty-menu');
  const api=(path='',body)=>peopleApi('/staff-schedule-api'+path,body);
  function report(error){$('schedule-status').textContent=error.message||String(error);}
@@ -53,14 +53,24 @@
  }
  function placeholder(){const el=node('span',undefined,'avatar-placeholder');el.setAttribute('aria-label','No profile photo');el.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';return el;}
  function drawMobile(){
-  const panel=$('mobile-schedule');panel.replaceChildren();panel.hidden=data.canViewAll;document.querySelector('.schedule-shell').classList.toggle('personal-calendar',!data.canViewAll);if(data.canViewAll)return;
-  const employee=data.employees[0],start=mobilePeriod||staffScheduleSummary.periodStart(today()),end=staffScheduleSummary.addDays(start,6);
-  const hero=node('div',undefined,'mobile-schedule-hero');hero.append(node('span','My Schedule'),node('h2','LAX / MU'));panel.append(hero);
-  const card=node('div',undefined,'mobile-calendar-card'),nav=node('div',undefined,'mobile-calendar-nav');
-  for(const n of [-1,0,1]){if(!n){nav.append(node('strong',friendly(start)+' – '+friendly(end)));continue;}const button=node('button',n<0?'‹':'›');button.type='button';button.setAttribute('aria-label',n<0?'Previous period':'Next period');button.onclick=()=>{mobilePeriod=staffScheduleSummary.addDays(start,n*7);historyMonth='';load();};nav.append(button);}card.append(nav);
-  const calendar=node('div',undefined,'mobile-calendar-days');for(const name of ['Fri','Sat','Sun','Mon','Tue','Wed','Thu'])calendar.append(node('span',name,'mobile-weekday'));
-  for(let i=0;i<7;i++){const value=staffScheduleSummary.addDays(start,i),day=data.days.find(d=>d.date===value),cell=node('div',undefined,'mobile-calendar-day');cell.dataset.date=value;if(i===2)cell.classList.add('sunday');if(value===today()){cell.classList.add('is-today');cell.setAttribute('aria-current','date');}cell.append(node('small',Number(value.slice(-2))));const assignment=employee&&day?.assignments[employee.id];if(assignment){const duty=chip(assignment.code,assignment.color);duty.title=value+' · '+(data.roles[assignment.code]||assignment.code);cell.append(duty);}const tags=node('span',undefined,'mobile-day-tags');if(value===today())tags.append(node('span','Today','mobile-day-label mobile-day-today'));for(const label of day?.labels||[])tags.append(node('span',label,'mobile-day-label'));cell.append(tags);calendar.append(cell);}card.append(calendar);panel.append(card);if(matchMedia('(max-width:600px)').matches)document.querySelector('.schedule-legend').open=true;
+  const panel=$('mobile-schedule'),oldScroll=panel.querySelector('.mobile-calendar-scroll')?.scrollLeft||0;panel.replaceChildren();panel.hidden=data.canViewAll;document.querySelector('.schedule-shell').classList.toggle('personal-calendar',!data.canViewAll);if(data.canViewAll)return;
+  const employee=data.employees[0],hero=node('div',undefined,'mobile-schedule-hero');hero.append(node('span','My Schedule'),node('h2','LAX / MU'));panel.append(hero);
+  const card=node('div',undefined,'mobile-calendar-card'),scroll=node('div',undefined,'mobile-calendar-scroll');scroll.tabIndex=0;scroll.setAttribute('aria-label','Swipe to view schedule dates');
+  const calendar=node('div',undefined,'mobile-calendar-days');
+  for(const day of data.days){const value=day.date,weekday=new Date(value+'T12:00:00Z').getUTCDay(),cell=node('div',undefined,'mobile-calendar-day');cell.dataset.date=value;cell.style.setProperty('--month-color',monthColor(value));if(weekday===0)cell.classList.add('sunday');if(weekday===5)cell.classList.add('period-start');if(value===today()){cell.classList.add('is-today');cell.setAttribute('aria-current','date');}
+   cell.append(node('small',friendly(value),'mobile-date'),node('span',['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][weekday],'mobile-weekday'));
+   const assignment=employee&&day.assignments[employee.id];if(assignment){const duty=chip(assignment.code,assignment.color);duty.title=value+' · '+(data.roles[assignment.code]||assignment.code);cell.append(duty);}
+   const tags=node('span',undefined,'mobile-day-tags');if(value===today())tags.append(node('span','Today','mobile-day-label mobile-day-today'));for(const label of day.labels||[])tags.append(node('span',label,'mobile-day-label'));cell.append(tags);calendar.append(cell);
+  }
+  scroll.append(calendar);card.append(scroll);panel.append(card);scroll.scrollLeft=oldScroll;
+  scroll.addEventListener('scroll',()=>{if(scroll.scrollLeft+scroll.clientWidth>=scroll.scrollWidth-100)extendMobile();},{passive:true});
  }
+ async function extendMobile(){
+  if(mobileFetching||!data||data.canViewAll)return;mobileFetching=true;const authSession=session,selected=previewEmployee,tail=data.days.at(-1)?.date,request=loading;
+  try{const result=await api('?schema=2&start='+staffScheduleSummary.addDays(tail,1));if(authSession!==session||request!==loading||selected!==previewEmployee||!sourceData||data.canViewAll||data.days.at(-1)?.date!==tail)return;const added=result.days.filter(day=>day.date>tail);if(added.length){sourceData={...sourceData,days:[...sourceData.days,...added],end:result.end};applyView();drawMobile();}}
+  catch(error){report(error);}finally{mobileFetching=false;}
+ }
+
  function drawTable(){drawMobile();
   closeMenu();range=null;dragging=false;$('edit-selected-duty').disabled=true;$('personal-identity').replaceChildren();$('personal-identity').hidden=data.canViewAll;const table=$('schedule-table');table.replaceChildren();columns(table);header(table,'Employee');const body=node('tbody');table.append(body);
   const q=data.canViewAll?$('employee-search').value.trim().toLowerCase():'',team=data.canViewAll?$('team').value:'';gridEmployees=data.employees.filter(e=>(!team||(e.scheduleGroup||e.position)===team)&&(!q||(e.name+' '+(e.nickname||'')+' '+(e.code||'')).toLowerCase().includes(q)));
