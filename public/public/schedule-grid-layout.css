@@ -93,3 +93,15 @@
  .mobile-calendar-day .mobile-weekday{font-size:10px;padding:0;line-height:14px}
  .mobile-calendar-day.period-start{border-left:3px solid #df6865;scroll-snap-align:start}
 }
+
+@media(max-width:600px){
+ .mobile-calendar-card{touch-action:pan-y;padding:14px 8px}
+ .mobile-month-title{display:block;text-align:center;color:#123c75;font-size:15px;margin-bottom:18px}
+ .mobile-calendar-days{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px 4px}
+ .mobile-calendar-days>.mobile-weekday{padding:3px 0 8px}
+ .mobile-calendar-day{min-height:70px;padding:6px 0;gap:5px}
+ .mobile-calendar-day.period-start{border-left:1px solid transparent}
+ .mobile-calendar-day .mobile-date{font-size:12px}
+ .mobile-calendar-day.outside-month{opacity:.35}
+ .mobile-calendar-day.sunday .mobile-date{color:#ed354b}
+}
