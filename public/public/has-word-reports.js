@@ -3,6 +3,28 @@
  let root,state,inputs={},pending=false,saveQueue=Promise.resolve(),generation=0;
  const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
  const message=text=>{$('report-status').textContent=text;};
+ function inputFor(field){
+  const input=el(field.type==='textarea'?'textarea':'input');input.dataset.wordField=field.key;input.id='word-'+field.key;input.setAttribute('aria-label',field.label);input.required=false;
+  if(field.type==='textarea')input.rows=3;else input.type=field.type;
+  if(field.type==='checkbox')input.checked=state.values[field.key]===true;
+  else{input.value=state.values[field.key]||'';input.maxLength=field.maxLength;}
+  if(state.kind==='investigation'&&field.key==='detail_0_0'){input.placeholder='Optional';input.setAttribute('aria-label','Ref No. (optional)');}
+  input.addEventListener('change',()=>{
+   if(!input.checked||field.type!=='checkbox')return;
+   const group=key=>key.startsWith('status_')?'status':key.startsWith('rehire_')?'rehire':/^check_15_\d+_[02]$/.test(key)?'separation':key.startsWith('purpose_')?'purpose':null;
+   const current=group(field.key);if(current)for(const [key,other] of Object.entries(inputs))if(key!==field.key&&group(key)===current)other.checked=false;
+  });
+  inputs[field.key]=input;return input;
+ }
+ function templateNode(spec){
+  if(typeof spec==='string')return document.createTextNode(spec);
+  if(spec.field){const field=state.fields.find(field=>field.key===spec.field);if(!field)throw Error('Unknown template field.');return inputFor(field);}
+  if(!['div','p','span','strong','small','br','img','table','colgroup','col','tbody','tr','td'].includes(spec.tag))throw Error('Invalid template element.');
+  const node=el(spec.tag);if(spec.className)node.className=spec.className;Object.assign(node.style,spec.style||{});
+  for(const attr of ['colSpan','rowSpan'])if(spec[attr])node[attr]=spec[attr];
+  if(spec.tag==='img'){node.src=spec.src;node.alt=spec.alt||'';}
+  node.append(...(spec.children||[]).map(templateNode));return node;
+ }
  function values(){return Object.fromEntries(state.fields.map(field=>[field.key,field.type==='checkbox'?inputs[field.key].checked:inputs[field.key].value]));}
  async function flush(){
   const form=state,version=generation;if(!form||!pending)return saveQueue;
@@ -29,14 +51,8 @@
     catch(error){message(error.message);}finally{save.disabled=download.disabled=false;}
    };toolbar.append(save,download);root.append(toolbar,el('p','Complete the fields below. Download Word uses the supplied document layout.'));
    const form=el('form');form.className='word-report-fields';form.onsubmit=e=>e.preventDefault();
-   for(const field of state.fields){
-    const label=el('label'),input=el(field.type==='textarea'?'textarea':'input');
-    input.dataset.wordField=field.key;input.id='word-'+field.key;
-    if(field.type==='textarea'){label.className='word-report-narrative';input.rows=5;}else input.type=field.type;
-    if(field.type==='checkbox'){input.checked=state.values[field.key]===true;label.className='word-report-check';label.append(input,document.createTextNode(field.label));}
-    else{input.value=state.values[field.key]||'';input.maxLength=field.maxLength;label.append(document.createTextNode(field.label),input);}
-    inputs[field.key]=input;form.append(label);
-   }
+   if(state.layout){form.className='word-template-scroll';const page=el('div');page.className='word-template word-template-'+kind;page.append(...state.layout.map(templateNode));form.append(page);}
+   else for(const field of state.fields){const label=el('label'),input=inputFor(field);if(field.type==='textarea')label.className='word-report-narrative';if(field.type==='checkbox'){label.className='word-report-check';label.append(input,document.createTextNode(field.label));}else label.append(document.createTextNode(field.label+(field.key==='detail_0_0'?' (optional)':'')),input);form.append(label);}
    form.oninput=()=>{pending=true;message('Unsaved changes. Save form or Download Word to save.');};root.append(form);
    message(state.updatedAt?'Saved by '+state.updatedBy+' · '+new Date(state.updatedAt).toLocaleString():'New form · '+state.scope.station+'/'+state.scope.account);
   }catch(error){if(version===generation)message(error.message);}

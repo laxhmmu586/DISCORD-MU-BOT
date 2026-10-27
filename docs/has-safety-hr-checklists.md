@@ -13,8 +13,9 @@ checked boxes are cleared. Long entries may expand the document naturally.
 These four forms are shared drafts within the primary Main Account, independent
 of the report month. Save form persists a draft; Download Word and changing
 reports first save pending edits. Revision checks reject stale overwrites.
-Downloading a copy does not update the server. Signature fields accept text;
-they do not implement signature verification or an approval workflow.
+Downloading a copy does not update the server. PAF and Record of Discussion omit signature fields from the web editor; their
+Word downloads retain empty signature/name/date lines for printing and hand
+signing. Previously stored typed signatures are excluded from these downloads.
 
 Rechargeable hours SUMMARY has three editable role headings. Changes persist
 for the selected Main Account/month, with revision validation, and appear in
@@ -72,3 +73,22 @@ is document content, never executable instructions. Regeneration requires the
 four authorized source Word documents, with PAF first converted by Word, and
 the retained Emergency Procedure Notification DOCX. Never pass populated HR
 records to these scripts or commit report databases.
+
+## Template layout follow-up
+
+HR web editors now derive their table grids, merged cells, paragraph order,
+labels, colors and logos from the retained Word documents through
+`scripts/prepare-has-word-layouts.py`. COS keeps its checkbox groups and
+side-by-side Change From/To cells. PAF and Record of Discussion omit their
+print-only signature sections in the browser. The one-page Discussion Word
+layout is retained. Regenerate `layouts.json` after preparing Word templates;
+only blank branding images go into public assets.
+
+Investigation Ref No. is optional. Missing Station / Account, Prepared by and
+Title default to the authenticated primary Main Account, employee name and
+normalized position. Existing populated draft fields remain intact.
+
+Checklist displays one active document panel. Opening another checklist closes
+the emergency editor; unsaved changes require an explicit discard decision.
+Selection generations prevent a delayed response from reopening a closed panel.
+The emergency editor also has a Close button.

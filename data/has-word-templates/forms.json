@@ -748,42 +748,48 @@
         "label": "Employee Signature",
         "type": "text",
         "fallback": "",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "sign_40_3",
         "label": "Employee signature date",
         "type": "date",
         "fallback": "",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "sign_40_5",
         "label": "Management Signature",
         "type": "text",
         "fallback": "",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "sign_40_7",
         "label": "Management signature date",
         "type": "date",
         "fallback": "",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "sign_43_1",
         "label": "Witness Signature",
         "type": "text",
         "fallback": "",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "sign_43_3",
         "label": "Witness signature date",
         "type": "date",
         "fallback": "",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       }
     ]
   },
@@ -846,56 +852,64 @@
         "label": "Employee Signature",
         "type": "text",
         "fallback": "________________________________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "detail_12_1",
         "label": "Employee signature date",
         "type": "date",
         "fallback": "__________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "detail_13_0",
         "label": "Supervisor/Manager name",
         "type": "text",
         "fallback": "____________________________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "detail_13_1",
         "label": "Supervisor/Manager signature",
         "type": "text",
         "fallback": "_____________________________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "detail_13_2",
         "label": "Supervisor/Manager date",
         "type": "date",
         "fallback": "__________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "detail_15_0",
         "label": "Witness name",
         "type": "text",
         "fallback": "__________________________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "detail_15_1",
         "label": "Witness signature",
         "type": "text",
         "fallback": "_____________________________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "detail_15_2",
         "label": "Witness date",
         "type": "date",
         "fallback": "__________",
-        "maxLength": 200
+        "maxLength": 200,
+        "printOnly": true
       },
       {
         "key": "purpose_0",
