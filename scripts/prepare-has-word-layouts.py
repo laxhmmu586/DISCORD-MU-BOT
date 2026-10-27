@@ -18,6 +18,10 @@ def val(node,name='val',default=None):
     return node.get('{'+W+'}'+name,default) if node is not None else default
 def css_point(value):
     return str(round(int(value)/20,2))+'pt'
+def border_css(edge):
+    if val(edge) in ['nil','none']:return '0'
+    color=val(edge,'color','333333')
+    return '1px solid #'+(color if re.fullmatch('[0-9A-Fa-f]{6}',color) else '333333')
 def node(tag,children=None,style=None,**attrs):
     return dict(tag=tag,children=children or [],style=style or {},**attrs)
 
@@ -92,6 +96,9 @@ def build(kind,definition):
         grid=[int(val(c,'w',0)) for c in tbl.findall('w:tblGrid/w:gridCol',NS)]
         total=sum(grid) or 1
         result=node('table',className='template-table')
+        table_borders={E.QName(edge).localname:border_css(edge) for edge in tbl.findall('w:tblPr/w:tblBorders/*',NS)}
+        for side in ['top','bottom','left','right']:
+            if side in table_borders:result['style']['border'+side.title()]=table_borders[side]
         if grid:result['children'].append(node('colgroup',[node('col',style={'width':str(w/total*100)+'%'}) for w in grid]))
         rows=[]
         active={}
@@ -106,6 +113,8 @@ def build(kind,definition):
                     column+=span
                     continue
                 td=node('td',colSpan=span)
+                for side,inside in [('top','insideH'),('bottom','insideH'),('left','insideV'),('right','insideV')]:
+                    if inside in table_borders:td['style']['border'+side.title()]=table_borders[inside]
                 if merge is not None:active[column]=td
                 else:active.pop(column,None)
                 if props is not None:
@@ -114,10 +123,9 @@ def build(kind,definition):
                     borders=props.find('w:tcBorders',NS)
                     if borders is not None:
                         for edge in borders:
-                            side=E.QName(edge).localname
+                            side={'start':'left','end':'right'}.get(E.QName(edge).localname,E.QName(edge).localname)
                             if side in ['top','bottom','left','right']:
-                                color=val(edge,'color','333333')
-                                td['style']['border'+side.title()]='0' if val(edge) in ['nil','none'] else '1px solid #'+(color if re.fullmatch('[0-9A-Fa-f]{6}',color) else '333333')
+                                td['style']['border'+side.title()]=border_css(edge)
                 for child in cell:
                     if child.tag=='{'+W+'}p':td['children'].append(paragraph(child))
                     elif child.tag=='{'+W+'}tbl':td['children'].append(table(child))
@@ -141,9 +149,14 @@ def build(kind,definition):
                     node('div',['Involuntary Termination:',node('small',['(Attach copies of performance notices.)'])]),
                     node('div',['Require HR Approval:',node('small',['(Attach supporting docs)'])])],className='cos-separation-headings'))
             continue
-        if part.tag=='{'+W+'}tbl':blocks.append(table(part))
+        if part.tag=='{'+W+'}tbl':
+            block=table(part)
+            block['className']+=' template-table-'+str(index)
+            if kind=='paf' and index in [7,9,11,31]:block['className']+=' paf-options'
+            blocks.append(block)
         elif part.tag=='{'+W+'}p':
             block=paragraph(part)
+            if kind=='cos' and index==6:block['className']='cos-name-hint'
             if block['children']:blocks.append(block)
             if kind=='discussion' and index==8:
                 blocks.append(node('div',field('summary'),className='discussion-summary-box'))
