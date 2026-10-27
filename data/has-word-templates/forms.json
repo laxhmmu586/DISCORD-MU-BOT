@@ -1,0 +1,979 @@
+[
+  {
+    "kind": "investigation",
+    "title": "Incident Investigation Report",
+    "category": "Safety",
+    "fields": [
+      {
+        "key": "detail_0_0",
+        "label": "Ref No.",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_0_1",
+        "label": "Date of incident",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_1_0",
+        "label": "Station / Account",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_1_1",
+        "label": "Incident Location",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_2_0",
+        "label": "Prepared by",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_2_1",
+        "label": "Title",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_3_0",
+        "label": "Date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_3_1",
+        "label": "Date report closed",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "narrative_0",
+        "label": "Summary of the Event (summarize the incident).",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "narrative_1",
+        "label": "Immediate action taken.",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "narrative_2",
+        "label": "Incident Investigation — Who, What, Where, When, Why.",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "narrative_3",
+        "label": "Root cause. (In details)",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "narrative_4",
+        "label": "Corrective action. (In details)",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "narrative_5",
+        "label": "Preventative action plan. (In details)",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "narrative_6",
+        "label": "Is a follow up required? Yes / No (explain)",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "narrative_7",
+        "label": "30 day follow up — effectiveness, date and reviewers",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      }
+    ]
+  },
+  {
+    "kind": "cos",
+    "title": "COS — Change of Status Form",
+    "category": "HR",
+    "fields": [
+      {
+        "key": "status_0",
+        "label": "Status change",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "status_1",
+        "label": "Separation",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "status_2",
+        "label": "Leave of absence",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "notice",
+        "label": "Notice date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "effective",
+        "label": "Effective date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "name",
+        "label": "Name — Last, First",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "employee",
+        "label": "Employee #",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "department",
+        "label": "Department or Account",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "location",
+        "label": "Location",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "from",
+        "label": "Change from",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "to",
+        "label": "Change to",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "explanation",
+        "label": "Explanation",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "start",
+        "label": "Leave start date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "end",
+        "label": "Leave end date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "last_day",
+        "label": "Last day worked",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "manager",
+        "label": "Manager’s signature",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "manager_date",
+        "label": "Manager date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "admin",
+        "label": "Admin signature",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "admin_date",
+        "label": "Admin date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_0_1",
+        "label": "Pay Rate",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_0_3",
+        "label": "Title / Position",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_0_5",
+        "label": "Promotion",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_0_7",
+        "label": "Demotion",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_1_1",
+        "label": "Transfer in Account",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_1_3",
+        "label": "Change to Full Time",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_1_5",
+        "label": "Change to Part Time",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_2_1",
+        "label": "Hourly (non-exempt)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_2_3",
+        "label": "Salaried  (exempt)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_2_5",
+        "label": "Cross- Utilize",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_3_1",
+        "label": "Add Ground Security Coordinator",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_3_3",
+        "label": "Remove Ground Security Coordinator",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_3_7",
+        "label": "Rehire",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_4_1",
+        "label": "Leave of Absence",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_4_3",
+        "label": "Return from Leave",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_4_5",
+        "label": "Update Personal Information",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_0_0",
+        "label": "Hired outside airline industry",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_0_2",
+        "label": "Attendance",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_0_4",
+        "label": "FMLA",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_0_6",
+        "label": "CFRA",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_1_0",
+        "label": "Hired by customer airline",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_1_2",
+        "label": "Did not pass initial training (30 days)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_1_4",
+        "label": "PDL",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_1_6",
+        "label": "Work Comp",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_2_0",
+        "label": "Hired by another airline",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_2_2",
+        "label": "Did not complete  90 days",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_2_4",
+        "label": "Personal (30-day max)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_3_0",
+        "label": "Dissatisfied",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_3_2",
+        "label": "Did not  Meet Company Standards",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_3_4",
+        "label": "Emergency",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_4_0",
+        "label": "Schedule conflict",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_4_2",
+        "label": "Removed at Client Request and unable to reassign",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_4_4",
+        "label": "Jury or Witness Duty",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_5_0",
+        "label": "No call/ no show (Not Re-hirable)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_5_2",
+        "label": "Other (Please specify reason )",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_5_4",
+        "label": "Military Service / Spouse",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_6_0",
+        "label": "Retired, moved, back to school",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_6_2",
+        "label": "Improper Conduct / Violation of Company Policy   (Refer to Employee Handbook. Not Re-hirable)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_6_4",
+        "label": "Other (disability, victim,    extended bereavement)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_7_0",
+        "label": "Other (Please specify reason)",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_15_7_2",
+        "label": "Layoff/ Account closure",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "rehire_3",
+        "label": "Re-hirable",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "rehire_5",
+        "label": "May re-apply after 1 year",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "rehire_7",
+        "label": "Not Re-hirable",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      }
+    ]
+  },
+  {
+    "kind": "paf",
+    "title": "PAF — Progressive Action Form",
+    "category": "HR",
+    "fields": [
+      {
+        "key": "employee_1",
+        "label": "Employee Name",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "employee_3",
+        "label": "Employee #",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "employee_5",
+        "label": "Account",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "date",
+        "label": "Date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_7_0",
+        "label": "Policy Violation",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_7_2",
+        "label": "Job Performance",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_7_4",
+        "label": "Counseling",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_0",
+        "label": "Verbal Warning",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_2",
+        "label": "Written Warning",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_9_4",
+        "label": "Final Warning",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_11_1",
+        "label": "Follow Up",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_11_3",
+        "label": "Suspension",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_31_1",
+        "label": "Yes",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "check_31_3",
+        "label": "No",
+        "type": "checkbox",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "narrative_14",
+        "label": "Description of event(s)",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500,
+        "slots": [
+          "narrative_14",
+          "narrative_14_line1",
+          "narrative_14_line2"
+        ]
+      },
+      {
+        "key": "narrative_17",
+        "label": "Company Policy",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500,
+        "slots": [
+          "narrative_17",
+          "narrative_17_line1"
+        ]
+      },
+      {
+        "key": "narrative_21",
+        "label": "How does it affect the company?",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500,
+        "slots": [
+          "narrative_21",
+          "narrative_21_line1"
+        ]
+      },
+      {
+        "key": "narrative_25",
+        "label": "What is the action plan?",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500,
+        "slots": [
+          "narrative_25",
+          "narrative_25_line1"
+        ]
+      },
+      {
+        "key": "narrative_29",
+        "label": "What is the time frame for action plan?",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500,
+        "slots": [
+          "narrative_29"
+        ]
+      },
+      {
+        "key": "narrative_37",
+        "label": "Employee Comments",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500,
+        "slots": [
+          "narrative_37",
+          "narrative_37_line1",
+          "narrative_37_line2"
+        ]
+      },
+      {
+        "key": "follow_date",
+        "label": "Date of follow up",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "sign_40_1",
+        "label": "Employee Signature",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "sign_40_3",
+        "label": "Employee signature date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "sign_40_5",
+        "label": "Management Signature",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "sign_40_7",
+        "label": "Management signature date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "sign_43_1",
+        "label": "Witness Signature",
+        "type": "text",
+        "fallback": "",
+        "maxLength": 200
+      },
+      {
+        "key": "sign_43_3",
+        "label": "Witness signature date",
+        "type": "date",
+        "fallback": "",
+        "maxLength": 200
+      }
+    ]
+  },
+  {
+    "kind": "discussion",
+    "title": "Record of Discussion",
+    "category": "HR",
+    "fields": [
+      {
+        "key": "detail_2_0",
+        "label": "Employee Name",
+        "type": "text",
+        "fallback": "________________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_2_1",
+        "label": "Employee ID",
+        "type": "text",
+        "fallback": "___________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_2_2",
+        "label": "Department",
+        "type": "text",
+        "fallback": "____________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_3_0",
+        "label": "Location",
+        "type": "text",
+        "fallback": "_______",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_3_1",
+        "label": "Account",
+        "type": "text",
+        "fallback": "______________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_3_2",
+        "label": "Manager’s name",
+        "type": "text",
+        "fallback": "______________________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_4_0",
+        "label": "Date of Discussion",
+        "type": "date",
+        "fallback": "_______________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_12_0",
+        "label": "Employee Signature",
+        "type": "text",
+        "fallback": "________________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_12_1",
+        "label": "Employee signature date",
+        "type": "date",
+        "fallback": "__________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_13_0",
+        "label": "Supervisor/Manager name",
+        "type": "text",
+        "fallback": "____________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_13_1",
+        "label": "Supervisor/Manager signature",
+        "type": "text",
+        "fallback": "_____________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_13_2",
+        "label": "Supervisor/Manager date",
+        "type": "date",
+        "fallback": "__________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_15_0",
+        "label": "Witness name",
+        "type": "text",
+        "fallback": "__________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_15_1",
+        "label": "Witness signature",
+        "type": "text",
+        "fallback": "_____________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "detail_15_2",
+        "label": "Witness date",
+        "type": "date",
+        "fallback": "__________",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_0",
+        "label": "Performance",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_1",
+        "label": "Conduct/Behavior",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_2",
+        "label": "Safety Concern",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_3",
+        "label": "Attendance",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_4",
+        "label": "Grooming",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_5",
+        "label": "Policy Violation",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_6",
+        "label": "Follow up",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "purpose_7",
+        "label": "Other",
+        "type": "checkbox",
+        "fallback": "☐",
+        "maxLength": 200
+      },
+      {
+        "key": "other",
+        "label": "Other purpose",
+        "type": "text",
+        "fallback": "__________________________",
+        "maxLength": 200
+      },
+      {
+        "key": "summary",
+        "label": "Summary of Discussion",
+        "type": "textarea",
+        "fallback": "",
+        "maxLength": 1500
+      },
+      {
+        "key": "comments",
+        "label": "Employee Comments",
+        "type": "textarea",
+        "fallback": "____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________",
+        "maxLength": 1500
+      }
+    ]
+  }
+]
