@@ -41,3 +41,16 @@
 
 /* Friday begins each budget period. */
 .schedule-grid .week-start{border-left:3px solid #df6865}
+
+/* Date badges hang above their day instead of tiny captions below it. */
+.schedule-grid thead th.current-day:after{content:none;display:none}
+.schedule-grid .date-heading th:not(.employee-cell){vertical-align:bottom;height:auto}
+.schedule-grid .date-review-button{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;padding:5px 1px 8px;overflow:visible;min-height:126px}
+.schedule-grid .date-badges{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:72px;width:100%;margin-bottom:3px}
+.schedule-grid .date-status{display:block;box-sizing:border-box;max-width:100%;padding:4px 3px;margin:0;border-radius:5px;background:#374151;color:#fff;font-size:12px;font-weight:700;line-height:15px;letter-spacing:0;white-space:normal;overflow-wrap:break-word;text-align:center;text-shadow:none}
+.schedule-grid .date-status-today{background:#d52235;color:#fff}
+.schedule-grid .date-status-holiday{background:#237244;color:#fff}
+.schedule-grid .date-status-pay{background:#6740a1;color:#fff}
+.schedule-grid .date-number{font-size:16px;font-weight:700;line-height:20px}
+.schedule-grid .date-review-button small{margin:0;font-size:11px;line-height:15px}
+.schedule-grid thead .month-heading th{font-size:15px}
