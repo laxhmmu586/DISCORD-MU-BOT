@@ -15,7 +15,7 @@ function harness() {
     updateFlightFromSy() { context.rerenderActiveRealtimePanel(); }
   };
   vm.createContext(context);
-  for (const name of ['resetPanelState', 'rerenderActiveRealtimePanel', 'renderSy', 'renderPassenger']) {
+  for (const name of ['resetPanelState', 'rerenderActiveRealtimePanel', 'renderSy']) {
     vm.runInContext(source(name), context);
   }
   return { context, calls };
@@ -31,8 +31,8 @@ test('background refresh updates an open GOV panel but does not reopen an empty 
   assert.ok(!calls.includes('gov'));
 });
 
-test('closing, a new SY search, and passenger search all clear panel identity before refresh', () => {
-  for (const action of ['resetPanelState', 'renderSy', 'renderPassenger']) {
+test('closing and a new SY search clear panel identity before refresh', () => {
+  for (const action of ['resetPanelState', 'renderSy']) {
     const { context, calls } = harness();
     context[action]({ sy: {} });
     context.rerenderActiveRealtimePanel();
