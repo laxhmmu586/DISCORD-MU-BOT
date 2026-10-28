@@ -110,3 +110,5 @@
 .gate-assignment-row .assignment-person{width:auto}
 
 @media(max-width:600px){.briefing-mobile-tabs button[aria-selected=true]{background:#ffecd6}}
+
+@media(max-width:600px){.briefing-sheet .briefing-flight-row>.departure-time-checks{margin-top:0}}
