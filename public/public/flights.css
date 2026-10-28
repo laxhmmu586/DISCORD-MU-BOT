@@ -13,7 +13,7 @@
 @media(max-width:600px){.flight-services a{flex-basis:92px}.flight-services b{font-size:10px}.flight-cards{padding-top:35px}}
 
 .flight-enter-boarding{display:none}
-@media(max-width:760px){.flight-card .flight-enter-boarding{display:block;margin-top:12px;border-color:#a0f5c1;background:linear-gradient(#29b46c,#087f48);box-shadow:inset 0 0 6px #a0f5c144,0 0 12px #17b56855}.flight-card .flight-enter-boarding:hover{background:linear-gradient(#35c77c,#109656)}}
+@media(max-width:760px){.flight-card .flight-enter:not(.flight-enter-boarding){display:none}.flight-card .flight-enter-boarding{display:block;margin-top:25px;border-color:#a0f5c1;background:linear-gradient(#29b46c,#087f48);box-shadow:inset 0 0 6px #a0f5c144,0 0 12px #17b56855}.flight-card .flight-enter-boarding:hover{background:linear-gradient(#35c77c,#109656)}}
 
 .flight-pbb-link{display:block;fill:none!important}.flight-pbb-link svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.flight-topbar nav a{font-size:12px;font-weight:700;padding:0 11px}.flight-topbar nav{white-space:nowrap}.flight-topbar nav a:hover{color:#a2cfff}
 
