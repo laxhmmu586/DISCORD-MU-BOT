@@ -16,11 +16,16 @@ test('missing or changed times restart the wait and do not create incomplete arc
  const f=fixture(t);f.fields.lastBag=' ';f.write();await f.tick();f.advance(600000);await f.tick();assert.equal(f.reports,0);f.fields.lastBag='13:00';f.write();await f.tick();f.advance(200000);f.fields.firstBag='12:59';f.write();await f.tick();f.advance(299999);await f.tick();assert.equal(f.reports,0);f.advance(1);await f.tick();assert.equal(f.reports,1);
 });
 test('Drive retries reuse reserved ID and pending deliveries survive date rollover',async t=>{
- const f=fixture(t);f.failDrive(true);await f.tick();f.advance(300000);await f.tick();assert.equal(f.reports,1);assert.equal(f.sends.length,0);f.restart();f.advance(86400000);f.failDrive(false);await f.tick();assert.equal(f.reports,1);assert.equal(f.uploads.length,2);assert.equal(f.uploads[0].id,f.uploads[1].id);assert.equal(f.sends.length,1);
+ const f=fixture(t);f.failDrive(true);await f.tick();f.advance(300000);await f.tick();assert.equal(f.reports,1);assert.equal(f.sends.length,1);assert.equal(f.db.prepare('SELECT drive_sent FROM briefing_auto_jobs').get().drive_sent,0);f.restart();f.advance(86400000);f.failDrive(false);await f.tick();assert.equal(f.reports,1);assert.equal(f.uploads.length,2);assert.equal(f.uploads[0].id,f.uploads[1].id);assert.equal(f.sends.length,1);
 });
 test('ambiguous Discord posts reconcile instead of sending a duplicate',async t=>{
  const f=fixture(t);f.failSend(true);await f.tick();f.advance(300000);await f.tick();assert.equal(f.sends.length,1);f.failSend(false);await f.tick();assert.equal(f.sends.length,1);f.messages.push({id:'recovered',content:f.sends[0].content,author:{id:'bot'}});await f.tick();assert.equal(f.db.prepare('SELECT discord_state FROM briefing_auto_jobs').get().discord_state,'sent');assert.equal(f.sends.length,1);
 });
 test('deleted automatic archive is not regenerated or delivered',async t=>{
- const f=fixture(t);f.failDrive(true);await f.tick();f.advance(300000);await f.tick();f.db.prepare('UPDATE briefing_reports SET deleted_at=?').run('deleted');f.failDrive(false);await f.tick();assert.equal(f.reports,1);assert.equal(f.sends.length,0);assert.equal(f.uploads.length,1);
+ const f=fixture(t);f.failDrive(true);await f.tick();f.advance(300000);await f.tick();f.db.prepare('UPDATE briefing_reports SET deleted_at=?').run('deleted');f.failDrive(false);await f.tick();assert.equal(f.reports,1);assert.equal(f.sends.length,1);assert.equal(f.uploads.length,1);
+});
+
+
+test('Drive failure cannot block Discord and later retries do not duplicate the message',async t=>{
+ const f=fixture(t);f.failDrive(true);await f.tick();f.advance(300000);await f.tick();assert.equal(f.sends.length,1);let job=f.db.prepare('SELECT * FROM briefing_auto_jobs').get();assert.equal(job.discord_state,'sent');assert.equal(job.drive_sent,0);assert.match(job.error,/drive unavailable/);f.restart();await f.tick();assert.equal(f.sends.length,1);f.failDrive(false);await f.tick();job=f.db.prepare('SELECT * FROM briefing_auto_jobs').get();assert.equal(job.drive_sent,1);assert.equal(job.error,null);assert.equal(f.sends.length,1);
 });

@@ -22,11 +22,13 @@ function createAutoArchive({db,briefing,client,reserveDriveId,uploadDrive,now=()
    try{
     const report=db.prepare('SELECT * FROM briefing_reports WHERE id=? AND deleted_at IS NULL').get(job.report_id);if(!report){update(job,"drive_sent=1,discord_state='deleted',error=NULL");continue;}
     const name=job.date+' '+job.flight+' ARRIVAL BRIEFING SHEET.pdf';
-    if(!job.drive_sent){if(!job.drive_id){job.drive_id=await reserveDriveId();update(job,'drive_id=?',job.drive_id);}await uploadDrive({id:job.drive_id,name,bytes:report.pdf,folderId:FOLDER,reportId:report.id});update(job,'drive_sent=1');}
+    let driveError=null;
+    try{if(!job.drive_sent){if(!job.drive_id){job.drive_id=await reserveDriveId();update(job,'drive_id=?',job.drive_id);}await uploadDrive({id:job.drive_id,name,bytes:report.pdf,folderId:FOLDER,reportId:report.id});update(job,'drive_sent=1,error=NULL');}}
+    catch(error){driveError=String(error.message).slice(0,500);update(job,'error=?',driveError);logger.error('Briefing Drive archive:',driveError);}
     if(job.discord_state!=='sent'){
      const channel=await client.channels.fetch(CHANNEL),marker='Briefing archive: '+report.id;
-     if(job.discord_state==='sending'){const messages=await channel.messages.fetch({limit:100});const found=messages.find(m=>m.author?.id===client.user.id&&m.content?.includes(marker));if(found)update(job,"discord_state='sent',message_id=?,error=NULL",found.id);else logger.error('Briefing delivery requires reconciliation:',report.id);continue;}
-     update(job,"discord_state='sending'");const sent=await channel.send({content:'📄 '+name+'\n'+marker,files:[{attachment:report.pdf,name}],nonce:report.id.replaceAll('-','').slice(0,25),enforceNonce:true,allowedMentions:{parse:[]}});if(!sent.id||sent.attachments?.size!==1)throw Error('Discord did not acknowledge report attachment');update(job,"discord_state='sent',message_id=?,error=NULL",sent.id);
+     if(job.discord_state==='sending'){const messages=await channel.messages.fetch({limit:100});const found=messages.find(m=>m.author?.id===client.user.id&&m.content?.includes(marker));if(found)update(job,"discord_state='sent',message_id=?,error=?",found.id,driveError);else logger.error('Briefing delivery requires reconciliation:',report.id);continue;}
+     update(job,"discord_state='sending'");const sent=await channel.send({content:'📄 '+name+'\n'+marker,files:[{attachment:report.pdf,name}],nonce:report.id.replaceAll('-','').slice(0,25),enforceNonce:true,allowedMentions:{parse:[]}});if(!sent.id||sent.attachments?.size!==1)throw Error('Discord did not acknowledge report attachment');update(job,"discord_state='sent',message_id=?,error=?",sent.id,driveError);
     }
    }catch(error){update(job,'error=?',String(error.message).slice(0,500));logger.error('Briefing auto delivery:',error.message);}
   }
