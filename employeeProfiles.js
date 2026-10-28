@@ -29,7 +29,7 @@ function createProfileStore(employees){
   return row;
  }
  function status(user){
-  if(restricted(user))return {state:'external'};
+  if(restricted(user)&&!linked(user))return {state:'external'};
   const row=linked(user);
   if(row)return {state:'ready',profile:profile(row),revision:employees.get().revision};
   const original=employees.get().employees.filter(item=>normalize(item.loginId)&&normalize(item.loginId)===normalize(user.email));
