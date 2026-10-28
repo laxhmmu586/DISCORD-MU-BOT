@@ -1340,7 +1340,8 @@ const ldmCpmMailService = ldmCpmMail.createService({
   getClient: require('./googleDrive').getNextDayInfoGmailClient,
   channel: () => client.channels.fetch(ldmCpmMail.CHANNEL_ID)
 });
-const briefingService = require('./briefingSchedule').createBriefingService({db:pbbService.store.db,client,exportPdf:require('./googleDrive').exportBriefingPdf});
+const briefingAutoArchive = require('./briefingAutoArchive').createAutoArchive({db:pbbService.store.db,briefing:pbbService.briefing,client,reserveDriveId:require('./googleDrive').reserveBriefingArchiveId,uploadDrive:require('./googleDrive').uploadBriefingArchive});
+const briefingService = require('./briefingSchedule').createBriefingService({db:pbbService.store.db,client,includeArrival:false,exportPdf:require('./googleDrive').exportBriefingPdf});
 require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, profiles:pbbService.profiles, db: pbbService.store.db });
 const etabAdvisory = require('./etabAdvisory');
@@ -5010,6 +5011,7 @@ app.listen(
     visaMonitor.start();
     pbbService.startWheelchairMail();
     briefingService.start();
+    briefingAutoArchive.start();
     setInterval(syncTodayReportSheets, 30 * 60 * 1000);
     runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err));
     setInterval(() => runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err)), 60 * 60 * 1000);
