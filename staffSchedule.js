@@ -1,6 +1,6 @@
 const groups=require('./public/public/employee-account-groups'),positions=require('./public/public/employee-positions');
 const summary=require('./public/public/schedule-summary'),{orderRoster}=require('./staffScheduleRoster');
-const {createScheduleSync}=require('./staffScheduleSync');
+const {createLocalSchedule}=require('./staffScheduleLocal');
 const roles={K:'K',D:'Management',C:'Check-in',CL:'Check in + Lost and Found',FL:'Flight control + lost and found',F:'Flight Control',B:'Bag room',BL:'Bag room + Lost and Found',A:'Arrival',GS:'Gate Specialist',Q:'Arrival Card Assistant',EC:'Early Checkin',X:'Rest',VAC:'Vacation 🏖️',N:'No call / no show',CS:'Call sick',CO:'Call off',TK:'TK'};
 const colors={K:'#ffff00',D:'#ffff00',C:'#99ff00',CL:'#77933c',FL:'#3333ff',F:'#9999ff',B:'#66b3c2',BL:'#66b3c2',A:'#4f6200',GS:'#9371c7',Q:'#4b183c',EC:'#a9c48b',X:'#ffffff',VAC:'#fff2cc',N:'#ffb3b3',CS:'#ffd7b5',CO:'#d8def5',TK:'#dddddd'};
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
@@ -18,8 +18,7 @@ function registerStaffSchedule(app,{employees,profiles,authenticate=require('./p
  db.exec('CREATE TABLE IF NOT EXISTS staff_schedule_roster_order(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,data TEXT NOT NULL)');db.prepare('INSERT OR IGNORE INTO staff_schedule_roster_order VALUES(1,0,?)').run('[]');
  const savedOrder=()=>{const row=db.prepare('SELECT revision,data FROM staff_schedule_roster_order WHERE id=1').get();return {revision:row.revision,ids:JSON.parse(row.data)};};
  const roster=()=>{const rows=orderRoster(employees.get().employees.filter(row=>row.name&&!excluded(row)&&groups.belongs(row,{station:'LAX',account:'MU'}))),order=savedOrder(),indices=new Map(order.ids.map((id,i)=>[id,i]));return rows.sort((a,b)=>(indices.get(a.id)??1e9)-(indices.get(b.id)??1e9));};
- const setCodes=changes=>{const map=new Map(changes.map(c=>[c.id,c.code])),current=employees.get();if(!current.employees.some(row=>map.has(row.id)&&(row.code||'')!==map.get(row.id)))return;employees.save({...current,employees:current.employees.map(row=>map.has(row.id)?{...row,code:map.get(row.id)}:row)},{email:'Google Sheet schedule sync'});};
- const sync=provided&&typeof provided==='object'?provided:createScheduleSync({db,roster,read,put,setCodes,roles,colors,env:provided===false?{...env,STAFF_SCHEDULE_SYNC_ENABLED:'false'}:env});
+ const sync=createLocalSchedule({db,roles,colors});
  const calculated=day=>({...day,planned:summary.dailyTotal(day,roster())});
  const period=start=>{const days=Array.from({length:7},(_,i)=>calculated(read(summary.addDays(start,i))));return {start,end:summary.addDays(start,6),...summary.weekly(days)};};
  const decorated=day=>({...calculated(day),period:period(summary.periodStart(day.date))});
