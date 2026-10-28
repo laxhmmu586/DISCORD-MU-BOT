@@ -74,3 +74,7 @@ The Gate Lead panel now contains a sample control sheet. All editable entries ar
 Gate Lead now shows only the two entry cards under Control Entries, with F/J/Y/INF in one row. Document preparation, boarding checks and office-file guidance are under Information / Instructions. Common Contacts uses the six numbers supplied for Gate operations. Lost and Found text is editable by Lead and above through revision-checked shared reference values; employees remain read-only.
 
 Report snapshots capture assignment nicknames separately from canonical stored employee names, so new PDF reports and previews show the same frozen display names. Discord archive posts show `✅ document archive`; deduplication uses the nonce/attachment description and recognizes older body markers. Drive failure does not block Discord delivery. Briefing Drive uploads reuse the existing user-authorized Drive adapter, and unusable legacy service-account reserved IDs are replaced before retrying upload.
+
+Departure PDF and HTML report previews arrange Team Assignment into parallel Counter and Gate columns. Each column keeps its own role/name rows, including multiple frozen nicknames and Gate Lead/Assist times.
+
+Gate Lead control entries and Finish are editable by Lead and above, or employees assigned to Gate Lead / Gate Assist on today's departure briefing in Los Angeles. Server permissions check current assignments on each write; removing an assignment immediately revokes that employee's control-edit permission. This does not grant general Briefing or assignment-edit access.
