@@ -40,13 +40,10 @@
  function renderClockIn(){
   const panel=$('clock-in-time');panel.hidden=data.canViewAll;panel.replaceChildren();if(data.canViewAll)return;
   panel.append(node('h2','Clock-in Time'));
-  const month=mobileMonth||historyMonth,start=month?month+'-01':data.start,end=month?month+'-31':data.end;
-  const periods=[{date:'2026-11-01',end:'2027-03-13',label:'November 1, 2026 – March 13, 2027'},{date:'2027-03-14',label:'From March 14, 2027 · All times +1 hour'}];
-  for(const period of periods){if(period.end&&start>period.end||!period.end&&end<period.date)continue;
-   panel.append(node('p',period.label,'clock-in-period'));const list=node('dl',undefined,'clock-in-list');
-   for(const duty of staffScheduleSummary.clockInTimes(period.date)){const row=node('div');const code=node('dt',duty.code,'clock-in-code'),color=data.colors[duty.code]||data.colors[duty.code==='G'?'GS':duty.code]||'#eeeeee';code.style.backgroundColor=color;code.style.color=ink(color);row.append(code,node('dd',duty.time));list.append(row);}panel.append(list);
-  }
-  if(!panel.querySelector('dl'))panel.append(node('p','Clock-in times take effect November 1, 2026.'));
+  panel.append(node('p','November 1, 2026 – March 13, 2027','clock-in-period'));
+  const list=node('dl',undefined,'clock-in-list');
+  for(const duty of staffScheduleSummary.clockInTimes('2026-11-01')){const row=node('div'),code=node('dt',duty.code,'clock-in-code'),color=data.colors[duty.code]||data.colors[duty.code==='G'?'GS':duty.code]||'#eeeeee';code.style.backgroundColor=color;code.style.color=ink(color);row.append(code,node('dd',duty.time));list.append(row);}panel.append(list);
+  panel.append(node('p','From March 14, 2027 · All times +1 hour','clock-in-period'));
  }
  function chip(code,color,tag='span',cls='duty'){const el=node(tag,code==='VAC'?'🏖️':code,cls);el.style.backgroundColor=color;el.style.color=code==='X'?'#0000ff':ink(color);return el;}
  function sizeColumns(table){
