@@ -18,7 +18,7 @@ function canDashboard(employee){return Boolean(employee&&!groups.isHeadquarter(e
 function monthFormat(cell,name){cell.style={...cell.style,numFmt:'"'+name.toUpperCase()+'"-yy'};}
 async function template(kind,month,scope,extraRows={}){
  const {year,name}=reportMonth(month);
- if(forms.kinds.includes(kind))return forms.template(kind,month,scope);
+ if(forms.kinds.includes(kind))return forms.template(kind,month,scope,extraRows);
  if(!['da','wwh'].includes(kind))fail('Unknown report type.',404);
  const cells={},wheelchair=kind==='da'&&scope.station==='LAX'&&scope.account==='MU';
  const Excel=excel(),workbook=new Excel.Workbook();await workbook.xlsx.readFile(path.join(templateDir,kind+'-2026.xlsx'));const sheet=workbook.getWorksheet(name),columns=kind==='wwh'?29:14;
@@ -126,7 +126,16 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  })();live.publish(ctx.scope,model.kind,model.month);return saved;};
  app.post('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model}=await build(req);res.json(write(ctx,model,req.reportUser,req.body));}));
  app.post('/has-report-api/:kind/:month/rows',handler(async(req,res)=>{
-  const {ctx,model}=await build(req);if(model.kind!=='da')fail('Rows can only be changed in DA.');const delta=req.body.delta??1;if(delta!==1&&delta!==-1)fail('Choose add or remove row.');const day=Number(req.body.day),block=model.days.find(d=>d.day===day);if(!block)fail('Choose a date in this month.');
+  const {ctx,model}=await build(req);const delta=req.body.delta??1;if(delta!==1&&delta!==-1)fail('Choose add or remove row.');
+  if(model.kind==='terrific'){
+   const saved=database().transaction(()=>{const latest=read(ctx.scope,'terrific',model.month);if(req.body.revision!==latest.revision||(req.body.layoutRevision||0)!==(latest.layoutRevision||0))fail('Report rows changed. Reload before changing rows.',409);
+    const count=(latest.extraRows?.terrificRows??13)+delta;if(count<1||count>200)fail('Terrific Ten supports 1 to 200 rows.');apply(model,latest.values,true);
+    if(delta<0&&req.body.confirmRemoval!==true&&Object.entries(model.cells).some(([address,cell])=>Number(address.match(/\d+$/)[0])===model.rows&&cell.editable&&cell.value!==''&&cell.value!=null))fail('This row contains data. Confirm removal before deleting it.',409);
+    const at=new Date().toISOString(),name=ctx.employee.nickname||ctx.employee.name||ctx.employee.position,data={...latest,revision:latest.revision+1,layoutRevision:(latest.layoutRevision||0)+1,extraRows:{...latest.extraRows,terrificRows:count},values:Object.fromEntries(Object.entries(latest.values).filter(([address])=>Number(address.match(/\d+$/)[0])<=count+2)),updatedAt:at,updatedBy:name,history:[...(latest.history||[]),{at,name,action:delta>0?'Added Terrific Ten row':'Removed Terrific Ten row',cells:['A'+(delta>0?model.rows+1:model.rows)]}].slice(-30)};
+    database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),'terrific',model.month,JSON.stringify(data));return data;
+   })();live.publish(ctx.scope,'terrific',model.month);return res.json({revision:saved.revision,layoutRevision:saved.layoutRevision,extraRows:saved.extraRows});
+  }
+  if(model.kind!=='da')fail('Rows can only be changed in DA or Terrific Ten.');const day=Number(req.body.day),block=model.days.find(d=>d.day===day);if(!block)fail('Choose a date in this month.');
   const saved=database().transaction(()=>{const latest=read(ctx.scope,'da',model.month);if(req.body.revision!==latest.revision||(req.body.layoutRevision||0)!==(latest.layoutRevision||0))fail('Report changed. Wait for the latest version before changing rows.',409);if(delta<0&&!(latest.extraRows?.[day]>0))fail('Only added rows can be removed.');apply(model,latest.values,true);if(delta<0&&req.body.confirmRemoval!==true&&Object.entries(model.cells).some(([address,cell])=>Number(address.match(/\d+$/)[0])===block.end&&cell.editable&&cell.value!==''&&cell.value!=null))fail('This row contains data. Confirm removal before deleting it.',409);const extraRows=validateRows({...latest.extraRows,[day]:(latest.extraRows?.[day]||0)+delta}),at=new Date().toISOString(),name=ctx.employee.nickname||ctx.employee.name||ctx.employee.position;
    const data={...latest,revision:latest.revision+1,layoutRevision:(latest.layoutRevision||0)+1,extraRows,values:moveValues(latest.values,block.end+(delta>0?1:0),delta,model),updatedAt:at,updatedBy:name,history:[...(latest.history||[]),{at,name,action:(delta>0?'Added row to day ':'Removed row from day ')+day,cells:['A'+block.start]}].slice(-30)};database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),'da',model.month,JSON.stringify(data));return data;
   })();live.publish(ctx.scope,'da',model.month);res.json({revision:saved.revision,layoutRevision:saved.layoutRevision,extraRows:saved.extraRows});

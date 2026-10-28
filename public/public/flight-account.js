@@ -21,6 +21,8 @@
     for(const nav of document.querySelectorAll('.profile-sidebar nav')){
       let schedule=nav.querySelector('[data-schedule-nav]');
       if(!schedule){const profileLink=nav.querySelector('a[href="/profile.html"]');if(profileLink){schedule=document.createElement('a');schedule.href='/schedule.html';schedule.dataset.scheduleNav='';schedule.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18M7 15h2m4 0h2"/></svg><span>Schedule</span>';profileLink.after(schedule);}}
+      const profileLink=nav.querySelector('a[href="/profile.html"],a[data-briefing-nav]');
+      if(profileLink){profileLink.href='/briefing.html';profileLink.dataset.briefingNav='';profileLink.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h4"/></svg><span>Briefing</span>';profileLink.classList.remove('is-active');profileLink.removeAttribute('aria-current');profileLink.hidden=!(profile?.station==='LAX'&&profile?.account==='MU');if(location.pathname==='/briefing.html'){profileLink.classList.add('is-active');profileLink.setAttribute('aria-current','page');}}
       if(schedule){const excluded=[profile?.name,profile?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));schedule.hidden=excluded||!(profile?.station==='LAX'&&profile?.account==='MU');if(location.pathname==='/schedule.html'){schedule.classList.add('is-active');schedule.setAttribute('aria-current','page');}}
     }
     const label=profile?.nickname||profile?.name||user?.displayName||'Account';host.querySelector('#current-user').textContent=label;host.querySelector('.flight-account-name').textContent=label;

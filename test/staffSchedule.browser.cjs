@@ -14,7 +14,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{roles,col
   if(url.hostname==='www.gstatic.com')return route.fulfill({body:'',contentType:'text/javascript'});
   if(p==='/__/firebase/init.js')return route.fulfill({contentType:'text/javascript',body:`const user={uid:'e0',email:'example@example.test',providerData:[],getIdToken:async()=>'fixture'};const auth={currentUser:user,onAuthStateChanged:fn=>{setTimeout(()=>fn(user),0);return ()=>{};}};window.firebase={apps:[{}],auth:()=>auth};`});
   if(navigationOnly&&route.request().resourceType()==='script'&&p!=='/flight-account.js')return route.fulfill({body:'',contentType:'text/javascript'});
-  if(p==='/flight-account.js')assert.equal(url.searchParams.get('v'),'20261027-schedule-sync');
+  if(p==='/flight-account.js')assert.equal(url.searchParams.get('v'),'20261028-briefing');
   if(p==='/profile-api')return route.fulfill({json:{state:'ready',profile:{name:mode==='blocked'?'DEMO HAS':'Example',station:'LAX',account:mode==='other'?'CZ':'MU'}}});
   if(p==='/has-report-api/context')return route.fulfill({json:{permissions:{},canAdmin:false}});
   if(p.startsWith('/staff-schedule-api')){
