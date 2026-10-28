@@ -88,3 +88,5 @@ test('account-only setup creates a UID-linked Agent without employee ID or conta
 test('account selection links only an email-matched employee, never another employee by ID',t=>{
  const {profiles,employees}=fixture(t);assert.throws(()=>profiles.selectAccount(google,{revision:employees.get().revision,station:'LAX',account:'CZ'}),/assigned to your employee record/);const saved=profiles.selectAccount(google,{revision:employees.get().revision,station:'LAX',account:'MU',eid:'999'});assert.equal(saved.profile.id,'one');assert.equal(employees.get().employees.length,2);
 });
+
+test('Form navigation visibility is based on the saved employee role',t=>{const {profiles,employees}=fixture(t);confirm(profiles);for(const [position,expected] of [['Agent',false],['Lead',true],['Supervisor',true],['Duty Manager',true]]){const current=employees.get();current.employees[0].position=position;employees.save(current,{email:'lake@mu.com'});assert.equal(profiles.status(google).profile.canViewForm,expected);}});

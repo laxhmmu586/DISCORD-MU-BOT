@@ -29,11 +29,12 @@
       if(schedule){const excluded=[profile?.name,profile?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));schedule.hidden=excluded||!(profile?.station==='LAX'&&profile?.account==='MU');if(location.pathname==='/schedule.html'){schedule.classList.add('is-active');schedule.setAttribute('aria-current','page');}}
     }
     for(const link of document.querySelectorAll('[data-flight-workspace-service]'))link.hidden=!(profile?.station==='LAX'&&profile?.account==='MU');
+    for(const link of document.querySelectorAll('a[href="/has-form.html"]'))link.hidden=!profile?.canViewForm;
     window.workspaceProfile={profile,user};window.dispatchEvent(new CustomEvent('workspace-profile',{detail:{profile,user}}));
     const label=profile?.nickname||profile?.name||user?.displayName||'Account';host.querySelector('#current-user').textContent=label;host.querySelector('.flight-account-name').textContent=label;
     avatar.replaceChildren();if(profile?.avatar){const img=document.createElement('img');img.alt='';img.src=profile.avatar;avatar.append(img);}else avatar.textContent=label.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
   }
-  const headerScript=document.createElement('script');headerScript.src='/workspace-header.js?v=20261028-no-plane';document.head.append(headerScript);
+  const headerScript=document.createElement('script');headerScript.src='/workspace-header.js?v=20261028-form-visibility';document.head.append(headerScript);
   window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
   auth?.onAuthStateChanged(async user=>{
     const generation=++profileGeneration;activeScope=null;try{if(user)activeScope=JSON.parse(sessionStorage.getItem('workspace-account:'+user.uid)||'null');}catch{}
