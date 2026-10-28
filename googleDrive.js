@@ -184,13 +184,13 @@ const FULL_SHEET_ID =
   '1FjdIg_b1iIfcAbCsxGBmIMnhFxA70sRo7cs4Vr4OLpc';
 
 const FSC_RATE_SHEET_ID =
-  process.env.FSC_RATE_SHEET_ID || '1-BnQrtRj6-uTgoC89uj8zQ1dZTcSh96QFRH-_Tf4JEQ';
+  process.env.FSC_RATE_SHEET_ID || '1VDIRN77cKZMQPXQ1ZLY-8lp8VI44tpFD5oU1Q9YAzYs';
 const FSC_RATE_SHEET_GID =
-  Number(process.env.FSC_RATE_SHEET_GID || 1436143706);
+  Number(process.env.FSC_RATE_SHEET_GID || 550963234);
 const FSC_RATE_CELL =
   process.env.FSC_RATE_CELL || 'J8';
 const SY_BOOKING_SHEET_ID =
-  process.env.SY_BOOKING_SHEET_ID || FSC_RATE_SHEET_ID;
+  process.env.SY_BOOKING_SHEET_ID || '1-BnQrtRj6-uTgoC89uj8zQ1dZTcSh96QFRH-_Tf4JEQ';
 const SY_BOOKING_SHEET_GID =
   Number(process.env.SY_BOOKING_SHEET_GID || 701688915);
 const SY_BOOKING_RANGE =
