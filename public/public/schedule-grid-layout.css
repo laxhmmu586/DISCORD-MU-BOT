@@ -114,3 +114,8 @@
 .schedule-grid .date-badges:not(:empty):after,.mobile-day-tags:not(:empty):after{content:'';position:absolute;right:-10px;top:4px;width:3px;height:9px;border-radius:2px;background:#ffc64d;transform:rotate(35deg);box-shadow:7px 7px 0 #ffc64d,8px 17px 0 #ffc64d}
 .schedule-grid .date-heading .current-day .date-number{color:#7352ca}
 @media(max-width:600px){.mobile-day-tags .mobile-day-label{font-size:11px;line-height:15px;padding:3px 10px 3px 7px}.mobile-calendar-day.is-today{border-color:#9475ff;box-shadow:inset 2px 0 #9475ff,inset -2px 0 #9475ff,0 0 0 2px #a5b1ff30}.mobile-calendar-day.is-today .mobile-date{color:#7352ca}}
+
+.schedule-grid .date-status,.mobile-day-tags .mobile-day-label{background:var(--ribbon-color,#2563a6);color:#fff;border-color:var(--ribbon-color,#2563a6)}
+.schedule-grid .date-badges:not(:empty):after,.mobile-day-tags:not(:empty):after{content:none;display:none}
+.clock-in-list .clock-in-code{display:inline-grid;place-items:center;min-width:26px;width:26px;height:26px;flex:0 0 26px;box-sizing:border-box;border-radius:7px;font-size:11px;line-height:1;font-weight:700;border:1px solid #00000012}
+.clock-in-list>div{align-items:center}
