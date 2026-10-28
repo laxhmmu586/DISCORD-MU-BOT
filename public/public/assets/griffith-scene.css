@@ -1,0 +1,7 @@
+/* Shared background for Login, Flights, Index, Report and Baggage. */
+body.airport-scene::before {
+  background-image: url("flights-griffith-stone-terrace.webp");
+}
+@media (max-width: 760px) {
+  body.airport-scene::before { background-position: right center; }
+}
