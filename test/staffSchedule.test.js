@@ -60,3 +60,11 @@ test('months extend the live horizon one calendar month at a time, including a y
 });
 
 test('legacy cached clients cap at fourteen dates; updated clients retain future months',async t=>{const {request,db}=await fixture(t);db.prepare('UPDATE staff_schedule_sync_settings SET data=? WHERE id=1').run(JSON.stringify({enabled:false,horizon:'2027-04-08'}));for(const user of ['sup','agent']){const old=(await request(user,undefined,'2026-10-27','',null)).data,current=(await request(user)).data;assert.equal(old.days.length,14);assert.equal(old.horizon,'2027-04-08');assert(current.days.length>150);assert.equal(current.days.at(-1).date,'2027-04-08');}});
+
+test('self view filters even managers to the authenticated employee',async t=>{
+ const {request}=await fixture(t);
+ for(const user of ['agent','lead','sup']){
+  const {data,status}=await request(user,undefined,'2026-10-26&view=self&employeeId=peer');assert.equal(status,200);assert.equal(data.canViewAll,false);assert.equal(data.canEdit,false);assert.deepEqual(data.employees.map(e=>e.id),[user]);
+  for(const day of data.days){assert(Object.keys(day.assignments).every(id=>id===user));assert.equal(day.planned,undefined);}
+ }
+});

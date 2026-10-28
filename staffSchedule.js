@@ -24,7 +24,7 @@ function registerStaffSchedule(app,{employees,profiles,authenticate=require('./p
  const handler=fn=>async(req,res)=>{try{res.json(await sync.run(()=>fn(req)));}catch(error){res.status(error.status||400).json({error:error.message});}};
  app.use('/staff-schedule-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');let user;try{user=await authenticate(req);}catch{return res.status(401).json({error:'Sign in required.'});}const row=profiles.linked(user);if(!allowed(row))return res.status(403).json({error:'Schedule is available only for eligible LAX / MU employees.'});req.scheduleAccess={user,employeeId:row.id,canEdit:canEdit(user,row)};next();});
  app.get('/staff-schedule-api',handler(async req=>{
-  await sync.refresh(Boolean(req.query.refresh));const access=req.scheduleAccess,month=req.query.month;let start,end;
+  await sync.refresh(Boolean(req.query.refresh));const access=req.query.view==='self'?{...req.scheduleAccess,canEdit:false}:req.scheduleAccess,month=req.query.month;let start,end;
   if(month!==undefined){if(typeof month!=='string'||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))fail('Choose a valid history month.');start=month+'-01';const d=new Date(start+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(0);end=d.toISOString().slice(0,10);}
   else{start=date(req.query.start||today());end=[sync.status().horizon,summary.addDays(start,13)].filter(Boolean).sort().at(-1);}
   // Older cached frontends size their table for fourteen dates; only updated clients opt into the full horizon.

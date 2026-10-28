@@ -5,7 +5,7 @@
  const ink=hex=>{const [r,g,b]=hex.slice(1).match(/../g).map(v=>parseInt(v,16));return (r*299+g*587+b*114)/1000>145?'#17202d':'#ffffff';};
  let mobileMonth='',mobilePeriod='',sourceData,previewEmployee='',data,historyMonth='',reviewDate='',range=null,gridEmployees=[],dragging=false,moved=false,busy=false,lastCopy=null,session=0,loading=0,selectedColor,selectedCode,selectedDate,syncPoll=null;
  const grid=$('schedule-table').parentElement,coverageGrid=$('coverage-table').parentElement,menu=$('duty-menu');
- const api=(path='',body)=>peopleApi('/staff-schedule-api'+path,body);
+ const api=(path='',body)=>peopleApi('/staff-schedule-api'+path+(!body&&previewEmployee?(path.includes('?')?'&':'?')+'view=self':''),body);
  function report(error){$('schedule-status').textContent=error.message||String(error);}
  function merge(result){if(result.sync){data.sync=result.sync;renderSync();}for(const day of result.days||[result]){if(!day.date)continue;const current=data.days.find(d=>d.date===day.date);if(current)Object.assign(current,day);if(day.period){const i=data.periods?.findIndex(p=>p.start===day.period.start);if(i>=0)data.periods[i]=day.period;}}}
  async function post(path,body){if(busy)throw Error('Wait for the current change to finish.');busy=true;try{const result=await api(path,body);merge(result);return result;}finally{busy=false;}}
@@ -20,12 +20,9 @@
  function pollSync(){if(syncPoll||!data?.canEdit)return;const current=session;syncPoll=setTimeout(async()=>{syncPoll=null;if(current!==session||!data?.canEdit)return;try{const result=await api('/sync');if(current!==session)return;data.sync=result.sync;renderSync();}catch{if(current===session)pollSync();}},data.sync?.state==='error'?10000:2500);}
  function applyView(){
   data=sourceData;
-  const enabled=Boolean(sourceData?.canViewAll);
+  const enabled=Boolean(sourceData?.canViewAll)||Boolean(previewEmployee);
   $('employee-view').hidden=!enabled;
   $('employee-view').textContent=previewEmployee?'Return to manager view':'Employee view';
-  $('preview-employee').hidden=!enabled||!previewEmployee;
-  if(enabled){$('preview-employee').replaceChildren(...sourceData.employees.map(e=>new Option(e.name,e.id)));$('preview-employee').value=previewEmployee;}
-  if(enabled&&previewEmployee){const employee=sourceData.employees.find(e=>e.id===previewEmployee);if(employee)data={...sourceData,canViewAll:false,canEdit:false,employees:[employee],days:sourceData.days.map(day=>({date:day.date,dateColor:day.dateColor,labels:day.labels,assignments:{[employee.id]:day.assignments[employee.id]}}))};else previewEmployee='';}
  }
 
  function draw(){
@@ -116,7 +113,7 @@
  document.addEventListener('paste',async event=>{if(!clipboardReady()||!event.clipboardData)return;event.preventDefault();closeMenu();const authSession=session,run=loading;try{const text=event.clipboardData.getData('text/plain'),rich=event.clipboardData.getData(staffScheduleGrid.mime)||(lastCopy?.text===text?lastCopy.rich:''),cells=staffScheduleGrid.parse(rich,text,data.roles,data.colors),plan=staffScheduleGrid.plan(gridEmployees,data.days,range,cells);await post('/paste',{changes:plan.changes,revisions:plan.revisions});if(authSession!==session||run!==loading)return;drawTable();range=plan.range;paintRange()?.focus({preventScroll:true});$('schedule-status').textContent=plan.changes.length+' cells pasted and saved.';}catch(error){report(error);}});
  document.addEventListener('pointerdown',event=>{if(!menu.contains(event.target)&&!event.target.closest('.duty'))closeMenu();});
  $('edit-selected-duty').onclick=()=>{if(range)openMenu(gridEmployees[range.focus.row],data.days[range.focus.col],paintRange());};$('employee-search').oninput=drawTable;$('team').onchange=drawTable;
- $('employee-view').onclick=()=>{previewEmployee=previewEmployee?'':sourceData.employees[0]?.id||'';if(previewEmployee&&matchMedia('(max-width:600px)').matches){mobileMonth=today().slice(0,7);mobilePeriod=staffScheduleSummary.periodStart(mobileMonth+'-01');historyMonth='';load();return;}if(!previewEmployee){mobilePeriod='';mobileMonth='';}applyView();draw();};$('preview-employee').onchange=()=>{previewEmployee=$('preview-employee').value;applyView();draw();};
+ $('employee-view').onclick=()=>{previewEmployee=previewEmployee?'':'self';mobilePeriod='';mobileMonth='';load();};
  $('history').onclick=()=>{historyMonth=historyMonth||today().slice(0,7);load();};$('today').onclick=()=>{historyMonth='';mobilePeriod='';mobileMonth='';load();};$('schedule-month').onchange=()=>{if($('schedule-month').value){historyMonth=$('schedule-month').value;load();}};
  for(const [id,n] of [['previous',-1],['next',1]])$(id).onclick=()=>{if(!historyMonth)return;const d=new Date(historyMonth+'-01T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+n);historyMonth=d.toISOString().slice(0,7);load();};$('refresh').onclick=()=>load();
  $('add-month').onclick=async()=>{try{await post('/months',{expectedEnd:data.horizon});await load();$('schedule-status').textContent='Next calendar month added.';}catch(error){report(error);}};
