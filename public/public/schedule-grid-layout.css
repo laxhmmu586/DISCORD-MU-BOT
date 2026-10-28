@@ -119,3 +119,5 @@
 .schedule-grid .date-badges:not(:empty):after,.mobile-day-tags:not(:empty):after{content:none;display:none}
 .clock-in-list .clock-in-code{display:inline-grid;place-items:center;min-width:26px;width:26px;height:26px;flex:0 0 26px;box-sizing:border-box;border-radius:7px;font-size:11px;line-height:1;font-weight:700;border:1px solid #00000012}
 .clock-in-list>div{align-items:center}
+
+.schedule-grid #schedule-table .current-day{background-color:#e7d9ff;box-shadow:inset 3px 0 #7c3aed,inset -3px 0 #7c3aed}.schedule-grid #schedule-table thead .current-day,.schedule-grid #coverage-table thead .current-day{background-color:#d8beff}.schedule-grid #schedule-table .current-day .duty{outline:2px solid #8b5cf6;outline-offset:1px;box-shadow:0 0 0 4px #7c3aed22}.schedule-grid #coverage-table .current-day{box-shadow:inset 3px 0 #7c3aed,inset -3px 0 #7c3aed}
