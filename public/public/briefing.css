@@ -96,3 +96,9 @@
 @media(min-width:1100px){.gate-assignment-row>label:first-child{grid-template-columns:minmax(120px,.75fr) minmax(0,1fr)}}
 
 .briefing-shell .gate-role textarea,.briefing-shell .gate-role textarea[data-field]:not([readonly]){display:block;width:100%;min-width:0;height:32px;min-height:0;resize:none;overflow:hidden;background:transparent!important;border:1px solid transparent!important;border-radius:3px;color:white!important;text-align:center;font-size:11px;line-height:13px;font-weight:600;padding:2px;text-shadow:0 1px 1px #08356655;box-shadow:none}.briefing-shell .gate-role textarea[data-field]:focus{background:#ffffff20!important;border-color:#c4e2ff!important}@media(max-width:600px){.briefing-shell .gate-role textarea{font-size:10px}}
+
+/* Keep Gate role names compact, left aligned and vertically centered. */
+.gate-role{display:flex;align-items:center;min-height:38px;text-align:left;padding:3px 7px;box-sizing:border-box}
+.briefing-shell .gate-role textarea,.briefing-shell .gate-role textarea[data-field]:not([readonly]){field-sizing:content;height:auto;text-align:left;line-height:14px;padding:1px 2px;min-height:16px}
+@media(min-width:601px){.gate-assignment-row>label:first-child{grid-template-columns:140px minmax(0,1fr)}}
+@media(max-width:600px){.gate-role{min-height:38px;padding:3px 5px}}

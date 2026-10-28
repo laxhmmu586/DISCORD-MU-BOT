@@ -168,3 +168,10 @@ test('Briefing reinitializes with migrated reference cards without losing saved 
   const row=db.prepare('SELECT * FROM briefing_reference WHERE id=1').get();assert.equal(row.revision,7);assert.deepEqual(JSON.parse(row.data),values);assert.deepEqual(JSON.parse(row.boxes),boxes);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_reference').get().n,1);
  }finally{db.close();}
 });
+
+
+test('assignment snapshot includes nickname while retaining canonical name and employee ID',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU583'};
+ await request('lead','/assign',{...key,employeeId:'agent',fromField:null,toField:'arrivalLead',toValue:''});
+ const result=(await request('agent','?date='+DATE)).data;assert.equal(result.fields.arrivalLead,'agent employee');const person=result.assignedPeople.find(p=>p.id==='agent');assert.equal(person.nickname,'agent');assert.equal(person.name,'agent employee');
+});
