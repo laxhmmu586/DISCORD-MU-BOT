@@ -41,3 +41,18 @@ test('coverage color thresholds and non-budget Arrival Card Assistant',()=>{
  assert.equal(dailyTotal({assignments:{q:{code:'Q'}}},[{id:'q'}]),0);
  assert(!formula.includes('Q'));
 });
+
+test('Daily Hour colors clamp at 50 and 64 and interpolate between',()=>{
+ const {dailyHourColor}=require('../public/public/schedule-summary');
+ for(const value of [0,49.5,50])assert.equal(dailyHourColor(value),'#9ed7f2');
+ assert.equal(dailyHourColor(57),'#ff8080');for(const value of [64,70])assert.equal(dailyHourColor(value),'#ff0000');
+ for(const value of [null,undefined,NaN,'57',-1])assert.equal(dailyHourColor(value),null);
+});
+test('Clock-in times shift every endpoint on March 14, including meals and F alternative',()=>{
+ const {clockInTimes}=require('../public/public/schedule-summary');
+ assert.equal(clockInTimes('2026-10-31'),null);
+ const winter=clockInTimes('2026-11-01');assert.deepEqual(clockInTimes('2027-03-13'),winter);assert.equal(winter.length,10);
+ const summer=clockInTimes('2027-03-14');
+ for(let i=0;i<winter.length;i++){assert.equal(summer[i].code,winter[i].code);const a=winter[i].time.match(/\d{2}:\d{2}/g),b=summer[i].time.match(/\d{2}:\d{2}/g);assert.deepEqual(b,a.map(t=>String(Number(t.slice(0,2))+1).padStart(2,'0')+t.slice(2)));}
+ assert.equal(summer.find(d=>d.code==='CL').time,'07:45-12:45 🍴 13:15-16:15');
+});
