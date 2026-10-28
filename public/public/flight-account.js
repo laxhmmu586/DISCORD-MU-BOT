@@ -3,6 +3,9 @@
   if(!host) return;
   const auth=window.firebase?.apps?.length && window.firebase?.auth ? firebase.auth() : null;
   let profileGeneration=0;
+  let activeScope=null;
+  window.workspaceHeaders=()=>activeScope?{'X-Workspace-Account':JSON.stringify(activeScope)}:{};
+
   const loginOriginKey='mufc_login_origin';
   const readLoginOrigin=()=>{for(const storageName of ['localStorage','sessionStorage']){try{const value=window[storageName].getItem(loginOriginKey);if(value)return value;}catch{}}return '';};
   host.innerHTML=`<button class="login-button" type="button" aria-label="Open login menu" aria-expanded="false" aria-controls="flight-login-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.5a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z"/><path d="M4.25 20.25a8.25 8.25 0 0 1 15.5 0"/></svg><span class="flight-account-name">Account</span><span aria-hidden="true">⌄</span></button><div class="login-menu" id="flight-login-menu" hidden><div class="login-user"><span>LOGGED IN AS</span><strong id="current-user">Checking session…</strong></div><button id="change-password" type="button">CHANGE PASSWORD</button><button id="logout" type="button">LOGOUT</button></div>`;
@@ -18,19 +21,21 @@
   const avatar=document.createElement('span');avatar.className='flight-user-avatar';avatar.setAttribute('aria-hidden','true');host.querySelector('svg').replaceWith(avatar);
   style.textContent+='.flight-user-avatar{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:#254965;color:#fff;font-size:13px;font-weight:700;border:1px solid #84b1d4;overflow:hidden}.flight-user-avatar img{width:100%;height:100%;object-fit:cover}';
   function renderProfile(profile,user=auth?.currentUser){
-    for(const nav of document.querySelectorAll('.profile-sidebar nav')){
+    for(const nav of document.querySelectorAll('.profile-sidebar nav,.workspace-features')){
       let schedule=nav.querySelector('[data-schedule-nav]');
       if(!schedule){const profileLink=nav.querySelector('a[href="/profile.html"]');if(profileLink){schedule=document.createElement('a');schedule.href='/schedule.html';schedule.dataset.scheduleNav='';schedule.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18M7 15h2m4 0h2"/></svg><span>Schedule</span>';profileLink.after(schedule);}}
       const profileLink=nav.querySelector('a[href="/profile.html"],a[data-briefing-nav]');
       if(profileLink){profileLink.href='/briefing.html';profileLink.dataset.briefingNav='';profileLink.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h4"/></svg><span>Briefing</span>';profileLink.classList.remove('is-active');profileLink.removeAttribute('aria-current');profileLink.hidden=!(profile?.station==='LAX'&&profile?.account==='MU');if(location.pathname==='/briefing.html'){profileLink.classList.add('is-active');profileLink.setAttribute('aria-current','page');}}
       if(schedule){const excluded=[profile?.name,profile?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));schedule.hidden=excluded||!(profile?.station==='LAX'&&profile?.account==='MU');if(location.pathname==='/schedule.html'){schedule.classList.add('is-active');schedule.setAttribute('aria-current','page');}}
     }
+    window.workspaceProfile={profile,user};window.dispatchEvent(new CustomEvent('workspace-profile',{detail:{profile,user}}));
     const label=profile?.nickname||profile?.name||user?.displayName||'Account';host.querySelector('#current-user').textContent=label;host.querySelector('.flight-account-name').textContent=label;
     avatar.replaceChildren();if(profile?.avatar){const img=document.createElement('img');img.alt='';img.src=profile.avatar;avatar.append(img);}else avatar.textContent=label.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
   }
+  const headerScript=document.createElement('script');headerScript.src='/workspace-header.js?v=20261028-navigation';document.head.append(headerScript);
   window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
   auth?.onAuthStateChanged(async user=>{
-    const generation=++profileGeneration;
+    const generation=++profileGeneration;activeScope=null;try{if(user)activeScope=JSON.parse(sessionStorage.getItem('workspace-account:'+user.uid)||'null');}catch{}
     const allowed=Boolean(user)&&(!/^[^@\s]+@mu\.com$/i.test(user.email||'')||(user.email||'').trim().toLowerCase()==='lake@mu.com');
     profileButton.hidden=!allowed;
     document.querySelectorAll('a[href="/profile.html"]').forEach(link=>{link.hidden=!allowed;});

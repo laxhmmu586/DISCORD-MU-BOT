@@ -2,12 +2,12 @@
  const auth=window.firebase?.apps?.length&&firebase.auth();let generation=0;
  window.hasReportRequest=async(path='',body)=>{
   const user=auth?.currentUser;if(!user)throw Error('Please sign in first.');
-  const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/has-report-api'+path,{method:body?'POST':'GET',cache:'no-store',signal:AbortSignal.timeout(30000),headers:{Authorization:'Bearer '+await user.getIdToken(),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
+  const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/has-report-api'+path,{method:body?'POST':'GET',cache:'no-store',signal:AbortSignal.timeout(30000),headers:{...(window.workspaceHeaders?.()||{}),Authorization:'Bearer '+await user.getIdToken(),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
   if(auth.currentUser!==user)throw Error('Your sign-in changed. Reload the report.');if(!response.ok){const data=await response.json();throw Object.assign(Error(data.error||'Unable to load report.'),{status:response.status});}return /\/(export|preview)$/.test(path)?response.blob():response.json();
  };
  window.hasReportStream=async(path,signal)=>{
   const user=auth?.currentUser;if(!user)throw Object.assign(Error('Please sign in first.'),{status:401});
-  const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/has-report-api'+path,{cache:'no-store',signal,headers:{Authorization:'Bearer '+await user.getIdToken(),Accept:'text/event-stream'}});
+  const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/has-report-api'+path,{cache:'no-store',signal,headers:{...(window.workspaceHeaders?.()||{}),Authorization:'Bearer '+await user.getIdToken(),Accept:'text/event-stream'}});
   if(auth.currentUser!==user)throw Object.assign(Error('Your sign-in changed.'),{status:401});
   if(!response.ok){const data=await response.json().catch(()=>({}));throw Object.assign(Error(data.error||'Live updates are unavailable.'),{status:response.status});}return response;
  };
