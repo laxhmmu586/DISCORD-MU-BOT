@@ -10,7 +10,7 @@ function reportSections(snapshot){const f=snapshot.fields;if(snapshot.direction=
  ['Time Check',[['24 Hr Transit not over',checks.transit],['240 Last Day',checks.visa240],['21 YRS OLD',checks.age21]],3],
  ['Details',f.details],
  ['Counter Assignment',departureFields.counter.map(([field,label])=>[/^counterA/.test(field)?(f[field+'Number']||label)+' / '+(f[field+'Service']||''):label,f[field]]),2],
- ['Gate Assignment',departureFields.gate.map(([field,label])=>[label,[f[field],f[field+'Time']].filter(Boolean).join(' / ')]),2]];
+ ['Gate Assignment',departureFields.gate.map(([field,label])=>[f[field+'Label']||label,[f[field],f[field+'Time']].filter(Boolean).join(' / ')]),2]];
  }
  return [
  ['Flight Information',[['Flight Number',snapshot.flight],['A/C Registration',f.registration],['A/C Type',f.aircraftType],['STA',f.sta],['ETA',f.eta],['Gate',f.gate],['TTL PAX',f.pax],['Crew',f.crew],['Rush Bags',f.rushBags]],3],

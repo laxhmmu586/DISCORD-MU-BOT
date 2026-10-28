@@ -134,3 +134,12 @@ test('Config is manager-only and cannot be changed by Supervisor or Lead through
 test('PLF uses adult PAX divided by 313 and excludes infants and Config',()=>{
  const {booking}=require('../public/public/briefing-fields');const result=booking({bookingF:'1',bookingJ:'50',bookingY:'242',infantF:'10',infantJ:'10',configF:'100',configJ:'100',configY:'100'});assert.equal(result.plf,'94%');assert.equal(booking({}).plf,'0%');
 });
+
+
+test('Lead can rename Gate roles and reports retain the saved names; employees cannot',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU586'},path='?date='+DATE+'&flight=MU586';
+ assert.equal((await request('lead',path)).data.fields.gateLeadLabel,'Gate Lead');
+ const body={...key,field:'gateLeadLabel',previous:'Gate Lead',value:'Boarding Lead'};
+ assert.equal((await request('agent','',body)).status,403);assert.equal((await request('lead','',body)).status,200);
+ const expected=(await request('lead',path)).data.fields;assert.equal(expected.gateLeadLabel,'Boarding Lead');const report=await request('lead','/reports',{...key,expected});assert.equal(report.status,200);const preview=await request('agent','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/Boarding Lead/);
+});
