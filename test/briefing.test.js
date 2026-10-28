@@ -175,3 +175,12 @@ test('assignment snapshot includes nickname while retaining canonical name and e
  await request('lead','/assign',{...key,employeeId:'agent',fromField:null,toField:'arrivalLead',toValue:''});
  const result=(await request('agent','?date='+DATE)).data;assert.equal(result.fields.arrivalLead,'agent employee');const person=result.assignedPeople.find(p=>p.id==='agent');assert.equal(person.nickname,'agent');assert.equal(person.name,'agent employee');
 });
+
+
+test('Gate Lead control entries autosave per flight with existing Lead edit permissions',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU586'};
+ for(const [field,value] of [['gateCrewOnboard','11:02'],['gatePushback','12:25'],['gateFinalF','5'],['gateFinalJ','52'],['gateFinalY','244'],['gateFinalInf','1'],['gateDelayTime1','12:30'],['gateDelayText1','Boarding update']]){
+  const body={...key,field,previous:'',value};assert.equal((await request('agent','',body)).status,403);assert.equal((await request('lead','',body)).status,200);
+ }
+ const record=(await request('agent','?date='+DATE+'&flight=MU586')).data;assert.equal(record.fields.gateCrewOnboard,'11:02');assert.equal(record.fields.gateFinalInf,'1');assert.equal(record.fields.gateDelayText1,'Boarding update');assert.equal((await request('agent','?date='+DATE)).data.fields.gatePushback,'');
+});
