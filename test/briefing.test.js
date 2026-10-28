@@ -156,3 +156,15 @@ test('Departure copies manual Arrival registration and maps ETAB time to ETD wit
  await request('lead','',{date:DATE,flight:'MU583',field:'registration',previous:null,value:'B-2999'});
  const departure=(await request('agent','?date='+DATE+'&flight=MU586')).data;assert.equal(departure.fields.std,'1130');assert.equal(departure.etab.etd,'1230L');assert.equal(departure.etab.registration,'B-2999');assert.equal(departure.etab.gate,'133');
 });
+
+
+test('Briefing reinitializes with migrated reference cards without losing saved data',()=>{
+ const db=new Database(':memory:'),employees={db,get:()=>({employees:[]})},profiles={linked:()=>null};
+ try{
+  registerBriefing(express(),{employees,profiles});
+  const values={'membership.gold.economy.3':'2 x 23 kg','important.0':'Saved check'},boxes={price:[{id:'card-persisted',title:'Custom fee',text:'USD 25'}]};
+  db.prepare('UPDATE briefing_reference SET revision=7,data=?,boxes=? WHERE id=1').run(JSON.stringify(values),JSON.stringify(boxes));
+  for(let i=0;i<3;i++)registerBriefing(express(),{employees,profiles});
+  const row=db.prepare('SELECT * FROM briefing_reference WHERE id=1').get();assert.equal(row.revision,7);assert.deepEqual(JSON.parse(row.data),values);assert.deepEqual(JSON.parse(row.boxes),boxes);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_reference').get().n,1);
+ }finally{db.close();}
+});
