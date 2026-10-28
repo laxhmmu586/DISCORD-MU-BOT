@@ -110,7 +110,7 @@
 .schedule-grid .date-status,.mobile-day-tags .mobile-day-label{clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%);border-radius:0;padding:5px 16px 5px 10px;background:linear-gradient(110deg,#fff1b9,#fff8e5);color:#713b16;border:1px solid #ffd269;font-weight:800;text-shadow:none;box-shadow:0 2px 5px #8b641b25}
 .schedule-grid .date-status:before,.mobile-day-tags .mobile-day-label:before{content:none}
 .schedule-grid .date-badges,.mobile-day-tags{filter:drop-shadow(0 3px 3px #75511430);transform:rotate(-12deg)}
-.schedule-grid .date-badges:before,.mobile-day-tags:before{content:'';position:absolute;left:0;bottom:-5px;width:6px;height:6px;background:#d8a23b;clip-path:polygon(0 0,100% 0,100% 100%)}
-.schedule-grid .date-badges:after,.mobile-day-tags:after{content:'';position:absolute;right:-10px;top:4px;width:3px;height:9px;border-radius:2px;background:#ffc64d;transform:rotate(35deg);box-shadow:7px 7px 0 #ffc64d,8px 17px 0 #ffc64d}
+.schedule-grid .date-badges:not(:empty):before,.mobile-day-tags:not(:empty):before{content:'';position:absolute;left:0;bottom:-5px;width:6px;height:6px;background:#d8a23b;clip-path:polygon(0 0,100% 0,100% 100%)}
+.schedule-grid .date-badges:not(:empty):after,.mobile-day-tags:not(:empty):after{content:'';position:absolute;right:-10px;top:4px;width:3px;height:9px;border-radius:2px;background:#ffc64d;transform:rotate(35deg);box-shadow:7px 7px 0 #ffc64d,8px 17px 0 #ffc64d}
 .schedule-grid .date-heading .current-day .date-number{color:#7352ca}
 @media(max-width:600px){.mobile-day-tags .mobile-day-label{font-size:11px;line-height:15px;padding:3px 10px 3px 7px}.mobile-calendar-day.is-today{border-color:#9475ff;box-shadow:inset 2px 0 #9475ff,inset -2px 0 #9475ff,0 0 0 2px #a5b1ff30}.mobile-calendar-day.is-today .mobile-date{color:#7352ca}}
