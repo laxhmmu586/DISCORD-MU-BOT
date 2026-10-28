@@ -9,3 +9,5 @@ Report and Checklist API requests, plus Briefing and Schedule, carry `X-Workspac
 The notification bell shows actual actionable requests (review, revision or completion) and pending/overdue Read & Sign documents, using RequestInbox. Clicking an entry opens its existing request or signing page. The badge is a pending-work count, not fabricated unread-message data. It refreshes after request/sign changes, focus and the existing minute timer.
 
 Validation: `workspaceScope.test.js`, `employeeProfiles.test.js`, `hasReports.test.js`, `briefing.test.js`, `staffSchedule.test.js`; browser checks `workspaceHeader.browser.cjs`, `briefing.browser.cjs`, and `staffSchedule.browser.cjs`, including 320/390px layout, authorized switching, Admin menu order and notification counts. No production messages are sent.
+
+On mobile the feature links and remaining authorized workspace links share one horizontally scrollable row. The old sidebar is hidden only while this combined row is active; returning to desktop restores links to their original sidebar positions.

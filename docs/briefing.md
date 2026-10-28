@@ -1,14 +1,14 @@
-# Arrival briefing
+# Arrival and Departure briefing
 
 `/briefing.html` replaces the Profile entry in the workspace sidebar. The account menu still provides Profile. Access requires an existing linked LAX/MU employee, using the same eligibility rules as Schedule.
 
-The heading and record date use today's date in America/Los_Angeles. Flight defaults to MU583 and aircraft type to 777-300; flight can be changed. Departure is a placeholder. Mobile sections are Flight, Details, Duty, and Time.
+The heading and record date use today's date in America/Los_Angeles. Flight defaults to MU583 and aircraft type to 777-300; flight can be changed. Departure defaults to MU586. Arrival mobile sections are Flight, Details, Duty and Time; Departure uses Flight, Details and Duty.
 
 ## ETAB import
 
 The existing ETAB advisory service calls `onAdvisorySent` after Discord acknowledges its message. The callback stores a parsed, flight/date-specific snapshot in `briefing_etab_snapshots`; failed Discord delivery does not import. No mailbox reads are triggered by Briefing. The existing ETAB service must be enabled and running for new imports.
 
-Registration, ETA, gate, TTL PAX and crew use that snapshot until manually overridden. Manual corrections are saved per flight/date and survive later ETAB deliveries. Open pages receive stored snapshot changes through the live connection. Messages posted before this integration are not backfilled automatically.
+Registration, ETA, gate, TTL PAX and crew use that snapshot until manually overridden. Manual corrections are saved per flight/date and survive later ETAB deliveries. Open pages receive stored snapshot changes through the live connection. On service startup the latest previously acknowledged Discord advisory is restored from persisted state or its original Gmail message, without posting it again. The delivered advisory also supplies the departure flight registration, gate and STD/ETD; arrival PAX and crew are not copied to departure. ETA preserves its local-time suffix. Arrival STA defaults to 0905.
 
 ## Editing and assignment
 
@@ -37,3 +37,12 @@ Authenticated SSE updates synchronize fields, assignments, contacts and saved-re
 The bot process starts `briefingAutoArchive`: all five Time Record values must be nonblank and unchanged for at least five minutes (checked every 15 seconds). Changing or clearing a time restarts the wait. A completed time-value version produces one saved archive, including after restart; changing the time values can produce another version. It sends the PDF to Discord channel 1563411695936864447 and stores it in Drive folder 1NX1WCsYZqNvdz57J8oGb7h1yQWyt_O1S. File names are `YYYY-MM-DD MU583 ARRIVAL BRIEFING SHEET.pdf` using the actual flight/date. Pending deliveries survive restarts and date rollover. Drive retries reuse a reserved file ID. Ambiguous Discord posts are reconciled against message history rather than blindly reposted; unresolved ambiguous sends are logged for operator review.
 
 Production stops the previous fixed-time ARRIVAL spreadsheet export; the existing DEPARTURE schedule continues. The existing Google identity must have write access to the destination folder and the bot must have attachment-send/history access to the channel. Local tests mock external delivery and do not post to production services.
+
+
+## Departure briefing
+
+Departure opens MU586 with the same shared editing, live updates, directory search and drag/drop assignments as Arrival. Direction is stored with the flight/date record. Its Flight Information, F/J/Y configuration/booking/infants, calculated TTL/PLF and special passenger fields are followed by three Time Check cards and Details. Time Check uses the current Los Angeles date: +2 days, +11 days and EDATE-equivalent minus 21 years (clamping leap day).
+
+Team Assignment switches between Counter and Gate. Counter positions A59–A68 form one vertical list; desk numbers and service labels are editable. Gate provides two boarding and two passport-check slots, plus lead/assist, pre-board, bag/boxcount, spotter, announcement, lounge/wheelchair and jet bridge. Only Gate Lead and Gate Assist have time inputs. No RADIO controls are shown. Departure reports capture both Counter and Gate and their time values; the existing scheduled spreadsheet departure delivery remains unchanged.
+
+Three right-edge reference tabs open Membership, Important Info and Price panels, organized from the supplied operational reference. They are reference content, not external data lookups. Membership separates tiers and cabin benefits. Important Info separates name checks from document/itinerary handling. Price separates routes, upgrades and special baggage, with No Cash and the supplied special-baggage conversion rate.

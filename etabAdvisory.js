@@ -91,7 +91,7 @@ function createStateStore(db) {
   return {get:()=>JSON.parse(db.prepare('SELECT data FROM etab_advisory_state WHERE id=1').get()?.data || '{}'),put:state=>db.prepare('INSERT INTO etab_advisory_state VALUES(1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(JSON.stringify(state))};
 }
 function createAdvisoryService({getClient,readSchedule,getEmployees,channel,store,now=()=>new Date(),log=console,nonceScope='',onAdvisorySent=async()=>{}}) {
-  let busy=false,stopped=false,timer;
+  let busy=false,stopped=false,timer,restoredMessageId;
   const messageCache=new Map();
   async function latest(state) {
     const {gmail,userId}=getClient();
@@ -112,6 +112,21 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,stor
     if(busy)return; busy=true;
     try {
       let state=store.get();
+      // Restore the last delivered advisory after deploying Briefing or restarting.
+      // Delivery evidence comes from persisted Discord state; this never posts again.
+      if(state.lastMessageId && state.lastAdvisoryId && restoredMessageId!==state.lastMessageId) {
+        try {
+          let advisory=state.lastAdvisory;
+          if(!advisory){
+            const {gmail,userId}=getClient();
+            const full=(await gmail.users.messages.get({userId,id:state.lastMessageId,format:'full'},{timeout:15000})).data;
+            advisory=parseAdvisory(mailBody(full.payload),new Date(Number(full.internalDate)));
+          }
+          if(!advisory)throw Error('The delivered ETAB email could not be parsed.');
+          await onAdvisorySent(advisory,{messageId:state.lastMessageId,received:state.lastReceived,discordMessageId:state.lastAdvisoryId});
+          restoredMessageId=state.lastMessageId;
+        } catch(error) {log.error('Briefing ETAB recovery failed; retry on next check:',error.message);}
+      }
       if(!state.pending) {
         const item=await latest(state);if(!item)return;
         const hash=crypto.createHash('sha256').update(JSON.stringify(item.advisory)).digest('hex');
@@ -125,7 +140,8 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,stor
       const content=buildDiscordPayload(p.advisory,p.ids.map(id=>`<@${id}>`).join(' '));
       const sent=await target.send({content,nonce:nonce('text'),enforceNonce:true,allowedMentions:{parse:[],users:p.ids}});
       await onAdvisorySent(p.advisory,{messageId:p.messageId,received:p.received,discordMessageId:sent.id});
-      store.put({lastMessageId:p.messageId,lastReceived:p.received,lastHash:p.hash,lastAdvisoryId:sent.id,lastFlightDate:p.advisory.date});
+      store.put({lastMessageId:p.messageId,lastReceived:p.received,lastHash:p.hash,lastAdvisoryId:sent.id,lastFlightDate:p.advisory.date,lastAdvisory:p.advisory});
+      restoredMessageId=p.messageId;
       log.info?.('ETAB advisory sent:',p.advisory.arrival.flight,p.advisory.date,'message='+sent.id);
     } catch(error) { log.error('ETAB advisory failed; retry on next check:',error.message); }
     finally {busy=false;}

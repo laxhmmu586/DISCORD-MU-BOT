@@ -13,7 +13,7 @@ async function fixture(t){
  return {db,request,etab};
 }
 test('linked eligible employees can read ETAB and shared briefing, contacts are role gated',async t=>{
- const {request}=await fixture(t);for(const user of ['agent','lead','sup','regional']){const {status,data}=await request(user,'?date='+DATE);assert.equal(status,200);assert.equal(data.flight,'MU583');assert.equal(data.fields.aircraftType,'777-300');assert.equal(data.etab.pax,'306/01');assert.equal(data.canEditContacts,['sup','regional','lead'].includes(user));assert.deepEqual(data.contacts.rows,CONTACTS);}
+ const {request}=await fixture(t);for(const user of ['agent','lead','sup','regional']){const {status,data}=await request(user,'?date='+DATE);assert.equal(status,200);assert.equal(data.flight,'MU583');assert.equal(data.fields.aircraftType,'777-300');assert.equal(data.fields.sta,'0905');assert.equal(data.etab.pax,'306/01');assert.equal(data.canEditContacts,['sup','regional','lead'].includes(user));assert.deepEqual(data.contacts.rows,CONTACTS);}
  assert.equal((await request(null,'?date='+DATE)).status,401);assert.equal((await request('other','?date='+DATE)).status,403);
  for(const date of ['2026-02-30','bad','2026-00-01'])assert.equal((await request('agent','?date='+date)).status,400);
  assert.equal((await request('agent','?date='+DATE+'&flight=<script>')).status,400);
@@ -43,7 +43,7 @@ test('assignment tags can move between duties and back to pool atomically, rejec
 });
 test('ETAB snapshots require a delivered message and retain latest matching flight/date',()=>{
  const db=new Database(':memory:'),service=createBriefingEtab({db}),advisory={date:DATE,arrival:{flight:'MU583',reg:'B-7369',eta:'1217L',gate:'154',pax:'306/01',crew:'4/17'}};
- try{assert.equal(service.read(DATE,'MU583').status,'unavailable');assert.throws(()=>service.accept(advisory),/delivered/);service.accept(advisory,{discordMessageId:'sent1',received:2000});assert.equal(service.read(DATE,'MU583').gate,'154');assert.equal(service.read(DATE,'MU583').eta,'12:17');service.accept({...advisory,arrival:{...advisory.arrival,gate:'150'}},{discordMessageId:'old',received:1000});assert.equal(service.read(DATE,'MU583').gate,'154');assert.equal(service.read(DATE,'MU577').status,'unavailable');assert.equal(service.read('2026-10-29','MU583').status,'unavailable');assert.equal(createBriefingEtab({db}).read(DATE,'MU583').registration,'B-7369');}finally{db.close();}
+ try{assert.equal(service.read(DATE,'MU583').status,'unavailable');assert.throws(()=>service.accept(advisory),/delivered/);service.accept(advisory,{discordMessageId:'sent1',received:2000});assert.equal(service.read(DATE,'MU583').gate,'154');assert.equal(service.read(DATE,'MU583').eta,'1217L');service.accept({...advisory,arrival:{...advisory.arrival,gate:'150'}},{discordMessageId:'old',received:1000});assert.equal(service.read(DATE,'MU583').gate,'154');assert.equal(service.read(DATE,'MU577').status,'unavailable');assert.equal(service.read('2026-10-29','MU583').status,'unavailable');assert.equal(createBriefingEtab({db}).read(DATE,'MU583').registration,'B-7369');}finally{db.close();}
 });
 
 test('ETAB overrides persist and reset to automatic; STA accepts plain text',async t=>{
@@ -51,7 +51,7 @@ test('ETAB overrides persist and reset to automatic; STA accepts plain text',asy
  assert.equal((await request('sup','',{...key,field:'registration',previous:null,value:'B-1234'})).status,200);
  const result=(await request('agent','?date='+DATE)).data;assert.equal(result.fields.registration,'B-1234');assert.equal(result.etab.registration,'B-7369');etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-7777',eta:'1310L',gate:'155',pax:'300/01',crew:'4/17'}},{discordMessageId:'new-delivery',receivedAt:DATE+'T17:00:00Z'});const updated=(await request('agent','?date='+DATE)).data;assert.equal(updated.fields.registration,'B-1234');assert.equal(updated.etab.registration,'B-7777');
  assert.equal((await request('sup','',{...key,field:'registration',previous:'B-1234',value:null})).status,200);assert.equal((await request('agent','?date='+DATE)).data.fields.registration,null);
- assert.equal((await request('sup','',{...key,field:'sta',previous:'',value:'09:05L / revised'})).status,200);
+ assert.equal((await request('sup','',{...key,field:'sta',previous:'0905',value:'09:05L / revised'})).status,200);
 });
 
 test('Clear is Lead-only, scoped to this flight/date, audited and protected against stale data',async t=>{
@@ -89,3 +89,26 @@ test('Lead edits the sheet and deletes archives while employees cannot delete',a
 test('occupied duty drops swap both names and stale swaps change neither position',async t=>{const {request}=await fixture(t),key={date:DATE,flight:'MU583'};for(const [employeeId,toField] of [['agent','arrivalLead'],['peer','announcement']])assert.equal((await request('lead','/assign',{...key,employeeId,fromField:null,toField,toValue:''})).status,200);const swap={...key,fromField:'announcement',toField:'arrivalLead',fromValue:'peer employee',toValue:'agent employee'};const moved=await request('lead','/assign',swap);assert.equal(moved.data.fields.arrivalLead,'peer employee');assert.equal(moved.data.fields.announcement,'agent employee');assert.equal((await request('lead','/assign',swap)).status,409);assert.equal((await request('agent','?date='+DATE)).data.fields.announcement,'agent employee');});
 
 test('saving changed Time Record or clearing invalidates persisted stability clock',async t=>{const {request,db}=await fixture(t),key={date:DATE,flight:'MU583'};db.exec('CREATE TABLE briefing_auto_clock(date TEXT,flight TEXT,signature TEXT,since INTEGER,PRIMARY KEY(date,flight))');const seed=()=>db.prepare('INSERT INTO briefing_auto_clock VALUES(?,?,?,?)').run(DATE,'MU583','previous',1);seed();assert.equal((await request('agent','',{...key,field:'blockTime',value:'12:30',previous:''})).status,200);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_auto_clock').get().n,0);seed();await request('agent','',{...key,field:'blockTime',value:'12:30',previous:'12:30'});assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_auto_clock').get().n,1);const expected=(await request('lead','?date='+DATE)).data.fields;await request('lead','/clear',{...key,expected});assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_auto_clock').get().n,0);});
+
+
+test('Departure Counter/Gate edits persist separately from Arrival with role and stale checks',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU586',direction:'departure'};
+ const get=()=>request('sup','?date='+DATE+'&flight=MU586&direction=departure');
+ const initial=(await get()).data;assert.equal(initial.direction,'departure');assert.equal(initial.fields.counterA59Number,'A59');assert.equal(initial.fields.counterA59Service,'SKY PRIORITY');
+ for(const [field,value] of [['counterA59Number','A58'],['counterA59Service','Business'],['gateLeadTime','10:30'],['bookingJ','50']]){
+  const previous=(await get()).data.fields[field],body={...key,field,value,previous};assert.equal((await request('agent','',body)).status,403);assert.equal((await request('sup','',body)).status,200);assert.equal((await get()).data.fields[field],value);
+ }
+ for(const toField of ['counterA59','gateLead'])assert.equal((await request('sup','/assign',{...key,employeeId:'agent',fromField:null,toField,toValue:''})).status,200);
+ assert.equal((await get()).data.fields.gateLead,'agent employee');assert.equal((await request('sup','?date='+DATE)).data.fields.counterA59,'');
+ const expected=(await get()).data.fields,report=await request('sup','/reports',{...key,expected});assert.equal(report.status,200);assert.match(report.data.filename,/DEPARTURE/);
+ const preview=await request('sup','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/DEPARTURE BRIEFING/);assert.match(preview.data.toString(),/A58 \/ Business/);assert.match(preview.data.toString(),/10:30/);
+});
+test('Time Check follows day offsets, year rollover and EDATE leap-day clamping',()=>{
+ const {timeChecks,booking}=require('../public/public/briefing-fields');
+ assert.deepEqual(timeChecks('2026-10-28'),{transit:'2026-10-30',visa240:'2026-11-08',age21:'2005-10-28'});
+ assert.deepEqual(timeChecks('2024-02-29'),{transit:'2024-03-02',visa240:'2024-03-11',age21:'2003-02-28'});
+ assert.equal(timeChecks('2026-12-31').visa240,'2027-01-11');assert.equal(booking({bookingF:'1',bookingJ:'50',bookingY:'242',infantJ:'1',infantY:'2',configF:'6',configJ:'52',configY:'258'}).pax,293);
+});
+test('delivered ETAB also fills the matching Departure flight and respects its date',()=>{
+ const db=new Database(':memory:');try{const etab=createBriefingEtab({db});etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-2002',eta:'0859L',gate:'TBA'},departure:{flight:'MU586',time:'1230L',timeType:'STD'}},{discordMessageId:'sent',receivedAt:DATE+'T15:00Z'});assert.equal(etab.read(DATE,'MU586').std,'1230L');assert.equal(etab.read(DATE,'MU586').registration,'B-2002');assert.equal(etab.read(DATE,'MU586').gate,'TBA');assert.equal(etab.read(DATE,'MU586').pax,undefined);assert.equal(etab.read('2026-10-29','MU586').status,'unavailable');}finally{db.close();}
+});
