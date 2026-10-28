@@ -71,3 +71,13 @@
 .gate-assignment-row:has([data-field="gateAnnouncement"]) .gate-role{background:linear-gradient(130deg,#ed9528,#ae4617)}
 .gate-assignment-row>label:first-child>input,.gate-assignment-row .assignment-person{width:100%;min-width:0;background:#f4f9ff99;border:1px solid #c2d9f0;font-size:12px}
 @media(max-width:600px){.gate-assignment-row{gap:4px}.gate-assignment-row>label:first-child{gap:4px;grid-template-columns:minmax(75px,.85fr) minmax(0,1fr)}.gate-role{padding:5px;font-size:9px}.gate-assignment-row .assignment-person{font-size:11px;padding:3px}.gate-assignment-row .briefing-person-avatar{width:23px;height:23px}.gate-assignment-row>label:first-child>input{font-size:11px;padding:5px}}
+
+@media(max-width:600px){.briefing-flight-row .briefing-info{background:linear-gradient(110deg,#fff,#fbfdff);border:1px solid #e2edf8;border-radius:10px;padding:12px 10px;box-shadow:0 2px 7px #2889db05}.briefing-info h2{display:flex}.briefing-info .booking-table{margin-top:8px}.briefing-info .info-fields>label{border:0;background:#f0f6fd}.briefing-info .info-fields>label:before{display:none}}
+
+.briefing-shell .booking-table input[data-field^="config"][readonly]{background:transparent!important;border-color:transparent!important;box-shadow:none;font-weight:600;color:#285581}
+
+.briefing-sheet{--briefing-gap:12px;display:grid;gap:var(--briefing-gap)}.briefing-sheet .briefing-panel>.briefing-card{margin:0}.briefing-sheet .briefing-flight-row{gap:var(--briefing-gap)}.briefing-sheet .departure-time-checks{gap:var(--briefing-gap);margin-top:var(--briefing-gap)}.etab-footer:has(#etab-status[hidden]){display:none}@media(max-width:600px){.briefing-sheet{--briefing-gap:8px}}
+
+@media(min-width:601px){.departure-assignments{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}.departure-assignments .assignment-switch{display:none}#counter-assignments:before,#gate-assignments:before{content:'Counter';font-size:15px;font-weight:600;color:#205788;padding:3px 0 8px}#gate-assignments:before{content:'Gate'}#counter-assignments .counter-assignment{grid-template-columns:minmax(125px,1fr) minmax(0,1fr)!important}#counter-assignments .counter-label-editors{grid-template-columns:46px minmax(0,1fr);gap:5px}.gate-assignment-row,.gate-assignment-row:not(:has(.gate-setting)){grid-template-columns:minmax(0,1fr) 70px}.gate-assignment-row>label:first-child{grid-template-columns:minmax(80px,.85fr) minmax(0,1fr);gap:5px}.gate-role{font-size:11px;padding:5px}.gate-assignment-row .assignment-person{font-size:12px}.gate-assignment-row .briefing-person-avatar{width:24px;height:24px}}
+
+@media(min-width:601px) and (max-width:1099px){.departure-assignments{grid-template-columns:1fr}}

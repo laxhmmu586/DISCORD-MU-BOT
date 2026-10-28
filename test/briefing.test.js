@@ -59,7 +59,7 @@ test('Clear is Lead-only, scoped to this flight/date, audited and protected agai
  for(const user of ['agent'])assert.equal((await request(user,'/clear',{...key,expected:initial.fields})).status,403);
  await request('agent','',{...key,field:'firstBag',previous:'',value:'12:50'});
  assert.equal((await request('sup','/clear',{...key,expected:initial.fields})).status,409);
- const current=(await request('sup','?date='+DATE)).data,cleared=await request('sup','/clear',{...key,expected:current.fields});assert.equal(cleared.status,200);assert(Object.values(cleared.data.fields).every(value=>value===''));
+ const current=(await request('sup','?date='+DATE)).data,cleared=await request('sup','/clear',{...key,expected:current.fields});assert.equal(cleared.status,200);assert(Object.entries(cleared.data.fields).every(([field,value])=>/^config[FJY]$/.test(field)?value===current.fields[field]:value===''));
  assert.equal((await request('agent','?date='+DATE+'&flight=MU577')).data.fields.aircraftType,'777-300');assert.deepEqual((await request('agent','?date='+DATE)).data.contacts.rows,CONTACTS);assert.equal(db.prepare("SELECT employee_id FROM briefing_audit WHERE field='clear'").get().employee_id,'sup');
 });
 
@@ -111,4 +111,26 @@ test('Time Check follows day offsets, year rollover and EDATE leap-day clamping'
 });
 test('delivered ETAB also fills the matching Departure flight and respects its date',()=>{
  const db=new Database(':memory:');try{const etab=createBriefingEtab({db});etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-2002',eta:'0859L',gate:'TBA'},departure:{flight:'MU586',time:'1230L',timeType:'STD'}},{discordMessageId:'sent',receivedAt:DATE+'T15:00Z'});assert.equal(etab.read(DATE,'MU586').std,'1230L');assert.equal(etab.read(DATE,'MU586').registration,'B-2002');assert.equal(etab.read(DATE,'MU586').gate,'TBA');assert.equal(etab.read(DATE,'MU586').pax,undefined);assert.equal(etab.read('2026-10-29','MU586').status,'unavailable');}finally{db.close();}
+});
+
+
+test('membership reference edits require Lead and retain shared revision protection',async t=>{
+ const {request}=await fixture(t),initial=(await request('agent','/reference')).data;assert.equal(initial.canEdit,false);
+ const body={revision:initial.revision,values:{'membership.gold.economy.3':'2 × 23 kg'}};
+ assert.equal((await request('agent','/reference',body)).status,403);assert.equal((await request('lead','/reference',body)).status,200);
+ assert.equal((await request('sup','/reference',body)).status,409);assert.equal((await request('agent','/reference')).data.values['membership.gold.economy.3'],'2 × 23 kg');
+ assert.equal((await request('other','/reference')).status,403);assert.equal((await request('lead','/reference',{revision:1,values:{'bad.key':'x'}})).status,400);
+});
+
+
+test('Config is manager-only and cannot be changed by Supervisor or Lead through Clear',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU586'},path='?date='+DATE+'&flight=MU586';
+ for(const user of ['agent','lead','sup']){assert.equal((await request(user,path)).data.canEditConfig,false);assert.equal((await request(user,'',{...key,field:'configF',value:'8',previous:'6'})).status,403);}
+ assert.equal((await request('regional',path)).data.canEditConfig,true);assert.equal((await request('regional','',{...key,field:'configF',value:'8',previous:'6'})).status,200);
+ const before=(await request('lead',path)).data.fields;assert.equal((await request('lead','/clear',{...key,expected:before})).status,200);assert.equal((await request('lead',path)).data.fields.configF,'8');
+});
+
+
+test('PLF uses adult PAX divided by 313 and excludes infants and Config',()=>{
+ const {booking}=require('../public/public/briefing-fields');const result=booking({bookingF:'1',bookingJ:'50',bookingY:'242',infantF:'10',infantJ:'10',configF:'100',configJ:'100',configY:'100'});assert.equal(result.plf,'94%');assert.equal(booking({}).plf,'0%');
 });
