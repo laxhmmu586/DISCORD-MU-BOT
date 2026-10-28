@@ -54,8 +54,8 @@ test('EID enumeration is limited and deleted employee identities fail closed',t=
 test('profile HTTP API requires auth and returns conflicts without overwriting data',async t=>{
  const express=require('express'),app=express(),{employees}=fixture(t);app.use(express.json());registerProfiles(app,{employees,authenticate:async req=>{if(req.headers.authorization!=='Bearer fixture')throw Error('invalid');return google;}});
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>server.close());const base='http://127.0.0.1:'+server.address().port;
- assert.equal((await fetch(base+'/profile-api')).status,401);const headers={Authorization:'Bearer fixture','Content-Type':'application/json'};const preview=await (await fetch(base+'/profile-api',{headers})).json();assert.equal(preview.state,'confirm');
- const linked=await fetch(base+'/profile-api/link',{method:'POST',headers,body:JSON.stringify({revision:preview.revision,eid:preview.profile.eid})});assert.equal(linked.status,200);
+ assert.equal((await fetch(base+'/profile-api')).status,401);assert.equal((await fetch(base+'/profile-api/workspace')).status,401);const headers={Authorization:'Bearer fixture','Content-Type':'application/json'};const preview=await (await fetch(base+'/profile-api',{headers})).json();assert.equal(preview.state,'confirm');
+ assert.equal((await fetch(base+'/profile-api/workspace',{headers})).status,403);const linked=await fetch(base+'/profile-api/link',{method:'POST',headers,body:JSON.stringify({revision:preview.revision,eid:preview.profile.eid})});assert.equal(linked.status,200);const workspace=await (await fetch(base+'/profile-api/workspace',{headers})).json();assert.deepEqual(workspace.accounts,[{station:'LAX',account:'MU'}]);assert.deepEqual(Object.keys(workspace).sort(),['accounts','main']);
  const stale=await fetch(base+'/profile-api',{method:'POST',headers,body:JSON.stringify({revision:0,nickname:'wrong'})});assert.equal(stale.status,409);assert.equal(employees.get().employees[0].nickname,'Test');
 });
 

@@ -113,6 +113,7 @@ function registerProfiles(app,{employees,authenticate,onChange=()=>{}}){
  require('./pbbAuth').setEmployeeAccessVerifier(user=>Boolean(profiles.linked(user)));
  app.use('/profile-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.profileUser=await authenticate(req,{allowUnlinkedGoogle:true});next();}catch{res.status(401).json({error:'Sign in required.'});}});
  const handler=fn=>async(req,res)=>{try{res.json(await fn(req));}catch(error){res.status(error.status||400).json({error:error.message});}};
+ app.get('/profile-api/workspace',handler(req=>{const employee=profiles.linked(req.profileUser);if(!employee)fail('Link your employee profile first.',403);const groups=require('./public/public/employee-account-groups');return {accounts:groups.memberships(employee).filter((scope,i,rows)=>rows.findIndex(other=>groups.same(scope,other))===i),main:groups.scope(employee)};}));
  app.get('/profile-api',handler(req=>profiles.status(req.profileUser)));
  app.post('/profile-api/select-account',handler(req=>{profiles.attempt(req.profileUser);const saved=profiles.selectAccount(req.profileUser,req.body);onChange();return saved;}));
  app.post('/profile-api/lookup',handler(req=>profiles.preview(req.profileUser,req.body.eid)));

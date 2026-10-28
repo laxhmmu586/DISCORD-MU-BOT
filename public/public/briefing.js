@@ -70,7 +70,7 @@
   const reportRevision=JSON.stringify(result.reportsRevision);if(current.reportsKey!==reportRevision){const previous=current.reportsKey;current.reportsKey=reportRevision;if(previous!==undefined&&$('report-dialog').open)void listReports();}
  }
  function startLive(){const key=current,authSession=session;stopLive=window.watchBriefing({path:'/briefing-api',onRevision:result=>{if(current===key&&session===authSession)mergeRemote(result);}});}
- window.briefingStream=async(path,signal)=>{const user=firebase.auth().currentUser;return fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+path+keyPath(current),{signal,cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});};
+ window.briefingStream=async(path,signal)=>{const user=firebase.auth().currentUser;return fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+path+keyPath(current),{signal,cache:'no-store',headers:{...(window.workspaceHeaders?.()||{}),Authorization:'Bearer '+await user.getIdToken()}});};
  window.briefingRequest=path=>api(path.replace('/briefing-api','')+keyPath(current));
  document.addEventListener('focusout',()=>setTimeout(()=>{if(latestRemote)mergeRemote(latestRemote);},200));
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&current){if(current.date!==today()){setToday();void load();}else void api(keyPath(current)).then(mergeRemote).catch(()=>{});}});
