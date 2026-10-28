@@ -5567,11 +5567,7 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
-  reserveBriefingArchiveId: async()=>{const result=await drive.files.generateIds({count:1,space:'drive'});return result.data.ids[0];},
-  uploadBriefingArchive: async({id,name,bytes,folderId,reportId})=>{
-    try {const found=await drive.files.get({fileId:id,fields:'id,appProperties',supportsAllDrives:true});if(found.data.appProperties?.briefingReportId!==reportId)throw Error('Briefing Drive ID conflict');return found.data.id;}catch(error){if(Number(error.code||error.response?.status)!==404)throw error;}
-    try {const created=await drive.files.create({requestBody:{id,name,mimeType:'application/pdf',parents:[folderId],appProperties:{briefingReportId:reportId}},media:{mimeType:'application/pdf',body:Readable.from([bytes])},fields:'id',supportsAllDrives:true});return created.data.id;}catch(error){if(Number(error.code||error.response?.status)!==409)throw error;const found=await drive.files.get({fileId:id,fields:'id,appProperties',supportsAllDrives:true});if(found.data.appProperties?.briefingReportId!==reportId)throw Error('Briefing Drive ID conflict');return found.data.id;}
-  },
+  ...require('./briefingDrive').createBriefingArchiveDrive(),
   exportBriefingPdf: require('./briefingSchedule').createGoogleExporter({getClient:()=>auth.getClient(),getSheets:()=>google.sheets({version:'v4',auth})}),
   readEtabSchedule: require('./etabSchedule').createScheduleReader(),
   getNextDayInfoGmailClient,
