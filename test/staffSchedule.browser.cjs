@@ -15,9 +15,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{roles,col
   if(p==='/__/firebase/init.js')return route.fulfill({contentType:'text/javascript',body:`const user={uid:'e0',email:'example@example.test',providerData:[],getIdToken:async()=>'fixture'};const auth={currentUser:user,onAuthStateChanged:fn=>{setTimeout(()=>fn(user),0);return ()=>{};}};window.firebase={apps:[{}],auth:()=>auth};`});
   if(navigationOnly&&route.request().resourceType()==='script'&&p!=='/flight-account.js')return route.fulfill({body:'',contentType:'text/javascript'});
   if(p==='/flight-account.js')assert.equal(url.searchParams.get('v'),'20261028-navigation');
-  if(p==='/profile-api')return route.fulfill({json:{state:'ready',profile:{name:mode==='blocked'?'DEMO HAS':'Example',station:'LAX',account:mode==='other'?'CZ':'MU'}}});
+  if(p==='/profile-api')return route.fulfill({json:{state:'ready',profile:{canViewForm:mode==='supervisor',name:mode==='blocked'?'DEMO HAS':'Example',station:'LAX',account:mode==='other'?'CZ':'MU'}}});
   if(p==='/has-report-api/context')return route.fulfill({json:{permissions:{},canAdmin:false}});
   if(p.startsWith('/staff-schedule-api')){
+   if(p.endsWith('/announcements'))return route.fulfill({json:{announcements:[]}});
    if(['other','blocked'].includes(mode))return route.fulfill({status:403,json:{error:'Schedule is available only for eligible LAX / MU employees.'}});
    if(p.endsWith('/code')){const b=route.request().postDataJSON(),e=employees.find(e=>e.id===b.employeeId);assert.equal(e.code,b.currentCode);e.code=b.code.trim();return route.fulfill({json:{employeeId:e.id,code:e.code,sync}});}
    if(p.endsWith('/months')){const b=route.request().postDataJSON();assert.equal(b.expectedEnd,horizon);horizon='2027-03-31';return route.fulfill({json:{end:horizon,sync}});}
