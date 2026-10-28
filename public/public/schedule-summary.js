@@ -27,6 +27,13 @@
    default:return null;
   }
  }
+ function dailyHourColor(value){
+  if(typeof value!=='number'||!Number.isFinite(value)||value<0)return null;
+  if(value<=50)return '#9ed7f2';if(value>=64)return '#ff0000';
+  const channel=Math.round(255*(64-value)/14).toString(16).padStart(2,'0');return '#ff'+channel+channel;
+ }
+ const clockInDuties=[['F','06:30-13:00 🍴 / 06:30-12:30'],['D','06:00-14:30 🍴'],['CL','06:45-11:45 🍴 12:15-15:15'],['EC','07:30-11:30'],['C','07:45-11:45'],['B','08:00-12:00'],['BL','07:00-12:00 🍴 12:30-15:00'],['G','07:45-11:45'],['Q','07:45-11:45'],['FL','06:00-14:30']];
+ function clockInTimes(date){if(date<'2026-11-01')return null;return clockInDuties.map(([code,time])=>({code,time:date>='2027-03-14'?time.replace(/(\d{2}):(\d{2})/g,(_,hour,minute)=>String(Number(hour)+1).padStart(2,'0')+':'+minute):time}));}
  const valid=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0;
  const round=value=>Number(value.toFixed(2));
  function weekly(days,dailyBudget=61){const complete=days.length===7&&days.every(day=>valid(day.planned)),budget=round(days.reduce((sum,day)=>sum+(valid(day.budget)?day.budget:dailyBudget),0)),total=complete?round(days.reduce((sum,day)=>sum+day.planned,0)+40):null;return {complete,total,budget,variance:complete?round(total-budget):null};}
@@ -37,5 +44,5 @@
  function dailyTotal(day,employees){return counts([day],employees).reduce((sum,row)=>sum+row.counts[0]*row.hours,baseHours);}
  const formula=rows.filter(row=>row.hours).map(row=>(row.codes.length>1?'('+row.codes.join(' + ')+')':row.codes[0])+' × '+row.hours).join(' + ');
  function periods(days){const groups=[];for(const day of days){const start=periodStart(day.date);let group=groups.at(-1);if(group?.start!==start){group={start,end:addDays(start,6),visible:[]};groups.push(group);}group.visible.push(day);}return groups;}
- return {coverageColor,rows,weekly,counts,dailyTotal,baseHours,periodHours:40,formula,periodStart,periods,addDays};
+ return {dailyHourColor,clockInTimes,coverageColor,rows,weekly,counts,dailyTotal,baseHours,periodHours:40,formula,periodStart,periods,addDays};
 });
