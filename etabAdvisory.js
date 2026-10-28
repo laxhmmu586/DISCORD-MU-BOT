@@ -90,7 +90,7 @@ function createStateStore(db) {
   db.exec('CREATE TABLE IF NOT EXISTS etab_advisory_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL)');
   return {get:()=>JSON.parse(db.prepare('SELECT data FROM etab_advisory_state WHERE id=1').get()?.data || '{}'),put:state=>db.prepare('INSERT INTO etab_advisory_state VALUES(1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(JSON.stringify(state))};
 }
-function createAdvisoryService({getClient,readSchedule,getEmployees,channel,store,now=()=>new Date(),log=console,nonceScope=''}) {
+function createAdvisoryService({getClient,readSchedule,getEmployees,channel,store,now=()=>new Date(),log=console,nonceScope='',onAdvisorySent=async()=>{}}) {
   let busy=false,stopped=false,timer;
   const messageCache=new Map();
   async function latest(state) {
@@ -124,6 +124,7 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,stor
       const nonce=kind=>crypto.createHash('sha256').update(String(target.id||'default')+'|'+nonceScope+'|'+p.messageId+'|'+kind).digest('hex').slice(0,24);
       const content=buildDiscordPayload(p.advisory,p.ids.map(id=>`<@${id}>`).join(' '));
       const sent=await target.send({content,nonce:nonce('text'),enforceNonce:true,allowedMentions:{parse:[],users:p.ids}});
+      await onAdvisorySent(p.advisory,{messageId:p.messageId,received:p.received,discordMessageId:sent.id});
       store.put({lastMessageId:p.messageId,lastReceived:p.received,lastHash:p.hash,lastAdvisoryId:sent.id,lastFlightDate:p.advisory.date});
       log.info?.('ETAB advisory sent:',p.advisory.arrival.flight,p.advisory.date,'message='+sent.id);
     } catch(error) { log.error('ETAB advisory failed; retry on next check:',error.message); }

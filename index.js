@@ -1018,6 +1018,8 @@ const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
 app.use('/has-pbb-api', express.json({limit:'2mb'}));
 app.use('/profile-api', express.json({limit:'3mb'}));
 app.use('/staff-schedule-api', express.json({limit:'1mb'}));
+app.use('/briefing-api', express.json({limit:'64kb'}));
+app.get(['/briefing.html','/briefing.css','/briefing.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.get(['/schedule.html','/schedule.css','/schedule-grid-layout.css','/schedule.js','/schedule-summary.js','/schedule-grid.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.use('/read-sign-api', express.json({limit:'15mb'}));
 app.use('/feedback-api', express.json({limit:'24kb'}));
@@ -1342,7 +1344,9 @@ const briefingService = require('./briefingSchedule').createBriefingService({db:
 require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, profiles:pbbService.profiles, db: pbbService.store.db });
 const etabAdvisory = require('./etabAdvisory');
+const briefingEtabStore = require('./briefingEtab').createBriefingEtab({db:pbbService.store.db});
 const etabService = etabAdvisory.createAdvisoryService({
+  onAdvisorySent: (advisory,metadata) => briefingEtabStore.accept(advisory,metadata),
   getClient: require('./googleDrive').getNextDayInfoGmailClient,
   readSchedule: require('./googleDrive').readEtabSchedule,
   getEmployees: () => pbbService.employees.get().employees,

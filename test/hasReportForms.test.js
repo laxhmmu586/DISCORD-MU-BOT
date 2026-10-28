@@ -42,3 +42,21 @@ test('form endpoints enforce Supervisor+, shared saves, conflicts, account/month
   const download=await request('supervisor',url+'/export');assert.equal(download.status,200);const book=new Excel.Workbook();await book.xlsx.load(download.data);assert.equal(book.worksheets[0].getCell(address).value,'Saved');
  }
 });
+
+test('Terrific Ten dynamic rows export populated cells while preserving other workbook parts',async()=>{
+ const original=await JSZip.loadAsync(await fs.readFile('data/has-report-templates/terrific.xlsx'));
+ for(const count of [1,14,23]){
+  const model=await forms.template('terrific','2026-10',{}, {terrificRows:count}),address='G'+(count+2);assert.equal(model.rows,count+2);assert(model.cells[address].editable);model.cells[address].value='Last recipient '+count;
+  const bytes=await forms.exportForm(model),book=new Excel.Workbook();await book.xlsx.load(bytes);assert.equal(book.worksheets[0].rowCount,count+2);assert.equal(book.worksheets[0].getCell(address).value,'Last recipient '+count);
+  const exported=await JSZip.loadAsync(bytes);for(const name of Object.keys(original.files))if(!original.files[name].dir&&name!=='xl/worksheets/sheet1.xml')assert.deepEqual(await exported.file(name).async('nodebuffer'),await original.file(name).async('nodebuffer'));
+ }
+});
+
+test('Terrific Ten rows persist, reject stale layouts, and require confirmation for populated removal',async t=>{
+ const db=new Database(':memory:'),app=express();app.use(express.json());const user={position:'Supervisor',station:'LAX',account:'MU',name:'Editor'},service=registerHasReports(app,{employees:{db},reportDb:db,profiles:{linked:u=>u.uid==='lead'?{...user,position:'Lead'}:user},authenticate:async req=>({uid:req.headers.authorization})}),server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
+ const request=async(path='',body,who='sup')=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/has-report-api/terrific/2026-10'+path,{headers:{Authorization:who,'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});return {status:response.status,data:await response.json()};};
+ assert.equal((await request('/rows',{revision:0,delta:1},'lead')).status,403);assert.equal((await request('/rows',{revision:0,delta:1})).status,200);assert.equal((await request('/rows',{revision:0,delta:1})).status,409);
+ let state=(await request()).data;assert.equal(state.rows,16);assert.equal(state.layoutRevision,1);assert.equal((await request('',{revision:1,layoutRevision:0,values:{G16:'stale'}})).status,409);
+ assert.equal((await request('',{revision:state.revision,layoutRevision:state.layoutRevision,values:{G16:'Keep until confirmed'}})).status,200);state=(await request()).data;
+ assert.equal((await request('/rows',{revision:state.revision,layoutRevision:state.layoutRevision,delta:-1})).status,409);assert.equal((await request('/rows',{revision:state.revision,layoutRevision:state.layoutRevision,delta:-1,confirmRemoval:true})).status,200);state=(await request()).data;assert.equal(state.rows,15);assert.equal(state.cells.G16,undefined);assert.equal(state.values.G16,undefined);
+});

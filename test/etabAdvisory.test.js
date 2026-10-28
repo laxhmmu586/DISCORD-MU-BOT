@@ -45,10 +45,10 @@ test('cutover suppresses only legacy ETAB posts to the configured channel while 
  assert.equal(isLegacyEtabRequest({...old,channelId:'other'},true),false);
  assert.equal(isLegacyEtabRequest({...old,message:'normal service notification'},true),false);
 });
-function fixture(channelId='fixture-channel',nonceScope='',employees=[{name:'Terry',discordId:'123456789012345678'}]){
+function fixture(channelId='fixture-channel',nonceScope='',employees=[{name:'Terry',discordId:'123456789012345678'}],onAdvisorySent){
  let state={},failTeam=false,reads=0,body=sample(),id='m1';const sends=[],errors=[];
  const service=createAdvisoryService({
-  nonceScope,getClient:()=>({userId:'me',gmail:{users:{messages:{list:async()=>({data:{messages:[{id}]}}),get:async()=>({data:{internalDate:id==='m1'?'1791973080000':'1791973090000',payload:{mimeType:'text/plain',body:{data:Buffer.from(body).toString('base64url')}}}})}}}}),
+  nonceScope,onAdvisorySent,getClient:()=>({userId:'me',gmail:{users:{messages:{list:async()=>({data:{messages:[{id}]}}),get:async()=>({data:{internalDate:id==='m1'?'1791973080000':'1791973090000',payload:{mimeType:'text/plain',body:{data:Buffer.from(body).toString('base64url')}}}})}}}}),
   readSchedule:async()=>{reads++;return [[],['','','','10/14/2026'],['','Terry','','A']];},getEmployees:()=>employees,
   channel:async()=>({id:channelId,send:async payload=>{if(payload.content&&failTeam)throw Error('network failure');sends.push(payload);return {id:'sent'+sends.length};}}),
   render:async()=>Buffer.from('image'),store:{get:()=>structuredClone(state),put:s=>{state=structuredClone(s);}},log:{error:(...a)=>errors.push(a)}
@@ -134,4 +134,9 @@ test('advisory sends once when the arrival employee has no Discord ID',async()=>
  assert.equal(f.state().pending,undefined);
  await f.service.tick();
  assert.equal(f.sends.length,1);
+});
+
+test('Briefing imports only after Discord acknowledges ETAB delivery',async()=>{
+ const Database=require('better-sqlite3'),db=new Database(':memory:'),source=require('../briefingEtab').createBriefingEtab({db});
+ try{const f=fixture('fixture-channel','',[{name:'Terry'}],(advisory,metadata)=>source.accept(advisory,metadata));f.fail();await f.service.tick();assert.equal(source.read('2026-10-14','MU583').status,'unavailable');f.recover();await f.service.tick();assert.equal(source.read('2026-10-14','MU583').gate,'134');assert.equal(source.read('2026-10-14','MU583').discordMessageId,'sent1');f.change();await f.service.tick();assert.equal(source.read('2026-10-14','MU583').gate,'203');}finally{db.close();}
 });
