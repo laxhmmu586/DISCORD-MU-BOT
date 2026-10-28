@@ -55,3 +55,5 @@ test('exporter selects tab and requests single-page portrait Letter with narrow 
 test('recognizes legacy briefing calls only in configured channels',()=>{
  assert(isLegacyBriefing({channelId:'1252032370920656907',file:{name:'2026-10-25 MU586 DEPARTURE BRIEFING SHEET.pdf'}}));assert(!isLegacyBriefing({channelId:'123',file:{name:'MU586 BRIEFING SHEET.pdf'}}));assert(!isLegacyBriefing({channelId:JOBS[0].channelId,message:'ordinary message'}));
 });
+
+test('website Arrival automation replaces legacy Arrival export while Departure continues',async t=>{const h=await fixture(t);h.time('2026-10-26T15:49:00Z');await createBriefingService({...h.options,includeArrival:false}).tick();assert.equal(h.sends.length,1);assert.equal(h.sends[0].channelId,JOBS[1].channelId);assert.match(h.sends[0].name,/MU586 DEPARTURE/);});

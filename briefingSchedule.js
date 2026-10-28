@@ -23,7 +23,7 @@ function createGoogleExporter({getSheets,getClient}){
   return {bytes:await validatePdf(Buffer.from(response.data)),viewUrl:'https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/edit#gid='+sheet.properties.sheetId};
  };
 }
-function createBriefingService({db,client,exportPdf,now=()=>new Date(),logger=console}){
+function createBriefingService({db,client,exportPdf,includeArrival=true,now=()=>new Date(),logger=console}){
  let busy=false,timer;
  const existing=async(channel,name)=>{
   const messages=await channel.messages.fetch({limit:100});
@@ -35,7 +35,7 @@ function createBriefingService({db,client,exportPdf,now=()=>new Date(),logger=co
   const date=localDate(current);busy=true;
   try{
    db.exec('CREATE TABLE IF NOT EXISTS briefing_deliveries(date TEXT,flight TEXT,state TEXT NOT NULL,attempted INTEGER NOT NULL,message_id TEXT,error TEXT,PRIMARY KEY(date,flight))');
-   for(const job of JOBS){
+   for(const job of JOBS.filter(job=>includeArrival||job.sheet!=='ARRIVAL')){
     const name=date+' '+job.flight+' '+job.sheet+' BRIEFING SHEET.pdf';let phase='preparing';
     try{
      const old=db.prepare('SELECT * FROM briefing_deliveries WHERE date=? AND flight=?').get(date,job.flight);
