@@ -1,7 +1,7 @@
 const {PDFDocument,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 
 const departureFields=require('./public/public/briefing-fields');
-function reportSections(snapshot){const f=snapshot.fields;if(snapshot.direction==='departure'){
+function reportSections(snapshot){const f={...snapshot.fields,...snapshot.assignmentLabels};if(snapshot.direction==='departure'){
  const total=departureFields.booking(f),checks=departureFields.timeChecks(require('./etabAdvisory').localDate(new Date(snapshot.generatedAt)));
  return [
  ['Flight Information',[['Flight Number',snapshot.flight],['A/C Registration',f.registration],['A/C Type',f.aircraftType],['STD',f.std],['ETD',f.etd],['Boarding Time',f.boardingTime],['Boarding Gate',f.gate]],3],
@@ -40,7 +40,7 @@ async function buildBriefingPdf(snapshot){
  function section(title,reserve=28){ensure(20+reserve);rect(M,y,CW,18,pale,pale);text(title.toUpperCase(),M+7,y+4,8.2,true,blue);y+=23;}
  function grid(entries,columns=3){const gap=5,w=(CW-gap*(columns-1))/columns;for(let offset=0;offset<entries.length;offset+=columns){const row=entries.slice(offset,offset+columns),lines=row.map(([,value])=>wrap(value,w-14,8.7)),h=17+Math.max(...lines.map(list=>list.length))*11;ensure(h+5);row.forEach(([label],i)=>{const x=M+i*(w+gap);rect(x,y,w,h,'#fffdf0');text(label,x+7,y+4,6.8,false,muted);lines[i].forEach((line,j)=>text(line,x+7,y+15+j*11,8.7,true));});y+=h+5;}}
  function narrative(title,value){const lines=wrap(value,CW-16,8.8);section(title,Math.min(40,lines.length*12));for(const line of lines){if(ensure(13))section(title+' (continued)',13);text(line,M+8,y,8.8);y+=12;}y+=6;}
- const f=snapshot.fields;start();
+ const f={...snapshot.fields,...snapshot.assignmentLabels};start();
  for(const [title,entries,columns] of reportSections(snapshot)){if(columns){section(title);grid(entries,columns);}else narrative(title,entries);}
  const stamp=new Date(snapshot.generatedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles',hour12:false});
  pages.forEach((commands,index)=>{page=commands;text('Archived '+stamp+' PT  |  '+snapshot.generatedBy,M,H-29,6.5,false,muted);text('ID '+snapshot.id.slice(0,8)+'  |  '+(index+1)+' / '+pages.length,W-139,H-29,6.5,false,muted);});
