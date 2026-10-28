@@ -110,7 +110,7 @@ test('Time Check follows day offsets, year rollover and EDATE leap-day clamping'
  assert.equal(timeChecks('2026-12-31').visa240,'2027-01-11');assert.equal(booking({bookingF:'1',bookingJ:'50',bookingY:'242',infantJ:'1',infantY:'2',configF:'6',configJ:'52',configY:'258'}).pax,293);
 });
 test('delivered ETAB also fills the matching Departure flight and respects its date',()=>{
- const db=new Database(':memory:');try{const etab=createBriefingEtab({db});etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-2002',eta:'0859L',gate:'TBA'},departure:{flight:'MU586',time:'1230L',timeType:'STD'}},{discordMessageId:'sent',receivedAt:DATE+'T15:00Z'});assert.equal(etab.read(DATE,'MU586').std,'1230L');assert.equal(etab.read(DATE,'MU586').registration,'B-2002');assert.equal(etab.read(DATE,'MU586').gate,'TBA');assert.equal(etab.read(DATE,'MU586').pax,undefined);assert.equal(etab.read('2026-10-29','MU586').status,'unavailable');}finally{db.close();}
+ const db=new Database(':memory:');try{const etab=createBriefingEtab({db});etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-2002',eta:'0859L',gate:'TBA'},departure:{flight:'MU586',time:'1230L',timeType:'STD'}},{discordMessageId:'sent',receivedAt:DATE+'T15:00Z'});assert.equal(etab.read(DATE,'MU586').std,'1130');assert.equal(etab.read(DATE,'MU586').registration,'B-2002');assert.equal(etab.read(DATE,'MU586').gate,'TBA');assert.equal(etab.read(DATE,'MU586').pax,undefined);assert.equal(etab.read('2026-10-29','MU586').status,'unavailable');}finally{db.close();}
 });
 
 
@@ -142,4 +142,17 @@ test('Lead can rename Gate roles and reports retain the saved names; employees c
  const body={...key,field:'gateLeadLabel',previous:'Gate Lead',value:'Boarding Lead'};
  assert.equal((await request('agent','',body)).status,403);assert.equal((await request('lead','',body)).status,200);
  const expected=(await request('lead',path)).data.fields;assert.equal(expected.gateLeadLabel,'Boarding Lead');const report=await request('lead','/reports',{...key,expected});assert.equal(report.status,200);const preview=await request('agent','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/Boarding Lead/);
+});
+
+
+test('Lead edits and adds Important Info and Price cards with revision and employee protection',async t=>{
+ const {request}=await fixture(t),initial=(await request('lead','/reference')).data,body={revision:initial.revision,values:{'important.0':'Name checks updated','price.1':'New fee item'},boxes:{important:[{id:'card-test-info',title:'New info',text:'Operational note'}],price:[{id:'card-test-price',title:'New fee',text:'USD 25'}]}};
+ assert.equal((await request('agent','/reference',body)).status,403);assert.equal((await request('lead','/reference',body)).status,200);const result=(await request('agent','/reference')).data;assert.equal(result.boxes.price[0].text,'USD 25');assert.equal(result.values['important.0'],'Name checks updated');assert.equal((await request('lead','/reference',body)).status,409);
+ const saved=await request('lead','/reference',{revision:result.revision,values:result.values});assert.equal(saved.data.boxes.important.length,1);
+ assert.equal((await request('lead','/reference',{revision:saved.data.revision,values:{},boxes:{price:[{id:'bad',title:'bad',text:'x'}]}})).status,400);
+});
+test('Departure copies manual Arrival registration and maps ETAB time to ETD with STD 1130',async t=>{
+ const {request,etab}=await fixture(t);etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-2002',eta:'0859L',gate:'133',pax:'303/0',crew:'04/17'},departure:{flight:'MU586',time:'1230L',timeType:'STD'}},{discordMessageId:'today-delivery',receivedAt:DATE+'T20:00Z'});
+ await request('lead','',{date:DATE,flight:'MU583',field:'registration',previous:null,value:'B-2999'});
+ const departure=(await request('agent','?date='+DATE+'&flight=MU586')).data;assert.equal(departure.fields.std,'1130');assert.equal(departure.etab.etd,'1230L');assert.equal(departure.etab.registration,'B-2999');assert.equal(departure.etab.gate,'133');
 });
