@@ -12,9 +12,9 @@ Registration, ETA, gate, TTL PAX and crew use that snapshot until manually overr
 
 ## Editing and assignment
 
-Operational fields save automatically to `briefing_records`. Field comparisons reject concurrent overwrites. Changes are recorded in `briefing_audit` with the linked employee identity.
+Only Supervisor and above edit operational fields. Employees may edit plain-text Time Record only; managers can preview this view. Editable fields and assignments are yellow, readonly fields neutral. Operational fields save automatically to `briefing_records`. Field comparisons reject concurrent overwrites. Changes are recorded in `briefing_audit` with the linked employee identity.
 
-The desktop roster reads today's scheduled working employees, with avatars and a separate original-color shift badge. It exposes this assignment information, not another employee's calendar or private profile fields. Names can be dragged from the roster into a duty, moved between duties, or returned to the roster. A source name remains available for multiple duties. Click-select/Assign and remove buttons also support keyboard use. Moves update both duties in one transaction.
+The desktop roster reads today's scheduled working employees, with avatars and a separate original-color shift badge. It exposes this assignment information, not another employee's calendar or private profile fields. Names can be dragged from the roster into a duty, moved between duties, or returned to the roster. A source name remains available for multiple duties. Click a person and then a duty to assign; remove buttons return names. Duty inputs search the full eligible employee directory, including off-duty employees; users must select a suggestion. Unmatched names show a red border and cannot be saved. The left roster has no search box. Moves update both duties in one transaction.
 
 Supervisor and above can edit the supplied shared contacts and use Clear. Both permissions are enforced by the API. Clear resets all input values and assignments for the current flight/date while preserving the flight/date identity and contact directory. Cleared ETAB values stay blank rather than reappearing on the next snapshot read.
 
@@ -25,3 +25,7 @@ The Report Dashboard button appears only for authorized users while WWH is selec
 ## Local verification
 
 Use Node 22 for the installed SQLite binary. Focused suites: `briefing.test.js`, `etabAdvisory.test.js`, `hasReportForms.test.js`, and `staffSchedule.test.js`. Browser suites: `briefing.browser.cjs`, `hasReportForms.browser.cjs`, `hasReportDashboard.browser.cjs`, and `staffSchedule.browser.cjs`. They use local fixture servers and mock Discord delivery; they do not send production messages.
+
+## Archived reports
+
+Supervisor and above can generate immutable PDF archives; eligible employees can preview and download saved reports. Reports retain the captured values after subsequent edits or Clear. The preview and PDF end after Time Record; Contact Information and Instructions are excluded, including from the attached snapshot.
