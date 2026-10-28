@@ -9,3 +9,5 @@ Today ribbons are purple with white text; Short ribbons are red with white text.
 Local validation: node --test test/staffSchedule.test.js test/staffScheduleSync.test.js test/employeeProfiles.test.js; node test/staffSchedule.browser.cjs; node test/scheduleNotices.browser.cjs. Browser checks use local fixtures and do not publish real announcements.
 
 Short positions use compact duty-code buttons with an adjacent count. Managers can drag employee names before/after other rows; the shared roster order persists independently from employee titles, accounts, and Google Sheet row order, with revision protection. Schedule range selection accepts any point within duty cells, suppresses native text selection, tracks the pointer across cells, and scrolls at the table edges for copying/pasting large blocks.
+
+Range selection can start in white team separators. Dragging date headers or the month strip selects complete date columns across every displayed employee, including rows outside the visible scroll area. Copy/paste uses the full selected range. Single-click date review, double-click date appearance and employee-name dragging are retained.
