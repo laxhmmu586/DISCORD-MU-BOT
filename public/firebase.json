@@ -6,7 +6,7 @@
     ],
     "headers": [
       {
-        "source": "/flight-account.js",
+        "source": "/{flight-account.js,workspace-header.js,workspace-header.css,briefing.html,briefing.js,briefing.css,briefing-fields.js,briefing-reference.js,briefing-reference.css}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {

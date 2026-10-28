@@ -710,7 +710,7 @@
       const fileNumber = form.querySelector('[name="worldTracerFileNumber"]')?.value || form.dataset.worldTracer || 'XXXXX';
       const available = futurePickupDateText(form.querySelector('[name="availableDate"]')?.value, chinese);
       body.value = chinese
-        ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您此前遗留在洛杉矶国际机场（LAX）的行李预计将于${available}起可以领取，届时行李将存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 8:00 – 下午 2:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司`
+        ? `尊敬的旅客：\n\n您好！\n\n我们通知您，您的行李预计将于${available}起可以在洛杉矶国际机场（LAX）领取，届时行李将存放于 Tom Bradley International Terminal（TBIT）A68 柜台办公室。\n\n请您在以下工作时间内前来领取：\n\n领取地点：LAX TBIT A68 柜台办公室\n领取时间：上午 8:00 – 下午 2:00\n\n领取行李时，请携带有效的带照片身份证件，以便工作人员核实您的身份。\n\n感谢您的配合。\n\n此致\n中国东方航空公司`
         : `Dear Passenger,\n\nWe would like to inform you that the baggage you previously left behind at Los Angeles International Airport (LAX) is expected to be available for pick-up starting ${available}.\n\nWorldTracer Reference Number: ${fileNumber || 'XXXXX'}\n\nYour baggage will be held at our office located at the Tom Bradley International Terminal (TBIT), Counter A68.\n\nPlease come to collect your baggage during the following hours:\n\nPick-Up Location: LAX TBIT, Counter A68 Office\nPick-Up Hours: 8:00 AM – 2:00 PM\n\nPlease bring a valid photo ID for identity verification when picking up your baggage.\n\nThank you for your cooperation.\n\nSincerely,\nChina Eastern Airlines`;
     }
     function rushFlightRowHtml(flight = {}) {
