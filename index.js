@@ -1020,7 +1020,7 @@ app.use('/profile-api', express.json({limit:'3mb'}));
 app.use('/staff-schedule-api', express.json({limit:'1mb'}));
 app.use('/briefing-api', express.json({limit:'64kb'}));
 app.get(['/briefing.html','/briefing.css','/briefing.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
-app.get(['/schedule.html','/schedule.css','/schedule-requests.css','/schedule-requests.js','/schedule-grid-layout.css','/schedule.js','/schedule-summary.js','/schedule-grid.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
+app.get(['/schedule.html','/schedule.css','/schedule-requests.css','/schedule-requests.js','/schedule-live.js','/schedule-grid-layout.css','/schedule.js','/schedule-summary.js','/schedule-grid.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.use('/read-sign-api', express.json({limit:'15mb'}));
 app.use('/feedback-api', express.json({limit:'24kb'}));
 

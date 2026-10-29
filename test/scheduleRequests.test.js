@@ -9,7 +9,7 @@ async function fixture(t){
  const seed=(date,assignments)=>db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,0,?)').run(date,JSON.stringify({assignments,budget:61,dateColor:'#aabbcc',labels:['Holiday']}));
  const configure=async(id,keys,secondaryHours=0)=>{const config=(await request('sup','/requests/settings?period='+DATE)).data;return request('sup','/requests/settings',{revision:config.revision,employeeId:id,period:DATE,capabilities:keys||config.shifts.map(s=>s.key),secondaryHours,shiftHours:{'K|#ffff00':8,'TK|#dddddd':8}});};
  const submit=(user,type='trade',extra={})=>request(user,'/requests',{requestId:crypto.randomUUID(),type,date:DATE,note:'Private note',...(type==='trade'?{partnerId:'two'}:{}),...extra});
- await configure('one');await configure('two');return {db,employees,request,seed,configure,submit,read:service.read};
+ await configure('one');await configure('two');return {db,employees,request,seed,configure,submit,read:service.read,base:'http://127.0.0.1:'+server.address().port};
 }
 const C={code:'C',color:'#99ff00'},F={code:'F',color:'#9999ff'},D={code:'D',color:'#ffff00'},X={code:'X',color:'#ffffff'},redA={code:'A',color:'#ff0000'};
 test('peer confirmation atomically exchanges same-day shifts, increments revision once, and cannot run twice',async t=>{
@@ -41,9 +41,9 @@ test('second-account hours count toward the 40-hour approval threshold, and miss
  assert.match((await f.submit('one')).data.error,/second-account hours/);await f.configure('one',undefined,4);const r=(await f.submit('one')).data;
  const result=await f.request('two','/requests/'+r.id,{action:'confirm'});assert.equal(result.data.status,'awaiting_supervisor');assert.match(result.data.approvalReasons[0],/44 hours/);
 });
-test('red and green Arrival are distinct qualifications and eligibility is checked again at confirmation',async t=>{
- const f=await fixture(t);f.seed(DATE,{one:C,two:redA});await f.configure('one',['C|#99ff00','A|#4f6200']);assert.match((await f.submit('one')).data.error,/not qualified/);
- await f.configure('one',['C|#99ff00','A|#ff0000']);const r=(await f.submit('one')).data;await f.configure('one',['C|#99ff00']);assert.equal((await f.request('two','/requests/'+r.id,{action:'confirm'})).status,400);assert.equal(f.read(DATE).assignments.one.code,'C');
+test('Arrival has one skill for all colors and eligibility is checked again at confirmation',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C,two:redA});await f.configure('one',['C']);assert.match((await f.submit('one')).data.error,/not qualified/);
+ await f.configure('one',['C','A']);assert.equal((await f.request('sup','/requests/settings')).data.shifts.filter(s=>s.code==='A').length,1);const r=(await f.submit('one')).data;await f.configure('one',['C|#99ff00']);assert.equal((await f.request('two','/requests/'+r.id,{action:'confirm'})).status,400);assert.equal(f.read(DATE).assignments.one.code,'C');
 });
 test('stale schedules prevent both cells from changing and preserve the request for cancellation',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one')).data;f.seed(DATE,{one:D,two:F});assert.equal((await f.request('two','/requests/'+r.id,{action:'confirm'})).status,409);assert.deepEqual(f.read(DATE).assignments,{one:D,two:F});assert.equal((await f.request('one','/requests/'+r.id,{action:'cancel'})).data.status,'cancelled');
@@ -89,4 +89,33 @@ test('team visibility excludes out-of-account legacy assignments and uses real Q
  const f=await fixture(t);f.seed(DATE,{one:C,other:{code:'D',color:'#ffff00',remark:'Private outside-account note'}});
  const context=(await f.request('one','?schema=2&start='+DATE)).data;assert.equal(context.days[0].assignments.other,undefined);assert(!JSON.stringify(context).includes('Private outside-account note'));
  const config=(await f.request('sup','/requests/settings?period='+DATE)).data;assert.equal(config.shifts.find(s=>s.code==='Q').hours,4);
+});
+
+
+test('live schedule stream invalidates schedule and private request changes without exposing payloads, and revokes removed accounts',{timeout:10000},async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C,two:F});const controller=new AbortController();t.after(()=>controller.abort());
+ const response=await fetch(f.base+'/staff-schedule-api/stream',{headers:{authorization:'one'},signal:controller.signal});assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/text\/event-stream/);const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
+ const revision=async()=>{for(;;){const boundary=buffer.indexOf('\n\n');if(boundary>=0){const frame=buffer.slice(0,boundary);buffer=buffer.slice(boundary+2);if(frame.startsWith('event: revision')){assert(!frame.includes('Private note'));return JSON.parse(frame.split('data: ')[1]).revision;}continue;}const chunk=await reader.read();assert.equal(chunk.done,false);buffer+=decoder.decode(chunk.value);}};
+ const first=await revision();const result=await f.request('sup','',{date:DATE,revision:0,employeeId:'two',code:'D',color:'#ffff00'});assert.equal(result.status,200);const second=await revision();assert.notEqual(first,second);
+ await f.submit('one','off');assert.notEqual(await revision(),second);
+ const data=JSON.parse(f.db.prepare('SELECT data FROM pbb_employees').get().data);data.employees.find(e=>e.id==='one').account='CZ';f.db.prepare('UPDATE pbb_employees SET data=?').run(JSON.stringify(data));let ended=false;while(!ended)ended=(await reader.read()).done;assert(ended);
+ assert.equal((await fetch(f.base+'/staff-schedule-api/stream')).status,401);
+});
+
+
+test('legacy color-specific skills merge into per-duty skills without changing weekly hours, and skill-only saves need no week',async t=>{
+ const f=await fixture(t),legacy={people:{one:{capabilities:['A|#4f6200','A|#ff0000','C|#00ff00'],secondaryHours:{[DATE]:12}}},hours:{'F|#9999ff':6,'F|#6699ee':8}};
+ f.db.prepare('UPDATE schedule_request_settings SET data=? WHERE id=1').run(JSON.stringify(legacy));
+ const {roles,colors}=require('../staffSchedule');require('../scheduleRequests').createScheduleRequests({db:f.db,employees:f.employees,roster:()=>f.employees.get().employees,read:f.read,put:()=>{},roles,colors,today:()=>DATE});
+ let config=(await f.request('sup','/requests/settings?period='+DATE)).data;assert.deepEqual(config.people.one.capabilities,['A','C']);assert.equal(config.people.one.secondaryHours[DATE],12);assert.equal(config.hours.F,8);
+ const saved=await f.request('sup','/requests/settings',{revision:config.revision,employeeId:'one',capabilities:['F','B']});assert.equal(saved.status,200);config=saved.data;assert.deepEqual(config.people.one.capabilities,['F','B']);assert.equal(config.people.one.secondaryHours[DATE],12);
+ assert.equal((await f.request('one','/requests/settings',{revision:config.revision,employeeId:'one',capabilities:['F']})).status,403);
+});
+
+
+test('request inbox retains three days of resolved results while preserving pending requests and audit data',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one','off')).data;await f.request('sup','/requests/'+r.id,{action:'decline'});
+ const old=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(r.id).data);old.updatedAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(old),r.id);f.db.prepare('UPDATE schedule_request_notifications SET at=? WHERE request_id=?').run('2026-10-20T00:00:00Z',r.id);
+ const pending=(await f.submit('one','trade')).data;const data=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(pending.id).data);data.createdAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(data),pending.id);
+ const list=(await f.request('one','/requests')).data;assert(!list.requests.some(row=>row.id===r.id));assert(list.requests.some(row=>row.id===pending.id));assert.equal(list.unread,0);assert(f.db.prepare('SELECT 1 FROM schedule_requests WHERE id=?').get(r.id));
 });
