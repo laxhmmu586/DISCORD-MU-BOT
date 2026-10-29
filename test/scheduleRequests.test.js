@@ -26,12 +26,12 @@ test('request visibility is limited to requester, addressed trade partner, and S
  const preview=(await f.request('sup','/requests?view=self')).data;assert.equal(preview.canManage,false);assert.equal(preview.requests.length,0);
 });
 test('six working days requires partner confirmation followed by supervisor approval',async t=>{
- const f=await fixture(t);for(let i=0;i<5;i++)f.seed(add(DATE,i),{one:C});f.seed(add(DATE,5),{one:X,two:F});const date=add(DATE,5),r=(await f.submit('one','trade',{date})).data;
- const confirmed=await f.request('two','/requests/'+r.id,{action:'confirm'});assert.equal(confirmed.data.status,'awaiting_supervisor');assert.match(confirmed.data.approvalReasons[0],/6 working days/);assert.equal(f.read(date).assignments.one.code,'X');
+ const f=await fixture(t);for(let i=0;i<5;i++)f.seed(add(DATE,i),{one:C});f.seed(add(DATE,5),{one:C,two:F});const date=add(DATE,5),r=(await f.submit('one','trade',{date})).data;
+ const confirmed=await f.request('two','/requests/'+r.id,{action:'confirm'});assert.equal(confirmed.data.status,'awaiting_supervisor');assert.match(confirmed.data.approvalReasons[0],/6 working days/);assert.equal(f.read(date).assignments.one.code,'C');
  assert.equal((await f.request('one','/requests/'+r.id,{action:'approve'})).status,403);assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve'})).data.status,'approved');assert.equal(f.read(date).assignments.one.code,'F');
 });
 test('seven working days are rejected even for a supervisor',async t=>{
- const f=await fixture(t);for(let i=0;i<6;i++)f.seed(add(DATE,i),{one:C});const date=add(DATE,6);f.seed(date,{one:X,two:F});const r=await f.submit('one','trade',{date});assert.equal(r.status,400);assert.match(r.data.error,/seven working days/);assert.equal(f.read(date).assignments.one.code,'X');
+ const f=await fixture(t);for(let i=0;i<6;i++)f.seed(add(DATE,i),{one:C});const date=add(DATE,6);f.seed(date,{one:C,two:F});const r=await f.submit('one','trade',{date});assert.equal(r.status,400);assert.match(r.data.error,/seven working days/);assert.equal(f.read(date).assignments.one.code,'C');
 });
 test('second-account hours count toward the 40-hour approval threshold, and missing hours block a trade',async t=>{
  const f=await fixture(t);const raw=JSON.parse(f.db.prepare('SELECT data FROM pbb_employees').get().data);raw.employees[0].additionalAccounts=[{station:'LAX',account:'CX'}];f.db.prepare('UPDATE pbb_employees SET data=?').run(JSON.stringify(raw));
@@ -118,4 +118,25 @@ test('request inbox retains three days of resolved results while preserving pend
  const old=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(r.id).data);old.updatedAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(old),r.id);f.db.prepare('UPDATE schedule_request_notifications SET at=? WHERE request_id=?').run('2026-10-20T00:00:00Z',r.id);
  const pending=(await f.submit('one','trade')).data;const data=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(pending.id).data);data.createdAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(data),pending.id);
  const list=(await f.request('one','/requests')).data;assert(!list.requests.some(row=>row.id===r.id));assert(list.requests.some(row=>row.id===pending.id));assert.equal(list.unread,0);assert(f.db.prepare('SELECT 1 FROM schedule_requests WHERE id=?').get(r.id));
+});
+test('recurring second-account total needs no week, is supervisor-only and counts in every future period',async t=>{
+ const f=await fixture(t),initial=(await f.request('sup','/requests/settings')).data;
+ const body={revision:initial.revision,employeeId:'one',secondaryWeeklyHours:36};
+ assert.equal((await f.request('one','/requests/settings',body)).status,403);
+ for(const value of [-1,169,'8',null])assert.equal((await f.request('sup','/requests/settings',{...body,secondaryWeeklyHours:value})).status,400);
+ const saved=await f.request('sup','/requests/settings',body);assert.equal(saved.status,200);assert.equal(saved.data.people.one.secondaryWeeklyHours,36);assert.deepEqual(saved.data.people.one.capabilities,initial.people.one.capabilities);
+ assert.equal((await f.request('sup','/requests/settings',body)).status,409);
+ for(const date of [DATE,add(DATE,7)]){f.seed(date,{one:C,two:F});const r=await f.submit('one','trade',{date});assert.equal(r.status,200);const confirmed=await f.request('two','/requests/'+r.data.id,{action:'confirm'});assert.equal(confirmed.data.status,'awaiting_supervisor');assert.match(confirmed.data.approvalReasons.join(' '),/42 hours/);assert.deepEqual(f.read(date).assignments,{one:C,two:F});}
+ const config=(await f.request('sup','/requests/settings')).data;const zero=await f.request('sup','/requests/settings',{revision:config.revision,employeeId:'one',secondaryWeeklyHours:0});assert.equal(zero.status,200);assert.equal(zero.data.people.one.secondaryWeeklyHours,0);
+});
+
+test('Trade Shift rejects unscheduled and nonworking days for either participant',async t=>{
+ const f=await fixture(t);
+ for(const assignment of [null,X,{code:'CS',color:'#000000'},{code:'VAC',color:'#ffffff'},{code:'N',color:'#000000'},{code:'CO',color:'#dddddd'}]){for(const requester of [true,false]){f.seed(DATE,requester?{...(assignment?{one:assignment}:{}),two:F}:{one:C,...(assignment?{two:assignment}:{})});const result=await f.submit('one');assert.equal(result.status,400);assert.match(result.data.error,/scheduled working shift/);const options=(await f.request('one','/requests/trade-options?date='+DATE)).data;assert.equal(options.employees.find(p=>p.id==='two').eligible,false);}}
+});
+
+test('picker and request catalogs use the dominant saved duty color without rewriting custom cells',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:{code:'C',color:'#00ff00'},two:{code:'C',color:'#00ff00'},three:C});f.seed(add(DATE,1),{one:{code:'A',color:'#274e13'},two:{code:'A',color:'#274e13'},three:redA});
+ const data=(await f.request('sup','?start='+DATE+'&schema=2')).data,config=(await f.request('sup','/requests/settings')).data;
+ assert.equal(data.colors.C,'#00ff00');assert.equal(data.colors.A,'#274e13');assert.equal(config.shifts.find(s=>s.code==='C').color,data.colors.C);assert.equal(config.shifts.find(s=>s.code==='A').color,data.colors.A);assert.equal(data.colors.CS,'#000000');assert.equal(f.read(DATE).assignments.three.color,C.color);assert.equal(f.read(add(DATE,1)).assignments.three.color,redA.color);
 });
