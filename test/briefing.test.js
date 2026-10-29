@@ -259,3 +259,15 @@ test('initial direction follows the linked employee today duty, independent of r
  for(const [code,expected] of [['A','arrival'],['C','departure'],['F','departure'],['B','departure'],['BL','departure'],['CL','departure'],['FL','departure'],['GS','departure'],['Q','departure'],['D','departure'],['K','departure'],['X','arrival'],['VAC','arrival'],['N','arrival'],['CS','arrival'],['CO','arrival'],[null,'arrival']]){f.db.prepare('UPDATE staff_schedule_days SET data=? WHERE date=?').run(JSON.stringify({assignments:code?{agent:{code,color:'#ff0000'}}:{}}),DATE);const response=await f.request('agent',query);assert.equal(response.status,200);assert.equal(response.data.defaultDirection,expected,code);assert.equal(response.data.direction,'arrival');}
  f.db.prepare('UPDATE staff_schedule_days SET data=? WHERE date=?').run(JSON.stringify({assignments:{agent:{code:'A'},peer:{code:'C'}}}),DATE);assert.equal((await f.request('peer','?date=2026-10-27&flight=MU583')).data.defaultDirection,'departure');assert.equal((await f.request('agent','?date='+DATE+'&flight=MU586')).data.defaultDirection,'arrival');assert.equal((await f.request('sup',query)).data.defaultDirection,'arrival');
 });
+
+test('flight-page quick tasks are today-scoped, assignment-gated and hidden after Finish until cancellation',async t=>{
+ const f=await fixture(t),list=async user=>(await f.request(user,'/quick-tasks')).data.tasks.map(task=>task.id);
+ assert.deepEqual(await list('agent'),['arrival']);assert.deepEqual(await list('peer'),[]);assert.deepEqual(await list('rest'),[]);assert.deepEqual(await list('sup'),['arrival','gate']);assert.deepEqual(await list('lead'),['arrival','gate']);assert.equal((await f.request('other','/quick-tasks')).status,403);assert.equal((await f.request(null,'/quick-tasks')).status,401);
+ const query='?date='+DATE+'&flight=MU586',key={date:DATE,flight:'MU586',direction:'departure'},state=(await f.request('sup',query)).data;
+ await f.request('sup','/assign',{...key,employeeId:'peer',fromField:null,toField:'gateLead',toValue:state.fields.gateLead});assert.deepEqual(await list('peer'),['gate']);
+ const assigned=(await f.request('peer',query)).data;assert.equal(assigned.quickPermissions.gate,true);assert.equal(assigned.quickPermissions.arrival,false);
+ assert.equal((await f.request('peer','/finish',{...key,expected:assigned.fields})).status,200);assert.deepEqual(await list('peer'),[]);assert.deepEqual(await list('sup'),['arrival']);
+ assert.equal((await f.request('peer','/finish/cancel',key)).status,200);assert.deepEqual(await list('peer'),['gate']);
+ await f.request('sup','/assign',{...key,employeeId:'peer',fromField:'gateLead',toField:null,fromValue:assigned.fields.gateLead});assert.deepEqual(await list('peer'),[]);
+ f.db.prepare('UPDATE staff_schedule_days SET data=? WHERE date=?').run(JSON.stringify({assignments:{agent:{code:'X'}}}),DATE);assert.deepEqual(await list('agent'),[]);
+});

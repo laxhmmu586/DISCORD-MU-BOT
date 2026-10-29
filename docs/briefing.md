@@ -82,3 +82,8 @@ Gate Lead control entries and Finish are editable by Lead and above, or employee
 ## Arrival Notes
 
 The Arrival Time panel includes a separate Notes box below Time Record. Eligible employees can edit up to 5,000 characters with autosave and stale-field protection. Notes are stored per flight/date, included in newly generated Arrival reports, and cleared with Clear. They do not add a sixth required Finish field or change Departure editing permissions. Older report snapshots without a Notes field retain their previous section list.
+
+
+The flight selection page has compact Arrival Time Record and Gate Lead Control Sheet shortcuts between flight cards and the service row. Both use clipboard icons. They load independently of the SY flight list, using today's shared MU583 Arrival and MU586 Departure records rather than the selected flight. Arrival is shown to staff with today's A shift or Lead and above; Gate is shown to today's assigned Gate Lead/Assist or Lead and above. Lead and above retain the Arrival shortcut even without an A shift.
+
+The shortcuts open focused same-origin forms in a dialog with the existing auto-save, explicit Save and Finish controls. Finish submission hides the corresponding shared shortcut during pending/processing/completed states; cancellation restores it. Closing flushes outstanding edits first. Availability refreshes independently, on focus and periodically, and server-derived permissions revoke an open task when its assignment changes. Existing Briefing links, pages and flight selection remain unchanged.

@@ -43,3 +43,7 @@ Supervisor editing view has a standard **Add/Edit** dropdown button beside Refre
 Resolved request cards and outcome notifications remain visible for three days; pending requests remain until processed. Stored request/audit data is retained for history integrity. Result cards are compact, and visible outcome cards automatically mark their own notifications read while the manual Mark read action remains available.
 
 Employee desktop and mobile views retain the default-collapsed Clock-in Time card and collapsible Duty legend below the roster. Viewing the full team does not hide these reference panels. Unread Announcements remain above the roster with the existing per-employee Got it flow.
+
+Pending Off Req and Work Req badges briefly sway every three seconds in desktop and mobile views. The animation pauses for users who prefer reduced motion; clicking and positioning are unchanged.
+
+Request Off, Trade Shift and I Can Work now open their named form directly from a schedule cell; no request-type dropdown or second type selection appears. The generic New request entry offers compact type buttons. The inbox uses compact type icons, dates and outcome badges, and approved time off shows a red X. Eligibility, approvals, private notifications and three-day result retention are unchanged.

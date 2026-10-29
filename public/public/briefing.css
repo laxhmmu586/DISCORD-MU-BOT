@@ -120,3 +120,9 @@
 
 /* Counter service labels read as plain text in employee view. */
 #counter-assignments .counter-label-editors textarea[readonly]{background:transparent!important;border-color:transparent!important;box-shadow:none;outline:none}
+
+/* Focused, same-origin task forms opened from the flight selection screen. */
+body.briefing-quick{background:#f5f9ff!important}.briefing-quick .profile-topbar,.briefing-quick .profile-sidebar,.briefing-quick .briefing-heading,.briefing-quick .briefing-datebar,.briefing-quick .briefing-roster,.briefing-quick .briefing-mobile-tabs,.briefing-quick .briefing-reference-rail,.briefing-quick .profile-bottom-nav{display:none!important}
+.briefing-quick .briefing-shell{margin:0!important;padding:10px!important;max-width:100%!important}.briefing-quick .briefing-workspace{display:block!important}.briefing-quick .briefing-sheet{width:100%!important;margin:0!important;padding:0!important}.briefing-quick [data-panel]{display:none!important}.briefing-quick-arrival #panel-time{display:block!important}.briefing-quick .briefing-reference-dialog.gate-control-dialog{width:100%;max-width:100%;height:100%;max-height:100%;margin:0;border:0;border-radius:0;box-sizing:border-box}.briefing-quick .briefing-reference-dialog::backdrop{background:#f5f9ff}.briefing-quick .quick-save{padding:10px 20px;border:1px solid #9ec7ed;background:white;color:#175393;border-radius:12px;cursor:pointer}
+
+body.profile-page.briefing-quick main.profile-shell.briefing-shell{margin:0!important;padding:10px!important;max-width:100%!important}
