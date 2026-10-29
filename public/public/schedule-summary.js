@@ -37,7 +37,7 @@
  const valid=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0;
  const round=value=>Number(value.toFixed(2));
  function weekly(days,dailyBudget=61){const complete=days.length===7&&days.every(day=>valid(day.planned)),budget=round(days.reduce((sum,day)=>sum+(valid(day.budget)?day.budget:dailyBudget),0)),total=complete?round(days.reduce((sum,day)=>sum+day.planned,0)+40):null;return {complete,total,budget,variance:complete?round(total-budget):null};}
- function counts(days,employees){const ids=new Set(employees.map(e=>e.id));return rows.map(row=>({...row,counts:days.map(day=>Object.entries(day.assignments||{}).filter(([id,assignment])=>ids.has(id)&&row.codes.includes(assignment.code)).length)}));}
+ function counts(days,employees){const ids=new Set(employees.map(e=>e.id));return rows.map(row=>({...row,counts:days.map(day=>Object.entries(day.assignments||{}).filter(([id,assignment])=>ids.has(id)&&(!assignment.displayLabel||assignment.displayLabel===assignment.code)&&row.codes.includes(assignment.code)).length)}));}
  const baseHours=0;
  const addDays=(value,n)=>{const d=new Date(value+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
  const periodStart=value=>addDays(value,-((new Date(value+'T12:00:00Z').getUTCDay()+2)%7));
