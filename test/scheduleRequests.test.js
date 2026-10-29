@@ -154,3 +154,16 @@ test('A trade approval rechecks both qualifications and any Supervisor can finis
 test('trade options omit identical no-op shifts but retain qualified different duties',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:C,two:C});assert.equal((await f.request('one','/requests/trade-options?date='+DATE)).data.employees.find(p=>p.id==='two').eligible,false);assert.equal((await f.submit('one')).status,400);f.seed(DATE,{one:C,two:{code:'Q',color:'#4b183c'}});assert.equal((await f.request('one','/requests/trade-options?date='+DATE)).data.employees.find(p=>p.id==='two').eligible,true);
 });
+
+
+test('revision checks share the initial snapshot token, stay unchanged when idle and require schedule access',async t=>{
+ const f=await fixture(t);
+ f.seed(DATE,{one:C,two:F});const snapshot=(await f.request('one')).data;
+ const check=()=>f.request('one','/revision');
+ const first=await check();assert.equal(first.status,200);assert.deepEqual(first.data,{revision:snapshot.liveRevision});
+ assert.deepEqual((await check()).data,first.data);
+ assert.equal((await f.submit('one','off')).status,200);
+ const next=await check();assert.notEqual(next.data.revision,first.data.revision);assert.deepEqual(Object.keys(next.data),['revision']);
+ assert.deepEqual((await check()).data,next.data);
+ assert.equal((await fetch(f.base+'/staff-schedule-api/revision')).status,401);
+});

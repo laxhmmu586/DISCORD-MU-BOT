@@ -106,3 +106,21 @@ test('Short supports alternative headcounts and mode changes create a new unread
  assert.equal((await request('sup',{...body,revision:2,shortRoleMode:'and'})).status,200);const changed=(await request('agent',null,date,'/announcements')).data.announcements[0];assert.notEqual(changed.id,first.id);assert(!changed.body.includes(' OR '));assert.equal((await request('sup',{...body,revision:1})).status,409);
  assert.equal((await request('sup',{...body,revision:3,labels:[],shortRoles:[]})).status,200);assert.equal((await request('sup',null,date)).data.days[0].shortRoleMode,'and');assert.equal((await request('agent',null,date,'/announcements')).data.announcements.length,0);
 });
+
+
+test('custom display text persists and excludes the original duty from coverage and estimated hours',async t=>{
+ const {request}=await fixture(t),date='2026-10-26',base={date,employeeId:'agent',code:'C',color:'#00ff00'};
+ const saved=await request('sup',{...base,revision:0});assert.equal(saved.status,200);const normal=saved.data.planned;
+ const custom=await request('sup',{...base,revision:1,displayLabel:'EK',remark:'Custom duty'});assert.equal(custom.status,200);assert.equal(custom.data.planned,normal-4);assert.equal(custom.data.budget,61);
+ assert.deepEqual(custom.data.assignments.agent,{code:'C',color:'#00ff00',displayLabel:'EK',remark:'Custom duty'});
+ assert.equal((await request('agent')).data.days[0].assignments.agent.displayLabel,'EK');
+ assert.equal((await request('agent',{...base,revision:2,displayLabel:'TI'})).status,403);
+ assert.equal((await request('sup',{...base,revision:1,displayLabel:'TI'})).status,409);
+ for(const displayLabel of [null,42,'x'.repeat(21),'CI\nTI'])assert.equal((await request('sup',{...base,revision:2,displayLabel})).status,400);
+ const recolor=await request('sup',{...base,revision:2,color:'#ff0000'});assert.equal(recolor.data.assignments.agent.displayLabel,'EK');assert.equal(recolor.data.planned,normal-4);
+ const pasted=await request('sup',{revisions:{[date]:3},changes:[{date,employeeId:'peer',code:'C',color:'#00ff00',displayLabel:'CI TI'}]},date,'/paste');assert.equal(pasted.status,200);
+ assert.equal((await request('agent')).data.days[0].assignments.peer.displayLabel,'CI TI');
+ const reset=await request('sup',{...base,revision:4,displayLabel:'C'});assert.equal(reset.data.assignments.agent.displayLabel,undefined);assert.equal(reset.data.planned,normal);
+ const renamed=await request('sup',{...base,revision:5,displayLabel:'A'});assert.equal(renamed.data.planned,normal-4,'A custom label must not be reclassified as another counted duty');
+ const cleared=await request('sup',{...base,revision:6,displayLabel:''});assert.equal(cleared.data.planned,normal);
+});

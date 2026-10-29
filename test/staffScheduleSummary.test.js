@@ -56,3 +56,9 @@ test('Clock-in times shift every endpoint on March 14, including meals and F alt
  for(let i=0;i<winter.length;i++){assert.equal(summer[i].code,winter[i].code);const a=winter[i].time.match(/\d{2}:\d{2}/g),b=summer[i].time.match(/\d{2}:\d{2}/g);assert.deepEqual(b,a.map(t=>String(Number(t.slice(0,2))+1).padStart(2,'0')+t.slice(2)));}
  assert.equal(summer.find(d=>d.code==='CL').time,'07:45-12:45 🍴 13:15-16:15');
 });
+
+
+test('custom display labels count toward neither original nor replacement coverage or daily-hour estimates',()=>{
+ const employees=[{id:'one'},{id:'two'}],day={assignments:{one:{code:'C',displayLabel:'A'},two:{code:'C'}}},result=counts([day],employees);assert.equal(result.find(row=>row.codes.includes('C')).counts[0],1);assert.equal(result.find(row=>row.codes.includes('A')).counts[0],0);assert.equal(dailyTotal(day,employees),4);
+ day.assignments.one.displayLabel='C';assert.equal(dailyTotal(day,employees),8);delete day.assignments.one.displayLabel;assert.equal(dailyTotal(day,employees),8);
+});

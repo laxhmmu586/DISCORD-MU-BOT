@@ -14,3 +14,10 @@ test('one copied cell fills a selected rectangle; text TSV parses duty codes saf
 });
 
 test('rich clipboard carries remarks alongside duty colors',()=>{const grid=require('../public/public/schedule-grid'),employees=[{id:'a'}],days=[{date:'2026-10-28',revision:1,assignments:{a:{code:'C',color:'#99ff00',remark:'Check passport'}}}],range={anchor:{row:0,col:0},focus:{row:0,col:0}},copied=grid.copy(employees,days,range),cells=grid.parse(copied.rich,copied.text,{C:'Check-in'},{C:'#99ff00'});assert.equal(grid.plan(employees,days,range,cells).changes[0].remark,'Check passport');});
+
+
+test('rich copy/paste preserves custom display text separately from the duty code',()=>{
+ const people=[{id:'a'}],date='2026-10-29',range={anchor:{row:0,col:0},focus:{row:0,col:0}},days=[{date,revision:2,assignments:{a:{code:'C',color:'#00ff00',displayLabel:'EK',remark:'Custom duty'}}}];
+ const copied=grid.copy(people,days,range);assert.equal(copied.text,'EK');const cells=grid.parse(copied.rich,copied.text,roles,colors),change=grid.plan(people,days,range,cells).changes[0];assert.equal(change.displayLabel,'EK');assert.equal(change.code,'C');assert.equal(change.remark,'Custom duty');
+ for(const displayLabel of [null,42,'x'.repeat(21),'CI\nTI'])assert.throws(()=>grid.parse(JSON.stringify({kind:'staff-schedule',version:1,cells:[[{code:'C',color:'#00ff00',displayLabel}]]}),'',roles,colors));
+});
