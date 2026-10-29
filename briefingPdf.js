@@ -17,7 +17,7 @@ function reportSections(snapshot){const f={...snapshot.fields,...snapshot.assign
  ['Passenger Information',[['WCHR - Business',f.wchrBusiness],['WCHR - Economy',f.wchrEconomy],['WCHC - Business',f.wchcBusiness],['WCHC - Economy',f.wchcEconomy],['UM',f.um],['VIP / CIP',f.vip],['AVIH',f.avih]],4],
  ['Details',f.details],
  ['Team Assignment',[['Arrival Lead',f.arrivalLead],['Announcement',f.announcement],['Carousel',f.carousel],['Phone Call',f.phoneCall],['Jet-Bridge',f.jetBridge],['Finish everything',f.finishEverything],['G - Shift',f.gShift]],2],
- ['Time Record',[['Block Time',f.blockTime],['1st PAX',f.firstPax],['Last PAX',f.lastPax],['First Bag',f.firstBag],['Last Bag',f.lastBag]],5]];
+ ['Time Record',[['Block Time',f.blockTime],['1st PAX',f.firstPax],['Last PAX',f.lastPax],['First Bag',f.firstBag],['Last Bag',f.lastBag]],5],...(Object.hasOwn(f,'notes')?[['Notes',f.notes]]:[])];
 }
 
 async function buildBriefingPdf(snapshot){

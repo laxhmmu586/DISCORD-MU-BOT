@@ -110,3 +110,11 @@ test('missing or invalid admin Discord IDs produce no content or employee ping',
  await s.post(body);assert.equal(sent.content,undefined);assert.deepEqual(sent.allowedMentions,{parse:[],users:[]});
 });
 test('fallback contains only the main request and no monthly or policy embeds',()=>{const embeds=require('../attendanceDiscord').fallbackEmbeds(record(),[{date:'2026-10-14',type:'late'}]);assert.equal(embeds.length,1);assert.equal(embeds[0].title,'Coming Late');});
+
+
+test('saved Call Off / Sick requests immediately update Schedule even when Discord delivery fails',async t=>{
+ const s=await server(t,{client:{channels:{fetch:async()=>{throw Error('Offline fixture');}}}});
+ const response=await s.post({...body,type:'sick'});assert.equal(response.status,201);const result=await response.json();assert.equal(result.notificationPending,true);
+ const day=JSON.parse(s.db.prepare('SELECT data FROM staff_schedule_days WHERE date=?').get(body.date).data);assert.equal(day.assignments['test-one'].code,'CS');assert.equal(day.assignments['test-one'].color,'#000000');
+ const revision=s.db.prepare('SELECT revision FROM staff_schedule_days WHERE date=?').get(body.date).revision;await s.post({...body,type:'sick'});assert.equal(s.db.prepare('SELECT revision FROM staff_schedule_days WHERE date=?').get(body.date).revision,revision);
+});

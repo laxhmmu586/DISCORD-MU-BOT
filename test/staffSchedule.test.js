@@ -8,10 +8,11 @@ async function fixture(t){
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
  const request=async(user,body,start='2026-10-26',suffix='',schema='2')=>{const res=await fetch('http://127.0.0.1:'+server.address().port+'/staff-schedule-api'+suffix+(body?'':'?start='+start+(schema?'&schema='+schema:'')),{method:body?'POST':'GET',headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:await res.json()};};return {request,employees,db};
 }
-test('ordinary staff and Leads receive only their own assignments and photo, with no team totals or budgets',async t=>{
- const {request}=await fixture(t);await request('sup',{date:'2026-10-26',revision:0,employeeId:'peer',code:'VAC',color:'#fff2cc'});await request('sup',{date:'2026-10-26',revision:1,employeeId:'agent',code:'X',color:'#ffffff'});await request('sup',{date:'2026-10-26',revision:2,budget:62});
- for(const user of ['agent','lead']){const {data,status}=await request(user);assert.equal(status,200);assert.equal(data.canViewAll,false);assert.deepEqual(data.employees.map(e=>e.id),[user]);for(const key of ['planned','budget','revision'])assert.equal(data.days[0][key],undefined);assert.equal(data.dailyBudget,undefined);assert(!JSON.stringify(data).includes('peer employee'));assert(!data.days[0].assignments.peer);if(user==='agent'){assert.equal(data.days[0].assignments.agent.code,'X');assert.equal(data.employees[0].avatar,'data:image/png;base64,photo');}}
+test('all staff see same-account team assignments but only managers receive totals and budgets',async t=>{
+ const {request}=await fixture(t);await request('sup',{date:'2026-10-26',revision:0,employeeId:'peer',code:'VAC',color:'#fff2cc'});
+ for(const user of ['agent','lead']){const {data,status}=await request(user);assert.equal(status,200);assert.equal(data.canViewAll,true);assert.equal(data.canEdit,false);assert(data.employees.some(e=>e.id==='peer'));assert.equal(data.days[0].assignments.peer.code,'VAC');for(const key of ['planned','budget','revision'])assert.equal(data.days[0][key],undefined);assert.equal(data.dailyBudget,undefined);assert(!data.employees.some(e=>e.id==='station'));}
 });
+
 test('Supervisor/global edits persist, reject stale versions, and recalculate Daily Hour independently of budget',async t=>{
  const {request}=await fixture(t);for(const role of ['sup','regional']){const result=await request(role);assert.equal(result.data.canViewAll,true);assert.equal(result.data.dailyBudget,61);assert(result.data.employees.length>1);assert.equal(result.data.days[0].planned,0);assert.equal(result.data.days[0].budget,61);}
  const body={date:'2026-10-26',revision:0,employeeId:'agent',code:'CL',color:'#123456'};assert.equal((await request('sup',body)).data.planned,8);assert.equal((await request('sup',body)).status,409);assert.deepEqual((await request('sup')).data.days[0].assignments.agent,{code:'CL',color:'#123456'});
@@ -26,7 +27,7 @@ test('code editor updates the existing hidden code field while preserving EID an
  const {request,employees}=await fixture(t),before=employees.get().employees.find(e=>e.id==='agent');
  const body={employeeId:'agent',code:' 24110 ',currentCode:'',eid:'99999',name:'Wrong name'};assert.equal((await request('sup',body,undefined,'/code')).status,200);
  const after=employees.get().employees.find(e=>e.id==='agent');assert.equal(after.code,'24110');assert.equal(after.eid,before.eid);assert.equal(after.name,before.name);assert.equal((await request('sup',body,undefined,'/code')).status,409);
- const personal=(await request('agent')).data.employees[0];assert.equal(personal.code,'24110');assert.equal(personal.eid,undefined);
+ const personal=(await request('agent')).data.employees.find(e=>e.id==='agent');assert.equal(personal.code,'24110');assert.equal(personal.eid,undefined);
  assert.equal((await request('sup',{employeeId:'station',code:'1',currentCode:''},undefined,'/code')).status,403);
  for(const code of ['x'.repeat(41),'line\nbreak',null])assert.equal((await request('sup',{employeeId:'agent',code,currentCode:'24110'},undefined,'/code')).status,400);
 });
@@ -61,14 +62,9 @@ test('months extend the live horizon one calendar month at a time, including a y
 
 test('legacy cached clients cap at fourteen dates; updated clients retain future months',async t=>{const {request,db}=await fixture(t);db.prepare('UPDATE staff_schedule_sync_settings SET data=? WHERE id=1').run(JSON.stringify({enabled:false,horizon:'2027-04-08'}));for(const user of ['sup','agent']){const old=(await request(user,undefined,'2026-10-27','',null)).data,current=(await request(user)).data;assert.equal(old.days.length,14);assert.equal(old.horizon,'2027-04-08');assert(current.days.length>150);assert.equal(current.days.at(-1).date,'2027-04-08');}});
 
-test('self view filters even managers to the authenticated employee',async t=>{
- const {request}=await fixture(t);
- for(const user of ['agent','lead','sup']){
-  const {data,status}=await request(user,undefined,'2026-10-26&view=self&employeeId=peer');assert.equal(status,200);assert.equal(data.canViewAll,false);assert.equal(data.canEdit,false);assert.deepEqual(data.employees.map(e=>e.id),[user]);
-  for(const day of data.days){assert(Object.keys(day.assignments).every(id=>id===user));assert.equal(day.planned,undefined);}
- }
+test('employee preview keeps shared team visibility while removing manager totals and edit controls',async t=>{
+ const {request}=await fixture(t),result=await request('sup',undefined,'2026-10-26&view=self');assert.equal(result.data.canViewAll,true);assert.equal(result.data.canEdit,false);assert(result.data.employees.some(e=>e.id==='peer'));assert.equal(result.data.days[0].budget,undefined);
 });
-
 
 test('Short date settings identify missing positions without revealing other employee assignments',async t=>{const {request}=await fixture(t),date='2099-01-01',body={date,revision:0,dateColor:'#fff2cc',labels:['Short'],shortRoles:[{code:'C',count:2},{code:'GS',count:1}]};assert.equal((await request('sup',{...body,shortRoles:[]})).status,400);assert.equal((await request('sup',{...body,shortRoles:[{code:'X',count:1}]})).status,400);assert.equal((await request('agent',body)).status,403);assert.equal((await request('sup',body)).status,200);const employee=(await request('agent',null,date)).data;assert.deepEqual(employee.days[0].shortRoles,body.shortRoles);assert.equal(employee.days[0].revision,undefined);const unread=(await request('agent',null,date,'/announcements')).data.announcements;assert.equal(unread.length,1);assert.match(unread[0].body,/2 C.*1 GS/);assert.match(unread[0].body,/Please check with your supervisor[.]$/);await request('agent',{id:unread[0].id},date,'/announcements/read');assert.equal((await request('agent',null,date,'/announcements')).data.announcements.length,0);assert.equal((await request('peer',null,date,'/announcements')).data.announcements.length,1);await request('sup',{...body,revision:1,shortRoles:[{code:'C',count:3}]});const changed=(await request('agent',null,date,'/announcements')).data.announcements;assert.equal(changed.length,1);assert.notEqual(changed[0].id,unread[0].id);assert.equal((await request('sup',{...body,revision:0})).status,409);});
 test('only Supervisor+ publish announcements; Got it persists separately for each eligible employee',async t=>{const {request,db}=await fixture(t),body={date:'2026-10-28',title:'Team update',body:'Please check with BM.',durationHours:24};for(const user of ['agent','lead','other'])assert.equal((await request(user,body,undefined,'/announcements')).status,403);const created=await request('sup',body,undefined,'/announcements');assert.equal(created.status,200);assert.equal((await request('regional',{...body,title:''},undefined,'/announcements')).status,400);const first=(await request('agent',null,undefined,'/announcements')).data.announcements;assert.equal(first.length,1);assert.equal(first[0].title,'Team update');assert.equal((await request('agent',{id:first[0].id},undefined,'/announcements/read')).status,200);assert.equal((await request('agent',{id:first[0].id},undefined,'/announcements/read')).status,200);assert.equal((await request('agent',null,undefined,'/announcements')).data.announcements.length,0);assert.equal((await request('peer',null,undefined,'/announcements')).data.announcements.length,1);assert.equal((await request('agent',{id:'fake'},undefined,'/announcements/read')).status,404);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM staff_schedule_notice_reads').get().n,1);});
@@ -80,16 +76,23 @@ test('Supervisor can persist arbitrary employee row order with stale and scope p
 
 test('local schedule preserves legacy metadata and refuses to re-enable Sheet sync',async t=>{const {request,db}=await fixture(t);db.prepare('UPDATE staff_schedule_sync_settings SET data=? WHERE id=1').run(JSON.stringify({enabled:true,horizon:'2027-03-31'}));const result=await request('sup');assert.equal(result.data.sync.enabled,false);assert.equal(result.data.sync.state,'local');assert.equal(result.data.horizon,'2027-03-31');assert.equal((await request('sup',{enabled:true},undefined,'/sync')).status,410);assert.equal((await request('sup',{resolve:'sheet'},undefined,'/sync')).status,410);assert.equal((await request('sup',{date:'2026-10-26',revision:0,employeeId:'agent',code:'C',color:'#99ff00'})).status,200);assert.equal((await request('sup')).data.days[0].assignments.agent.code,'C');assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='staff_schedule_sync_outbox'").get().n,0);});
 
-test('remarks persist, can be cleared, validate length and remain scoped to their employee',async t=>{const {request}=await fixture(t),date='2026-10-26',body={date,revision:0,employeeId:'agent',code:'C',color:'#99ff00',remark:'Check passport'};assert.equal((await request('agent',body)).status,403);assert.equal((await request('sup',{...body,remark:'x'.repeat(1001)})).status,400);assert.equal((await request('sup',body)).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,'Check passport');assert(!JSON.stringify((await request('peer')).data).includes('Check passport'));assert.equal((await request('sup',{...body,revision:1,remark:undefined,color:'#ff0000'})).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,'Check passport');assert.equal((await request('sup',{...body,revision:2,remark:''})).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,undefined);});
+test('team remarks persist, can be cleared, and validate length',async t=>{const {request}=await fixture(t),date='2026-10-26',body={date,revision:0,employeeId:'agent',code:'C',color:'#99ff00',remark:'Check passport'};assert.equal((await request('agent',body)).status,403);assert.equal((await request('sup',{...body,remark:'x'.repeat(1001)})).status,400);assert.equal((await request('sup',body)).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,'Check passport');assert(JSON.stringify((await request('peer')).data).includes('Check passport'));assert.equal((await request('sup',{...body,revision:1,remark:undefined,color:'#ff0000'})).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,'Check passport');assert.equal((await request('sup',{...body,revision:2,remark:''})).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,undefined);});
 
 
-test('test login/email identities are absent from schedules and totals and cannot be assigned',async t=>{
+test('test login/email identities are restored to Schedule for workflow testing',async t=>{
  const {request,db}=await fixture(t);
  for(const field of ['loginId','email','companyEmail']){
   db.prepare('UPDATE pbb_employees SET data=json_set(data,?,?) WHERE singleton=1').run('$.employees[1].'+field,'test@hm.com');
   db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,0,?)').run('2026-10-26',JSON.stringify({assignments:{peer:{code:'D',color:'#ffff00'}}}));
-  const result=await request('sup');assert.equal(result.status,200);assert(!result.data.employees.some(e=>e.id==='peer'));assert.equal(result.data.days[0].planned,0);
-  assert.equal((await request('sup',{date:'2026-10-26',revision:0,employeeId:'peer',code:'D',color:'#ffff00'})).status,400);
+  const result=await request('sup');assert.equal(result.status,200);assert(result.data.employees.some(e=>e.id==='peer'));assert.equal(result.data.days[0].planned,8);
+  assert.equal((await request('sup',{date:'2026-10-26',revision:0,employeeId:'peer',code:'D',color:'#ffff00'})).status,200);
   db.prepare('UPDATE pbb_employees SET data=json_set(data,?,?) WHERE singleton=1').run('$.employees[1].'+field,'');
  }
+});
+
+
+test('the explicit test identity can use Schedule even when its display name is DEMO HAS',async t=>{
+ const {request,db}=await fixture(t),data=JSON.parse(db.prepare('SELECT data FROM pbb_employees').get().data);data.employees.find(e=>e.id==='blocked0').loginId='test@hm.com';db.prepare('UPDATE pbb_employees SET data=?').run(JSON.stringify(data));
+ const result=await request('blocked0');assert.equal(result.status,200);assert(result.data.employees.some(e=>e.id==='blocked0'));assert.equal((await request('blocked1')).status,403);
+ const {allowed}=require('../staffSchedule');assert.equal(allowed(data.employees.find(e=>e.id==='blocked0')),false,'Briefing shared eligibility does not gain the Schedule-only exception');
 });
