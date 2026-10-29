@@ -14,7 +14,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   const file=path.join(process.cwd(),'public/public',p);if(fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({path:file});return route.fulfill({status:404,body:''});
  });
  await page.goto('http://localhost/admin.html');await page.locator('#employee-panel').waitFor({state:'visible'});await page.locator('[data-open-group]').filter({hasText:'LAX / MU'}).click();
- assert.equal(await page.locator('#profile-admin-nav').isVisible(),true);assert.equal(await page.locator('#profile-admin-nav').getAttribute('aria-current'),'page');
+ await page.locator('.login-button').click();assert.equal(await page.locator('#profile-admin-nav').isVisible(),true);await page.locator('.login-button').click();assert.equal(await page.locator('#profile-admin-nav').getAttribute('aria-current'),'page');
  assert.equal(await page.locator('select[name=position]').inputValue(),'Business Manager');assert.equal(await page.locator('optgroup[label="Existing positions"]').count(),0);
  fs.mkdirSync('.verification/profile',{recursive:true});for(const width of [2560,1920,1440,390]){
   await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Admin overflow at '+width);assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(246, 249, 253)');

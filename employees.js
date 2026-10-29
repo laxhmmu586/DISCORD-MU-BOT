@@ -71,7 +71,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
 }
 function registerEmployees(app,{store,authenticate,profiles,onChange=()=>{},firebaseDirectory}){
  const accessFor=user=>{
-  const email=normalizeLoginId(user?.email);if(ADMIN_EMAILS.has(email))return {mode:'admin',employeeId:store.get().employees.find(row=>normalizeLoginId(row.loginId)===email)?.id,canEditOwnTitle:LOGIN_ID_ADMIN_EMAILS.has(email)};
+  const email=normalizeLoginId(user?.email);if(ADMIN_EMAILS.has(email))return {mode:'admin',employeeId:store.get().employees.find(row=>normalizeLoginId(row.loginId)===email)?.id,canManagePending:LOGIN_ID_ADMIN_EMAILS.has(email),canEditOwnTitle:LOGIN_ID_ADMIN_EMAILS.has(email)};
   const linked=profiles?.linked(user);
   const matches=email?store.get().employees.filter(row=>normalizeLoginId(row.loginId)===email):[];
   const me=linked||(matches.length===1?matches[0]:null);
