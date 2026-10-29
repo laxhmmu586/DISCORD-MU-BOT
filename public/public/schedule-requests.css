@@ -58,3 +58,5 @@
 .team-week-table .my-schedule-row>th{z-index:35;background:#f8fbff;border-bottom:2px solid #dce7f4}
 .team-week-table tbody th .team-week-nickname{display:inline-block;max-width:49px;vertical-align:middle;overflow-wrap:anywhere;font-size:11px;line-height:1.25;text-align:left}
 .team-week-table .team-week-avatar-wrap{margin-right:4px}
+
+.clock-in-time>summary{cursor:pointer;font-size:12px;font-weight:600;list-style-position:inside}.clock-in-time[open]>summary{margin-bottom:14px}
