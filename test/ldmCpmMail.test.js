@@ -3,10 +3,13 @@ const assert = require('node:assert/strict');
 const { DatabaseSync: Database } = require('node:sqlite');
 const { matches, bodyText, chunks, createService } = require('../ldmCpmMail');
 const headers = subject => [{ name: 'From', value: 'LAXHMXH <LAXHMXH@hallmark-aviation.com>' }, { name: 'Subject', value: subject }];
-test('matches exact sender and both subject orders', () => {
+test('matches exact sender with combined or separate CPM and LDM subjects', () => {
   assert.ok(matches(headers('LDM CPM MU583 25OCT')));
   assert.ok(matches(headers('CPM LDM MU583 23OCT')));
-  assert.equal(matches(headers('LDM MU583')), false);
+  assert.ok(matches(headers('LDM MU583')));
+  assert.ok(matches(headers('CPM MU583/29OCT26')));
+  assert.equal(matches(headers('MU583 operational update')), false);
+  assert.equal(matches(headers('XCPM XLDM MU583')), false);
   assert.equal(matches([{ name: 'From', value: 'laxhmxh@hallmark-aviation.com.evil' }, ...headers('LDM CPM').slice(1)]), false);
 });
 test('prefers plain body, preserves lines and falls back to HTML', async () => {
@@ -16,6 +19,25 @@ test('prefers plain body, preserves lines and falls back to HTML', async () => {
   const long = 'LDM\n' + 'A'.repeat(5000);
   assert.equal(chunks(long).join(''), long);
   assert.ok(chunks(long).every(s => s.length <= 1900));
+});
+
+test('forwards standalone CPM and LDM after November 1 and deduplicates each receipt', async t => {
+  const db = new Database(':memory:');t.after(() => db.close());
+  const start = Date.parse('2026-11-02T15:00:00Z'), sent = [];
+  let id = 'cpm', subject = 'CPM MU583/02NOV26', stamp = start + 1000;
+  const options = {db, now: () => start, getClient: () => ({userId:'me',gmail:{users:{messages:{
+    list: async ({q}) => {
+      assert.equal(q, `from:laxhmxh@hallmark-aviation.com {subject:LDM subject:CPM} after:${Math.floor(start / 1000) - 1}`);
+      return {data:{messages:[{id}]}};
+    },
+    get: async () => ({data:{internalDate:String(stamp),payload:{headers:headers(subject),mimeType:'text/plain',body:{data:Buffer.from('Operational content').toString('base64url')}}}})
+  }}}}),channel:async()=>({send:async message=>sent.push(message.content)})};
+  const service = createService(options);
+  await service.poll();await createService(options).poll();
+  assert.deepEqual(sent,['CPM MU583/02NOV26\n\nOperational content']);
+  id='ldm';subject='LDM MU583/02NOV26';stamp++;
+  await service.poll();await createService(options).poll();
+  assert.deepEqual(sent,['CPM MU583/02NOV26\n\nOperational content','LDM MU583/02NOV26\n\nOperational content']);
 });
 test('paginates, retries failed chunks, and persists deduplication across recreation', async () => {
   const db = new Database(':memory:');
