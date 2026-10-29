@@ -42,3 +42,19 @@
 
 /* Standard toolbar dropdown. */
 .schedule-shell #schedule-add-edit-tab{writing-mode:horizontal-tb;text-orientation:mixed;width:auto;min-width:94px;min-height:42px;height:auto;padding:10px 13px;letter-spacing:0;border:1px solid #dce5ef;border-radius:11px;background:#fff;color:#244665;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px}.schedule-shell #schedule-add-edit-tab[aria-expanded=true]{background:#edf5ff;border-color:#95bcea}.schedule-add-edit-panel{right:0;top:calc(100% + 6px);border-radius:11px;min-width:180px}.schedule-add-edit-panel button{border:0!important;background:transparent!important}.schedule-add-edit-panel button:hover{background:#edf5ff!important}@media(max-width:600px){.schedule-shell #schedule-add-edit-tab{min-height:32px;min-width:84px;padding:6px 9px;font-size:11px}.schedule-shell:has(#schedule-add-edit:not([hidden])) .team-week-scroll{max-height:calc(100dvh - 270px)}}
+
+/* Solid frozen bands: spacing belongs inside cells so scrolling duties cannot
+   show through gaps between the date header, own row and identity column. */
+.team-week-scroll{padding-top:0;isolation:isolate}
+.team-week-scroll .team-week-table{border-spacing:0}
+.team-week-table th,.team-week-table td{box-sizing:border-box}
+.team-week-table tbody td{padding:4px 2px;background:#fff}
+.team-week-table tbody th{padding:4px 5px;background:#fff;z-index:20}
+.team-week-table thead th{top:0;padding:26px 2px 8px;background:#fff;z-index:30}
+.team-week-table thead th:first-child{width:92px;z-index:40;background:#fff}
+.team-week-table .team-week-badges{top:5px;left:0}
+.team-week-table thead th.multiple-week-ribbons{padding-top:26px}
+.team-week-table .my-schedule-row>td{z-index:25;background:#f8fbff;border-bottom:2px solid #dce7f4}
+.team-week-table .my-schedule-row>th{z-index:35;background:#f8fbff;border-bottom:2px solid #dce7f4}
+.team-week-table tbody th .team-week-nickname{display:inline-block;max-width:49px;vertical-align:middle;overflow-wrap:anywhere;font-size:11px;line-height:1.25;text-align:left}
+.team-week-table .team-week-avatar-wrap{margin-right:4px}
