@@ -107,3 +107,26 @@ test('recipient scope follows current Main Account after promotion and does not 
  f.rows[0].account='MU';f.rows[1].account='MU';
  const r=f.store.publish(f.users[1],body());assert.deepEqual(r.roster.map(p=>p.id),['e0','e1']);
 });
+
+
+test('test account identities are excluded from new and existing Read & Sign recipients and totals',t=>{
+ const f=fixture(t);
+ for(const field of ['loginId','email','companyEmail']){
+  const testPerson={id:'hidden-'+field,name:'Test Identity',position:'Agent',email:'staff@example.test',[field]:' TEST@HM.COM '};f.rows.push(testPerson);
+  const r=f.store.publish(f.users[1],body());assert(!r.roster.some(p=>p.id===testPerson.id));
+  assert(!r.availableRecipients.some(p=>p.id===testPerson.id));assert.equal(r.total,4);
+  assert.throws(()=>f.store.addRecipients(f.users[1],r.id,{employeeIds:[testPerson.id]}));
+  const raw=JSON.parse(f.employees.db.prepare('SELECT data FROM read_sign_memos WHERE id=?').get(r.id).data);raw.roster.push({id:testPerson.id,name:testPerson.name});f.employees.db.prepare('UPDATE read_sign_memos SET data=? WHERE id=?').run(JSON.stringify(raw),r.id);
+  assert.equal(f.store.read(f.users[1],r.id).total,4);assert.equal(f.store.list(f.users[1]).memos.find(m=>m.id===r.id).total,4);
+  assert.throws(()=>f.store.sign({uid:testPerson.id},r.id,signed),e=>e.status===403);
+  assert.equal(f.employees.db.prepare('SELECT count(*) n FROM read_sign_mail WHERE employee_id=?').get(testPerson.id).n,0);
+ }
+});
+
+
+test('queued Read & Sign mail skips an employee newly identified as the test account',async t=>{
+ const f=fixture(t),memo=f.store.publish(f.users[1],body());f.rows[0].loginId='test@hm.com';const sent=[];
+ const service=registerReadSign(express(),{...f,send:async(memo,address)=>sent.push(address),authenticate:async()=>f.users[1]});t.after(()=>service.close());
+ await new Promise(setImmediate);await service.retry();assert(!sent.includes(f.rows[0].email));
+ assert.equal(f.employees.db.prepare('SELECT status FROM read_sign_mail WHERE memo_id=? AND employee_id=?').get(memo.id,'e0').status,'excluded');
+});

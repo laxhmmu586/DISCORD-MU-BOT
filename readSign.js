@@ -1,3 +1,4 @@
+const {hiddenFromOperationalRosters}=require('./employeeRosterVisibility');
 const crypto = require('node:crypto');
 const emailOK = v => typeof v === 'string' && v.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(v);
 const fail = (message, status = 400) => { throw Object.assign(Error(message), { status }); };
@@ -26,7 +27,7 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
     CREATE TABLE IF NOT EXISTS read_sign_signatures(memo_id TEXT NOT NULL, employee_id TEXT NOT NULL, name TEXT NOT NULL, signed_at TEXT NOT NULL, svg TEXT NOT NULL, PRIMARY KEY(memo_id,employee_id));
     CREATE TABLE IF NOT EXISTS read_sign_mail(memo_id TEXT NOT NULL, employee_id TEXT NOT NULL, recipient TEXT NOT NULL, status TEXT NOT NULL, error TEXT, sent_at TEXT, last_attempt TEXT, PRIMARY KEY(memo_id,employee_id));`);
   const employee = user => { const e = profiles.linked(user); if (!e?.name) fail('Link your employee profile first.',403); return e; };
-  const hasEmail=e=>[e?.companyEmail,e?.email].some(emailOK);
+  const hasEmail=e=>!hiddenFromOperationalRosters(e)&&[e?.companyEmail,e?.email].some(emailOK);
   const inScope=(actor,person)=>accountGroups.isHeadquarter(actor)||accountGroups.same(accountGroups.scope(actor),accountGroups.scope(person));
   const candidates=actor=>employees.get().employees.filter(p=>p.name&&hasEmail(p)&&inScope(actor,p));
   const accountChoices=actor=>[...new Map(candidates(actor).map(p=>[accountGroups.key(p),accountGroups.scope(p)])).values()].sort((a,b)=>(a.station+a.account).localeCompare(b.station+b.account));
@@ -125,10 +126,10 @@ function registerReadSign(app,{employees,profiles,authenticate,now,send=sendRead
   async function retry(){if(running)return;running=true;try{
     for(const missing of store.db.prepare("SELECT memo_id,employee_id FROM read_sign_mail WHERE status='missing-email'").all()){
       const e=employees.get().employees.find(e=>e.id===missing.employee_id),recipient=[e?.companyEmail,e?.email].find(emailOK);
-      if(recipient)store.db.prepare("UPDATE read_sign_mail SET recipient=?,status='pending' WHERE memo_id=? AND employee_id=?").run(recipient,missing.memo_id,missing.employee_id);
+      if(recipient&&!hiddenFromOperationalRosters(e))store.db.prepare("UPDATE read_sign_mail SET recipient=?,status='pending' WHERE memo_id=? AND employee_id=?").run(recipient,missing.memo_id,missing.employee_id);
     }
     const jobs=store.db.prepare("SELECT * FROM read_sign_mail WHERE status IN ('pending','failed') ORDER BY last_attempt ASC LIMIT 40").all();
-    for(const job of jobs){const e=employees.get().employees.find(e=>e.id===job.employee_id),recipient=[e?.companyEmail,e?.email].find(emailOK);if(!recipient){store.db.prepare("UPDATE read_sign_mail SET status='missing-email',recipient='' WHERE memo_id=? AND employee_id=?").run(job.memo_id,job.employee_id);continue;}
+    for(const job of jobs){const e=employees.get().employees.find(e=>e.id===job.employee_id),recipient=[e?.companyEmail,e?.email].find(emailOK);if(hiddenFromOperationalRosters(e)){store.db.prepare("UPDATE read_sign_mail SET status='excluded',recipient='' WHERE memo_id=? AND employee_id=?").run(job.memo_id,job.employee_id);continue;}if(!recipient){store.db.prepare("UPDATE read_sign_mail SET status='missing-email',recipient='' WHERE memo_id=? AND employee_id=?").run(job.memo_id,job.employee_id);continue;}
       store.db.prepare('UPDATE read_sign_mail SET last_attempt=? WHERE memo_id=? AND employee_id=?').run(new Date().toISOString(),job.memo_id,job.employee_id);
       try{await send(store.get(job.memo_id),recipient);store.db.prepare("UPDATE read_sign_mail SET status='sent',recipient=?,sent_at=?,error=NULL WHERE memo_id=? AND employee_id=?").run(recipient,new Date().toISOString(),job.memo_id,job.employee_id);}
       catch(error){store.db.prepare("UPDATE read_sign_mail SET status='failed',error=? WHERE memo_id=? AND employee_id=?").run(String(error.message).slice(0,500),job.memo_id,job.employee_id);}

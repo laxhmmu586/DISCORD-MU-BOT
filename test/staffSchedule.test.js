@@ -81,3 +81,15 @@ test('Supervisor can persist arbitrary employee row order with stale and scope p
 test('local schedule preserves legacy metadata and refuses to re-enable Sheet sync',async t=>{const {request,db}=await fixture(t);db.prepare('UPDATE staff_schedule_sync_settings SET data=? WHERE id=1').run(JSON.stringify({enabled:true,horizon:'2027-03-31'}));const result=await request('sup');assert.equal(result.data.sync.enabled,false);assert.equal(result.data.sync.state,'local');assert.equal(result.data.horizon,'2027-03-31');assert.equal((await request('sup',{enabled:true},undefined,'/sync')).status,410);assert.equal((await request('sup',{resolve:'sheet'},undefined,'/sync')).status,410);assert.equal((await request('sup',{date:'2026-10-26',revision:0,employeeId:'agent',code:'C',color:'#99ff00'})).status,200);assert.equal((await request('sup')).data.days[0].assignments.agent.code,'C');assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='staff_schedule_sync_outbox'").get().n,0);});
 
 test('remarks persist, can be cleared, validate length and remain scoped to their employee',async t=>{const {request}=await fixture(t),date='2026-10-26',body={date,revision:0,employeeId:'agent',code:'C',color:'#99ff00',remark:'Check passport'};assert.equal((await request('agent',body)).status,403);assert.equal((await request('sup',{...body,remark:'x'.repeat(1001)})).status,400);assert.equal((await request('sup',body)).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,'Check passport');assert(!JSON.stringify((await request('peer')).data).includes('Check passport'));assert.equal((await request('sup',{...body,revision:1,remark:undefined,color:'#ff0000'})).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,'Check passport');assert.equal((await request('sup',{...body,revision:2,remark:''})).status,200);assert.equal((await request('agent')).data.days[0].assignments.agent.remark,undefined);});
+
+
+test('test login/email identities are absent from schedules and totals and cannot be assigned',async t=>{
+ const {request,db}=await fixture(t);
+ for(const field of ['loginId','email','companyEmail']){
+  db.prepare('UPDATE pbb_employees SET data=json_set(data,?,?) WHERE singleton=1').run('$.employees[1].'+field,'test@hm.com');
+  db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,0,?)').run('2026-10-26',JSON.stringify({assignments:{peer:{code:'D',color:'#ffff00'}}}));
+  const result=await request('sup');assert.equal(result.status,200);assert(!result.data.employees.some(e=>e.id==='peer'));assert.equal(result.data.days[0].planned,0);
+  assert.equal((await request('sup',{date:'2026-10-26',revision:0,employeeId:'peer',code:'D',color:'#ffff00'})).status,400);
+  db.prepare('UPDATE pbb_employees SET data=json_set(data,?,?) WHERE singleton=1').run('$.employees[1].'+field,'');
+ }
+});
