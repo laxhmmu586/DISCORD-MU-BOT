@@ -5,7 +5,7 @@ function matches(headers) {
   const header = name => String(headers.find(h => h.name.toLowerCase() === name)?.value || '');
   const from = header('from').trim().toLowerCase();
   return (from === SENDER || from.match(/<([^<>]+)>\s*$/)?.[1] === SENDER)
-    && /\bLDM\b/i.test(header('subject')) && /\bCPM\b/i.test(header('subject'));
+    && /\b(?:LDM|CPM)\b/i.test(header('subject'));
 }
 
 function stripFooter(text) {
@@ -62,7 +62,7 @@ function createService({ db, getClient, channel, now = Date.now }) {
       let pageToken;
       let latest;
       do {
-        const list = await api.list({ userId, q: `from:${SENDER} subject:LDM subject:CPM after:${Math.floor(read.get('started').progress / 1000) - 1}`, maxResults: 100, pageToken }, { timeout: 30000 });
+        const list = await api.list({ userId, q: `from:${SENDER} {subject:LDM subject:CPM} after:${Math.floor(read.get('started').progress / 1000) - 1}`, maxResults: 100, pageToken }, { timeout: 30000 });
         for (const item of list.data.messages || []) {
           const { data: mail } = await api.get({ userId, id: item.id, format: 'full' }, { timeout: 30000 });
           if (Number(mail.internalDate) < read.get('started').progress || !matches(mail.payload?.headers || [])) continue;
