@@ -57,3 +57,8 @@ Trades match each receiving employee’s saved incoming-duty Skill, irrespective
 Desktop grid/coverage scrolling is synchronized once per animation frame with passive listeners. Background refreshes wait until active scrolling settles, then preserve horizontal and vertical offsets. Each grid isolates its paint work from the rest of the page.
 
 The inline duty picker omits EK and TK, adds a red C variant (the same C duty/Skill with #ff0000), and provides — to clear the assignment through the revision-protected API. Ordinary C and red C can be selected directly to switch colors. Previously saved EK/TK assignments remain intact.
+
+
+Schedule synchronization uses the authenticated revision stream. The initial snapshot includes its opaque revision, so the first unchanged stream event, repeated revisions and heartbeats do not fetch or repaint the roster. Idle minute checks only handle the date rollover. Request badges and announcements refresh on actual invalidation, and unchanged responses keep their existing DOM. During a stream outage, the five-second fallback checks `/staff-schedule-api/revision` rather than downloading the full roster; reconnects retain the last revision. Failed changed-data reads retry until they succeed, then stop. Live loads are serialized, wait for desktop scrolling to settle, and preserve scroll offsets, filters and selection. Manual Refresh remains available.
+
+Request card employee nicknames use the same font size as their request title on desktop and mobile.

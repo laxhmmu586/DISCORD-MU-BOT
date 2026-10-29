@@ -1,7 +1,12 @@
 (()=>{
- window.watchSchedule=({onRevision})=>{
-  let stopped=false,controller,reconnect,poll,watchdog,backoff=1000,lastRevision=null;
-  const fallback=()=>{if(!poll)poll=setInterval(()=>{if(!document.hidden)onRevision();},5000);};
+ window.watchSchedule=({onRevision,initialRevision=null})=>{
+  let stopped=false,controller,reconnect,poll,watchdog,backoff=1000,lastRevision=initialRevision,checking=false;
+  const accept=revision=>{if(typeof revision==='string'&&revision!==lastRevision){lastRevision=revision;onRevision();}};
+  async function check(){
+   if(stopped||checking||document.hidden)return;checking=true;
+   try{const user=firebase.auth().currentUser;if(!user)return;const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/staff-schedule-api/revision',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken(),...(window.workspaceHeaders?.()||{})}});if(response.ok){const result=await response.json();if(!stopped)accept(result.revision);}}catch{}finally{checking=false;}
+  }
+  const fallback=()=>{if(!poll)poll=setInterval(check,5000);};
   async function connect(){
    if(stopped)return;
    controller=new AbortController();
@@ -24,13 +29,13 @@
       if(!frame.split('\n').includes('event: revision'))continue;
       const payload=frame.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trim()).join('\n');
       const revision=JSON.parse(payload).revision;
-      if(typeof revision==='string'&&revision!==lastRevision){lastRevision=revision;onRevision();}
+      accept(revision);
      }
     }
    }catch{if(!stopped){fallback();reconnect=setTimeout(connect,backoff);backoff=Math.min(backoff*2,30000);}}
    finally{clearTimeout(watchdog);controller?.abort();}
   }
   void connect();
-  return ()=>{stopped=true;clearTimeout(reconnect);clearTimeout(watchdog);clearInterval(poll);controller?.abort();};
+  const stop=()=>{stopped=true;clearTimeout(reconnect);clearTimeout(watchdog);clearInterval(poll);controller?.abort();};stop.check=check;return stop;
  };
 })();
