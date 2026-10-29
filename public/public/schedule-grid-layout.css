@@ -127,3 +127,6 @@
 /* Dates scroll behind the fixed employee/coverage label column. */
 .schedule-grid thead .employee-cell{left:0;z-index:12!important;background:#f9f9fc!important}
 .schedule-grid tbody .employee-cell{z-index:8}
+
+/* Isolate wide desktop grid paints from the surrounding page while scrolling. */
+@media(min-width:601px){.schedule-grid{contain:layout paint;isolation:isolate}}
