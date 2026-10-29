@@ -253,3 +253,9 @@ test('Arrival Notes are employee-editable, scoped, revision-protected, exported 
  const fields=(await request('lead','?date='+DATE)).data.fields,report=await request('lead','/reports',{...key,expected:fields});assert.equal(report.status,200);const preview=await request('agent','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/<h2>Notes<\/h2>/);assert.match(preview.data.toString(),/Arrival note &lt;check&gt;/);
  assert.equal((await request('lead','/clear',{...key,expected:fields})).data.fields.notes,'');
 });
+
+test('initial direction follows the linked employee today duty, independent of requested briefing date or color',async t=>{
+ const f=await fixture(t),query='?date='+DATE+'&flight=MU583';
+ for(const [code,expected] of [['A','arrival'],['C','departure'],['F','departure'],['B','departure'],['BL','departure'],['CL','departure'],['FL','departure'],['GS','departure'],['Q','departure'],['D','departure'],['K','departure'],['X','arrival'],['VAC','arrival'],['N','arrival'],['CS','arrival'],['CO','arrival'],[null,'arrival']]){f.db.prepare('UPDATE staff_schedule_days SET data=? WHERE date=?').run(JSON.stringify({assignments:code?{agent:{code,color:'#ff0000'}}:{}}),DATE);const response=await f.request('agent',query);assert.equal(response.status,200);assert.equal(response.data.defaultDirection,expected,code);assert.equal(response.data.direction,'arrival');}
+ f.db.prepare('UPDATE staff_schedule_days SET data=? WHERE date=?').run(JSON.stringify({assignments:{agent:{code:'A'},peer:{code:'C'}}}),DATE);assert.equal((await f.request('peer','?date=2026-10-27&flight=MU583')).data.defaultDirection,'departure');assert.equal((await f.request('agent','?date='+DATE+'&flight=MU586')).data.defaultDirection,'arrival');assert.equal((await f.request('sup',query)).data.defaultDirection,'arrival');
+});
