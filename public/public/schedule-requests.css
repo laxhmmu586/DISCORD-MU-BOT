@@ -82,3 +82,8 @@
 .schedule-request-compose input[type=date]{display:block;min-width:0;max-width:100%;inline-size:100%;box-sizing:border-box;appearance:none;-webkit-appearance:none}
 .schedule-request-compose input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left}
 @media(max-width:600px){.schedule-request-compose input[type=date],.schedule-request-compose select,.schedule-request-compose textarea{font-size:16px}}
+
+/* Keep the mobile month and request control together without a vacant row above. */
+@media(max-width:600px){.profile-page .schedule-shell{padding-top:6px}.schedule-shell.mobile-employee-schedule>.schedule-heading{display:none}.team-week-heading{min-height:38px;margin:0 0 4px;align-items:center}.team-week-heading #schedule-requests-button{flex:none;margin:0}.team-week-heading>strong{line-height:1.25}}
+
+@media(max-width:600px){body.profile-page .profile-shell.schedule-shell{margin-top:var(--schedule-header-height,64px)!important}}
