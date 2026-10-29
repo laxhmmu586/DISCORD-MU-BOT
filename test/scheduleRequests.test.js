@@ -119,3 +119,13 @@ test('request inbox retains three days of resolved results while preserving pend
  const pending=(await f.submit('one','trade')).data;const data=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(pending.id).data);data.createdAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(data),pending.id);
  const list=(await f.request('one','/requests')).data;assert(!list.requests.some(row=>row.id===r.id));assert(list.requests.some(row=>row.id===pending.id));assert.equal(list.unread,0);assert(f.db.prepare('SELECT 1 FROM schedule_requests WHERE id=?').get(r.id));
 });
+test('recurring second-account total needs no week, is supervisor-only and counts in every future period',async t=>{
+ const f=await fixture(t),initial=(await f.request('sup','/requests/settings')).data;
+ const body={revision:initial.revision,employeeId:'one',secondaryWeeklyHours:36};
+ assert.equal((await f.request('one','/requests/settings',body)).status,403);
+ for(const value of [-1,169,'8',null])assert.equal((await f.request('sup','/requests/settings',{...body,secondaryWeeklyHours:value})).status,400);
+ const saved=await f.request('sup','/requests/settings',body);assert.equal(saved.status,200);assert.equal(saved.data.people.one.secondaryWeeklyHours,36);assert.deepEqual(saved.data.people.one.capabilities,initial.people.one.capabilities);
+ assert.equal((await f.request('sup','/requests/settings',body)).status,409);
+ for(const date of [DATE,add(DATE,7)]){f.seed(date,{one:C,two:F});const r=await f.submit('one','trade',{date});assert.equal(r.status,200);const confirmed=await f.request('two','/requests/'+r.data.id,{action:'confirm'});assert.equal(confirmed.data.status,'awaiting_supervisor');assert.match(confirmed.data.approvalReasons.join(' '),/42 hours/);assert.deepEqual(f.read(date).assignments,{one:C,two:F});}
+ const config=(await f.request('sup','/requests/settings')).data;const zero=await f.request('sup','/requests/settings',{revision:config.revision,employeeId:'one',secondaryWeeklyHours:0});assert.equal(zero.status,200);assert.equal(zero.data.people.one.secondaryWeeklyHours,0);
+});
