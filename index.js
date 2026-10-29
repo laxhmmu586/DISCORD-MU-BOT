@@ -1341,7 +1341,7 @@ const ldmCpmMailService = ldmCpmMail.createService({
   channel: () => client.channels.fetch(ldmCpmMail.CHANNEL_ID)
 });
 const briefingAutoArchive = require('./briefingAutoArchive').createAutoArchive({db:pbbService.employees.db,briefing:pbbService.briefing,client,reserveDriveId:require('./googleDrive').reserveBriefingArchiveId,uploadDrive:require('./googleDrive').uploadBriefingArchive});
-const briefingService = require('./briefingSchedule').createBriefingService({db:pbbService.store.db,client,includeArrival:false,exportPdf:require('./googleDrive').exportBriefingPdf});
+const briefingService = require('./briefingSchedule').createBriefingService({db:pbbService.store.db,client,exportPdf:require('./googleDrive').exportBriefingPdf});
 require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, profiles:pbbService.profiles, db: pbbService.store.db });
 const etabAdvisory = require('./etabAdvisory');
