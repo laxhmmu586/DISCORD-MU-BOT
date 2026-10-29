@@ -9,3 +9,8 @@
  .workspace-features>a,.workspace-features>button{flex:none;white-space:nowrap}
  .workspace-features .sidebar-pbb-checklist{margin:0;padding:7px 10px}
 }
+
+/* Keep page form rules out of the shared account switcher. */
+.profile-page .flight-account .workspace-account{margin:0;padding:6px;align-self:center;font-size:13px}
+.profile-page .flight-account .workspace-account select{display:block;width:auto;min-width:0;min-height:0;height:auto;margin:0;padding:4px;border:0;border-radius:0;background:transparent;box-shadow:none;color:inherit;font:inherit;color-scheme:light}
+@media(max-width:760px){.profile-page .flight-account .workspace-account{padding:3px;font-size:12px}}
