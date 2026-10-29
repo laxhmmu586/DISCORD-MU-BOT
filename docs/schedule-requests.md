@@ -47,3 +47,5 @@ Employee desktop and mobile views retain the default-collapsed Clock-in Time car
 Pending Off Req and Work Req badges briefly sway every three seconds in desktop and mobile views. The animation pauses for users who prefer reduced motion; clicking and positioning are unchanged.
 
 Request Off, Trade Shift and I Can Work now open their named form directly from a schedule cell; no request-type dropdown or second type selection appears. The generic New request entry offers compact type buttons. The inbox uses compact type icons, dates and outcome badges, and approved time off shows a red X. Eligibility, approvals, private notifications and three-day result retention are unchanged.
+
+The shared header notification bell includes schedule approvals/partner confirmations that need the viewer’s action, and their unread decision notices. Pending requests merely awaiting somebody else are not counted. Links open the corresponding request directly on Schedule; decisions and read receipts update the badge without losing existing form or Read & Sign reminders. Mobile Friday–Thursday periods use the same red Friday boundary as desktop, including the frozen own row.
