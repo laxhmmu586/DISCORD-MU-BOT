@@ -12,3 +12,5 @@ test('one copied cell fills a selected rectangle; text TSV parses duty codes saf
  for(const text of ['INVALID','C\tF\nA','=SUM(A1)'])assert.throws(()=>grid.parse('',text,roles,colors));
  assert.throws(()=>grid.plan(employees,days,{anchor:{row:2,col:2},focus:{row:2,col:2}},[[cells[0][0],cells[0][0]]]));
 });
+
+test('rich clipboard carries remarks alongside duty colors',()=>{const grid=require('../public/public/schedule-grid'),employees=[{id:'a'}],days=[{date:'2026-10-28',revision:1,assignments:{a:{code:'C',color:'#99ff00',remark:'Check passport'}}}],range={anchor:{row:0,col:0},focus:{row:0,col:0}},copied=grid.copy(employees,days,range),cells=grid.parse(copied.rich,copied.text,{C:'Check-in'},{C:'#99ff00'});assert.equal(grid.plan(employees,days,range,cells).changes[0].remark,'Check passport');});
