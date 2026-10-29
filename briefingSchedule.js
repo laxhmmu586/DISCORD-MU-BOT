@@ -31,8 +31,12 @@ function createBriefingService({db,client,exportPdf,includeArrival=true,now=()=>
  };
  async function tick(){
   if(busy||client.isReady&&!client.isReady())return;
-  const current=now();if(current.getUTCHours()*60+current.getUTCMinutes()<15*60+49)return;
-  const date=localDate(current);busy=true;
+  const current=now();
+  // Retire only the Google Sheets PDF sender at midnight in Los Angeles.
+  // Website Finish/archive delivery and LDM/CPM mail run independently.
+  const date=localDate(current);if(date>='2026-11-01')return;
+  if(current.getUTCHours()*60+current.getUTCMinutes()<15*60+49)return;
+  busy=true;
   try{
    db.exec('CREATE TABLE IF NOT EXISTS briefing_deliveries(date TEXT,flight TEXT,state TEXT NOT NULL,attempted INTEGER NOT NULL,message_id TEXT,error TEXT,PRIMARY KEY(date,flight))');
    for(const job of JOBS.filter(job=>includeArrival||job.sheet!=='ARRIVAL')){

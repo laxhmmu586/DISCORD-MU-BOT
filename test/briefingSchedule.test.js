@@ -10,7 +10,7 @@ async function fixture(t,{failExport=false,ambiguous=false}={}){
 }
 test('system sends both briefings at UTC 15:49 once daily across restart',async t=>{
  const h=await fixture(t);await h.service.tick();assert.equal(h.sends.length,0);h.time('2026-10-25T15:49:00Z');await h.service.tick();await h.service.tick();await createBriefingService(h.options).tick();assert.equal(h.sends.length,2);assert.equal(h.exports(),2);assert.deepEqual(h.sends.map(s=>s.channelId),JOBS.map(j=>j.channelId));assert.match(h.sends[0].name,/2026-10-25 MU583 ARRIVAL/);
- h.time('2026-12-01T15:49:00Z');await h.service.tick();assert.equal(h.sends.length,4);
+ h.time('2026-10-26T15:49:00Z');await h.service.tick();assert.equal(h.sends.length,4);
 });
 
 test('each Discord message includes the matching online sheet link and PDF attachment together',async t=>{
@@ -22,6 +22,29 @@ test('each Discord message includes the matching online sheet link and PDF attac
   assert.equal(sent.files.length,1);assert.equal(sent.files[0].name,sent.name);assert.equal(sent.files[0].attachment.subarray(0,5).toString(),'%PDF-');
   assert.deepEqual(sent.allowedMentions,{parse:[]});
  }
+});
+
+test('legacy PDFs continue through October 31 LA time and stop on November 1 across restart',async t=>{
+ const h=await fixture(t);
+ h.time('2026-10-31T15:49:00Z');await h.service.tick();
+ assert.equal(h.sends.length,2);assert(h.sends.every(s=>s.name.startsWith('2026-10-31 ')));
+ // UTC November 1 is still October 31 in Los Angeles; the normal UTC window is closed.
+ h.time('2026-11-01T06:59:59Z');await h.service.tick();assert.equal(h.sends.length,2);
+ // The UTC send window is closed at local midnight; also check the next open window.
+ for(const instant of ['2026-11-01T07:00:00Z','2026-11-01T15:49:00Z','2026-11-02T15:49:00Z','2026-12-01T15:49:00Z']){
+  h.time(instant);await h.service.tick();await createBriefingService(h.options).tick();
+ }
+ assert.equal(h.exports(),2);assert.equal(h.sends.length,2);
+ assert(h.db.prepare('SELECT date FROM briefing_deliveries').all().every(r=>r.date==='2026-10-31'));
+});
+
+test('production enables both legacy flights alongside the independent website and mail services',()=>{
+ const source=require('node:fs').readFileSync(require.resolve('../index.js'),'utf8');
+ const setup=source.match(/const briefingService = [^\n]+/)[0];
+ assert(!setup.includes('includeArrival:false'));
+ assert.match(source,/briefingService\.start\(\)/);
+ assert.match(source,/briefingAutoArchive\.start\(\)/);
+ assert.match(source,/ldmCpmMailService\.start\(\)/);
 });
 
 test('a missing or invalid fallback link fails before posting either message',async t=>{
