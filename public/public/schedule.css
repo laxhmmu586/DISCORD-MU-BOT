@@ -24,5 +24,5 @@
 #duty-dialog{width:min(320px,calc(100vw - 40px));box-sizing:border-box;padding:20px}#duty-dialog h2{font-size:20px}#duty-dialog textarea{width:100%;box-sizing:border-box;resize:vertical;border:1px solid #ddd;border-radius:9px;padding:10px;font:inherit}#duty-dialog input[type=color]{width:100%;box-sizing:border-box;height:36px}
 
 /* Keep the shift centered; remarks have a separate corner indicator. */
-.duty.has-remark{position:relative}
-.duty.has-remark::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 2h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7l-4 3v-3H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z' fill='none' stroke='%23054d94' stroke-width='1.5' stroke-linejoin='round'/%3E%3Cpath d='M5 5h6M5 8h4' stroke='%23054d94' stroke-width='1.3' stroke-linecap='round'/%3E%3C/svg%3E") center/11px 11px no-repeat;pointer-events:none}
+.duty.has-remark{position:relative;overflow:visible!important}
+.duty.has-remark::after{content:"";position:absolute;top:-8px;left:-8px;width:24px;height:22px;background:transparent url("/assets/schedule-message.svg") center/contain no-repeat;pointer-events:none}

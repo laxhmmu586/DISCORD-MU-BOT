@@ -83,7 +83,9 @@
   input.onblur=()=>setTimeout(()=>{suggestions.hidden=true;if(!input.hidden&&input.value.trim())input.setAttribute('aria-invalid','true');},180);
 
   const selectedToSlot=()=>{if(selected&&current?.canEditBriefing){const item={employeeId:selected.id,fromField:null};selected=null;renderPeople();void move(item,input.dataset.field);}};
-  row.onclick=event=>{if(!event.target.closest('button,.assignment-person')&&(!event.target.dataset.field||duties.has(event.target.dataset.field)))selectedToSlot();};input.onkeydown=event=>{if(event.key==='Enter'&&selected){event.preventDefault();selectedToSlot();}};
+  // Explicit association prevents label clicks from activating an assignee's Remove button.
+  input.id=input.id||'briefing-duty-'+input.dataset.field;row.htmlFor=input.id;
+  row.onclick=event=>{if(event.target.closest('button,.assignment-person'))return;if(event.target===input){selectedToSlot();return;}if(event.target.closest('input,textarea,select,a'))return;event.preventDefault();if(event.target.closest('.assignment-cell'))selectedToSlot();};input.onkeydown=event=>{if(event.key==='Enter'&&selected){event.preventDefault();selectedToSlot();}};
   row.ondragover=event=>{if(current?.canEditBriefing&&event.dataTransfer.types.includes('application/x-briefing-employee')){event.preventDefault();event.dataTransfer.dropEffect='move';row.classList.add('drag-over');}};row.ondragleave=()=>row.classList.remove('drag-over');row.ondrop=event=>{event.preventDefault();row.classList.remove('drag-over');const item=readDrag(event);if(item&&current?.canEditBriefing)void move(item,input.dataset.field);};
  }
  async function load({discard=false}={}){if(clearing)return;
