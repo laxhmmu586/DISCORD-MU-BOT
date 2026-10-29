@@ -1,3 +1,4 @@
+const {hiddenFromOperationalRosters}=require('./employeeRosterVisibility');
 const groups=require('./public/public/employee-account-groups'),positions=require('./public/public/employee-positions');
 const summary=require('./public/public/schedule-summary'),{orderRoster}=require('./staffScheduleRoster');
 const {createLocalSchedule}=require('./staffScheduleLocal');
@@ -17,7 +18,7 @@ function registerStaffSchedule(app,{employees,profiles,authenticate=require('./p
  const put=day=>db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,?,?)').run(day.date,day.revision,JSON.stringify({assignments:day.assignments,budget:day.budget,dateColor:day.dateColor||null,labels:day.labels||[]}));
  db.exec('CREATE TABLE IF NOT EXISTS staff_schedule_roster_order(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,data TEXT NOT NULL)');db.prepare('INSERT OR IGNORE INTO staff_schedule_roster_order VALUES(1,0,?)').run('[]');
  const savedOrder=()=>{const row=db.prepare('SELECT revision,data FROM staff_schedule_roster_order WHERE id=1').get();return {revision:row.revision,ids:JSON.parse(row.data)};};
- const roster=()=>{const rows=orderRoster(employees.get().employees.filter(row=>row.name&&!excluded(row)&&groups.belongs(row,{station:'LAX',account:'MU'}))),order=savedOrder(),indices=new Map(order.ids.map((id,i)=>[id,i]));return rows.sort((a,b)=>(indices.get(a.id)??1e9)-(indices.get(b.id)??1e9));};
+ const roster=()=>{const rows=orderRoster(employees.get().employees.filter(row=>row.name&&!excluded(row)&&!hiddenFromOperationalRosters(row)&&groups.belongs(row,{station:'LAX',account:'MU'}))),order=savedOrder(),indices=new Map(order.ids.map((id,i)=>[id,i]));return rows.sort((a,b)=>(indices.get(a.id)??1e9)-(indices.get(b.id)??1e9));};
  const sync=createLocalSchedule({db,roles,colors});
  const calculated=day=>({...day,planned:summary.dailyTotal(day,roster())});
  const period=start=>{const days=Array.from({length:7},(_,i)=>calculated(read(summary.addDays(start,i))));return {start,end:summary.addDays(start,6),...summary.weekly(days)};};

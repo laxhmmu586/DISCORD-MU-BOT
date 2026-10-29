@@ -117,3 +117,6 @@
 @media(max-width:600px){.booking-row,.booking-total,.departure-specials label,.gate-assignment-row>label:first-child{font-size:14px}.booking-heading{font-size:13px}#gate-assignments .assignment-cell>input,#counter-assignments .assignment-cell>input{font-size:17px}.counter-label-editors input,.counter-label-editors textarea{font-size:14px!important}.briefing-shell .gate-role textarea,.briefing-shell .gate-role textarea[data-field]:not([readonly]){font-size:14px;line-height:1.4}}
 
 .gate-setting input,.gate-setting select{font-size:16px}@media(max-width:600px){.gate-setting input,.gate-setting select{font-size:17px}}
+
+/* Counter service labels read as plain text in employee view. */
+#counter-assignments .counter-label-editors textarea[readonly]{background:transparent!important;border-color:transparent!important;box-shadow:none;outline:none}
