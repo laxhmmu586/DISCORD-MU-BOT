@@ -41,3 +41,5 @@ Authenticated live connections invalidate open Schedule views within approximate
 Supervisor editing view has a standard **Add/Edit** dropdown button beside Refresh with three actions: Add next month, Announcement and Edit Shift. Edit Skill remains separate. The selected-duty toolbar button and request actions inside manager shift menus are removed. Clicking the top avatar opens the account menu, including Logout; Profile remains a menu action.
 
 Resolved request cards and outcome notifications remain visible for three days; pending requests remain until processed. Stored request/audit data is retained for history integrity. Result cards are compact, and visible outcome cards automatically mark their own notifications read while the manual Mark read action remains available.
+
+Employee desktop and mobile views retain the Clock-in Time card and collapsible Duty legend below the roster. Viewing the full team does not hide these reference panels. Unread Announcements remain above the roster with the existing per-employee Got it flow.

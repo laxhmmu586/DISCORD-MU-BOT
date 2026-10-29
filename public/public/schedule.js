@@ -54,7 +54,7 @@
  }
  function ribbon(text,cls){const el=node('span',text,cls),label=text.toLowerCase(),palette=['#2563a6','#b64d21','#087e83','#9b3780','#58652c','#6845a8'];let hash=0;for(const c of label)hash=(hash*31+c.charCodeAt(0))>>>0;const color=label==='today'?'#7944bc':label==='short'?'#dc263f':/holiday/.test(label)?'#237244':/double pay/.test(label)?'#6740a1':palette[hash%palette.length];el.style.setProperty('--ribbon-color',color);return el;}
  function renderClockIn(){
-  const panel=$('clock-in-time');panel.hidden=data.canViewAll;panel.replaceChildren();if(data.canViewAll)return;
+  const panel=$('clock-in-time');panel.hidden=data.canEdit;panel.replaceChildren();if(data.canEdit)return;
   panel.append(node('h2','Clock-in Time'));
   panel.append(node('p','November 1, 2026 – March 13, 2027','clock-in-period'));
   const list=node('dl',undefined,'clock-in-list');
