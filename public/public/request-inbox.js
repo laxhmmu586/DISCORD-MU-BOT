@@ -1,7 +1,9 @@
 (()=>{
  const sources=[['new-access','Request New Access','requests'],['uniform','Request Uniform','requests'],['incident','Incident Investigation Report','reports'],['expense','Expense Report','reports'],['terrific','Terrific Ten Distribution Form','reports']];
- let currentUser,sequence=0,pending,refreshQueued=false;
+ let currentUser,sequence=0,pending,refreshQueued=false,scheduleVersion=0;
  const title=(kind,r)=>kind==='new-access'?r.title:[sources.find(s=>s[0]===kind)?.[1]||'Request',[r.employee?.station,r.employee?.account].filter(Boolean).join(' / ')||r.fields?.station||r.fields?.account||r.fields?.departmentReason||'Account unavailable',r.employee?.name||'Unknown employee'].join(' · ');
+ function scheduleEntries(data){const names={off:'Request Off',trade:'Trade Shift',work:'I Can Work'},items=[];for(const r of data?.requests||[])if(r.canApprove||r.canConfirm||r.canDecline)items.push({id:r.id,requestId:r.id,label:(names[r.type]||'Schedule request')+' · '+r.employeeName+' · '+r.date,href:'/schedule.html?request='+encodeURIComponent(r.id)});for(const n of data?.notifications||[])if(!n.seenAt)items.push({id:n.id,requestId:n.requestId,label:(names[n.type]||'Schedule request')+' · '+n.date+' · '+(n.action==='approved'?'Approved':'Denied'),href:'/schedule.html?request='+encodeURIComponent(n.requestId)});return items;}
+ function updateSchedule(data){scheduleVersion++;if(!currentUser)return;const next={groups:[],rows:[],count:0,signCount:0,...window.RequestInbox.data,scheduleItems:scheduleEntries(data),scheduleError:false};window.RequestInbox.data=next;window.dispatchEvent(new CustomEvent('request-inbox-updated',{detail:next}));}
  function badge(selector,count,label){document.querySelectorAll(selector).forEach(link=>{let alert=link.querySelector('.request-alert');if(count&&!alert){alert=document.createElement('span');alert.className='request-alert';alert.textContent='!';link.append(alert);}if(alert){alert.hidden=!count;alert.setAttribute('aria-label',count+' '+label);}});}
  function profileCases(rows,groups){const host=document.getElementById('profile-request-cases');if(!host)return;host.replaceChildren();
   const priority=({r})=>r.canReview||r.needsRevision||r.canComplete?0:r.status==='pending'?1:2;
@@ -15,19 +17,22 @@
  function refresh(){if(pending){refreshQueued=true;return pending;}return load();}
  async function load(){
   if(!currentUser)return; if(pending)return pending;
-  const user=currentUser,version=sequence;
+  const user=currentUser,version=sequence,scheduleRun=scheduleVersion;
   pending=(async()=>{const token=await user.getIdToken(),base=(window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'');
+   const schedule=fetch(base+'/staff-schedule-api/requests',{cache:'no-store',headers:{...(window.workspaceHeaders?.()||{}),Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)}).then(async response=>response.ok?response.json():response.status===403?{requests:[],notifications:[]}:null).then(data=>{if(version===sequence&&data)updateSchedule(data);return data;}).catch(()=>null);
    const signing=fetch(base+'/read-sign-api',{cache:'no-store',headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)}).then(async response=>response.ok?(await response.json()).memos||[]:response.status===403?[]:null).catch(()=>null);
    const groups=await Promise.all(sources.map(async([kind,name,property])=>{try{const response=await fetch(base+'/'+kind+'-api',{cache:'no-store',headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});if(response.status===403)return {kind,name,rows:[]};const result=await response.json();if(!response.ok)throw Error(result.error||'Unable to load requests.');return {kind,name,position:result.employee?.position||result.position,rows:result[property]||[]};}catch(error){return {kind,name,rows:[],error:error.message};}}));
    if(version!==sequence)return;const rows=groups.flatMap(g=>g.rows.map(r=>({kind:g.kind,r}))),count=rows.filter(({r})=>r.canReview||r.needsRevision).length;
    const nav=document.getElementById('profile-admin-nav'),position=groups.find(g=>g.position)?.position,isAdmin=['lake@mu.com','nextweek1216@gmail.com','tamsun10@gmail.com'].includes(String(user.email||'').trim().toLowerCase());if(nav&&(position||isAdmin))nav.hidden=!(isAdmin||['Supervisor','Business Manager','Manager'].includes(position));
    const memos=await signing;if(version!==sequence)return;const signCount=memos===null?(window.RequestInbox.data?.signCount||0):memos.filter(m=>['pending','overdue'].includes(m.myStatus)).length;
-   badge('.profile-sidebar a[href="/has-form.html"]',count,'requests requiring your attention');badge('.profile-sidebar a[href="/read-sign.html"],.activity-row[href="/read-sign.html"]',signCount,'documents awaiting your signature');profileCases(rows,groups);
-   window.RequestInbox.data={groups,rows,count,signCount};window.dispatchEvent(new CustomEvent('request-inbox-updated',{detail:window.RequestInbox.data}));return window.RequestInbox.data;
+   badge('.profile-sidebar a[href="/has-form.html"],.workspace-features a[href="/has-form.html"]',count,'requests requiring your attention');badge('.profile-sidebar a[href="/read-sign.html"],.workspace-features a[href="/read-sign.html"],.activity-row[href="/read-sign.html"]',signCount,'documents awaiting your signature');profileCases(rows,groups);
+   const scheduleData=await schedule;if(version!==sequence)return;const scheduleItems=scheduleRun!==scheduleVersion?(window.RequestInbox.data?.scheduleItems||[]):scheduleData===null?(window.RequestInbox.data?.scheduleItems||[]):scheduleEntries(scheduleData);
+   window.RequestInbox.data={groups,rows,count,signCount,scheduleItems,scheduleError:scheduleData===null};window.dispatchEvent(new CustomEvent('request-inbox-updated',{detail:window.RequestInbox.data}));return window.RequestInbox.data;
   })();try{return await pending;}finally{pending=null;if(refreshQueued){refreshQueued=false;load().catch(()=>{});}}
  }
  window.RequestInbox={load:refresh,title,data:null};
- firebase.auth().onAuthStateChanged(user=>{currentUser=user;sequence++;if(user)refresh().catch(()=>{});else{const nav=document.getElementById('profile-admin-nav');if(nav)nav.hidden=true;window.RequestInbox.data=null;document.querySelectorAll('.request-alert').forEach(b=>b.remove());}});
+ firebase.auth().onAuthStateChanged(user=>{currentUser=user;sequence++;window.RequestInbox.data=null;window.dispatchEvent(new CustomEvent('request-inbox-updated',{detail:null}));if(user)refresh().catch(()=>{});else{const nav=document.getElementById('profile-admin-nav');if(nav)nav.hidden=true;window.RequestInbox.data=null;document.querySelectorAll('.request-alert').forEach(b=>b.remove());}});
+ window.addEventListener('schedule-requests-updated',event=>updateSchedule(event.detail));
  window.addEventListener('request-changed',()=>refresh().catch(()=>{}));window.addEventListener('read-sign-changed',()=>refresh().catch(()=>{}));window.addEventListener('storage',event=>{if(event.key==='read-sign-updated')refresh().catch(()=>{});});window.addEventListener('focus',()=>load().catch(()=>{}));
  setInterval(()=>{if(!document.hidden)load().catch(()=>{});},60000);
 })();
