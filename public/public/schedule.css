@@ -25,4 +25,4 @@
 
 /* Keep the shift centered; remarks have a separate corner indicator. */
 .duty.has-remark{position:relative;overflow:visible!important}
-.duty.has-remark::after{content:"";position:absolute;top:-8px;left:-8px;width:24px;height:24px;background:transparent url("/assets/schedule-message.svg") center/contain no-repeat;pointer-events:none}
+.duty.has-remark::after{content:"";position:absolute;top:-8px;left:-8px;width:24px;height:24px;background:transparent url("/assets/schedule-message-blue-badge-v2.svg") center/contain no-repeat;pointer-events:none}
