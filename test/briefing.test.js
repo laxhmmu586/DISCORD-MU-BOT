@@ -4,13 +4,14 @@ const DATE='2026-10-28';
 async function fixture(t){
  const db=new Database(':memory:');db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT);CREATE TABLE staff_schedule_days(date TEXT PRIMARY KEY,revision INTEGER,data TEXT)');db.prepare('INSERT INTO employee_avatars VALUES(?,?)').run('agent','data:image/png;base64,photo');
  const rows=[['agent','Agent'],['peer','Agent'],['rest','Agent'],['sup','Supervisor'],['lead','Lead'],['regional','Regional Manager'],['other','Supervisor']].map(([id,position])=>({id,name:id+' employee',nickname:id,eid:id,position,station:'LAX',account:id==='other'?'CZ':'MU'}));
+ rows.push(...[['demo','DEMO HAS','MU'],['ramp','HAS OPS RAMP','MU'],['hq','HQ employee','Headquarter']].map(([id,name,account])=>({id,name,eid:id,position:'Agent',station:'LAX',account})));
  const employees={...createEmployeeStore(db,{seed:rows}),db},profiles={linked:user=>employees.get().employees.find(e=>e.id===user.uid)},app=express();app.use(express.json());
  db.prepare('INSERT INTO staff_schedule_days VALUES(?,0,?)').run(DATE,JSON.stringify({assignments:{agent:{code:'A'},peer:{code:'C'},rest:{code:'X'},other:{code:'D'}}}));
  const etab=createBriefingEtab({db});etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-7369',eta:'1217L',gate:'154',pax:'306/01',crew:'4/17'}},{discordMessageId:'fixture-delivery',receivedAt:DATE+'T16:00:00Z'});
  registerBriefing(app,{employees,profiles,etab,now:()=>new Date(DATE+'T18:00:00Z'),authenticate:async req=>{if(!req.headers.authorization)throw Error();return {uid:req.headers.authorization};}});
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{server.closeAllConnections();server.close();db.close();});
  const request=async(user,path='',body)=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/briefing-api'+path,{method:body?'POST':'GET',headers:{...(user?{Authorization:user}:{}),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,data:response.headers.get('content-type')?.includes('json')?await response.json():Buffer.from(await response.arrayBuffer())};};
- return {db,request,etab};
+ return {db,request,etab,employees,profiles};
 }
 test('linked eligible employees can read ETAB and shared briefing, contacts are role gated',async t=>{
  const {request}=await fixture(t);for(const user of ['agent','lead','sup','regional']){const {status,data}=await request(user,'?date='+DATE);assert.equal(status,200);assert.equal(data.flight,'MU583');assert.equal(data.fields.aircraftType,'777-300');assert.equal(data.fields.sta,'0905');assert.equal(data.etab.pax,'306/01');assert.equal(data.canEditContacts,['sup','regional','lead'].includes(user));assert.deepEqual(data.contacts.rows,CONTACTS);}
@@ -59,7 +60,7 @@ test('Clear is Lead-only, scoped to this flight/date, audited and protected agai
  for(const user of ['agent'])assert.equal((await request(user,'/clear',{...key,expected:initial.fields})).status,403);
  await request('agent','',{...key,field:'firstBag',previous:'',value:'12:50'});
  assert.equal((await request('sup','/clear',{...key,expected:initial.fields})).status,409);
- const current=(await request('sup','?date='+DATE)).data,cleared=await request('sup','/clear',{...key,expected:current.fields});assert.equal(cleared.status,200);assert(Object.entries(cleared.data.fields).every(([field,value])=>/^config[FJY]$/.test(field)?value===current.fields[field]:value===''));
+ const current=(await request('sup','?date='+DATE)).data,cleared=await request('sup','/clear',{...key,expected:current.fields});assert.equal(cleared.status,200);assert(Object.entries(cleared.data.fields).every(([field,value])=>(/^config[FJY]$/.test(field)||/^counterA\d+(Number|Service)$/.test(field))?value===current.fields[field]:value===''));
  assert.equal((await request('agent','?date='+DATE+'&flight=MU577')).data.fields.aircraftType,'777-300');assert.deepEqual((await request('agent','?date='+DATE)).data.contacts.rows,CONTACTS);assert.equal(db.prepare("SELECT employee_id FROM briefing_audit WHERE field='clear'").get().employee_id,'sup');
 });
 
@@ -86,7 +87,7 @@ test('directory includes off-duty staff and assignment rejects unselected or ine
 
 test('Lead edits the sheet and deletes archives while employees cannot delete',async t=>{const {request,db}=await fixture(t),key={date:DATE,flight:'MU583'};assert((await request('lead','?date='+DATE)).data.canEditBriefing);assert.equal((await request('lead','',{...key,field:'details',value:'Lead edit',previous:''})).status,200);const expected=(await request('lead','?date='+DATE)).data.fields;const created=await request('lead','/reports',{...key,expected});assert.equal(created.status,200);const path='/reports/'+created.data.id;assert.equal((await request('agent',path+'/delete',{})).status,403);assert.equal((await request('lead',path+'/delete',{})).status,200);assert.equal((await request('agent',path+'/pdf')).status,404);assert.equal((await request('agent',path+'/preview')).status,404);assert.equal((await request('lead','/reports?date='+DATE)).data.reports.length,0);assert(db.prepare('SELECT deleted_at FROM briefing_reports WHERE id=?').get(created.data.id).deleted_at);});
 
-test('occupied duty drops append people and stale moves preserve both names',async t=>{const {request}=await fixture(t),key={date:DATE,flight:'MU583'};for(const [employeeId,toField] of [['agent','arrivalLead'],['peer','announcement']])assert.equal((await request('lead','/assign',{...key,employeeId,fromField:null,toField,toValue:''})).status,200);const swap={...key,fromField:'announcement',toField:'arrivalLead',fromValue:'peer employee',toValue:'agent employee'};const moved=await request('lead','/assign',swap);assert.equal(moved.data.fields.arrivalLead,'agent employee\npeer employee');assert.equal(moved.data.fields.announcement,'');assert.equal((await request('lead','/assign',swap)).status,409);assert.equal((await request('agent','?date='+DATE)).data.fields.announcement,'');});
+test('occupied Arrival duties replace the assignee and stale moves cannot overwrite',async t=>{const {request}=await fixture(t),key={date:DATE,flight:'MU583'};for(const [employeeId,toField] of [['agent','arrivalLead'],['peer','announcement']])assert.equal((await request('lead','/assign',{...key,employeeId,fromField:null,toField,toValue:''})).status,200);const swap={...key,fromField:'announcement',toField:'arrivalLead',fromValue:'peer employee',toValue:'agent employee'};const moved=await request('lead','/assign',swap);assert.equal(moved.data.fields.arrivalLead,'peer employee');assert.equal(moved.data.fields.announcement,'');assert.equal((await request('lead','/assign',swap)).status,409);assert.equal((await request('agent','?date='+DATE)).data.fields.announcement,'');});
 
 test('saving changed Time Record or clearing invalidates persisted stability clock',async t=>{const {request,db}=await fixture(t),key={date:DATE,flight:'MU583'};db.exec('CREATE TABLE briefing_auto_clock(date TEXT,flight TEXT,signature TEXT,since INTEGER,PRIMARY KEY(date,flight))');const seed=()=>db.prepare('INSERT INTO briefing_auto_clock VALUES(?,?,?,?)').run(DATE,'MU583','previous',1);seed();assert.equal((await request('agent','',{...key,field:'blockTime',value:'12:30',previous:''})).status,200);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_auto_clock').get().n,0);seed();await request('agent','',{...key,field:'blockTime',value:'12:30',previous:'12:30'});assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_auto_clock').get().n,1);const expected=(await request('lead','?date='+DATE)).data.fields;await request('lead','/clear',{...key,expected});assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_auto_clock').get().n,0);});
 
@@ -197,6 +198,49 @@ test('Finish validates five Arrival times, persists deadline and supports cancel
  const departure={date:DATE,flight:'MU586',direction:'departure'},fields=(await request('lead','?date='+DATE+'&flight=MU586')).data.fields;assert.equal((await request('agent','/finish',{...departure,expected:fields})).status,403);assert.equal((await request('lead','/finish',{...departure,expected:fields})).status,200);assert.equal((await request('agent','/finish/cancel',departure)).status,403);assert.equal((await request('agent','/finish/cancel',{...departure,direction:'arrival'})).status,409);
  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_finish').get().n,2);
 });
-test('two assigned people retain nicknames in reports and each can be removed separately',async t=>{const {request}=await fixture(t),key={date:DATE,flight:'MU583'};for(const employeeId of ['agent','peer']){const fields=(await request('lead','?date='+DATE)).data.fields;assert.equal((await request('lead','/assign',{...key,employeeId,fromField:null,toField:'arrivalLead',toValue:fields.arrivalLead})).status,200);}const fields=(await request('lead','?date='+DATE)).data.fields,report=await request('lead','/reports',{...key,expected:fields});assert.equal(report.status,200);const preview=await request('agent','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/agent \/ peer/);const removed=await request('lead','/assign',{...key,employeeId:'agent',fromField:'arrivalLead',fromValue:fields.arrivalLead,toField:null});assert.equal(removed.data.fields.arrivalLead,'peer employee');});
+test('two assigned people retain nicknames in reports and each can be removed separately',async t=>{const {request}=await fixture(t),key={date:DATE,flight:'MU586'};for(const employeeId of ['agent','peer']){const fields=(await request('lead','?date='+DATE+'&flight=MU586')).data.fields;assert.equal((await request('lead','/assign',{...key,employeeId,fromField:null,toField:'gateLead',toValue:fields.gateLead})).status,200);}const fields=(await request('lead','?date='+DATE+'&flight=MU586')).data.fields,report=await request('lead','/reports',{...key,expected:fields});assert.equal(report.status,200);const preview=await request('agent','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/agent \/ peer/);const removed=await request('lead','/assign',{...key,employeeId:'agent',fromField:'gateLead',fromValue:fields.gateLead,toField:null});assert.equal(removed.data.fields.gateLead,'peer employee');});
 
 test('only current assigned Gate Lead/Assist and Lead+ edit control entries, with immediate revocation',async t=>{const {request,db}=await fixture(t),key={date:DATE,flight:'MU586',direction:'departure'},body={...key,field:'gateCrewOnboard',value:'11:02',previous:''};assert.equal((await request('agent','',body)).status,403);for(const [employeeId,toField] of [['agent','gateLead'],['peer','gateAssist']])assert.equal((await request('lead','/assign',{...key,employeeId,fromField:null,toField,toValue:''})).status,200);for(const employeeId of ['agent','peer']){const state=(await request(employeeId,'?date='+DATE+'&flight=MU586')).data;assert.equal(state.canEditGateControl,true);assert.equal(state.canEditBriefing,false);}assert.equal((await request('agent','',body)).status,200);assert.equal((await request('peer','',{...body,field:'gateFinalY',value:'244'})).status,200);assert.equal((await request('rest','',{...body,field:'gateFinalJ'})).status,403);assert.equal((await request('agent','',{...body,field:'details'})).status,403);assert.equal((await request('agent','',{...body,date:'2026-10-27'})).status,403);const fields=(await request('agent','?date='+DATE+'&flight=MU586')).data.fields;assert.equal((await request('agent','/finish',{...key,expected:fields})).status,200);assert.equal((await request('peer','/finish/cancel',key)).status,200);await request('lead','/assign',{...key,employeeId:'agent',fromField:'gateLead',fromValue:'agent employee',toField:null});assert.equal((await request('agent','',{...body,previous:'11:02',value:'11:03'})).status,403);assert.equal((await request('lead','',{...body,previous:'11:02',value:'11:03'})).status,200);});
+
+
+test('all seven Arrival duties replace with one person through either assignment API',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU583'};
+ for(const field of require('../public/public/briefing-fields').arrival){
+  await request('lead','/assign',{...key,employeeId:'agent',fromField:null,toField:field,toValue:''});
+  const replacement=await request('lead','/assign',{...key,employeeId:'peer',fromField:null,toField:field,toValue:'agent employee'});
+  assert.equal(replacement.status,200);assert.equal(replacement.data.fields[field],'peer employee');
+  assert.equal((await request('lead','',{...key,field,employeeId:'agent',previous:'peer employee'})).data.fields[field],'agent employee');
+ }
+});
+
+test('Clear preserves default and edited counter settings, clears people, and persists across reads',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU586'},path='?date='+DATE+'&flight=MU586';
+ const initial=(await request('lead',path)).data.fields;
+ for(let i=59;i<=68;i++)assert.equal(initial['counterA'+i+'Service'],i<=63?'SKY PRIORITY':i<=66?'ECONOMY':i===67?'Arrival Card Assistant':'MU');
+ for(const [field,value] of [['counterA59Number','A58'],['counterA59Service','Business']])assert.equal((await request('lead','',{...key,field,value,previous:initial[field]})).status,200);
+ await request('lead','/assign',{...key,employeeId:'agent',fromField:null,toField:'counterA59',toValue:''});
+ const before=(await request('lead',path)).data.fields;
+ assert.equal((await request('lead','/clear',{...key,expected:initial})).status,409);
+ assert.equal((await request('lead','/clear',{...key,expected:before})).status,200);
+ const after=(await request('agent',path)).data.fields;
+ for(const field of Object.keys(initial).filter(f=>/^counterA\d+(Number|Service)$/.test(f)))assert.equal(after[field],before[field]);
+ assert.equal(after.counterA59,'');assert.equal(after.bookingJ,'');
+});
+
+test('older Clear blanks regain counter defaults without overwriting custom or deliberately empty labels',async t=>{
+ const {db,employees,profiles}=await fixture(t);
+ const fields={__direction:'departure',counterA59Number:'',counterA59Service:'',counterA60Number:'A58',counterA60Service:''};
+ db.prepare('INSERT INTO briefing_records VALUES(?,?,?,?,?)').run(DATE,'MU586',JSON.stringify(fields),null,null);
+ const audit=(field)=>db.prepare('INSERT INTO briefing_audit(date,flight,field,employee_id,at) VALUES(?,?,?,?,?)').run(DATE,'MU586',field,'lead',DATE);
+ audit('counterA59Service');audit('clear');audit('counterA60Service');
+ for(let i=0;i<2;i++)registerBriefing(express(),{employees,profiles});
+ const saved=JSON.parse(db.prepare('SELECT data FROM briefing_records WHERE flight=?').get('MU586').data);
+ assert.equal(saved.counterA59Number,'A59');assert.equal(saved.counterA59Service,'SKY PRIORITY');assert.equal(saved.counterA60Number,'A58');assert.equal(saved.counterA60Service,'');
+});
+
+test('demo, ramp and Headquarter accounts remain excluded with an explanatory message',async t=>{
+ const {employees,request}=await fixture(t);
+ for(const [id,name,account] of [['demo','DEMO HAS','MU'],['ramp','HAS OPS RAMP','MU'],['hq','HQ employee','Headquarter']]){
+  const result=await request(id,'?date='+DATE);assert.equal(result.status,403);assert.match(result.data.error,/DEMO HAS, HAS OPS RAMP, and Headquarter/);
+ }
+});
