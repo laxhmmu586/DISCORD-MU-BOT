@@ -14,7 +14,7 @@
   document.head.append(style);
   const menu=host.querySelector('.login-menu'),button=host.querySelector('.login-button');
   const close=()=>{menu.hidden=true;button.setAttribute('aria-expanded','false');};
-  button.onclick=event=>{if(event.target.closest('.flight-user-avatar')&&!profileButton.hidden){location.assign('/profile.html');return;}menu.hidden=!menu.hidden;button.setAttribute('aria-expanded',String(!menu.hidden));};
+  button.onclick=()=>{menu.hidden=!menu.hidden;button.setAttribute('aria-expanded',String(!menu.hidden));};
   document.addEventListener('click',event=>{if(!host.contains(event.target))close();});
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
   const profileButton=document.createElement('button');profileButton.type='button';profileButton.hidden=true;profileButton.textContent='PROFILE';profileButton.onclick=()=>location.assign('/profile.html');host.querySelector('#change-password').before(profileButton);
