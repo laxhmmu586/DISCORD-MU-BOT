@@ -244,3 +244,12 @@ test('demo, ramp and Headquarter accounts remain excluded with an explanatory me
   const result=await request(id,'?date='+DATE);assert.equal(result.status,403);assert.match(result.data.error,/DEMO HAS, HAS OPS RAMP, and Headquarter/);
  }
 });
+
+
+test('Arrival Notes are employee-editable, scoped, revision-protected, exported and cleared',async t=>{
+ const {request}=await fixture(t),key={date:DATE,flight:'MU583'},body={...key,field:'notes',value:'Arrival note <check>\nSecond line',previous:''};
+ assert.equal((await request('agent','',body)).status,200);assert.equal((await request('peer','?date='+DATE)).data.fields.notes,body.value);assert.equal((await request('peer','',body)).status,409);
+ assert.equal((await request('agent','',{...body,value:'x'.repeat(5001),previous:body.value})).status,400);assert.equal((await request('agent','',{...body,flight:'MU586'})).status,400);assert.equal((await request('agent','?date='+DATE+'&flight=MU577')).data.fields.notes,'');
+ const fields=(await request('lead','?date='+DATE)).data.fields,report=await request('lead','/reports',{...key,expected:fields});assert.equal(report.status,200);const preview=await request('agent','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/<h2>Notes<\/h2>/);assert.match(preview.data.toString(),/Arrival note &lt;check&gt;/);
+ assert.equal((await request('lead','/clear',{...key,expected:fields})).data.fields.notes,'');
+});

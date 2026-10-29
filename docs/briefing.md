@@ -12,7 +12,7 @@ Registration, ETA, gate, TTL PAX and crew use that snapshot until manually overr
 
 ## Editing and assignment
 
-Lead and above can edit the sheet. Employees may edit plain-text Time Record only. Editable fields and assignments are yellow, readonly fields neutral. Operational fields save automatically to `briefing_records`. Field comparisons reject concurrent overwrites. Changes are recorded in `briefing_audit` with the linked employee identity.
+Lead and above can edit the sheet. Employees may edit plain-text Time Record and Arrival Notes. Editable fields and assignments are yellow, readonly fields neutral. Operational fields save automatically to `briefing_records`. Field comparisons reject concurrent overwrites. Changes are recorded in `briefing_audit` with the linked employee identity.
 
 The desktop roster reads today's scheduled working employees, with avatars and a separate original-color shift badge. It exposes this assignment information, not another employee's calendar or private profile fields. Names can be dragged from the roster into a duty, moved between duties, or returned to the roster. Assigned names remain in the left roster so the same person can be assigned to multiple duties in Arrival and Departure. Each Arrival duty holds one person; dropping or selecting a replacement replaces its current assignment. Departure duties allow multiple people; dropping onto an occupied Departure duty appends that person; both nicknames remain visible in the slot and frozen exports. Each chip can be moved or removed independently. The same roster person remains available for other duties. Click a person and then a duty to assign; remove buttons return names. Duty inputs search the full eligible employee directory, including off-duty employees; users must select a suggestion. Unmatched names show a red border and cannot be saved. The left roster has no search box. Moves update both duties in one transaction.
 
@@ -28,7 +28,7 @@ Use Node 22 for the installed SQLite binary. Focused suites: `briefing.test.js`,
 
 ## Archived reports
 
-Lead and above can generate immutable PDF archives; eligible employees can preview and download saved reports. Lead and above can delete website archives, including their stored PDF and snapshot; external Discord and Drive copies remain. Reports retain the captured values after subsequent edits or Clear. The preview and PDF end after Time Record; Contact Information and Instructions are excluded, including from the attached snapshot.
+Lead and above can generate immutable PDF archives; eligible employees can preview and download saved reports. Lead and above can delete website archives, including their stored PDF and snapshot; external Discord and Drive copies remain. Reports retain the captured values after subsequent edits or Clear. The Arrival preview and PDF include Notes after Time Record; Contact Information and Instructions are excluded, including from the attached snapshot.
 
 ## Live updates and Finish delivery
 
@@ -78,3 +78,7 @@ Report snapshots capture assignment nicknames separately from canonical stored e
 Departure PDF and HTML report previews arrange Team Assignment into parallel Counter and Gate columns. Each column keeps its own role/name rows, including multiple frozen nicknames and Gate Lead/Assist times.
 
 Gate Lead control entries and Finish are editable by Lead and above, or employees assigned to Gate Lead / Gate Assist on today's departure briefing in Los Angeles. Server permissions check current assignments on each write; removing an assignment immediately revokes that employee's control-edit permission. This does not grant general Briefing or assignment-edit access.
+
+## Arrival Notes
+
+The Arrival Time panel includes a separate Notes box below Time Record. Eligible employees can edit up to 5,000 characters with autosave and stale-field protection. Notes are stored per flight/date, included in newly generated Arrival reports, and cleared with Clear. They do not add a sixth required Finish field or change Departure editing permissions. Older report snapshots without a Notes field retain their previous section list.

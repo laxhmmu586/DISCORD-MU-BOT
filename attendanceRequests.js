@@ -120,6 +120,7 @@ function registerAttendance(app, { employees, client, db, profiles, authenticate
     try {
       const record = { ...validate(req.body, employees), submittedAt: now().toISOString() };
       saved = await storage.save(record);
+      require('./scheduleRequests').applyAttendanceToSchedule({db,employees,record:saved.record});
     } catch (e) {
       if (!e.status) console.error('Attendance Sheets save failed:', e.message);
       return res.status(e.status || 503).json({ error: e.status ? e.message : 'Could not save your request to Google Sheets. Please retry with this page open.' });

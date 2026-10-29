@@ -1,5 +1,5 @@
-// Test identities stay out of operational rosters without deleting their employee records.
-function hiddenFromOperationalRosters(employee){
+// Match the test identity; each workflow decides whether to include or exclude it.
+function isTestRosterAccount(employee){
  return [employee?.loginId,employee?.email,employee?.companyEmail].some(value=>String(value||'').trim().toLowerCase()==='test@hm.com');
 }
-module.exports={hiddenFromOperationalRosters};
+module.exports={hiddenFromOperationalRosters:isTestRosterAccount,isTestRosterAccount};

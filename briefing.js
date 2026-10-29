@@ -5,7 +5,7 @@ const CONTACTS=[['ATM','310 417 0710'],['LAWA CARROUSEL','310 646 9283*'],['TBIT
 const departureFields=require('./public/public/briefing-fields');
 const directionFor=flight=>['MU586','MU578'].includes(flight)?'departure':'arrival';
 const AUTO=new Set(['registration','eta','gate','pax','crew','std','etd']);
-const DEFAULTS={...departureFields.defaults,registration:null,eta:null,gate:null,pax:null,crew:null,aircraftType:'777-300',sta:'0905',rushBags:'',wchrBusiness:'',wchrEconomy:'',wchcBusiness:'',wchcEconomy:'',vip:'',um:'',avih:'',details:'',arrivalLead:'',announcement:'',carousel:'',phoneCall:'',jetBridge:'',finishEverything:'',gShift:'',blockTime:'',firstPax:'',lastPax:'',firstBag:'',lastBag:'',instructions:''};
+const DEFAULTS={...departureFields.defaults,registration:null,eta:null,gate:null,pax:null,crew:null,aircraftType:'777-300',sta:'0905',rushBags:'',wchrBusiness:'',wchrEconomy:'',wchcBusiness:'',wchcEconomy:'',vip:'',um:'',avih:'',details:'',arrivalLead:'',announcement:'',carousel:'',phoneCall:'',jetBridge:'',finishEverything:'',gShift:'',blockTime:'',firstPax:'',lastPax:'',firstBag:'',lastBag:'',notes:'',instructions:''};
 const TIMES=new Set(['blockTime','firstPax','lastPax','firstBag','lastBag']);
 const ARRIVAL_DUTIES=new Set(departureFields.arrival);
 const COUNTER_SETTINGS=Object.keys(departureFields.defaults).filter(field=>/^counterA\d+(Number|Service)$/.test(field));
@@ -73,9 +73,10 @@ function registerBriefing(app,{employees,profiles,authenticate=require('./pbbAut
   const key=identity(body),field=body.field;if(!Object.hasOwn(DEFAULTS,field))fail('Unknown briefing field.');let value=body.value;
   if(body.employeeId!==undefined){if(!DUTIES.has(field))fail('Employees can only be assigned to duty positions.');const employee=directory().find(employee=>employee.id===body.employeeId);if(!employee)fail('This employee is not on the working roster for this date.',409);value=employee.name;}
   if(/^config[FJY]$/.test(field)&&!access.canEditConfig)fail('Only Manager and above can edit Config.',403);
-  if(!access.canEditBriefing&&!TIMES.has(field)&&!(gateFields.has(field)&&canEditGateControl(key,access)))fail('Employee view can edit Time Record only.',403);
+  if(field==='notes'&&key.direction!=='arrival')fail('Notes are available for Arrival only.');
+  if(!access.canEditBriefing&&!TIMES.has(field)&&field!=='notes'&&!(gateFields.has(field)&&canEditGateControl(key,access)))fail('Employee view can edit Time Record and Arrival Notes only.',403);
   if(DUTIES.has(field)&&value&&body.employeeId===undefined)fail('Select an employee from the suggestions.');
-  if(!(AUTO.has(field)&&value===null)&&(typeof value!=='string'||value.length>(['details','instructions'].includes(field)?5000:DUTIES.has(field)?1500:150)))fail('Invalid field value.');
+  if(!(AUTO.has(field)&&value===null)&&(typeof value!=='string'||value.length>(['details','instructions','notes'].includes(field)?5000:DUTIES.has(field)?1500:150)))fail('Invalid field value.');
   const current=record(key);if(body.previous!==current.fields[field])fail('This field was changed by another employee. Reload before editing it.',409);
   const at=now().toISOString();if(current.fields[field]!==value){if(TIMES.has(field)&&db.prepare("SELECT 1 FROM sqlite_master WHERE name='briefing_auto_clock'").get())db.prepare('DELETE FROM briefing_auto_clock WHERE date=? AND flight=?').run(key.date,key.flight);audit(key,field,current.fields[field],value,access.employeeId,at);current.fields[field]=value;db.prepare('INSERT INTO briefing_records VALUES(?,?,?,?,?) ON CONFLICT(date,flight) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at,updated_by=excluded.updated_by').run(key.date,key.flight,serialize(current),at,access.employeeId);}return record(key);
  });
