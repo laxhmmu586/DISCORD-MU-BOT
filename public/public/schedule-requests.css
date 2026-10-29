@@ -60,3 +60,8 @@
 .team-week-table .team-week-avatar-wrap{margin-right:4px}
 
 .clock-in-time>summary{cursor:pointer;font-size:12px;font-weight:600;list-style-position:inside}.clock-in-time[open]>summary{margin-bottom:14px}
+
+/* A brief, periodic nudge draws attention to pending work/off requests. */
+.schedule-request-marker.request-off,.schedule-request-marker.request-work{transform-origin:50% 100%;animation:pending-request-sway 3s ease-in-out infinite}
+@keyframes pending-request-sway{0%,65%,100%{transform:rotate(0)}72%{transform:rotate(-7deg)}79%{transform:rotate(7deg)}86%{transform:rotate(-4deg)}93%{transform:rotate(3deg)}}
+@media(prefers-reduced-motion:reduce){.schedule-request-marker.request-off,.schedule-request-marker.request-work{animation:none}}
