@@ -65,3 +65,8 @@ Request card employee nicknames use the same font size as their request title on
 
 
 Double-click a duty to edit its display text, color and remark. Supervisors can use custom text (up to 20 characters), including EK, CI or TI, and the label is shared with employee views and preserved by rich copy/paste. A custom label different from the original duty code is excluded from coverage counts and estimated Daily Hour/period totals; changing it back to the original code or clearing the override restores counting. The configured daily budget itself is unchanged.
+
+
+On mobile, each remark badge is an independent accessible button. Tapping it opens a read-only dialog with the employee nickname, date and full remark, including remarks on colleagues' shifts; the duty/request action remains on the shift itself. Text is rendered literally, and closing the dialog keeps the roster position.
+
+Supervisor-and-higher mobile views include Coverage details with the same role counts, Daily Hour, budgets and period totals as desktop. Coverage labels stay frozen while dates scroll, and horizontal date positions follow the mobile roster in either direction. The coverage table can independently reach its last date. Employee views continue to omit coverage and manager-only totals. The request status button uses blue paper/check artwork when clear and clipboard/clock artwork when pending, retaining pending counts, animation and reduced-motion behavior.
