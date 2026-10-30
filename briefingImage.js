@@ -7,20 +7,22 @@ function controlSections(snapshot){const f={...snapshot.fields,...snapshot.assig
  ['Final PAX Count',[...['F','J','Y','Inf'].map(c=>[c.toUpperCase(),f['gateFinal'+c]]),['TTL',String(['F','J','Y','Inf'].reduce((n,c)=>n+(Number(f['gateFinal'+c])||0),0))]],5],
  ['Delay - Boarding Announcement',Array.from({length:5},(_,i)=>[f['gateDelayTime'+(i+1)]||'Time',f['gateDelayText'+(i+1)]||'']),1]
  ];}
-async function buildBriefingImage(snapshot,{control=snapshot.direction==='departure'}={}){
+async function buildBriefingImage(snapshot,{control=snapshot.direction==='departure',photo=false}={}){
+ if(photo)control=false;
  const W=1400,M=64,CW=W-2*M,parts=[];let y=64;
  const text=(value,x,top,size=23,bold=false,color='#183e65')=>parts.push(`<text x="${x}" y="${top+size}" font-family="Arial, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${bold?700:400}" fill="${color}">${escape(value)}</text>`);
  const lines=(value,width,size)=>{const out=[];for(const paragraph of String(value??'').split('\n')){let line='';for(const char of paragraph){if(line.length>=Math.max(1,Math.floor(width/(size*.59)))){out.push(line);line='';}line+=char;}out.push(line);}return out;};
- text('HALLMARK · CHINA EASTERN',M,y,19,true,'#0780c9');y+=38;text(control?'GATE LEAD CONTROL SHEET':'ARRIVAL BRIEFING',M,y,34,true);y+=54;text(`${snapshot.date}  ·  ${snapshot.flight}${control?'  ·  GATE '+(snapshot.fields.gate||''):''}`,M,y,22);y+=52;parts.push(`<path d="M${M} ${y}H${W-M}" stroke="#225c8a" stroke-width="3"/>`);y+=28;
- for(const [title,entries,columns] of control?controlSections(snapshot):require('./briefingPdf').reportSections(snapshot)){
+ if(photo){text('HALLMARK',M,y,34,true,'#0780c9');text('AVIATION SERVICES / LAX - MU',M,y+43,16,false,'#607d99');text(snapshot.direction==='departure'?'DEPARTURE BRIEFING':'ARRIVAL BRIEFING',W-560,y+5,34,true);text(snapshot.date+' / '+snapshot.flight,W-560,y+49,23,true);y+=90;parts.push(`<path d="M${M} ${y}H${W-M}" stroke="#d7e3ee"/>`);y+=20;}else{text('HALLMARK · CHINA EASTERN',M,y,19,true,'#0780c9');y+=38;text(control?'GATE LEAD CONTROL SHEET':'ARRIVAL BRIEFING',M,y,34,true);y+=54;text(`${snapshot.date}  ·  ${snapshot.flight}${control?'  ·  GATE '+(snapshot.fields.gate||''):''}`,M,y,22);y+=52;parts.push(`<path d="M${M} ${y}H${W-M}" stroke="#225c8a" stroke-width="3"/>`);y+=28;}
+ const sections=control?controlSections(snapshot):require('./briefingPdf').reportSections(snapshot);
+ for(const [title,entries,columns] of sections.filter(([title])=>!photo||snapshot.direction!=='departure'||!['Operational Times','Final PAX Count','Delay - Boarding Announcement'].includes(title))){
   parts.push(`<rect x="${M}" y="${y}" width="${CW}" height="42" rx="5" fill="#edf5fc"/>`);text(title.toUpperCase(),M+14,y+7,20,true,'#0878bb');y+=56;
-  if(!columns){for(const line of lines(entries||'',CW-30,22)){text(line,M+15,y,22);y+=31;}y+=18;continue;}
+  if(!columns){for(const line of lines(entries||'-',CW-30,22)){text(line,M+15,y,22);y+=31;}y+=18;continue;}
   const gap=12,width=(CW-gap*(columns-1))/columns;
-  for(let offset=0;offset<entries.length;offset+=columns){const row=entries.slice(offset,offset+columns),wrapped=row.map(([,v])=>lines(v||'',width-28,23)),labels=row.map(([label])=>lines(label,width-28,16)),labelHeight=Math.max(...labels.map(a=>a.length))*22,height=labelHeight+Math.max(...wrapped.map(a=>a.length))*31+30;
+  for(let offset=0;offset<entries.length;offset+=columns){const row=entries.slice(offset,offset+columns),wrapped=row.map(([,v])=>lines(v||'-',width-28,23)),labels=row.map(([label])=>lines(label,width-28,16)),labelHeight=Math.max(...labels.map(a=>a.length))*22,height=labelHeight+Math.max(...wrapped.map(a=>a.length))*31+30;
    row.forEach(([label],i)=>{const x=M+i*(width+gap);parts.push(`<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#fffdf0" stroke="#d7e3ee"/>`);labels[i].forEach((line,j)=>text(line,x+14,y+10+j*22,16,false,'#607d99'));wrapped[i].forEach((line,j)=>text(line,x+14,y+14+labelHeight+j*31,23,true));});y+=height+12;
   }y+=14;
  }
- y+=12;text((snapshot.preview?'Preview · ':'Completed ')+new Date(snapshot.generatedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles'})+' PT',M,y,16,false,'#68819a');y+=60;
+ if(photo){y=Math.max(y+50,1680);}else{y+=12;text((snapshot.preview?'Preview · ':'Completed ')+new Date(snapshot.generatedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles'})+' PT',M,y,16,false,'#68819a');y+=60;}
  return sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y}"><rect width="100%" height="100%" fill="white"/>${parts.join('')}</svg>`)).png().toBuffer();
 }
 module.exports={buildBriefingImage,controlSections};
