@@ -22,7 +22,7 @@
   style.textContent+='.flight-user-avatar{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:#254965;color:#fff;font-size:13px;font-weight:700;border:1px solid #84b1d4;overflow:hidden}.flight-user-avatar img{width:100%;height:100%;object-fit:cover}';
   function renderProfile(profile,user=auth?.currentUser){
     const glassNavigation=document.body.classList.contains("workspace-glass")||document.body.classList.contains("home-page");
-    const externalMu=/^[^@\s]+@mu\.com$/i.test(String(user?.email||'').trim())&&String(user?.email||'').trim().toLowerCase()!=='lake@mu.com';document.body.classList.toggle('mu-external-services',externalMu);
+    const externalMu=/^[^@\s]+@mu\.com$/i.test(String(user?.email||'').trim())&&!['lax@mu.com','lake@mu.com'].includes(String(user?.email||'').trim().toLowerCase());document.body.classList.toggle('mu-external-services',externalMu);
     for(const nav of document.querySelectorAll('.profile-sidebar nav,.workspace-features')){
       let schedule=nav.querySelector('[data-schedule-nav]');
       if(!schedule){const profileLink=nav.querySelector('a[href="/profile"]');if(profileLink){schedule=document.createElement('a');schedule.href='/schedule';schedule.dataset.scheduleNav='';schedule.innerHTML=glassNavigation?'<span class="art-icon icon-schedule" aria-hidden="true"></span><span>Schedule</span>':'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18M7 15h2m4 0h2"/></svg><span>Schedule</span>';profileLink.after(schedule);}}
@@ -40,7 +40,7 @@
   window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
   auth?.onAuthStateChanged(async user=>{
     const generation=++profileGeneration;activeScope=null;try{if(user)activeScope=JSON.parse(sessionStorage.getItem('workspace-account:'+user.uid)||'null');}catch{}
-    const allowed=Boolean(user)&&(!/^[^@\s]+@mu\.com$/i.test(user.email||'')||(user.email||'').trim().toLowerCase()==='lake@mu.com');
+    const allowed=Boolean(user)&&(!/^[^@\s]+@mu\.com$/i.test(user.email||'')||['lax@mu.com','lake@mu.com'].includes((user.email||'').trim().toLowerCase()));
     profileButton.hidden=!allowed;
     document.querySelectorAll('a[href="/profile"]').forEach(link=>{link.hidden=!allowed;});
     if(user&&!allowed&&location.pathname==='/profile'){location.replace('/flights.html');return;}

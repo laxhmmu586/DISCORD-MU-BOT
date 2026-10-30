@@ -17,3 +17,7 @@ Deploy the backend and Firebase Hosting from the same revision. The backend must
 Local previews run with `node scripts/preview-hr.cjs` at http://127.0.0.1:9185/home?preview=1. The preview server uses an in-memory database and a simulated Lake login. Reference charts and preview resource behavior are restricted to localhost. Production HR always uses authenticated API data, even when a preview query parameter is supplied.
 
 The legacy /admin and /account-settings entries redirect to HR. Pending accounts opens directly in an HR dialog for authorized owners. Admins add accounts and delete empty accounts in the HR Accounts view; the API rejects deletion when any main or additional membership remains.
+
+Server owners are exact authenticated sign-ins `lax@mu.com` and `nextweek1216@gmail.com`; the existing `lake@mu.com` owner alias remains supported. Owners can manage every HR employee, including themselves, and all catalog permissions remain enabled regardless of title or per-person denial. Linked profiles derive owner status from the authenticated identity, never a submitted profile field.
+
+A Business Manager without an explicit reporting relationship defaults to the unique General Manager in their station, preferring an account match when multiple General Managers exist. Explicit Unassigned and manual relationships remain intact. Multiple accounts may share the same General Manager; scoped HR views include the reporting ancestors so these connections remain visible.

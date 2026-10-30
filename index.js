@@ -1149,7 +1149,6 @@ app.get(['/contact-form.html', '/contact-form'], (req, res) => {
 const REVIEW_STORE_PATH = path.join(__dirname, 'securityReviews.json');
 const WARNING_ACK_STORE_PATH = path.join(__dirname, 'warningAcknowledgements.json');
 const NOTES_STORE_PATH = path.join(__dirname, 'notesStore.json');
-const NOTES_EDITOR_EMAIL = 'lake@mu.com';
 const REVIEW_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 function reviewCutoffIso() {
@@ -1407,11 +1406,11 @@ app.get('/notes', async (req, res) => {
 
 app.post('/notes', async (req, res) => {
   try {
-    if (requestEditorEmail(req) !== NOTES_EDITOR_EMAIL) {
-      return res.status(403).json({ error: 'Only lake@mu.com can edit notes' });
+    if (!require('./serverOwners').isOwner(requestEditorEmail(req))) {
+      return res.status(403).json({ error: 'Only a server owner can edit notes' });
     }
     const notes = sanitizeNotesList(req.body?.notes);
-    const store = { notes, updatedAt: new Date().toISOString(), updatedBy: NOTES_EDITOR_EMAIL };
+    const store = { notes, updatedAt: new Date().toISOString(), updatedBy: requestEditorEmail(req) };
     await writeNotesStore(store);
     return res.json({ ok: true, notes: store.notes, updatedAt: store.updatedAt });
   } catch (err) {

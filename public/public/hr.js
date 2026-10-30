@@ -60,7 +60,7 @@
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.classList.add('org-connectors');svg.setAttribute('aria-hidden','true');svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths.join(' '));svg.append(path);tree.prepend(svg);
   }
-  function render(){
+  function render(){data.employees=model.applyDefaultReporting(data.employees);
     $('#add-hr-account').hidden=role()?.mode!=='admin';
     window.employeeAdminState={...data,access:role()};window.dispatchEvent(new CustomEvent('employee-admin-state',{detail:window.employeeAdminState}));
     $('#hr-pending-link').hidden=!(role()?.mode==='admin'&&role()?.canManagePending===true);

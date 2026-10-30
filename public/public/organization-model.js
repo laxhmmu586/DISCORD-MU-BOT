@@ -5,10 +5,17 @@
   const rank=title=>stationTitles.indexOf(normalize(title));
   const supervisorGroup=row=>'team:'+row.station+':'+row.account+':Supervisor';
   const isGroup=id=>typeof id==='string'&&id.startsWith('team:');
+  function applyDefaultReporting(rows){return rows.map(row=>{
+    if(row.reportsTo||row.unassigned||normalize(row.position)!=='Business Manager')return row;
+    const managers=rows.filter(manager=>manager.id!==row.id&&!manager.unassigned&&normalize(manager.position)==='General Manager'&&manager.station===row.station&&!descendants(row.id,rows).has(manager.id));
+    const sameAccount=managers.filter(manager=>manager.account===row.account||(manager.additionalAccounts||[]).some(scope=>scope.station===row.station&&scope.account===row.account));
+    const matches=sameAccount.length?sameAccount:managers;
+    return matches.length===1?{...row,reportsTo:matches[0].id}:row;
+  });}
   function reportingManagers(row,rows){return isGroup(row.reportsTo)?rows.filter(manager=>!manager.unassigned&&normalize(manager.position)==='Supervisor'&&supervisorGroup(manager)===row.reportsTo):rows.filter(manager=>manager.id===row.reportsTo);}
   function descendants(id,rows){const found=new Set(),queue=[id];while(queue.length){const parent=queue.shift();for(const row of rows)if(reportingManagers(row,rows).some(manager=>manager.id===parent)&&!found.has(row.id)&&row.id!==id){found.add(row.id);queue.push(row.id);}}return found;}
   function canEdit(row,access,rows){
-    if(!row||!access||row.id===access.employeeId||access.mode!=='admin'&&row.isAdministrator)return false;
+    if(!row||!access||row.id===access.employeeId&&!access.isServerOwner||access.mode!=='admin'&&row.isAdministrator)return false;
     if(access.mode==='admin')return true;
     const me=rows.find(r=>r.id===access.employeeId);
     return !!me&&descendants(me.id,rows).has(row.id)&&(access.editablePositions||[]).includes(normalize(row.position))&&row.station===access.station&&row.account===access.account;
@@ -72,5 +79,5 @@
     for(const row of next)if(row.reportsTo)validateLine(row,row.reportsTo,next);
     return {employees:next};
   }
-  return {descendants,canEdit,titlesFor,validateLine,managersFor,rank,supervisorGroup,isGroup,reportingManagers,insertionPlan,assignmentPlan,removalPlan,assignable};
+  return {applyDefaultReporting,descendants,canEdit,titlesFor,validateLine,managersFor,rank,supervisorGroup,isGroup,reportingManagers,insertionPlan,assignmentPlan,removalPlan,assignable};
 });

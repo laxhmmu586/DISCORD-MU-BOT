@@ -6,7 +6,7 @@
   const name=document.createElement('span');name.className='dashboard-account-name';name.textContent=label;button.append(avatar,name);
  }
  window.loadDashboardProfile=async user=>{
-  document.querySelectorAll('button[onclick*="/profile"],a[href="/profile"]').forEach(link=>{link.hidden=/^[^@\s]+@mu\.com$/i.test(user.email||'')&&(user.email||'').trim().toLowerCase()!=='lake@mu.com';});
+  document.querySelectorAll('button[onclick*="/profile"],a[href="/profile"]').forEach(link=>{link.hidden=/^[^@\s]+@mu\.com$/i.test(user.email||'')&&!['lax@mu.com','lake@mu.com'].includes((user.email||'').trim().toLowerCase());});
   render(null,user);
   try{const result=await employeeProfileApi();if(result.state!=='ready'&&!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')){location.replace('/login.html');return false;}if(result.profile)render(result.profile,user);return true;}
   catch{if(!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')){location.replace('/login.html');return false;}return true;}

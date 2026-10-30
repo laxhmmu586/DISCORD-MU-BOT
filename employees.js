@@ -3,8 +3,8 @@ const employeePositions=require('./public/public/employee-positions');
 const {StandardFontEmbedder,StandardFonts}=require('./vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
 const formatEmployeePhone=require('./public/public/employee-phone');
-const ADMIN_EMAILS=new Set(['lake@mu.com','nextweek1216@gmail.com','tamsun10@gmail.com']);
-const LOGIN_ID_ADMIN_EMAILS=new Set(['lake@mu.com','nextweek1216@gmail.com']);
+const LOGIN_ID_ADMIN_EMAILS=require('./serverOwners').emails;
+const ADMIN_EMAILS=new Set([...LOGIN_ID_ADMIN_EMAILS,'tamsun10@gmail.com']);
 const normalizeLoginId=value=>String(value??'').trim().toLowerCase();
 const hasPbbLicense=(row,date=new Date().toISOString().slice(0,10))=>Boolean(row?.pbbId&&row?.pbbExpiry&&row.pbbExpiry>=date);
 function loginIdForbidden(){throw Object.assign(new Error('Only authorized Lake administrators can change Original Login IDs.'),{status:403});}
@@ -72,7 +72,7 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
 }
 function registerEmployees(app,{store,authenticate,profiles,onChange=()=>{},firebaseDirectory}){
  const accessFor=user=>{
-  const email=normalizeLoginId(user?.email);if(ADMIN_EMAILS.has(email))return {mode:'admin',employeeId:profiles?.linked(user)?.id||store.get().employees.find(row=>normalizeLoginId(row.loginId)===email)?.id,canManagePending:LOGIN_ID_ADMIN_EMAILS.has(email),canEditOwnTitle:LOGIN_ID_ADMIN_EMAILS.has(email)};
+  const email=normalizeLoginId(user?.email);if(ADMIN_EMAILS.has(email))return {mode:'admin',isServerOwner:require('./serverOwners').isOwner(user),employeeId:profiles?.linked(user)?.id||store.get().employees.find(row=>normalizeLoginId(row.loginId)===email)?.id,canManagePending:LOGIN_ID_ADMIN_EMAILS.has(email),canEditOwnTitle:LOGIN_ID_ADMIN_EMAILS.has(email)};
   const linked=profiles?.linked(user);
   const matches=email?store.get().employees.filter(row=>normalizeLoginId(row.loginId)===email):[];
   const me=linked||(matches.length===1?matches[0]:null);

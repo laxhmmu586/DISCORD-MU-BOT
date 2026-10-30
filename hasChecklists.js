@@ -1,6 +1,6 @@
 const path=require('node:path'),fs=require('node:fs/promises');
 const groups=require('./public/public/employee-account-groups'),positions=require('./public/public/employee-positions');
-const allowed=employee=>Boolean(employee&&!groups.isHeadquarter(employee)&&['Agent','Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'].includes(positions.normalize(employee.position)));
+const allowed=employee=>Boolean(employee&&(employee.isServerOwner||require('./serverOwners').isOwner(employee.loginId)||!groups.isHeadquarter(employee)&&['Agent','Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'].includes(positions.normalize(employee.position))));
 const items=[
  {id:'bomb-threat',title:'Bomb Threat Checklist',version:'v3.0',file:'bomb-threat-checklist.pdf',format:'pdf'},
  {id:'emergency-notification',title:'Emergency Procedure Notification',version:'v 012025',file:'emergency-procedure-notification.docx',format:'docx'},
