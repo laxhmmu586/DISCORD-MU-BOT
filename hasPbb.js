@@ -5,7 +5,7 @@ const employeeAccounts=require('./public/public/employee-account-groups');
 const employeePositions=require('./public/public/employee-positions');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const validDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d))&&new Date(d).toISOString().slice(0,10)===d;
-function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildPdf=require('./hasPbbPdf').buildHasPbbPdf}){
+function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildPdf=require('./hasPbbPdf').buildHasPbbPdf,sendProblemEmail}){
  const db=store.db,streams=new Set(),jobs=new Map(),gateEpoch=crypto.randomUUID();let gateRevision=0;
  db.exec('CREATE TABLE IF NOT EXISTS has_pbb_records(id TEXT PRIMARY KEY, station TEXT NOT NULL, account TEXT NOT NULL, date TEXT NOT NULL, flight TEXT NOT NULL, bridge TEXT NOT NULL, data TEXT NOT NULL, pdf BLOB, UNIQUE(station,account,date,flight,bridge))');
  db.exec('CREATE TABLE IF NOT EXISTS has_pbb_flights(station TEXT NOT NULL, account TEXT NOT NULL, flight TEXT NOT NULL, created_by TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(station,account,flight))');
@@ -20,6 +20,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(store.now());
  const get=id=>{const row=db.prepare('SELECT data FROM has_pbb_records WHERE id=?').get(id);if(!row)fail('Checklist not found',404);return JSON.parse(row.data);};
  const put=r=>{db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);return r;};
+ const problemMail=require('./hasPbbProblemMail').createProblemMailer({db,employees,now:()=>store.now(),...(sendProblemEmail?{sendEmail:sendProblemEmail}:{})});
  const same=(a,b)=>a.station===b.station&&a.account===b.account;
  const isOps=row=>employeeAccounts.same(row,{station:'LAX',account:'OPS'});
  const accounts=row=>[...new Map((isOps(row)?employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)):[employeeAccounts.scope(row),...(row.additionalAccounts||[]).map(employeeAccounts.scope)]).map(scope=>[employeeAccounts.key(scope),scope])).values()];
@@ -157,10 +158,10 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   roleCheck(e,req.body.role,date,gate);
   requireManualRole({station:e.station,account:e.account,flightNo,type},req.body.role);
   const heldGate=gateLocks(e).find(g=>g.flightNo===flightNo);if(heldGate&&heldGate.gate!==gate)fail('Gate number is locked. Clear gate number before changing it.',409);
-  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightKey,bridge);if(old){const previous=get(old.id);if(previous.gate===gate){if(!previous.completedAt&&opsArrival(previous)&&previous.signatures.spotter?.source!=='configured-ops-arrival'){applyOpsArrival(previous);previous.revision++;previous.updatedAt=stamp();put(previous);}return previous;}
-    const r={id:previous.id,station:e.station,account:e.account,date,flightNo,gate,bridge,type,revision:previous.revision+1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,resetAt:stamp(),resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
+  const create=db.transaction(()=>{const old=db.prepare('SELECT id FROM has_pbb_records WHERE station=? AND account=? AND date=? AND flight=? AND bridge=?').get(e.station,e.account,date,flightKey,bridge);if(old){const previous=get(old.id);if(previous.gate===gate){if(heldGate&&!previous.completedAt&&previous.gateConfirmedAt!==heldGate.confirmedAt){previous.gateConfirmedAt=heldGate.confirmedAt;previous.revision++;previous.updatedAt=stamp();put(previous);}if(!previous.completedAt&&opsArrival(previous)&&previous.signatures.spotter?.source!=='configured-ops-arrival'){applyOpsArrival(previous);previous.revision++;previous.updatedAt=stamp();put(previous);}return previous;}
+    const r={id:previous.id,station:e.station,account:e.account,date,flightNo,gate,bridge,type,gateConfirmedAt:heldGate?.confirmedAt||null,revision:previous.revision+1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,resetAt:stamp(),resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
     applyOpsArrival(r);db.prepare('UPDATE has_pbb_records SET data=?,pdf=NULL WHERE id=?').run(JSON.stringify(r),r.id);return r;}
-   const r={id:crypto.randomUUID(),station:e.station,account:e.account,date,flightNo,gate,bridge,type,revision:1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
+   const r={id:crypto.randomUUID(),station:e.station,account:e.account,date,flightNo,gate,bridge,type,gateConfirmedAt:heldGate?.confirmedAt||null,revision:1,createdAt:stamp(),updatedAt:stamp(),createdBy:e.id,answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
    applyOpsArrival(r);db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(r.id,e.station,e.account,date,flightKey,bridge,JSON.stringify(r));return r;
   });const r=create();publish(r);res.status(201).json(r);
  }));
@@ -169,7 +170,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   const previous=authorized(req,req.params.id),e=req.hasEmployee;roleCheck(e,req.body.role);requireManualRole(previous,req.body.role);
   if(previous.date!==today())fail('This checklist is from a previous day.',409);
   if(req.body.revision!==previous.revision)fail('Checklist changed. Review the latest shared state before resetting.',409);
-  const r={id:previous.id,station:previous.station,account:previous.account,date:previous.date,flightNo:previous.flightNo,gate:previous.gate,bridge:previous.bridge,type:previous.type,revision:previous.revision+1,createdAt:previous.createdAt,createdBy:previous.createdBy,updatedAt:stamp(),resetAt:stamp(),resetBy:e.id,resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
+  const r={id:previous.id,station:previous.station,account:previous.account,date:previous.date,flightNo:previous.flightNo,gate:previous.gate,bridge:previous.bridge,type:previous.type,gateConfirmedAt:previous.gateConfirmedAt||null,revision:previous.revision+1,createdAt:previous.createdAt,createdBy:previous.createdBy,updatedAt:stamp(),resetAt:stamp(),resetBy:e.id,resetToken:crypto.randomUUID(),answers:{driver:{},spotter:{}},ready:{driver:null,spotter:null},owners:{},signatures:{},delivery:{status:'pending'}};
   applyOpsArrival(r);db.prepare('UPDATE has_pbb_records SET data=?,pdf=NULL WHERE id=?').run(JSON.stringify(r),r.id);return r;
  });
  app.post('/has-pbb-api/records/:id/reset',route((req,res)=>{const r=resetRecord(req);publish(r);res.json(r);}));
@@ -187,6 +188,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
    if(!b.value){if(!b.evidence||typeof b.evidence.reason!=='string'||!b.evidence.reason.trim()||b.evidence.reason.length>2000||!b.evidence.photo)fail('Photo and reason are required for a NO answer.');r.evidence||={};r.evidence[role]||={};if(b.evidence.reportId!==undefined&&!/^[a-zA-Z0-9-]{1,80}$/.test(b.evidence.reportId))fail('Invalid problem report.');r.evidence[role][item.id]={reportId:b.evidence.reportId||crypto.randomUUID(),reason:b.evidence.reason.trim(),photo:b.evidence.photo,employeeId:e.id,name:e.name,at:stamp()};}
    else if(r.evidence?.[role]?.[item.id])r.evidence[role][item.id].resolvedAt=stamp();
    for(const id of [item.id,...(item.linkedAnswers||[])])r.answers[role][id]=b.value;
+   if(!b.value)problemMail.enqueue(r,role,item.id);
    if(item.phase==='pre'){r.ready[role]=null;delete r.signatures[role];}
   }else if(b.action==='ready'){
    if(r.movingAt)fail('Movement has started. Ready state is locked.',409);
@@ -207,7 +209,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   }else fail('Unknown action');
   r.owners[role]=e.id;r.updatedAt=stamp();r.revision++;return put(r);
  });
- app.post('/has-pbb-api/records/:id',route(async(req,res)=>{if(req.body.action==='answer'&&req.body.value===false){authorized(req,req.params.id);const photo=req.body.evidence?.photo;if(typeof photo!=='string'||photo.length>1400000||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo))fail('A valid problem photo is required.');try{const bytes=await require('sharp')(Buffer.from(photo.split(',')[1],'base64'),{limitInputPixels:16000000}).rotate().resize({width:1280,height:1280,fit:'inside',withoutEnlargement:true}).jpeg({quality:78}).toBuffer();if(bytes.length>1024*1024)fail('Photo is too large.');req.body.evidence.photo='data:image/jpeg;base64,'+bytes.toString('base64');}catch{fail('Choose a valid problem photo.');}}const r=mutate(req);publish(r);res.json(r);if(r.completedAt)void deliver(r.id);}));
+ app.post('/has-pbb-api/records/:id',route(async(req,res)=>{if(req.body.action==='answer'&&req.body.value===false){authorized(req,req.params.id);const photo=req.body.evidence?.photo;if(typeof photo!=='string'||photo.length>1400000||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo))fail('A valid problem photo is required.');try{const bytes=await require('sharp')(Buffer.from(photo.split(',')[1],'base64'),{limitInputPixels:16000000}).rotate().resize({width:1280,height:1280,fit:'inside',withoutEnlargement:true}).jpeg({quality:78}).toBuffer();if(bytes.length>1024*1024)fail('Photo is too large.');req.body.evidence.photo='data:image/jpeg;base64,'+bytes.toString('base64');}catch{fail('Choose a valid problem photo.');}}const r=mutate(req);publish(r);res.json(r);if(req.body.action==='answer'&&req.body.value===false)void problemMail.tick().catch(()=>{});if(r.completedAt)void deliver(r.id);}));
  app.post('/has-pbb-api/records/:id/retry',route((req,res)=>{const r=authorized(req,req.params.id);if(!r.completedAt)fail('Checklist is not submitted.',409);void deliver(r.id);res.status(202).json(r);}));
  const sendPdf=async(req,res,r,authorize)=>{
   if(!r.completedAt)fail('Checklist is not submitted.',409);const generation=r.resetToken||'';
@@ -250,6 +252,6 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   res.json({station,account,start,end,daily,scopes,byScope,records:rows.map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
  }));
  for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&(r.delivery.status!=='ready'||r.station==='LAX'&&r.account==='MU'&&['pending','failed'].includes(r.discordDelivery?.status)))void deliver(row.id);}
- return {deliver,get,pruneIncomplete,close(){clearInterval(cleanupTimer);for(const s of streams)s.res.end();}};
+ return {deliver,get,pruneIncomplete,flushProblemMail:problemMail.tick,close(){problemMail.close();clearInterval(cleanupTimer);for(const s of streams)s.res.end();}};
 }
 module.exports={registerHasPbb};

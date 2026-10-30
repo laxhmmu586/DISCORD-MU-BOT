@@ -93,4 +93,4 @@
 
 .employee-account-card[data-ops="true"] tr>*:nth-child(12),.employee-account-card[data-ops="true"] tr>*:nth-child(13),.employee-account-card[data-ops="true"] col:nth-child(12),.employee-account-card[data-ops="true"] col:nth-child(13){display:none}
 
-.employee-admin-page .employee-table :is(th,td,col):nth-child(n+5):nth-child(-n+8){display:none!important}
+.employee-admin-page .employee-table :is(th,td,col):nth-child(n+5):nth-child(-n+7){display:none!important}
