@@ -1,4 +1,4 @@
-@import url('/home.css?v=20261030-workspace-rollout');
+@import url('/home.css?v=20261030-nav-account-polish');
 
 /* The home design system surrounds existing editors without changing their geometry or data. */
 html:has(body.workspace-glass){color-scheme:light;background:#dce9fc}

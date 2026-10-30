@@ -163,6 +163,16 @@ body.home-page{display:flow-root;min-height:100vh;background:#dce9fc}
 .icon-briefing{background-image:url('/assets/home-icon-briefing-v1.webp')}
 .icon-schedule{background-image:url('/assets/home-icon-schedule-v1.webp')}
 
+/* Keep one flexible gap before the date and account controls, with a matching glass account pill. */
+body.home-page .home-topbar>#flight-account{margin-left:0;flex-shrink:0}
+body.home-page .home-topbar>.topbar-date{margin-left:auto;margin-right:0;flex:none}
+body.home-page .home-topbar .flight-account>.login-button{width:auto;height:44px;min-height:44px;gap:8px!important;padding:5px 12px 5px 5px!important;border:1px solid #ffffffed!important;border-radius:999px!important;background:linear-gradient(140deg,#ffffffcf,#d4e6ffa3)!important;box-shadow:inset 0 1px 2px #fff,0 4px 12px #4477b523;color:#315984!important;transition:box-shadow .2s,background .2s}
+body.home-page .home-topbar .flight-account>.login-button:hover,body.home-page .home-topbar .flight-account>.login-button[aria-expanded=true]{background:linear-gradient(140deg,#fff,#c9dfff)!important;box-shadow:inset 0 1px 2px #fff,0 5px 16px #4477b533}
+body.home-page .home-topbar .flight-user-avatar{display:grid;place-items:center;width:32px;height:32px;border:2px solid #fff;border-radius:50%;overflow:hidden;background:linear-gradient(145deg,#f9fcff,#bcd7ff);color:#2d65ac;box-shadow:0 2px 5px #4d7cba24}
+body.home-page .home-topbar .flight-user-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
+@media(max-width:760px){body.home-page .home-topbar .flight-account>.login-button{width:40px;height:40px;min-height:40px;padding:3px!important;justify-content:center}body.home-page .home-topbar .flight-user-avatar{width:30px;height:30px}}
+
 /* Mobile header: centered brand above a shared navigation and menu row. */
 @media(max-width:760px){
  .home-topbar{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;grid-template-rows:68px 40px;column-gap:8px;row-gap:3px;height:auto;min-height:0;padding:7px 14px 9px}

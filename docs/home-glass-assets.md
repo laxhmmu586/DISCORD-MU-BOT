@@ -5,8 +5,8 @@ The Home design is shared by Profile, Request, Report, Read & Sign, Briefing, Sc
 ## Navigation and routes
 
 - Clean paths: /home, /profile, /has-form, /has-report, /read-sign, /briefing, /schedule, /admin. Firebase and Express redirect legacy .html URLs and preserve query parameters. Early client normalization also retains fragments.
-- Home alone displays the Home / HR / Finance top navigation. Other workspace pages show the brand, mobile drawer, and existing account controls.
-- Report, Request, and Read & Sign appear in the sidebar; Briefing and Schedule remain scoped by the existing operations permission checks. Admin retains its account-menu permission checks. Profile stays available through the account menu.
+- The Home page remains a development preview and has no incoming navigation links. Its Home tab is hidden; HR and Finance remain on that development page only. Other workspace pages show the brand, mobile drawer, and account controls. Every brand logo links to /profile.
+- Briefing and Schedule appear first in the sidebar under their existing operations permission checks, followed by Report, Request, and Read & Sign. PBB checklist is the last navigation item. Admin retains its account-menu permission checks. Profile stays available through the account menu.
 - The desktop sidebar remembers its compact view. Mobile uses a centered logo above the menu/navigation row and a drawer with keyboard focus handling.
 - Employee art is selected randomly on page entry, excludes the previous portrait, and remains unchanged until navigation.
 - Schedule and Coverage share a 240px desktop identity/label column; day widths and the mobile calendar geometry are retained.
@@ -39,3 +39,11 @@ Create a two-icon horizontal sprite sheet with two equal square cells and a tran
 Node tests exercise canonical routes and query/fragment preservation, preservation of existing page controls/dialogs, role-gated navigation, sidebar state and drawer behavior, action-only approval lists, unsigned documents and empty badges, entry-only portrait changes, and shared Schedule/Coverage sizing. Existing backend regression tests cover profile, roles, requests, reports, Read & Sign, Briefing and Schedule.
 
 Final live-browser visual QA is unavailable while local browser access is disabled in Work settings. No deployment is performed by this change.
+
+## Account and status polish
+
+The date and account controls share a right-aligned header group. The avatar menu uses a rounded glass pill, a circular portrait, and the existing menu behavior.
+
+Schedule status assets: public/public/assets/home-icon-status-pending-v1.webp (red clock/documents) and home-icon-status-ok-v1.webp (green check/documents). Generated using the built-in imagegen tool, with home-icon-request-v3.webp as a style reference.
+
+Prompt: two equal square icons on a transparent horizontal 2:1 sheet, matching the rounded glossy 3D white-document family and colored beveled sides. Pending uses red document accents and a red circular clock badge; OK uses green document accents and a green circular badge with a white check. Match size, viewpoint, upper-left lighting, subtle contact shadows and transparent padding. No text, numbers, background tiles or extra objects.
