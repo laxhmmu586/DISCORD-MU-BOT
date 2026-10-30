@@ -78,7 +78,7 @@
  function openRemark(employee,day,remark){closeMenu();$('remark-view-person').textContent=displayName(employee)+' · '+friendly(day.date);$('remark-view-text').textContent=remark;$('remark-view-dialog').showModal();}
  $('close-remark-view').onclick=()=>$('remark-view-dialog').close();
  function drawMobile(){
-  const panel=$('mobile-schedule'),requestButton=$('schedule-requests-button');if(requestButton)document.querySelector('.schedule-dates').prepend(requestButton);panel.replaceChildren();panel.hidden=!matchMedia('(max-width:600px)').matches;if(panel.hidden)return;document.querySelector('.schedule-shell').classList.toggle('mobile-employee-schedule',!data.canEdit);
+  const panel=$('mobile-schedule'),requestButton=$('schedule-header-actions')||$('schedule-requests-button');if(requestButton)document.querySelector('.schedule-dates').prepend(requestButton);panel.replaceChildren();panel.hidden=!matchMedia('(max-width:600px)').matches;if(panel.hidden)return;document.querySelector('.schedule-shell').classList.toggle('mobile-employee-schedule',!data.canEdit);
   const monthFormatter=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric',timeZone:'UTC'}),weekdayFormatter=new Intl.DateTimeFormat('en-US',{weekday:'narrow',timeZone:'UTC'});let visibleMonth='';const start=today(),dates=data.days.filter(d=>d.date>=start).map(d=>d.date),days=new Map(data.days.map(d=>[d.date,d]));if(mobileTimelineDay!==start){mobileTimelineDay=start;mobileOffset=0;mobileScrollTop=0;}
   const heading=node('div',undefined,'team-week-heading'),month=node('strong',monthFormatter.format(new Date(start+'T12:00:00Z')));heading.append(month);if(matchMedia('(max-width:600px)').matches&&requestButton)heading.append(requestButton);
   panel.append(heading);
