@@ -7,7 +7,9 @@
   const isGroup=id=>typeof id==='string'&&id.startsWith('team:');
   function applyDefaultReporting(rows){return rows.map(row=>{
     if(row.reportsTo||row.unassigned||normalize(row.position)!=='Business Manager')return row;
-    const managers=rows.filter(manager=>manager.id!==row.id&&!manager.unassigned&&normalize(manager.position)==='General Manager'&&manager.station===row.station&&!descendants(row.id,rows).has(manager.id));
+    const eligible=rows.filter(manager=>manager.id!==row.id&&!manager.unassigned&&normalize(manager.position)==='General Manager'&&!descendants(row.id,rows).has(manager.id));
+    const local=eligible.filter(manager=>manager.station===row.station),headquarters=eligible.filter(manager=>['HQ','HEADQUARTER','HEADQUARTERS'].includes(manager.station));
+    const managers=local.length?local:headquarters;
     const sameAccount=managers.filter(manager=>manager.account===row.account||(manager.additionalAccounts||[]).some(scope=>scope.station===row.station&&scope.account===row.account));
     const matches=sameAccount.length?sameAccount:managers;
     return matches.length===1?{...row,reportsTo:matches[0].id}:row;

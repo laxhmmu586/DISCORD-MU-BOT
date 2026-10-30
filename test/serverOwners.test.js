@@ -27,4 +27,5 @@ test('Business Managers default to a unique local General Manager while explicit
  assert.equal(apply(bm,[{...gm,id:'duplicate'}]).reportsTo,undefined);
  assert.equal(apply(bm,[{...gm,id:'same-account',account:'MU'}]).reportsTo,'same-account');
  assert.equal(apply(bm,[{...gm,id:'cycle',account:'MU',reportsTo:'bm'}]).reportsTo,'gm');
+ assert.equal(model.applyDefaultReporting([bm,{...gm,station:'HQ',account:'HQ'}])[0].reportsTo,'gm','shared headquarters General Manager can cover multiple accounts and stations');
 });
