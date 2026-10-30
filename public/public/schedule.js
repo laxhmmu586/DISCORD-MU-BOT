@@ -6,7 +6,6 @@
  const friendly=value=>new Date(value+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});
  const ink=hex=>{const [r,g,b]=hex.slice(1).match(/../g).map(v=>parseInt(v,16));return (r*299+g*587+b*114)/1000>145?'#17202d':'#ffffff';};
  let mobileOffset=0,mobileScrollTop=0,mobileTimelineDay='',renderedMobile=false,sourceData,previewEmployee='',data,historyMonth='',reviewDate='',range=null,gridEmployees=[],dragging=false,moved=false,busy=false,lastCopy=null,session=0,loading=0,selectedColor,selectedCode,selectedDate,syncPoll=null;
- let mobileScrollTarget=null;
  let stopLive=null,pendingLive=false,liveLoading=false,retryLiveAt=0,lastDesktopScroll=-Infinity;
  let selectionCells=[],paintedCells=new Set(),paintedRangeKey=null;
  const topbar=document.querySelector('.profile-topbar'),shell=document.querySelector('.schedule-shell');const sizeHeader=()=>shell.style.setProperty('--schedule-header-height',topbar.getBoundingClientRect().height+'px');new ResizeObserver(sizeHeader).observe(topbar);sizeHeader();
