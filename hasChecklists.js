@@ -10,6 +10,7 @@ const items=[
  {id:'ca-mpn',title:'CA MPN Acknowledgement Form',version:'9.1.13',file:'ca-mpn-acknowledgement-form.pdf',format:'pdf',category:'Workers Comp'}
 ];
 function register(app,{context,handler,supervisor,database,read,key}){
+ supervisor=employee=>require('./public/public/employee-permissions').allowed(employee,'checklist.supervisor');
  const auth=req=>{const ctx=context(req.reportUser);if(!allowed(ctx.employee))throw Object.assign(Error('Checklist requires Agent or above in your Main Account.'),{status:403});return ctx;};
  const visible=(ctx,item)=>['bomb-threat','emergency-notification'].includes(item.id)||supervisor(ctx.employee);
  app.get('/has-report-api/checklist',handler(async(req,res)=>{const ctx=auth(req);res.json({scope:ctx.scope,categories:['SAFETY','Workers Comp'].map(name=>({name,items:items.filter(item=>(item.category||'SAFETY')===name&&visible(ctx,item)).map(({file,...item})=>({...item,canEdit:item.id==='emergency-notification'&&supervisor(ctx.employee)}))})).filter(category=>category.items.length)});}));

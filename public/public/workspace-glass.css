@@ -1,4 +1,5 @@
-@import url('/home.css?v=20261030-mobile-drawer');
+@import url('/home.css?v=20261030-hr-report');
+@import url('/approval-glass.css?v=20261030-request');
 
 /* The home design system surrounds existing editors without changing their geometry or data. */
 html:has(body.workspace-glass){color-scheme:light;background:#dce9fc}

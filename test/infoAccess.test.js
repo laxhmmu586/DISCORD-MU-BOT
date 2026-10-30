@@ -1,5 +1,2 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
-test('Info page and navigation are removed',()=>{
- assert.equal(fs.existsSync('public/public/info.html'),false);
- for(const name of fs.readdirSync('public/public').filter(n=>n.endsWith('.html')))assert.doesNotMatch(fs.readFileSync('public/public/'+name,'utf8'),/href="\/info.html"|src="\/info-access.js/);
-});
+test('Info is restored with its LAX/HQ access guard and glass shell',()=>{const html=fs.readFileSync('public/public/info.html','utf8');assert.match(html,/workspace-glass/);assert.match(html,/info-access.js/);assert.match(fs.readFileSync('public/public/info-access.js','utf8'),/'LAX','HQ','HEADQUARTER','HEADQUARTERS'/);});

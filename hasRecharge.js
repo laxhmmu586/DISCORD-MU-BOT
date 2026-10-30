@@ -6,7 +6,7 @@ const DEFAULT_FLIGHT='';
 function summaryFlight(entries,flights,day){return flights[day]??([...new Set(entries.filter(e=>e.day===day).map(e=>e.flight).filter(Boolean))].join('/')||DEFAULT_FLIGHT);}
 const categories=['ST','T5','DT','TRAIN'],roles=['Agent','Supervisor','Duty Manager'];
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
-const allowed=e=>Boolean(e&&!require('./public/public/employee-account-groups').isHeadquarter(e)&&['Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'].includes(require('./public/public/employee-positions').normalize(e.position)));
+const allowed=e=>Boolean(e&&!require('./public/public/employee-account-groups').isHeadquarter(e)&&require('./public/public/employee-permissions').allowed(e,'report.recharge'));
 function validate(input,month,periods){
  const {year,month:m}=reportMonth(month),last=new Date(Date.UTC(year,m,0)).getUTCDate();
  const text=(v,max=500)=>{if(typeof v!=='string'||v.length>max)fail('Invalid charge text.');return v.trim();};

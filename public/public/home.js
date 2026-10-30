@@ -65,38 +65,24 @@
   window.addEventListener('workspace-profile', ({detail: {profile, user}}) => {
     renderHomeTasks(window.RequestInbox?.data);
     const eligible = Boolean(user && profile && (profile.canViewOperations ?? (profile.station === 'LAX' && profile.account === 'MU')));
-    flightUser = eligible ? user : null; void loadHomeFlight();
     const excluded = ![profile?.loginId, profile?.email, profile?.companyEmail, user?.email].some(v => String(v || '').toLowerCase() === 'test@hm.com') && [profile?.name, profile?.nickname].some(v => ['DEMOHAS', 'HASOPSRAMP'].includes(String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '')));
     document.querySelectorAll('[data-home-operations]').forEach(link => { link.hidden = !eligible || excluded; });
     // The shared account menu converts the Profile sidebar entry to the scoped Briefing entry.
     const briefing = document.querySelector('.home-sidebar [data-briefing-nav]');
     if (briefing) briefing.querySelector('svg')?.classList.add('briefing-icon');
   });
-  let flightUser = null, flightRun = 0, flightRequest;
-  const put = (id, value) => { document.getElementById(id).textContent = value || '—'; };
-  function clearFlight() {
-    put('home-flight-title', 'Today’s flight'); document.getElementById('home-flight-date').hidden = true;
-    for (const id of ['home-flight-etd', 'home-flight-boarding', 'home-flight-gate']) put(id, '—');
+  const reportPanel = document.querySelector('.home-report-panel');
+  const reportEmpty = document.getElementById('home-report-empty');
+  const updateReportEmpty = () => {
+    const available = [...reportPanel.querySelectorAll('.home-report-links a')].some(link => !link.hidden);
+    if (reportEmpty.hidden !== available) reportEmpty.hidden = available;
+    reportEmpty.textContent = window.workspaceProfile?.user ? 'Report access is unavailable for your account.' : 'Sign in to view available reports.';
+  };
+  new MutationObserver(updateReportEmpty).observe(reportPanel, {subtree: true, attributes: true, attributeFilter: ['hidden']});
+  updateReportEmpty();
+  if (new URLSearchParams(location.search).get('preview') === '1') {
+    document.querySelectorAll('a[href="/home"],a[href="/hr"],a[href="/has-checklist"],a[href="/info"]').forEach(link => link.href += '?preview=1');
   }
-  async function loadHomeFlight() {
-    const run = ++flightRun, user = flightUser; flightRequest?.abort(); clearFlight();
-    const status = document.getElementById('home-flight-status');
-    if (!user) { status.textContent = 'Sign in to your operations workspace to view today’s flights.'; return; }
-    flightRequest = new AbortController(); const signal = flightRequest.signal; status.textContent = 'Loading today’s flight…';
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch((window.MU_API_BASE || 'https://api.mufcapp.net').replace(/\/$/, '') + '/flights', {cache: 'no-store', headers: {Authorization: 'Bearer ' + token, ...(window.workspaceHeaders?.() || {})}, signal: AbortSignal.any([signal, AbortSignal.timeout(15000)])});
-      if (!response.ok) throw Error('Flights unavailable');
-      const data = await response.json(); if (run !== flightRun) return;
-      const flight = data.flights?.[0];
-      if (!flight) { status.textContent = 'No flight record is available for today yet.'; return; }
-      put('home-flight-title', [flight.flightNo, [flight.origin, flight.destination].filter(Boolean).join(' → ')].filter(Boolean).join('  '));
-      put('home-flight-date', flight.flightDate); document.getElementById('home-flight-date').hidden = !flight.flightDate;
-      put('home-flight-etd', flight.ed); put('home-flight-boarding', flight.bdt); put('home-flight-gate', flight.gate);
-      status.textContent = 'Today’s LAX departure · Latest flight log';
-    } catch (error) { if (run === flightRun) status.textContent = 'Flight details unavailable. Open Flights to retry.'; }
-  }
-  setInterval(() => { if (!document.hidden && flightUser) void loadHomeFlight(); }, 60000);
   const taskTabs = [...document.querySelectorAll('.home-task-tabs [role="tab"]')];
   function selectTaskTab(index, focus = false) {
     taskTabs.forEach((tab, i) => { tab.setAttribute('aria-selected', String(i === index)); tab.tabIndex = i === index ? 0 : -1; document.getElementById(tab.getAttribute('aria-controls')).hidden = i !== index; });

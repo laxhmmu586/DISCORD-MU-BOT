@@ -7,7 +7,7 @@ const colors={K:'#ffff00',D:'#ffff00',C:'#99ff00',CL:'#77933c',FL:'#3333ff',F:'#
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const excluded=row=>[row?.name,row?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));
 const allowed=row=>Boolean(row&&!excluded(row)&&groups.belongs(row,{station:'LAX',account:'MU'})&&!groups.isHeadquarter(row));
-const canEdit=(user,row)=>['Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'].includes(positions.normalize(row.position));
+const canEdit=(user,row)=>require('./public/public/employee-permissions').allowed(row,'schedule.edit');
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function date(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value)fail('Choose a valid date.');return value;}
 function registerStaffSchedule(app,{employees,profiles,authenticate=require('./pbbAuth').authenticate,sync:provided,env=process.env,now=()=>new Date()}){

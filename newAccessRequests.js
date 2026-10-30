@@ -9,7 +9,7 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
  db.exec('CREATE TABLE IF NOT EXISTS new_access_requests(id TEXT PRIMARY KEY,data TEXT NOT NULL)');
  const employee=user=>{const e=profiles.linked(user);if(!e?.name)fail('Link your employee profile first.',403);return e;};
  const owner=(user,e)=>LOGIN_ID_ADMIN_EMAILS.has(normalize(user.email))||LOGIN_ID_ADMIN_EMAILS.has(normalize(e.loginId));
- const canCreate=e=>positions.normalize(e.position)==='Business Manager'&&!accounts.isHeadquarter(e);
+ const canCreate=e=>require('./public/public/employee-permissions').allowed(e,'request.newAccess')&&!accounts.isHeadquarter(e);
  const get=id=>{const row=db.prepare('SELECT data FROM new_access_requests WHERE id=?').get(id);if(!row)fail('Request not found.',404);return JSON.parse(row.data);};
  const visible=(r,user,e)=>r.employee.id===e.id||owner(user,e);
  const view=(r,user,e)=>({...r,viewerId:e.id,canReview:r.status==='pending'&&owner(user,e),canComplete:r.status==='approved'&&r.employee.id===e.id});
@@ -23,14 +23,15 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
   if(email.includes('@')?!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email):!/^[A-Za-z0-9][A-Za-z0-9._+-]{0,99}$/.test(email))fail('Enter a valid Hallmark email or preferred username.');
   const scope=accounts.scope(e);
   if(!body.station||!body.account||!accounts.same(body,scope))fail('Use your Main Account station and account.',403);
-  return {name,...(eid?{eid}:{}),...scope,email};
+  const position=positions.normalize(body.position||'Agent');if(!['Duty Manager','Senior Supervisor','Supervisor','Lead','Agent'].includes(position))fail('Choose a requested title below Business Manager.',403);
+  return {name,...(eid?{eid}:{}),...scope,email,position};
  };
  return {db,get,read,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position,...accounts.scope(e)},canCreate:canCreate(e),requests:db.prepare('SELECT data FROM new_access_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,user,e)).map(r=>view(r,user,e))};},
   create:db.transaction((user,body)=>{
    const e=employee(user);if(!canCreate(e))fail('Only the Main Account Business Manager can request new access.',403);
    if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(body.requestId||''))fail('Invalid request reference.');
    const fields=cleanFields(body.fields||{},e),existing=db.prepare('SELECT data FROM new_access_requests WHERE id=?').get(body.requestId);
-   if(existing){const old=JSON.parse(existing.data);if(old.employee.id!==e.id||JSON.stringify(old.fields)!==JSON.stringify(fields))fail('Request reference already used.',409);return view(old,user,e);}
+   if(existing){const old=JSON.parse(existing.data);if(old.employee.id!==e.id||JSON.stringify({...old.fields,position:old.fields.position||'Agent'})!==JSON.stringify(fields))fail('Request reference already used.',409);return view(old,user,e);}
    const scope=accounts.scope(e),r={id:body.requestId,title:scope.station+'/'+scope.account+' Request New Access',employee:{id:e.id,name:e.name,eid:e.eid||'',...scope},fields,status:'pending',revision:1,approvals:[],history:[]};
    r.submittedAt=event(r,e,'submit','Submitted to Lake for approval');put(r);return view(r,user,e);
   }),
