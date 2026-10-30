@@ -25,3 +25,5 @@
 .org-list.org-member-grid{display:grid;grid-template-columns:repeat(var(--org-member-columns,5),var(--org-member-width,182px));column-gap:20px;row-gap:58px;padding-left:0;padding-right:0}.org-member-grid>li{padding:0;min-width:0}.org-member-grid .org-card{width:var(--org-member-width,182px)}
 @media(min-width:1700px){.org-member-grid{--org-member-width:200px}}
 @media(max-width:760px){.org-member-grid{--org-member-width:157px}}
+
+.hr-account-settings-link{font-size:10px;color:#4f83c4;margin:8px 26px 10px}.hr-account-settings-link a{display:inline-block;padding:10px 13px;border:1px solid white;border-radius:10px;background:#ffffff65}

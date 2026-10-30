@@ -120,6 +120,7 @@
     $('#person-status').textContent='';$('#save-person').hidden=!editable;$('#save-person').disabled=false;
     if(!$('#person-dialog').open)$('#person-dialog').showModal();render();
   }
+  $('.hr-settings').onclick=event=>{event.preventDefault();setView('accounts');};
   const closePerson=()=>{if(saving)return;$('#person-dialog').close();selected=null;render();};
   $('#person-form').elements.name.addEventListener('input',event=>{if(assignmentId){const text=event.target.value;showPerson(selected);event.target.value=text;}assignmentId=null;$('#assignment-note').hidden=true;const query=event.target.value.trim().toLowerCase(),host=$('#employee-suggestions');const matches=query?data.employees.filter(row=>row.id!==selected&&!row.createdForOrganization&&model.assignable(row,role(),data.employees)&&(row.name+' '+(row.nickname||'')).toLowerCase().includes(query)).slice(0,8):[];host.innerHTML=matches.map(row=>`<button type="button" data-assign-person="${escape(row.id)}">${avatar(row)}<span><strong>${escape(row.name)}</strong><small>${escape(row.position+' · '+label(key(row)))}</small></span></button>`).join('');host.hidden=!matches.length;event.target.setAttribute('aria-expanded',String(!!matches.length));});
   $('#employee-suggestions').addEventListener('click',event=>{const button=event.target.closest('[data-assign-person]');if(!button)return;assignmentId=button.dataset.assignPerson;const source=data.employees.find(row=>row.id===assignmentId),target=data.employees.find(row=>row.id===selected);const form=$('#person-form');form.elements.name.value=source.name;for(const field of ['nickname','companyEmail','pbbId','pbbExpiry','pbbMscId','pbbMscExpiry']){form.elements[field].value=source[field]||'';form.elements[field].disabled=true;}for(const field of ['position','reportsTo','scope'])form.elements[field].disabled=true;$('#employee-suggestions').hidden=true;$('#person-form').elements.name.setAttribute('aria-expanded','false');$('#assignment-note').hidden=false;$('#assignment-note').textContent=`Assign ${source.name} to ${target.position} · ${label(key(target))}. Their existing profile and PBB details will be retained.${target.createdForOrganization?'':` ${target.name} will move to Unassigned.`}`;});
@@ -174,7 +175,6 @@
     loaded=true;$('#hr-preview-note').hidden=false;$('#demo-role-label').hidden=false;populateScopes();chooseScope(scope);
     // Keep the complete local design journey in preview mode, including Home → HR.
     document.querySelectorAll('a[href="/home"],a[href="/hr"]').forEach(link=>link.href+='?preview=1');
-    $('.hr-settings').onclick=event=>{event.preventDefault();setView('accounts');};
   }else if(window.firebase?.apps?.length){
     firebase.auth().onAuthStateChanged(async current=>{user=current;data={employees:[],accounts:[],access:null};loaded=false;render();if(!user){$('#hr-status').innerHTML='Sign in to view HR. <a href="/login.html">Sign in →</a>';return;}try{data=await api();loaded=true;populateScopes();chooseScope(scope);}catch(error){$('#hr-status').textContent=error.message;}});
   }else{$('#hr-status').innerHTML='Sign in to view HR. <a href="/login.html">Sign in →</a>';}
