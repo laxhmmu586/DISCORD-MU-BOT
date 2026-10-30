@@ -13,7 +13,7 @@
   function role(){
     if(!preview)return data.access;
     const value=$('#demo-role').value;
-    return value==='admin'?{mode:'admin',employeeId:'account-MU'}:{mode:'business-manager',employeeId:value==='bm'?'account-MU':'MU-sup-1',station:'LAX',account:'MU',editablePositions:value==='bm'?['Duty Manager','Senior Supervisor','Supervisor','Lead','Agent']:['Lead','Agent']};
+    return value==='admin'?{mode:'admin',employeeId:'account-MU',canManagePending:true}:{mode:'business-manager',employeeId:value==='bm'?'account-MU':'MU-sup-1',station:'LAX',account:'MU',editablePositions:value==='bm'?['Duty Manager','Senior Supervisor','Supervisor','Lead','Agent']:['Lead','Agent']};
   }
   function scopedRows(){return data.employees.filter(row=>scope==='all'||(scope==='station:LAX'?row.station==='LAX':key(row)===scope));}
   function contextRows(){
@@ -61,6 +61,7 @@
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths.join(' '));svg.append(path);tree.prepend(svg);
   }
   function render(){
+    $('#hr-pending-link').hidden=!(role()?.mode==='admin'&&role()?.canManagePending===true);
     const rows=scopedRows(),contexts=groupedRows(contextRows());
     $('#people-count').textContent=rows.length;
     $('#team-count').textContent=rows.filter(r=>r.reportsTo).length;
