@@ -38,3 +38,19 @@ test('saved wheelchair values match the screenshot totals and survive day-row in
 });
 
 test('selected assigned account controls Report scope and cannot access unassigned accounts',async t=>{const {request}=await fixture(t),scope={station:'SFO',account:'XX'};const selected=await request('supervisor','/context',undefined,scope);assert.equal(selected.status,200);assert.deepEqual(selected.data.scope,scope);assert.equal((await request('supervisor','/context',undefined,{station:'LAX',account:'AA'})).status,403);assert.equal((await request('supervisor','/da/2026-10',{revision:0,values:{C6:'ACCOUNT SWITCH'}},scope)).status,200);assert.equal((await request('other','/da/2026-10')).data.cells.C6.value,'ACCOUNT SWITCH');assert.notEqual((await request('supervisor','/da/2026-10')).data.cells.C6.value,'ACCOUNT SWITCH');});
+
+test('DA annual exports format daily and total counts as integers while retaining times and OTP percentages',async t=>{
+ const {request}=await fixture(t);
+ for(const [month,extra] of [['2026-10',false],['2028-02',true]]){
+  if(extra)assert.equal((await request('lead','/da/'+month+'/rows',{revision:0,day:1})).status,200);
+  const before=(await request('lead','/da/'+month)).data;assert.equal((await request('lead','/da/'+month,{revision:extra?1:0,...(extra?{layoutRevision:1}:{}),values:{E6:'09:05',H7:'12:30',I7:'12:50',K7:292,L6:1,['L'+before.days[1].start]:2,M6:1}})).status,200);
+  const exported=await request('lead','/da/'+month+'/export');assert.equal(exported.status,200);const book=new Excel.Workbook();await book.xlsx.load(exported.data);
+  for(let m=1;m<=12;m++){
+   const key=month.slice(0,4)+'-'+String(m).padStart(2,'0'),model=(await request('lead','/da/'+key)).data,sheet=book.getWorksheet(model.sheetName);
+   for(const day of model.days){for(const column of ['L','M','N'])if(model.cells[column+day.start])assert.equal(sheet.getCell(column+day.start).numFmt,'0',key+' '+column+day.start);}
+   for(const address of ['K7','L'+(model.rows-1),'M'+(model.rows-1),'N'+(model.rows-1),'L'+model.rows])assert.equal(sheet.getCell(address).numFmt,'0',key+' '+address);
+   assert.equal(sheet.getCell('M'+model.rows).numFmt,'0%');assert.equal(sheet.getCell('E6').numFmt,'hh:mm');assert.equal(sheet.getCell('H7').numFmt,'hh:mm');
+  }
+  const selected=book.getWorksheet(month==='2026-10'?'Oct':'Feb'),model=(await request('lead','/da/'+month)).data;assert.equal(selected.getCell('L6').value,1);assert.equal(selected.getCell('L'+(model.rows-1)).result,3);assert.equal(selected.getCell('M'+(model.rows-1)).result,1);assert.equal(selected.getCell('E6').value.toISOString().slice(11,16),'09:05');assert.equal(selected.getCell('H7').value.toISOString().slice(11,16),'12:30');assert.equal(selected.getCell('N6').formula,model.cells.N6.formula);
+ }
+});
