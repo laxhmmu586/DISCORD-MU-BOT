@@ -1,0 +1,14 @@
+function createBriefingEtab({db,now=()=>new Date()}={}){
+ if(!db)throw Error('Briefing ETAB storage requires a database.');
+ db.exec('CREATE TABLE IF NOT EXISTS briefing_etab_snapshots(date TEXT NOT NULL,flight TEXT NOT NULL,received_at INTEGER NOT NULL,data TEXT NOT NULL,PRIMARY KEY(date,flight))');
+ function accept(advisory,metadata={}){
+  const date=advisory?.date,arrival=advisory?.arrival,received=Number(metadata.received||Date.parse(metadata.receivedAt||''))||now().getTime();
+  if(!/^20\d{2}-\d{2}-\d{2}$/.test(date||'')||!/^MU\d{3,4}$/.test(arrival?.flight||'')||!metadata.discordMessageId)throw Error('A delivered ETAB advisory is required.');
+  const value={status:'available',date,flight:arrival.flight,registration:arrival.reg||'',eta:arrival.eta||'',gate:arrival.gate||'',pax:arrival.pax||'',crew:arrival.crew||'',receivedAt:new Date(received).toISOString(),discordMessageId:String(metadata.discordMessageId)};
+  db.prepare('INSERT INTO briefing_etab_snapshots VALUES(?,?,?,?) ON CONFLICT(date,flight) DO UPDATE SET received_at=excluded.received_at,data=excluded.data WHERE excluded.received_at>=briefing_etab_snapshots.received_at').run(date,arrival.flight,received,JSON.stringify(value));acceptDeparture(advisory,metadata);return value;
+ }
+ function acceptDeparture(advisory,metadata){const departure=advisory.departure;if(!departure?.flight)return;const received=Number(metadata.received||Date.parse(metadata.receivedAt||''))||now().getTime(),day=departure.flightDate;const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];let date=advisory.date;if(day){const candidates=[-1,0,1].map(offset=>new Date(Date.UTC(Number(date.slice(0,4))+offset,months.indexOf(day.slice(2)),Number(day.slice(0,2)),12)));candidates.sort((a,b)=>Math.abs(a-new Date(advisory.date))-Math.abs(b-new Date(advisory.date)));date=candidates[0].toISOString().slice(0,10);}const value={status:'available',date,flight:departure.flight,registration:advisory.arrival.reg||'',gate:advisory.arrival.gate||'',std:'1130',etd:departure.time||'',arrivalFlight:advisory.arrival.flight,departureTimeMapping:2,receivedAt:new Date(received).toISOString(),discordMessageId:String(metadata.discordMessageId)};db.prepare('INSERT INTO briefing_etab_snapshots VALUES(?,?,?,?) ON CONFLICT(date,flight) DO UPDATE SET received_at=excluded.received_at,data=excluded.data WHERE excluded.received_at>=briefing_etab_snapshots.received_at').run(date,departure.flight,received,JSON.stringify(value));}
+ function read(date,flight){const row=db.prepare('SELECT data FROM briefing_etab_snapshots WHERE date=? AND flight=?').get(date,flight);if(!row)return {status:'unavailable',date,flight,message:''};const value=JSON.parse(row.data);if(['MU586','MU578'].includes(flight)&&!value.departureTimeMapping){value.etd=value.etd||value.std||'';value.std='1130';}return value;}
+ return {read,accept};
+}
+module.exports={createBriefingEtab};

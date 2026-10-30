@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const grid=require('../public/public/schedule-grid'),{roles,colors}=require('../staffSchedule');
+const grid=require('../has/public/schedule-grid'),{roles,colors}=require('../has/server/staffSchedule');
 const employees=[{id:'a'},{id:'b'},{id:'c'}],days=[{date:'2026-10-26',revision:3,assignments:{a:{code:'CL',color:'#123456'}}},{date:'2026-10-27',revision:4,assignments:{a:{code:'VAC',color:colors.VAC}}},{date:'2026-10-28',revision:5,assignments:{}}];
 test('rectangular copy/paste preserves custom colors, vacation and blank cells',()=>{
  const range={anchor:{row:1,col:1},focus:{row:0,col:0}},copied=grid.copy(employees,days,range),cells=grid.parse(copied.rich,copied.text,roles,colors);
@@ -13,7 +13,7 @@ test('one copied cell fills a selected rectangle; text TSV parses duty codes saf
  assert.throws(()=>grid.plan(employees,days,{anchor:{row:2,col:2},focus:{row:2,col:2}},[[cells[0][0],cells[0][0]]]));
 });
 
-test('rich clipboard carries remarks alongside duty colors',()=>{const grid=require('../public/public/schedule-grid'),employees=[{id:'a'}],days=[{date:'2026-10-28',revision:1,assignments:{a:{code:'C',color:'#99ff00',remark:'Check passport'}}}],range={anchor:{row:0,col:0},focus:{row:0,col:0}},copied=grid.copy(employees,days,range),cells=grid.parse(copied.rich,copied.text,{C:'Check-in'},{C:'#99ff00'});assert.equal(grid.plan(employees,days,range,cells).changes[0].remark,'Check passport');});
+test('rich clipboard carries remarks alongside duty colors',()=>{const grid=require('../has/public/schedule-grid'),employees=[{id:'a'}],days=[{date:'2026-10-28',revision:1,assignments:{a:{code:'C',color:'#99ff00',remark:'Check passport'}}}],range={anchor:{row:0,col:0},focus:{row:0,col:0}},copied=grid.copy(employees,days,range),cells=grid.parse(copied.rich,copied.text,{C:'Check-in'},{C:'#99ff00'});assert.equal(grid.plan(employees,days,range,cells).changes[0].remark,'Check passport');});
 
 
 test('rich copy/paste preserves custom display text separately from the duty code',()=>{

@@ -3,17 +3,17 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const db=new Database(':memory:'),app=express();app.use(express.json());
  const rows=[['bm','Business Manager','CZ'],['agent','Agent','CZ'],['supervisor','Supervisor','CZ'],['other','Business Manager','MU']].map(([id,position,account],i)=>({id,position,account,station:'LAX',name:id.toUpperCase()+' FIXTURE',eid:String(1001+i),email:id+'@example.test',loginId:id+'-original@example.test',attach:false,detach:false,spotter:false}));
- const store=require('../employees').createEmployeeStore(db,{seed:rows}),employees={...store,db},profiles=require('../employeeProfiles').createProfileStore(employees);
+ const store=require('../has/server/employees').createEmployeeStore(db,{seed:rows}),employees={...store,db},profiles=require('../has/server/employeeProfiles').createProfileStore(employees);
  const user={uid:'google-bm',email:'personal@example.test',provider:'google.com',emailVerified:true};profiles.link(user,{revision:store.get().revision,eid:'1001'});
- const authenticate=async()=>user;require('../employees').registerEmployees(app,{store,profiles,authenticate});
- const reports=require('../hasReports').registerHasReports(app,{employees,profiles,authenticate});
- const readSign=require('../readSign').registerReadSign(app,{employees,profiles,authenticate,send:async()=>{}});
+ const authenticate=async()=>user;require('../has/server/employees').registerEmployees(app,{store,profiles,authenticate});
+ const reports=require('../has/server/hasReports').registerHasReports(app,{employees,profiles,authenticate});
+ const readSign=require('../has/server/readSign').registerReadSign(app,{employees,profiles,authenticate,send:async()=>{}});
  const body=subject=>({requestId:require('node:crypto').randomUUID(),subject,memoNumber:'',body:'Test account scope',deadline:'2099-12-31T12:00:00Z',attachments:[]});
  db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run('other','other','password',new Date().toISOString());
  const other=readSign.store.publish({uid:'other'},body('Foreign memo'));
  readSign.store.publish(user,body('Own account memo'));
  app.get('/profile-api',(_,res)=>res.json(profiles.status(user)));
- app.use(express.static('public/public'));
+ app.use(require('../has/static').withShared('public/public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{

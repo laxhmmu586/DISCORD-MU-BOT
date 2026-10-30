@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {PDFDocument}=require('../vendor/pdf-lib/pdf-lib');
-const {buildHasPbbPdf,templateChecks}=require('../hasPbbPdf');
-const items=require('../public/public/has-pbb-data');
+const {buildHasPbbPdf,templateChecks}=require('../has/server/hasPbbPdf');
+const items=require('../has/public/has-pbb-data');
 function record(type='arrival',account='MU'){
  const answers={driver:{},spotter:{}};for(const q of items.filter(q=>q.type===type))answers[q.role][q.id]=true;
  return {id:'fictional-template-check',station:'LAX',account,type,date:'2099-01-01',flightNo:'ZZ000',gate:'999',bridge:'L2',answers,gateConfirmedAt:'2099-01-01T10:00:00Z',ready:{driver:true,spotter:true},movingAt:'2099-01-01T10:01:00Z',dockedAt:'2099-01-01T10:03:00Z',signatures:{driver:{name:'EXAMPLE DRIVER',strokes:[[[.1,.1],[.4,.6],[.8,.2]]]},spotter:{name:'EXAMPLE SPOTTER',typedSignature:'SAMPLE ONLY',strokes:[]}}};

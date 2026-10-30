@@ -1,9 +1,9 @@
 const {chromium}=require('playwright'),express=require('express'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
-const {createStore,registerPbb}=require('../pbb'),items=require('../public/public/pbb-data');
+const {createStore,registerPbb}=require('../has/server/pbb'),items=require('../has/public/pbb-data');
 (async()=>{
  const app=express();app.use(express.json());const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00Z')});
  const pbb=registerPbb(app,{store,employeeSeed:require('../test/fixtures/pbb-employees.json'),authenticate:async()=>({uid:'fixture'}),gateService:{today:async(date,type)=>({flights:[{flightNo:type==='arrival'?'MU583':'MU586',gate:'132',date}]}),read:async()=>({status:'unavailable'})},client:{},drive:{files:{}}});
- app.use(express.static(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));const origin='http://127.0.0.1:'+server.address().port;
+ app.use(require('../has/static').withShared(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));const origin='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true,args:['--enable-unsafe-swiftshader']});const output=path.resolve('output/pbb-training-preview');await fs.mkdir(output,{recursive:true});const errors=[];
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}});await page.addInitScript(origin=>window.MU_API_BASE=origin,origin);page.on('pageerror',e=>errors.push(e.message));

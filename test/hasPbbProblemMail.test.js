@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),Database=require('better-sqlite3');
-const {createProblemMailer,createSender,mime,problemMessage}=require('../hasPbbProblemMail');
+const {createProblemMailer,createSender,mime,problemMessage}=require('../has/server/hasPbbProblemMail');
 function fixture(t,sendEmail){
  const db=new Database(':memory:');let instant=new Date('2026-10-29T18:00:00Z');
  const rows=[{id:'manager',position:'Business Manager',station:'LAX',account:'MU',companyEmail:'manager@example.test',email:'personal@example.test'},{id:'outside',position:'Business Manager',station:'SFO',account:'MU',companyEmail:'outside@example.test'},{id:'second',position:'Business Manager',station:'LAX',account:'CI',additionalAccounts:[{station:'LAX',account:'MU'}],companyEmail:'second@example.test'},{id:'supervisor',position:'Supervisor',station:'LAX',account:'MU',companyEmail:'supervisor@example.test'}];

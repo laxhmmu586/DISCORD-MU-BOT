@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {registerBriefing,CONTACTS}=require('../briefing'),{createEmployeeStore}=require('../employees'),{createBriefingEtab}=require('../briefingEtab');
+const {registerBriefing,CONTACTS}=require('../has/server/briefing'),{createEmployeeStore}=require('../has/server/employees'),{createBriefingEtab}=require('../has/server/briefingEtab');
 const DATE='2026-10-28';
 async function fixture(t){
  const db=new Database(':memory:');db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT);CREATE TABLE staff_schedule_days(date TEXT PRIMARY KEY,revision INTEGER,data TEXT)');db.prepare('INSERT INTO employee_avatars VALUES(?,?)').run('agent','data:image/png;base64,photo');
@@ -106,7 +106,7 @@ test('Departure Counter/Gate edits persist separately from Arrival with role and
  const preview=await request('sup','/reports/'+report.data.id+'/preview');assert.match(preview.data.toString(),/DEPARTURE BRIEFING/);assert.match(preview.data.toString(),/A58 \/ Business/);assert.match(preview.data.toString(),/10:30/);
 });
 test('Time Check follows day offsets, year rollover and EDATE leap-day clamping',()=>{
- const {timeChecks,booking}=require('../public/public/briefing-fields');
+ const {timeChecks,booking}=require('../has/public/briefing-fields');
  assert.deepEqual(timeChecks('2026-10-28'),{transit:'2026-10-30',visa240:'2026-11-08',age21:'2005-10-28'});
  assert.deepEqual(timeChecks('2024-02-29'),{transit:'2024-03-02',visa240:'2024-03-11',age21:'2003-02-28'});
  assert.equal(timeChecks('2026-12-31').visa240,'2027-01-11');assert.equal(booking({bookingF:'1',bookingJ:'50',bookingY:'242',infantJ:'1',infantY:'2',configF:'6',configJ:'52',configY:'258'}).pax,293);
@@ -134,7 +134,7 @@ test('Config is manager-only and cannot be changed by Supervisor or Lead through
 
 
 test('PLF uses adult PAX divided by 313 and excludes infants and Config',()=>{
- const {booking}=require('../public/public/briefing-fields');const result=booking({bookingF:'1',bookingJ:'50',bookingY:'242',infantF:'10',infantJ:'10',configF:'100',configJ:'100',configY:'100'});assert.equal(result.plf,'94%');assert.equal(booking({}).plf,'0%');
+ const {booking}=require('../has/public/briefing-fields');const result=booking({bookingF:'1',bookingJ:'50',bookingY:'242',infantF:'10',infantJ:'10',configF:'100',configJ:'100',configY:'100'});assert.equal(result.plf,'94%');assert.equal(booking({}).plf,'0%');
 });
 
 
@@ -206,7 +206,7 @@ test('only current assigned Gate Lead/Assist and Lead+ edit control entries, wit
 
 test('all seven Arrival duties replace with one person through either assignment API',async t=>{
  const {request}=await fixture(t),key={date:DATE,flight:'MU583'};
- for(const field of require('../public/public/briefing-fields').arrival){
+ for(const field of require('../has/public/briefing-fields').arrival){
   await request('lead','/assign',{...key,employeeId:'agent',fromField:null,toField:field,toValue:''});
   const replacement=await request('lead','/assign',{...key,employeeId:'peer',fromField:null,toField:field,toValue:'agent employee'});
   assert.equal(replacement.status,200);assert.equal(replacement.data.fields[field],'peer employee');

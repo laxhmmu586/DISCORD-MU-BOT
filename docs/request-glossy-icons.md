@@ -7,7 +7,7 @@ Final project assets:
 - public/public/assets/request/pending-glossy-v1.webp
 - public/public/assets/request/mine-glossy-v1.webp
 - public/public/assets/request/approved-glossy-v1.webp
-- public/public/assets/request/camera-glossy-v1.webp
+- has/public/assets/request/camera-glossy-v1.webp
 
 ## Generation prompt
 

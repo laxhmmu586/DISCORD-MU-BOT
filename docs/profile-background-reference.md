@@ -2,7 +2,7 @@
 
 Generated with the built-in image generation tool using the supplied glass-canopy screenshot as the material reference and `profile-ce777-night-v10.webp` as the airport scenery reference. The existing aircraft photograph remains a separate CSS layer. No employee identity, avatar or text is generated into the background.
 
-Asset: `public/public/assets/profile-glass-reference-v3.webp` (2172 × 724). The generated PNG was converted to WebP at quality 94.
+Asset: `has/public/assets/profile-glass-reference-v3.webp` (2172 × 724). The generated PNG was converted to WebP at quality 94.
 
 ## Final prompt
 

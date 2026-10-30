@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
 const {registerFeedback,validate,email,discordPayload,RECIPIENT,CC,SUBJECT}=require('../feedback');
-const {createEmployeeStore}=require('../employees');
+const {createEmployeeStore}=require('../has/server/employees');
 const seed=[{id:'one',name:'Private Full Name',nickname:'Victoria',phone:'private',email:'private@example.com',eid:'123',attach:false,detach:false,spotter:false},{id:'two',name:'No Nickname',attach:false,detach:false,spotter:false}];
 const body=()=>({requestId:crypto.randomUUID(),name:'Maria Dominguez',date:'2026-10-15',seat:'39c',type:'praise',details:'Victoria gave me great help on explaining Chinese 240 policy, and where my bag will transit.',employeeId:'one'});
 async function fixture(t,send=async()=> 'gmail-ack',client){const db=new Database(':memory:'),employees=createEmployeeStore(db,{seed}),app=express();app.use(express.json());const service=registerFeedback(app,{employees,db,send,client});const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});const base='http://127.0.0.1:'+server.address().port;return {employees,db,service,get:()=>fetch(base+'/feedback-api/employees').then(r=>r.json()),post:b=>fetch(base+'/feedback-api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})};}

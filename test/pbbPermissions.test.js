@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express');
-const {createStore,registerPbb}=require('../pbb'),{createEmployeeStore}=require('../employees'),items=require('../public/public/pbb-data');
+const {createStore,registerPbb}=require('../has/server/pbb'),{createEmployeeStore}=require('../has/server/employees'),items=require('../has/public/pbb-data');
 const admin={uid:'admin',email:'lake@mu.com'},operator={uid:'operator',email:'operator@example.com'};
 const seed=[{id:'attach',name:'ATTACH ONLY',eid:'00123',attach:true,detach:false,spotter:false},{id:'detach',name:'DETACH ONLY',eid:'00456',attach:false,detach:true,spotter:false},{id:'legacy',name:'LEGACY DRIVER',eid:'',driver:true,spotter:false},{id:'spotter',name:'SPOTTER',eid:'',driver:false,spotter:true}];
 test('legacy driver migrates to two independent flags, explicit false wins and invalid flags fail',()=>{

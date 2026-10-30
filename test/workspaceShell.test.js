@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const {parseHTML} = require('linkedom');
-const root = path.join(__dirname, '../public/public');
+const root = path.join(__dirname, '../has/public');
 const source = name => fs.readFileSync(path.join(root, name), 'utf8');
 const pages = ['profile','has-form','has-report','read-sign','briefing','schedule','admin'];
 

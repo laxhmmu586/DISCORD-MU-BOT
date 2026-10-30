@@ -1,7 +1,7 @@
-const TIMES=require('./briefingFinish').ARRIVAL_TIMES;
+const TIMES=require('./has/server/briefingFinish').ARRIVAL_TIMES;
 const CHANNEL='1563411695936864447',GATE_CHANNEL='1252032370920656907',FOLDER='1NX1WCsYZqNvdz57J8oGb7h1yQWyt_O1S';
-function createAutoArchive({db,briefing,client,reserveDriveId,uploadDrive,now=()=>new Date(),logger=console,buildImage=require('./briefingImage').buildBriefingImage}){
- require('./briefingFinish').createFinishStore(db,{now});
+function createAutoArchive({db,briefing,client,reserveDriveId,uploadDrive,now=()=>new Date(),logger=console,buildImage=require('./has/server/briefingImage').buildBriefingImage}){
+ require('./has/server/briefingFinish').createFinishStore(db,{now});
  let busy=false,timer;
  const update=(job,sql,...args)=>db.prepare('UPDATE briefing_finish SET '+sql+',revision=revision+1 WHERE id=?').run(...args,job.id);
  async function tick(){if(busy)return;busy=true;try{

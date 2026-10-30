@@ -1,9 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 const {PDFDocument,PDFName,PDFArray,decodePDFRawStream}=require('../vendor/pdf-lib/pdf-lib');
-const {buildPbbPdf}=require('../pbbPdf'),items=require('../public/public/pbb-data');
+const {buildPbbPdf}=require('../has/server/pbbPdf'),items=require('../has/public/pbb-data');
 function streams(doc,page){const data=doc.context.lookup(page.node.get(PDFName.of('Contents')));return (data instanceof PDFArray?data.asArray().map(x=>doc.context.lookup(x)):[data]).map(x=>Buffer.from(decodePDFRawStream(x).decode()));}
 for(const type of ['arrival','departure'])test(type+' PDF retains every original content stream and page box, then adds completed marks and audit',async()=>{
- const source=await PDFDocument.load(await fs.readFile(path.join(__dirname,'../public/public/assets/pbb',type+'-source.pdf')));
+ const source=await PDFDocument.load(await fs.readFile(path.join(__dirname,'../has/public/assets/pbb',type+'-source.pdf')));
  const record={id:'test-original-template',type,flightNo:type==='arrival'?'MU583':'MU586',date:'2026-10-13',gate:'131',blockTime:'09:37',bridges:['L2'],answers:{driver:{},spotter:{}},notes:{driver:{},spotter:{}},signatures:{},completedAt:'2026-10-13T17:00:00Z'};
  for(const item of items[type])for(const role of item.roles)record.answers[role][item.id]=item.defaultValue||'Y';
  for(const role of ['driver','spotter'])record.signatures[role]={name:role==='driver'?'TEST DRIVER':'TEST SPOTTER',eid:'000321',at:'2026-10-13T16:00:00Z',strokes:[[[.1,.2],[.3,.7],[.6,.2]]]};

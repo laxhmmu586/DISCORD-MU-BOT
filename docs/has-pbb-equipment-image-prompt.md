@@ -1,6 +1,6 @@
 # Equipment inspection image
 
-Generated with built-in ImageGen. Consumed asset: public/public/assets/pbb/has-equipment-realistic-v3.webp (raster WebP).
+Generated with built-in ImageGen. Consumed asset: has/public/assets/pbb/has-equipment-realistic-v3.webp (raster WebP).
 
 References: canopy-bumper-inspection-lax-v3.webp (photographic style, canopy and bumper); safety-shoe.jpg (actual black pressure-sensor paddle).
 

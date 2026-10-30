@@ -1,2 +1,2 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
-test('Info is restored with its LAX/HQ access guard and glass shell',()=>{const html=fs.readFileSync('public/public/info.html','utf8');assert.match(html,/workspace-glass/);assert.match(html,/info-access.js/);assert.match(fs.readFileSync('public/public/info-access.js','utf8'),/'LAX','HQ','HEADQUARTER','HEADQUARTERS'/);});
+test('Info is restored with its LAX/HQ access guard and glass shell',()=>{const html=fs.readFileSync('has/public/info.html','utf8');assert.match(html,/workspace-glass/);assert.match(html,/info-access.js/);assert.match(fs.readFileSync('has/public/info-access.js','utf8'),/'LAX','HQ','HEADQUARTER','HEADQUARTERS'/);});

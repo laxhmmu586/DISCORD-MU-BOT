@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const owners=require('../serverOwners'),policy=require('../public/public/employee-permissions'),model=require('../public/public/organization-model');
+const owners=require('../has/server/serverOwners'),policy=require('../has/public/employee-permissions'),model=require('../has/public/organization-model');
 test('server owners use exact identities and all catalog permissions override role defaults and denials',()=>{
  for(const email of ['lax@mu.com','nextweek1216@gmail.com',' LAX@MU.COM ','lake@mu.com']){assert(owners.isOwner(email));for(const {key} of policy.catalog)assert(policy.allowed({loginId:email,position:'Agent',permissionOverrides:{[key]:false}},key));}
  for(const email of ['lax@mu.com.attacker.test','nextweek1216+other@gmail.com','tamsun10@gmail.com'])assert(!owners.isOwner(email));
@@ -7,7 +7,7 @@ test('server owners use exact identities and all catalog permissions override ro
  assert(!policy.allowed({loginId:'lax@mu.com'},'unknown'));
 });
 test('both owners manage all HR accounts, their own profile and permission overrides',async t=>{
- const db=new Database(':memory:'),{createEmployeeStore,registerEmployees}=require('../employees');
+ const db=new Database(':memory:'),{createEmployeeStore,registerEmployees}=require('../has/server/employees');
  const store=createEmployeeStore(db,{seed:[['one','lax@mu.com'],['two','nextweek1216@gmail.com'],['other','other@example.test']].map(([id,loginId])=>({id,loginId,name:id,position:'Agent',station:id==='other'?'SFO':'LAX',account:'MU',attach:false,detach:false,spotter:false}))});
  const app=express();app.use(express.json());registerEmployees(app,{store,profiles:{linked:user=>store.get().employees.find(row=>row.id===user.uid)},authenticate:async req=>({uid:req.get('X-User'),email:store.get().employees.find(row=>row.id===req.get('X-User'))?.loginId})});
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{server.closeAllConnections();server.close();db.close();});

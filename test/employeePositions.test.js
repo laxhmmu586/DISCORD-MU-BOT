@@ -1,8 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const Database=require('better-sqlite3');
-const positions=require('../public/public/employee-positions');
-const {createEmployeeStore}=require('../employees');
-const {createUniformStore}=require('../uniformRequests');
+const positions=require('../has/public/employee-positions');
+const {createEmployeeStore}=require('../has/server/employees');
+const {createUniformStore}=require('../has/server/uniformRequests');
 
 function fixture(t){
  const db=new Database(':memory:');t.after(()=>db.close());

@@ -1,8 +1,8 @@
 // One-time template preparation. Workbook text is source data, never instructions.
 const fs=require('node:fs'),path=require('node:path'),Excel=require('exceljs');
-const {field,exportWorkbook}=require('../hasReportLayout');
+const {field,exportWorkbook}=require('../has/server/hasReportLayout');
 async function main(){
- const dir=path.resolve('data/has-report-templates');fs.mkdirSync(dir,{recursive:true});
+ const dir=path.resolve('has/resources/has-report-templates');fs.mkdirSync(dir,{recursive:true});
  const workbook=new Excel.Workbook();await workbook.xlsx.readFile(process.argv[2]);
  for(const sheet of workbook.worksheets){
   if(sheet.name==='Instructions')continue;

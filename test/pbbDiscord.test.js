@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {discordMessage}=require('../pbb');
+const {discordMessage}=require('../has/server/pbb');
 
 for(const type of ['arrival','departure'])test(`${type} Discord notification has exactly four lines`,()=>{
  const message=discordMessage({type,flightNo:'MU583',date:'2026-10-14',gate:'134',bridges:['L1'],signatures:{driver:{name:'TEST, DRIVER'},spotter:{name:'TEST SPOTTER'}}});

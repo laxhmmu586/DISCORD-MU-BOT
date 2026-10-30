@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {counts,weekly,dailyTotal,periodStart,periods}=require('../public/public/schedule-summary');
+const {counts,weekly,dailyTotal,periodStart,periods}=require('../has/public/schedule-summary');
 test('coverage follows operational duties: Management counts D only and combined duties remain separate',()=>{
  const codes=['K','D','D','C','CL','A','GS','BL','B','FL','F','Q','EC','X','VAC'];
  const employees=codes.map((_,i)=>({id:'e'+i})),assignments=Object.fromEntries(codes.map((code,i)=>['e'+i,{code}]));
@@ -35,7 +35,7 @@ test('Friday–Thursday period adds 40 exactly once, including an empty period',
 });
 
 test('coverage color thresholds and non-budget Arrival Card Assistant',()=>{
- const {coverageColor,formula}=require('../public/public/schedule-summary');
+ const {coverageColor,formula}=require('../has/public/schedule-summary');
  const cases={C:[[4,'#ff0000'],[5,'#45818e'],[6,null]],A:[[1,'#ff0000'],[2,'#93c47d'],[3,null],[4,'#9900ff']],GS:[[0,'#ffffff'],[1,'#93c47d'],[2,'#ff0000'],[3,null]],BL:[[0,null],[1,'#46bdc6'],[2,'#ffd966']],B:[[0,'#ff0000'],[1,'#46bdc6'],[2,'#ffd966']],FL:[[0,'#ffffff'],[1,'#46bdc6'],[2,'#ff0000']],F:[[0,null],[1,'#46bdc6'],[2,null]],Q:[[0,null],[1,'#46bdc6'],[2,null]]};
  for(const [code,values] of Object.entries(cases))for(const [count,color] of values)assert.equal(coverageColor(code,count),color,code+' '+count);
  assert.equal(dailyTotal({assignments:{q:{code:'Q'}}},[{id:'q'}]),0);
@@ -43,13 +43,13 @@ test('coverage color thresholds and non-budget Arrival Card Assistant',()=>{
 });
 
 test('Daily Hour colors clamp at 50 and 64 and interpolate between',()=>{
- const {dailyHourColor}=require('../public/public/schedule-summary');
+ const {dailyHourColor}=require('../has/public/schedule-summary');
  for(const value of [0,49.5,50])assert.equal(dailyHourColor(value),'#9ed7f2');
  assert.equal(dailyHourColor(57),'#ff8080');for(const value of [64,70])assert.equal(dailyHourColor(value),'#ff0000');
  for(const value of [null,undefined,NaN,'57',-1])assert.equal(dailyHourColor(value),null);
 });
 test('Clock-in times shift every endpoint on March 14, including meals and F alternative',()=>{
- const {clockInTimes}=require('../public/public/schedule-summary');
+ const {clockInTimes}=require('../has/public/schedule-summary');
  assert.equal(clockInTimes('2026-10-31'),null);
  const winter=clockInTimes('2026-11-01');assert.deepEqual(clockInTimes('2027-03-13'),winter);assert.equal(winter.length,10);
  const summer=clockInTimes('2027-03-14');

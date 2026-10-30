@@ -1,5 +1,5 @@
 const {SPREADSHEET_ID,SHEET_ID}=require('./etabSchedule');
-const summary=require('./public/public/schedule-summary'),{digest}=require('./staffScheduleRoster');
+const summary=require('./has/public/schedule-summary'),{digest}=require('./has/server/staffScheduleRoster');
 const SOURCE_URL=`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit#gid=${SHEET_ID}`;
 const serialDate=n=>typeof n==='number'&&n>20000&&n<100000?new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000).toISOString().slice(0,10):null;
 const dateSerial=value=>Math.round((Date.parse(value+'T00:00:00Z')-Date.UTC(1899,11,30))/86400000);

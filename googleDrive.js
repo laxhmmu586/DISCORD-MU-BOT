@@ -5567,8 +5567,8 @@ async function getCbsOpenBagAuthorizationPdf() {
 // Exports
 // ===============================
 module.exports = {
-  ...require('./briefingDrive').createBriefingArchiveDrive(),
-  exportBriefingPdf: require('./briefingSchedule').createGoogleExporter({getClient:()=>auth.getClient(),getSheets:()=>google.sheets({version:'v4',auth})}),
+  ...require('./has/server/briefingDrive').createBriefingArchiveDrive(),
+  exportBriefingPdf: require('./has/server/briefingSchedule').createGoogleExporter({getClient:()=>auth.getClient(),getSheets:()=>google.sheets({version:'v4',auth})}),
   readEtabSchedule: require('./etabSchedule').createScheduleReader(),
   getNextDayInfoGmailClient,
   seedBoardingLive,

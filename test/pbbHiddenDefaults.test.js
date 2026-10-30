@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {createStore}=require('../pbb'),items=require('../public/public/pbb-data');
+const {createStore}=require('../has/server/pbb'),items=require('../has/public/pbb-data');
 test('departure door and chain require explicit answers; terminal door remains a hidden default',()=>{
  const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')}),user={uid:'test'};
  try{

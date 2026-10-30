@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-const source=fs.readFileSync(require.resolve('../public/public/schedule-live.js'),'utf8');
+const source=fs.readFileSync(require.resolve('../has/public/schedule-live.js'),'utf8');
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture({offline=false}={}){
  const intervals=new Set(),timeouts=[],controllers=[],calls=[];let token='initial',updates=0,fail=offline;

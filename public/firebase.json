@@ -130,6 +130,15 @@
     ],
     "headers": [
       {
+        "source": "/has/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "/{home,profile,has-form,has-report,read-sign,briefing,schedule,admin,home.html,home.css,home.js,workspace-glass.css,workspace-shell.js,workspace-routes.js,workspace-header.js,flight-account.js,request-inbox.js,employee-sidebar-art.js}",
         "headers": [
           {
@@ -300,52 +309,1123 @@
     "rewrites": [
       {
         "source": "/home",
-        "destination": "/home.html"
+        "destination": "/has/home.html"
       },
       {
         "source": "/profile",
-        "destination": "/profile.html"
+        "destination": "/has/profile.html"
       },
       {
         "source": "/has-form",
-        "destination": "/has-form.html"
+        "destination": "/has/has-form.html"
       },
       {
         "source": "/has-report",
-        "destination": "/has-report.html"
+        "destination": "/has/has-report.html"
       },
       {
         "source": "/read-sign",
-        "destination": "/read-sign.html"
+        "destination": "/has/read-sign.html"
       },
       {
         "source": "/briefing",
-        "destination": "/briefing.html"
+        "destination": "/has/briefing.html"
       },
       {
         "source": "/schedule",
-        "destination": "/schedule.html"
+        "destination": "/has/schedule.html"
       },
       {
         "source": "/admin",
-        "destination": "/admin.html"
+        "destination": "/has/admin.html"
       },
       {
         "source": "/hr",
-        "destination": "/hr.html"
+        "destination": "/has/hr.html"
       },
       {
         "source": "/info",
-        "destination": "/info.html"
+        "destination": "/has/info.html"
       },
       {
         "source": "/has-checklist",
-        "destination": "/has-checklist.html"
+        "destination": "/has/has-checklist.html"
       },
       {
         "source": "/account-settings",
-        "destination": "/account-settings.html"
+        "destination": "/has/account-settings.html"
+      },
+      {
+        "source": "/account-settings.html",
+        "destination": "/has/account-settings.html"
+      },
+      {
+        "source": "/admin.html",
+        "destination": "/has/admin.html"
+      },
+      {
+        "source": "/approval-glass.css",
+        "destination": "/has/approval-glass.css"
+      },
+      {
+        "source": "/approval-workflow.css",
+        "destination": "/has/approval-workflow.css"
+      },
+      {
+        "source": "/approval-workflow.html",
+        "destination": "/has/approval-workflow.html"
+      },
+      {
+        "source": "/approval-workflow.js",
+        "destination": "/has/approval-workflow.js"
+      },
+      {
+        "source": "/assets/airport-counter-hd.png",
+        "destination": "/has/assets/airport-counter-hd.png"
+      },
+      {
+        "source": "/assets/approval-clock-blue-v1.webp",
+        "destination": "/has/assets/approval-clock-blue-v1.webp"
+      },
+      {
+        "source": "/assets/attendance/call-off-sick.png",
+        "destination": "/has/assets/attendance/call-off-sick.png"
+      },
+      {
+        "source": "/assets/attendance/coming-late.png",
+        "destination": "/has/assets/attendance/coming-late.png"
+      },
+      {
+        "source": "/assets/attendance/late-luminous-v1.png",
+        "destination": "/has/assets/attendance/late-luminous-v1.png"
+      },
+      {
+        "source": "/assets/attendance/sick-luminous-v1.png",
+        "destination": "/has/assets/attendance/sick-luminous-v1.png"
+      },
+      {
+        "source": "/assets/checklist-resource-icon-v1.webp",
+        "destination": "/has/assets/checklist-resource-icon-v1.webp"
+      },
+      {
+        "source": "/assets/china-eastern-777-mobile-small.png",
+        "destination": "/has/assets/china-eastern-777-mobile-small.png"
+      },
+      {
+        "source": "/assets/flights-griffith-stone-terrace.webp",
+        "destination": "/has/assets/flights-griffith-stone-terrace.webp"
+      },
+      {
+        "source": "/assets/fonts/has-gate-poppins-extrabold.ttf",
+        "destination": "/has/assets/fonts/has-gate-poppins-extrabold.ttf"
+      },
+      {
+        "source": "/assets/hallmark-company-login.jpg",
+        "destination": "/has/assets/hallmark-company-login.jpg"
+      },
+      {
+        "source": "/assets/has-login-ground-staff-3d.png",
+        "destination": "/has/assets/has-login-ground-staff-3d.png"
+      },
+      {
+        "source": "/assets/home-hallmark-transparent-v1.png",
+        "destination": "/has/assets/home-hallmark-transparent-v1.png"
+      },
+      {
+        "source": "/assets/home-icon-bridge-v2.webp",
+        "destination": "/has/assets/home-icon-bridge-v2.webp"
+      },
+      {
+        "source": "/assets/home-icon-briefing-v1.webp",
+        "destination": "/has/assets/home-icon-briefing-v1.webp"
+      },
+      {
+        "source": "/assets/home-icon-calendar-v2.webp",
+        "destination": "/has/assets/home-icon-calendar-v2.webp"
+      },
+      {
+        "source": "/assets/home-icon-checklist-v1.webp",
+        "destination": "/has/assets/home-icon-checklist-v1.webp"
+      },
+      {
+        "source": "/assets/home-icon-flight-v2.webp",
+        "destination": "/has/assets/home-icon-flight-v2.webp"
+      },
+      {
+        "source": "/assets/home-icon-home-v2.webp",
+        "destination": "/has/assets/home-icon-home-v2.webp"
+      },
+      {
+        "source": "/assets/home-icon-info-v1.webp",
+        "destination": "/has/assets/home-icon-info-v1.webp"
+      },
+      {
+        "source": "/assets/home-icon-profile-v2.webp",
+        "destination": "/has/assets/home-icon-profile-v2.webp"
+      },
+      {
+        "source": "/assets/home-icon-report-v2.webp",
+        "destination": "/has/assets/home-icon-report-v2.webp"
+      },
+      {
+        "source": "/assets/home-icon-request-v2.webp",
+        "destination": "/has/assets/home-icon-request-v2.webp"
+      },
+      {
+        "source": "/assets/home-icon-request-v3.webp",
+        "destination": "/has/assets/home-icon-request-v3.webp"
+      },
+      {
+        "source": "/assets/home-icon-schedule-v1.webp",
+        "destination": "/has/assets/home-icon-schedule-v1.webp"
+      },
+      {
+        "source": "/assets/home-icon-sign-v2.webp",
+        "destination": "/has/assets/home-icon-sign-v2.webp"
+      },
+      {
+        "source": "/assets/home-team-banner-v1.webp",
+        "destination": "/has/assets/home-team-banner-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/aircraft-chocks-lax-v2.webp",
+        "destination": "/has/assets/pbb/aircraft-chocks-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/aircraft-door.svg",
+        "destination": "/has/assets/pbb/aircraft-door.svg"
+      },
+      {
+        "source": "/assets/pbb/airline-door-closure-lax-v2.webp",
+        "destination": "/has/assets/pbb/airline-door-closure-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/arrival-source.pdf",
+        "destination": "/has/assets/pbb/arrival-source.pdf"
+      },
+      {
+        "source": "/assets/pbb/auto-key-lax-v2.webp",
+        "destination": "/has/assets/pbb/auto-key-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/bridge-approach-lax-v2.webp",
+        "destination": "/has/assets/pbb/bridge-approach-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/bridge-approach-lax-v3.webp",
+        "destination": "/has/assets/pbb/bridge-approach-lax-v3.webp"
+      },
+      {
+        "source": "/assets/pbb/bridge.webp",
+        "destination": "/has/assets/pbb/bridge.webp"
+      },
+      {
+        "source": "/assets/pbb/cab-docking-lax-v2.webp",
+        "destination": "/has/assets/pbb/cab-docking-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/canopy-bumper-inspection-lax-v3.webp",
+        "destination": "/has/assets/pbb/canopy-bumper-inspection-lax-v3.webp"
+      },
+      {
+        "source": "/assets/pbb/canopy-bumper-realistic.webp",
+        "destination": "/has/assets/pbb/canopy-bumper-realistic.webp"
+      },
+      {
+        "source": "/assets/pbb/canopy-bumper.svg",
+        "destination": "/has/assets/pbb/canopy-bumper.svg"
+      },
+      {
+        "source": "/assets/pbb/canopy-deployed-lax-v2.webp",
+        "destination": "/has/assets/pbb/canopy-deployed-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/control-console.jpg",
+        "destination": "/has/assets/pbb/control-console.jpg"
+      },
+      {
+        "source": "/assets/pbb/departure-detachment-lax-v4.webp",
+        "destination": "/has/assets/pbb/departure-detachment-lax-v4.webp"
+      },
+      {
+        "source": "/assets/pbb/departure-ready-lax-v4.webp",
+        "destination": "/has/assets/pbb/departure-ready-lax-v4.webp"
+      },
+      {
+        "source": "/assets/pbb/departure-source.pdf",
+        "destination": "/has/assets/pbb/departure-source.pdf"
+      },
+      {
+        "source": "/assets/pbb/departure-spotter-between.png",
+        "destination": "/has/assets/pbb/departure-spotter-between.png"
+      },
+      {
+        "source": "/assets/pbb/departure-spotter-box-v2.png",
+        "destination": "/has/assets/pbb/departure-spotter-box-v2.png"
+      },
+      {
+        "source": "/assets/pbb/departure-spotter-engine.png",
+        "destination": "/has/assets/pbb/departure-spotter-engine.png"
+      },
+      {
+        "source": "/assets/pbb/departure-stow-box-lax-v4.webp",
+        "destination": "/has/assets/pbb/departure-stow-box-lax-v4.webp"
+      },
+      {
+        "source": "/assets/pbb/driver-spotter-eye-contact-lax-v2.webp",
+        "destination": "/has/assets/pbb/driver-spotter-eye-contact-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/external-stop.webp",
+        "destination": "/has/assets/pbb/external-stop.webp"
+      },
+      {
+        "source": "/assets/pbb/floor-level-lax-v2.webp",
+        "destination": "/has/assets/pbb/floor-level-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/fuselage-gap-lax-v2.webp",
+        "destination": "/has/assets/pbb/fuselage-gap-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/go-lax-v2.webp",
+        "destination": "/has/assets/pbb/go-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/go-warning-bell-lax-v4.webp",
+        "destination": "/has/assets/pbb/go-warning-bell-lax-v4.webp"
+      },
+      {
+        "source": "/assets/pbb/hallmark-logo-rgb-v1.webp",
+        "destination": "/has/assets/pbb/hallmark-logo-rgb-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/hallmark-logo.png",
+        "destination": "/has/assets/pbb/hallmark-logo.png"
+      },
+      {
+        "source": "/assets/pbb/has-arrival-logo.png",
+        "destination": "/has/assets/pbb/has-arrival-logo.png"
+      },
+      {
+        "source": "/assets/pbb/has-cables-stowed-v1.webp",
+        "destination": "/has/assets/pbb/has-cables-stowed-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/has-cables.svg",
+        "destination": "/has/assets/pbb/has-cables.svg"
+      },
+      {
+        "source": "/assets/pbb/has-crew-acknowledgment-v1.webp",
+        "destination": "/has/assets/pbb/has-crew-acknowledgment-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/has-crew.svg",
+        "destination": "/has/assets/pbb/has-crew.svg"
+      },
+      {
+        "source": "/assets/pbb/has-equipment-realistic-v3.webp",
+        "destination": "/has/assets/pbb/has-equipment-realistic-v3.webp"
+      },
+      {
+        "source": "/assets/pbb/has-equipment-yellow-bumper-v4.webp",
+        "destination": "/has/assets/pbb/has-equipment-yellow-bumper-v4.webp"
+      },
+      {
+        "source": "/assets/pbb/has-gate-airport-pale-v1.webp",
+        "destination": "/has/assets/pbb/has-gate-airport-pale-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/has-gate-terminal-132-205-v4.webp",
+        "destination": "/has/assets/pbb/has-gate-terminal-132-205-v4.webp"
+      },
+      {
+        "source": "/assets/pbb/has-gate.svg",
+        "destination": "/has/assets/pbb/has-gate.svg"
+      },
+      {
+        "source": "/assets/pbb/has-movement-night-v1.webp",
+        "destination": "/has/assets/pbb/has-movement-night-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/has-serviceable-user-v1.webp",
+        "destination": "/has/assets/pbb/has-serviceable-user-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/has-stopped.svg",
+        "destination": "/has/assets/pbb/has-stopped.svg"
+      },
+      {
+        "source": "/assets/pbb/hero.webp",
+        "destination": "/has/assets/pbb/hero.webp"
+      },
+      {
+        "source": "/assets/pbb/image-prompts.json",
+        "destination": "/has/assets/pbb/image-prompts.json"
+      },
+      {
+        "source": "/assets/pbb/interior.webp",
+        "destination": "/has/assets/pbb/interior.webp"
+      },
+      {
+        "source": "/assets/pbb/jet-bridge-icon.svg",
+        "destination": "/has/assets/pbb/jet-bridge-icon.svg"
+      },
+      {
+        "source": "/assets/pbb/off-key-removed-lax-v2.webp",
+        "destination": "/has/assets/pbb/off-key-removed-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/operate-key-lax-v2.webp",
+        "destination": "/has/assets/pbb/operate-key-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/ppe.webp",
+        "destination": "/has/assets/pbb/ppe.webp"
+      },
+      {
+        "source": "/assets/pbb/ramp-path-realistic.webp",
+        "destination": "/has/assets/pbb/ramp-path-realistic.webp"
+      },
+      {
+        "source": "/assets/pbb/ramp-path.svg",
+        "destination": "/has/assets/pbb/ramp-path.svg"
+      },
+      {
+        "source": "/assets/pbb/ramp.webp",
+        "destination": "/has/assets/pbb/ramp.webp"
+      },
+      {
+        "source": "/assets/pbb/ready-lax-v2.webp",
+        "destination": "/has/assets/pbb/ready-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/ready-safe-go-lax-v2.mp4",
+        "destination": "/has/assets/pbb/ready-safe-go-lax-v2.mp4"
+      },
+      {
+        "source": "/assets/pbb/ready-safe-go-lax-v2.vtt",
+        "destination": "/has/assets/pbb/ready-safe-go-lax-v2.vtt"
+      },
+      {
+        "source": "/assets/pbb/safe-area-check-lax-v2.webp",
+        "destination": "/has/assets/pbb/safe-area-check-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/safe-lax-v2.webp",
+        "destination": "/has/assets/pbb/safe-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/safety-chain-lax-v2.webp",
+        "destination": "/has/assets/pbb/safety-chain-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/safety-shoe-storage-lax-v2.webp",
+        "destination": "/has/assets/pbb/safety-shoe-storage-lax-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/safety-shoe.jpg",
+        "destination": "/has/assets/pbb/safety-shoe.jpg"
+      },
+      {
+        "source": "/assets/pbb/safety-strap.svg",
+        "destination": "/has/assets/pbb/safety-strap.svg"
+      },
+      {
+        "source": "/assets/pbb/signal.webp",
+        "destination": "/has/assets/pbb/signal.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/complete-asian-man-v1.webp",
+        "destination": "/has/assets/pbb/staff/complete-asian-man-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/complete-man-v1.webp",
+        "destination": "/has/assets/pbb/staff/complete-man-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/ready-asian-woman-v1.webp",
+        "destination": "/has/assets/pbb/staff/ready-asian-woman-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/ready-woman-v1.webp",
+        "destination": "/has/assets/pbb/staff/ready-woman-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-arms-purple-scarf-woman-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-arms-purple-scarf-woman-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-arms-victoria-woman-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-arms-victoria-woman-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-arms-white-tie-man-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-arms-white-tie-man-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-tablet-kelven-man-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-tablet-kelven-man-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-thumbs-up-glasses-man-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-thumbs-up-glasses-man-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-wave-glasses-woman-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-wave-glasses-woman-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-wave-glenn-man-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-wave-glenn-man-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-welcome-blue-scarf-woman-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-welcome-blue-scarf-woman-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-welcome-glasses-man-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-welcome-glasses-man-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/sidebar-welcome-grace-woman-v2.webp",
+        "destination": "/has/assets/pbb/staff/sidebar-welcome-grace-woman-v2.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/signed-asian-woman-v1.webp",
+        "destination": "/has/assets/pbb/staff/signed-asian-woman-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/signed-woman-v1.webp",
+        "destination": "/has/assets/pbb/staff/signed-woman-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/wait-asian-man-v1.webp",
+        "destination": "/has/assets/pbb/staff/wait-asian-man-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/wait-man-v1.webp",
+        "destination": "/has/assets/pbb/staff/wait-man-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/staff/wait-woman-v1.webp",
+        "destination": "/has/assets/pbb/staff/wait-woman-v1.webp"
+      },
+      {
+        "source": "/assets/pbb/stop.webp",
+        "destination": "/has/assets/pbb/stop.webp"
+      },
+      {
+        "source": "/assets/pbb/wheel-check.webp",
+        "destination": "/has/assets/pbb/wheel-check.webp"
+      },
+      {
+        "source": "/assets/profile-airport-night-v1.webp",
+        "destination": "/has/assets/profile-airport-night-v1.webp"
+      },
+      {
+        "source": "/assets/profile-ce777-night-v10.webp",
+        "destination": "/has/assets/profile-ce777-night-v10.webp"
+      },
+      {
+        "source": "/assets/profile-checkin-team-v1.webp",
+        "destination": "/has/assets/profile-checkin-team-v1.webp"
+      },
+      {
+        "source": "/assets/profile-glass-layers.svg",
+        "destination": "/has/assets/profile-glass-layers.svg"
+      },
+      {
+        "source": "/assets/profile-glass-reference-v3.webp",
+        "destination": "/has/assets/profile-glass-reference-v3.webp"
+      },
+      {
+        "source": "/assets/profile-tail-night-v1.webp",
+        "destination": "/has/assets/profile-tail-night-v1.webp"
+      },
+      {
+        "source": "/assets/request/camera-glossy-v1.webp",
+        "destination": "/has/assets/request/camera-glossy-v1.webp"
+      },
+      {
+        "source": "/assets/schedule-message-blue-badge-v2.svg",
+        "destination": "/has/assets/schedule-message-blue-badge-v2.svg"
+      },
+      {
+        "source": "/attendance-calendar.js",
+        "destination": "/has/attendance-calendar.js"
+      },
+      {
+        "source": "/attendance-history.js",
+        "destination": "/has/attendance-history.js"
+      },
+      {
+        "source": "/attendance-overview.js",
+        "destination": "/has/attendance-overview.js"
+      },
+      {
+        "source": "/attendance-request.html",
+        "destination": "/has/attendance-request.html"
+      },
+      {
+        "source": "/attendance.html",
+        "destination": "/has/attendance.html"
+      },
+      {
+        "source": "/briefing-fields.js",
+        "destination": "/has/briefing-fields.js"
+      },
+      {
+        "source": "/briefing-live.js",
+        "destination": "/has/briefing-live.js"
+      },
+      {
+        "source": "/briefing-reference.css",
+        "destination": "/has/briefing-reference.css"
+      },
+      {
+        "source": "/briefing-reference.js",
+        "destination": "/has/briefing-reference.js"
+      },
+      {
+        "source": "/briefing.css",
+        "destination": "/has/briefing.css"
+      },
+      {
+        "source": "/briefing.html",
+        "destination": "/has/briefing.html"
+      },
+      {
+        "source": "/briefing.js",
+        "destination": "/has/briefing.js"
+      },
+      {
+        "source": "/dashboard-profile.js",
+        "destination": "/has/dashboard-profile.js"
+      },
+      {
+        "source": "/department-access.js",
+        "destination": "/has/department-access.js"
+      },
+      {
+        "source": "/download-filename.js",
+        "destination": "/has/download-filename.js"
+      },
+      {
+        "source": "/emergency-notification-model.js",
+        "destination": "/has/emergency-notification-model.js"
+      },
+      {
+        "source": "/employee-account-cards.css",
+        "destination": "/has/employee-account-cards.css"
+      },
+      {
+        "source": "/employee-account-groups.js",
+        "destination": "/has/employee-account-groups.js"
+      },
+      {
+        "source": "/employee-pending.css",
+        "destination": "/has/employee-pending.css"
+      },
+      {
+        "source": "/employee-pending.js",
+        "destination": "/has/employee-pending.js"
+      },
+      {
+        "source": "/employee-permissions.js",
+        "destination": "/has/employee-permissions.js"
+      },
+      {
+        "source": "/employee-phone.js",
+        "destination": "/has/employee-phone.js"
+      },
+      {
+        "source": "/employee-positions.js",
+        "destination": "/has/employee-positions.js"
+      },
+      {
+        "source": "/employee-profile-api.js",
+        "destination": "/has/employee-profile-api.js"
+      },
+      {
+        "source": "/employee-sidebar-art.css",
+        "destination": "/has/employee-sidebar-art.css"
+      },
+      {
+        "source": "/employee-sidebar-art.js",
+        "destination": "/has/employee-sidebar-art.js"
+      },
+      {
+        "source": "/expense-definition.js",
+        "destination": "/has/expense-definition.js"
+      },
+      {
+        "source": "/expense-report.js",
+        "destination": "/has/expense-report.js"
+      },
+      {
+        "source": "/expense-sheet.css",
+        "destination": "/has/expense-sheet.css"
+      },
+      {
+        "source": "/flight-account.js",
+        "destination": "/has/flight-account.js"
+      },
+      {
+        "source": "/flights.css",
+        "destination": "/has/flights.css"
+      },
+      {
+        "source": "/has-checklist.html",
+        "destination": "/has/has-checklist.html"
+      },
+      {
+        "source": "/has-checklist.js",
+        "destination": "/has/has-checklist.js"
+      },
+      {
+        "source": "/has-completion.js",
+        "destination": "/has/has-completion.js"
+      },
+      {
+        "source": "/has-expense-editor.css",
+        "destination": "/has/has-expense-editor.css"
+      },
+      {
+        "source": "/has-expense-editor.js",
+        "destination": "/has/has-expense-editor.js"
+      },
+      {
+        "source": "/has-form.html",
+        "destination": "/has/has-form.html"
+      },
+      {
+        "source": "/has-login.css",
+        "destination": "/has/has-login.css"
+      },
+      {
+        "source": "/has-login.html",
+        "destination": "/has/has-login.html"
+      },
+      {
+        "source": "/has-login.js",
+        "destination": "/has/has-login.js"
+      },
+      {
+        "source": "/has-network.js",
+        "destination": "/has/has-network.js"
+      },
+      {
+        "source": "/has-pbb-client.js",
+        "destination": "/has/has-pbb-client.js"
+      },
+      {
+        "source": "/has-pbb-config.js",
+        "destination": "/has/has-pbb-config.js"
+      },
+      {
+        "source": "/has-pbb-dashboard.html",
+        "destination": "/has/has-pbb-dashboard.html"
+      },
+      {
+        "source": "/has-pbb-dashboard.js",
+        "destination": "/has/has-pbb-dashboard.js"
+      },
+      {
+        "source": "/has-pbb-data.js",
+        "destination": "/has/has-pbb-data.js"
+      },
+      {
+        "source": "/has-pbb-nav.js",
+        "destination": "/has/has-pbb-nav.js"
+      },
+      {
+        "source": "/has-pbb.css",
+        "destination": "/has/has-pbb.css"
+      },
+      {
+        "source": "/has-pbb.html",
+        "destination": "/has/has-pbb.html"
+      },
+      {
+        "source": "/has-recharge-grid.js",
+        "destination": "/has/has-recharge-grid.js"
+      },
+      {
+        "source": "/has-recharge.js",
+        "destination": "/has/has-recharge.js"
+      },
+      {
+        "source": "/has-report-access.js",
+        "destination": "/has/has-report-access.js"
+      },
+      {
+        "source": "/has-report-dashboard.css",
+        "destination": "/has/has-report-dashboard.css"
+      },
+      {
+        "source": "/has-report-dashboard.html",
+        "destination": "/has/has-report-dashboard.html"
+      },
+      {
+        "source": "/has-report-dashboard.js",
+        "destination": "/has/has-report-dashboard.js"
+      },
+      {
+        "source": "/has-report-live.js",
+        "destination": "/has/has-report-live.js"
+      },
+      {
+        "source": "/has-report-math.js",
+        "destination": "/has/has-report-math.js"
+      },
+      {
+        "source": "/has-report.css",
+        "destination": "/has/has-report.css"
+      },
+      {
+        "source": "/has-report.html",
+        "destination": "/has/has-report.html"
+      },
+      {
+        "source": "/has-report.js",
+        "destination": "/has/has-report.js"
+      },
+      {
+        "source": "/has-word-reports.css",
+        "destination": "/has/has-word-reports.css"
+      },
+      {
+        "source": "/has-word-reports.js",
+        "destination": "/has/has-word-reports.js"
+      },
+      {
+        "source": "/home-emergency.js",
+        "destination": "/has/home-emergency.js"
+      },
+      {
+        "source": "/home.css",
+        "destination": "/has/home.css"
+      },
+      {
+        "source": "/home.html",
+        "destination": "/has/home.html"
+      },
+      {
+        "source": "/home.js",
+        "destination": "/has/home.js"
+      },
+      {
+        "source": "/hr-reference.js",
+        "destination": "/has/hr-reference.js"
+      },
+      {
+        "source": "/hr.css",
+        "destination": "/has/hr.css"
+      },
+      {
+        "source": "/hr.html",
+        "destination": "/has/hr.html"
+      },
+      {
+        "source": "/hr.js",
+        "destination": "/has/hr.js"
+      },
+      {
+        "source": "/incident-report.css",
+        "destination": "/has/incident-report.css"
+      },
+      {
+        "source": "/incident-report.js",
+        "destination": "/has/incident-report.js"
+      },
+      {
+        "source": "/info-access.js",
+        "destination": "/has/info-access.js"
+      },
+      {
+        "source": "/info.html",
+        "destination": "/has/info.html"
+      },
+      {
+        "source": "/info.js",
+        "destination": "/has/info.js"
+      },
+      {
+        "source": "/my-approvals.css",
+        "destination": "/has/my-approvals.css"
+      },
+      {
+        "source": "/my-approvals.html",
+        "destination": "/has/my-approvals.html"
+      },
+      {
+        "source": "/my-approvals.js",
+        "destination": "/has/my-approvals.js"
+      },
+      {
+        "source": "/new-access-request.css",
+        "destination": "/has/new-access-request.css"
+      },
+      {
+        "source": "/new-access-request.js",
+        "destination": "/has/new-access-request.js"
+      },
+      {
+        "source": "/organization-model.js",
+        "destination": "/has/organization-model.js"
+      },
+      {
+        "source": "/paf-company-policies.js",
+        "destination": "/has/paf-company-policies.js"
+      },
+      {
+        "source": "/pbb-light.css",
+        "destination": "/has/pbb-light.css"
+      },
+      {
+        "source": "/pbb-qualification.js",
+        "destination": "/has/pbb-qualification.js"
+      },
+      {
+        "source": "/pbb-terminal-license.js",
+        "destination": "/has/pbb-terminal-license.js"
+      },
+      {
+        "source": "/pbb.css",
+        "destination": "/has/pbb.css"
+      },
+      {
+        "source": "/people-api.js",
+        "destination": "/has/people-api.js"
+      },
+      {
+        "source": "/portal-action-buttons.css",
+        "destination": "/has/portal-action-buttons.css"
+      },
+      {
+        "source": "/portal-cards.css",
+        "destination": "/has/portal-cards.css"
+      },
+      {
+        "source": "/portal-light.css",
+        "destination": "/has/portal-light.css"
+      },
+      {
+        "source": "/profile-avatar-crop.css",
+        "destination": "/has/profile-avatar-crop.css"
+      },
+      {
+        "source": "/profile-avatar-crop.js",
+        "destination": "/has/profile-avatar-crop.js"
+      },
+      {
+        "source": "/profile-emergency.css",
+        "destination": "/has/profile-emergency.css"
+      },
+      {
+        "source": "/profile-light.css",
+        "destination": "/has/profile-light.css"
+      },
+      {
+        "source": "/profile-modules.js",
+        "destination": "/has/profile-modules.js"
+      },
+      {
+        "source": "/profile.css",
+        "destination": "/has/profile.css"
+      },
+      {
+        "source": "/profile.html",
+        "destination": "/has/profile.html"
+      },
+      {
+        "source": "/profile.js",
+        "destination": "/has/profile.js"
+      },
+      {
+        "source": "/read-sign.css",
+        "destination": "/has/read-sign.css"
+      },
+      {
+        "source": "/read-sign.html",
+        "destination": "/has/read-sign.html"
+      },
+      {
+        "source": "/read-sign.js",
+        "destination": "/has/read-sign.js"
+      },
+      {
+        "source": "/report-progress.js",
+        "destination": "/has/report-progress.js"
+      },
+      {
+        "source": "/request-dashboard.js",
+        "destination": "/has/request-dashboard.js"
+      },
+      {
+        "source": "/request-form-definitions.js",
+        "destination": "/has/request-form-definitions.js"
+      },
+      {
+        "source": "/request-inbox.css",
+        "destination": "/has/request-inbox.css"
+      },
+      {
+        "source": "/request-inbox.js",
+        "destination": "/has/request-inbox.js"
+      },
+      {
+        "source": "/request-light.css",
+        "destination": "/has/request-light.css"
+      },
+      {
+        "source": "/request-report-layout.css",
+        "destination": "/has/request-report-layout.css"
+      },
+      {
+        "source": "/request-workflow.css",
+        "destination": "/has/request-workflow.css"
+      },
+      {
+        "source": "/request-workflow.js",
+        "destination": "/has/request-workflow.js"
+      },
+      {
+        "source": "/request.css",
+        "destination": "/has/request.css"
+      },
+      {
+        "source": "/request.js",
+        "destination": "/has/request.js"
+      },
+      {
+        "source": "/resource-preview.js",
+        "destination": "/has/resource-preview.js"
+      },
+      {
+        "source": "/save-briefing-photo.js",
+        "destination": "/has/save-briefing-photo.js"
+      },
+      {
+        "source": "/schedule-grid-layout.css",
+        "destination": "/has/schedule-grid-layout.css"
+      },
+      {
+        "source": "/schedule-grid.js",
+        "destination": "/has/schedule-grid.js"
+      },
+      {
+        "source": "/schedule-live.js",
+        "destination": "/has/schedule-live.js"
+      },
+      {
+        "source": "/schedule-notices.js",
+        "destination": "/has/schedule-notices.js"
+      },
+      {
+        "source": "/schedule-requests.css",
+        "destination": "/has/schedule-requests.css"
+      },
+      {
+        "source": "/schedule-requests.js",
+        "destination": "/has/schedule-requests.js"
+      },
+      {
+        "source": "/schedule-rules.css",
+        "destination": "/has/schedule-rules.css"
+      },
+      {
+        "source": "/schedule-rules.js",
+        "destination": "/has/schedule-rules.js"
+      },
+      {
+        "source": "/schedule-summary.js",
+        "destination": "/has/schedule-summary.js"
+      },
+      {
+        "source": "/schedule.css",
+        "destination": "/has/schedule.css"
+      },
+      {
+        "source": "/schedule.html",
+        "destination": "/has/schedule.html"
+      },
+      {
+        "source": "/schedule.js",
+        "destination": "/has/schedule.js"
+      },
+      {
+        "source": "/service-common.js",
+        "destination": "/has/service-common.js"
+      },
+      {
+        "source": "/terrific-definition.js",
+        "destination": "/has/terrific-definition.js"
+      },
+      {
+        "source": "/terrific-report.js",
+        "destination": "/has/terrific-report.js"
+      },
+      {
+        "source": "/uniform-api.js",
+        "destination": "/has/uniform-api.js"
+      },
+      {
+        "source": "/uniform-client.js",
+        "destination": "/has/uniform-client.js"
+      },
+      {
+        "source": "/uniform-notifications.js",
+        "destination": "/has/uniform-notifications.js"
+      },
+      {
+        "source": "/uniform-workflow.js",
+        "destination": "/has/uniform-workflow.js"
+      },
+      {
+        "source": "/uniform.css",
+        "destination": "/has/uniform.css"
+      },
+      {
+        "source": "/uniform.html",
+        "destination": "/has/uniform.html"
+      },
+      {
+        "source": "/workspace-glass.css",
+        "destination": "/has/workspace-glass.css"
+      },
+      {
+        "source": "/workspace-header.css",
+        "destination": "/has/workspace-header.css"
+      },
+      {
+        "source": "/workspace-header.js",
+        "destination": "/has/workspace-header.js"
+      },
+      {
+        "source": "/workspace-resources.css",
+        "destination": "/has/workspace-resources.css"
+      },
+      {
+        "source": "/workspace-routes.js",
+        "destination": "/has/workspace-routes.js"
+      },
+      {
+        "source": "/workspace-shell.js",
+        "destination": "/has/workspace-shell.js"
+      },
+      {
+        "source": "/pbb-data.js",
+        "destination": "/has/pbb-data.js"
+      },
+      {
+        "source": "/pbb-signals.js",
+        "destination": "/has/pbb-signals.js"
       }
+    ],
+    "predeploy": [
+      "node ../has/build.cjs"
     ]
   }
 }

@@ -54,8 +54,8 @@ The supplied PDFs are previewed through authenticated fetches and blob URLs;
 downloads are byte-identical to the originals, including existing PDF form
 fields. Templates are under `data/`, outside public hosting.
 
-Deploy both backend and Firebase hosting. Keep `data/has-word-templates` and
-`data/has-checklists` with the backend; existing report storage persists drafts.
+Deploy both backend and Firebase hosting. Keep `has/resources/has-word-templates` and
+`has/resources/has-checklists` with the backend; existing report storage persists drafts.
 There are no new runtime dependencies or database schema migrations.
 
 ## Validation

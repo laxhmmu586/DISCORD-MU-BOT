@@ -9,7 +9,8 @@
     "start": "node index.js",
     "test": "node --test test/*.test.js",
     "visa:check": "node scripts/visa-service.cjs --check",
-    "test:visa": "node --test test/visa*.test.js"
+    "test:visa": "node --test test/visa*.test.js",
+    "has:build": "node has/build.cjs"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",

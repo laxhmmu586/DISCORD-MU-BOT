@@ -1,6 +1,6 @@
 # PAF Company Policy picker
 
-The PAF editor on has-report.html has a left Company Policy panel containing all 44 numbered rules from section 6.7, Guidelines for Employee Conduct, of the supplied HAS Employee Handbook Rev. Jan 2026, printed pages 38–40 (PDF pages 43–45). The source SHA-256 and per-rule page references are recorded in public/public/paf-company-policies.js. Only PDF layout line breaks and spacing around hyphens were normalized. The handbook PDF is not copied into the website.
+The PAF editor on has-report.html has a left Company Policy panel containing all 44 numbered rules from section 6.7, Guidelines for Employee Conduct, of the supplied HAS Employee Handbook Rev. Jan 2026, printed pages 38–40 (PDF pages 43–45). The source SHA-256 and per-rule page references are recorded in has/public/paf-company-policies.js. Only PDF layout line breaks and spacing around hyphens were normalized. The handbook PDF is not copied into the website.
 
 Search by rule number or words, drag a rule onto Company Policy, or click a rule to append its numbered original text. Existing text is retained and remains editable. Save form and Download Word use the existing shared draft/revision checks. The Company Policy field accepts 20,000 characters, sufficient for all 44 rules; insertion checks the limit without truncating text. Other report types do not show the policy panel. On small screens the searchable panel appears above the existing scrollable Word-form layout.
 

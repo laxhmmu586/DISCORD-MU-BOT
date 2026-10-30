@@ -3,15 +3,15 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),express=re
 (async()=>{
  const db=new Database(':memory:'),names=['CHEN, TAYLOR','PARK, ALEX','MORGAN, JAMIE','BROWN, CASEY','LEE, JORDAN','WILSON, RILEY','GARCIA, CAMERON','PATEL, SAM','NGUYEN, AVERY','KIM, DREW','DAVIS, ROWAN','MARTIN, SKYLER','CLARK, LOGAN','LEWIS, QUINN','WALKER, REESE'];
  const seed=names.map((name,i)=>({id:'e'+i,name,nickname:i===0?'Taylor':'',eid:String(120001+i),position:i===0?'Manager':i===1?'Supervisor':'Agent',phone:'6265550100',email:'employee'+i+'@example.test',companyEmail:'employee'+i+'@company.example.test',loginId:i===0?'lake@mu.com':'employee'+i+'@login.example.test',attach:false,detach:false,spotter:false}));
- const employees={...require('../employees').createEmployeeStore(db,{seed}),db},users=seed.map(e=>({uid:e.id,email:e.loginId,provider:'password'}));
+ const employees={...require('../has/server/employees').createEmployeeStore(db,{seed}),db},users=seed.map(e=>({uid:e.id,email:e.loginId,provider:'password'}));
  const app=express();app.use(express.json({limit:'16mb'}));const authenticate=async req=>{const u=users.find(u=>req.headers.authorization==='Bearer '+u.uid);if(!u)throw Error('Sign in required');return u;};
- const profiles=require('../employeeProfiles').registerProfiles(app,{employees,authenticate});users.forEach(u=>profiles.status(u));
- const readSign=require('../readSign').registerReadSign(app,{employees,profiles,authenticate,send:async()=>{}}),uniform=require('../uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{}});
+ const profiles=require('../has/server/employeeProfiles').registerProfiles(app,{employees,authenticate});users.forEach(u=>profiles.status(u));
+ const readSign=require('../has/server/readSign').registerReadSign(app,{employees,profiles,authenticate,send:async()=>{}}),uniform=require('../has/server/uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{}});
  const records=[{reference:'REQ-DEMO-001',date:'2026-10-17',type:'late',arrivalTime:'10:15',reason:'Traffic delay on the way to the airport.',note:'Supervisor notified by phone.',submittedAt:'2026-10-17T16:40:00Z'},{reference:'REQ-DEMO-002',date:'2026-10-12',type:'sick',reason:'Unwell. Unable to attend the scheduled shift.',submittedAt:'2026-10-12T12:30:00Z'}];
  const attendance=require('../attendanceRequests').registerAttendance(app,{employees,profiles,authenticate,db,client:{},storage:{list:async()=>records}});
- app.use(express.static('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,output=path.resolve('output/employee-sidebar-pages');fs.mkdirSync(output,{recursive:true});
+ app.use(require('../has/static').withShared('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,output=path.resolve('output/employee-sidebar-pages');fs.mkdirSync(output,{recursive:true});
 
- require('../employees').registerEmployees(app,{store:employees,authenticate});
+ require('../has/server/employees').registerEmployees(app,{store:employees,authenticate});
  const browser=await chromium.launch({channel:'msedge',headless:true}),errors=[];
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errors.push(e.message));

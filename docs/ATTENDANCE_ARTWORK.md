@@ -2,8 +2,8 @@
 
 Created with the built-in image generation tool. The selected transparent PNGs are committed as project assets and are shared by the webpage and Discord image renderer.
 
-- `public/public/assets/attendance/call-off-sick.png`
-- `public/public/assets/attendance/coming-late.png`
+- `has/public/assets/attendance/call-off-sick.png`
+- `has/public/assets/attendance/coming-late.png`
 
 ## Final prompts
 

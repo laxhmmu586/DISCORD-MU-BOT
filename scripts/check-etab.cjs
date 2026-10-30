@@ -3,7 +3,7 @@ const path=require('node:path');
 require('dotenv').config({quiet:true});
 const root=path.resolve(__dirname,'..');
 const {parseAdvisory,arrivalTeam,localDate,buildDiscordPayload}=require('../etabAdvisory');
-const {mailBody}=require('../pbbEtab');
+const {mailBody}=require('../has/server/pbbEtab');
 async function main(){
  const gd=require('../googleDrive'),{gmail,userId,authMode}=gd.getNextDayInfoGmailClient();
  const profile=await gmail.users.getProfile({userId},{timeout:15000});

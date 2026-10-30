@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const Database=require('better-sqlite3'),express=require('express');
-const {createEmployeeStore}=require('../employees'),{createUniformStore,registerUniform}=require('../uniformRequests');
-const routeTools=require('../uniformRoute');
+const {createEmployeeStore}=require('../has/server/employees'),{createUniformStore,registerUniform}=require('../has/server/uniformRequests');
+const routeTools=require('../has/server/uniformRoute');
 function fixture(t){
  const db=new Database(':memory:');t.after(()=>db.close());
  const seed=['Agent','Supervisor','Supervisor','Manager','Regional Manager','General Manager','President'].map((position,i)=>({id:'e'+i,name:'EXAMPLE '+i,position,eid:'100'+i,phone:'626-555-0100',email:'person'+i+'@example.test',companyEmail:'person'+i+'@company.test',loginId:'person'+i+'@login.test',attach:false,detach:false,spotter:false}));

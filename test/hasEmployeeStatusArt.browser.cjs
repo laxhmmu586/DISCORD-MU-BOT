@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const root=path.join(__dirname,'../public/public'),output=path.join(__dirname,'../output/has-employee-status');fs.mkdirSync(output,{recursive:true});
- const app=express();app.get('/art-check',(_req,res)=>res.send('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/pbb.css"><link rel="stylesheet" href="/pbb-light.css"><link rel="stylesheet" href="/has-pbb.css"></head><body class="has-page"><main class="has-shell" id="view"></main></body></html>'));app.use(express.static(root));
+ const app=express();app.get('/art-check',(_req,res)=>res.send('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/pbb.css"><link rel="stylesheet" href="/pbb-light.css"><link rel="stylesheet" href="/has-pbb.css"></head><body class="has-page"><main class="has-shell" id="view"></main></body></html>'));app.use(require('../has/static').withShared(root));
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));const base='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{

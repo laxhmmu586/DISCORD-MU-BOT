@@ -2,11 +2,11 @@ const test=require('node:test'),assert=require('node:assert/strict'),express=req
 test('DA arrival/departure delay bands handle 30/60-minute boundaries, early flights, missing times and midnight',()=>{
  const cells={},pairs=[['1000','1000'],['1000','0955'],['1000','1001'],['1000','1029'],['1000','1030'],['1000','1059'],['1000','1100'],['2350','0020'],['1000',''],['1000','NIL']];
  pairs.forEach(([scheduled,actual],i)=>{cells['E'+(i+6)]={value:scheduled};cells['F'+(i+6)]={value:actual};});cells.G6={value:0.5};cells.H6={value:0.5+60/1440};
- const result=require('../hasReportDelays').flightDelays({cells,days:[{start:6,end:15}]});assert.deepEqual(result.arrival,{under30:2,from30to59:3,atLeast60:1,total:6,evaluated:8});assert.deepEqual(result.departure,{under30:0,from30to59:0,atLeast60:1,total:1,evaluated:1});
+ const result=require('../has/server/hasReportDelays').flightDelays({cells,days:[{start:6,end:15}]});assert.deepEqual(result.arrival,{under30:2,from30to59:3,atLeast60:1,total:6,evaluated:8});assert.deepEqual(result.departure,{under30:0,from30to59:0,atLeast60:1,total:1,evaluated:1});
 });
 async function fixture(t){
  const db=new Database(':memory:'),app=express();app.use(express.json());const users={};for(const position of ['Agent','CSA','Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'])users[position]={station:'LAX',account:'MU',position,additionalAccounts:[{station:'SFO',account:'XX'}]};users.other={station:'SFO',account:'XX',position:'Supervisor'};users.hq={station:'HQ',account:'HQ',position:'Regional Manager'};
- const service=require('../hasReports').registerHasReports(app,{employees:{db},reportDb:db,profiles:{linked:user=>users[user.uid]},authenticate:async req=>{const uid=req.headers.authorization;if(!users[uid])throw Error('auth');return {uid};}}),server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(async()=>{service.close();server.closeAllConnections();await new Promise(r=>server.close(r));db.close();});
+ const service=require('../has/server/hasReports').registerHasReports(app,{employees:{db},reportDb:db,profiles:{linked:user=>users[user.uid]},authenticate:async req=>{const uid=req.headers.authorization;if(!users[uid])throw Error('auth');return {uid};}}),server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(async()=>{service.close();server.closeAllConnections();await new Promise(r=>server.close(r));db.close();});
  return {users,request:async(uid,path,body)=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/has-report-api'+path,{headers:{Authorization:uid,'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});return {status:response.status,headers:response.headers,data:await response.json()};}};
 }
 test('Dashboard permits only Main Account Supervisor+ including senior roles, independently of WWH editing',async t=>{
@@ -33,9 +33,9 @@ test('Dashboard uses calculated DA/WWH totals and weighted recharge, isolates ye
  await request('Supervisor','/wwh/2027-01',{revision:1,values:{F5:'=1/0'}});const broken=(await request('Supervisor','/dashboard/2027')).data.months[0];assert.equal(broken.state,'calculation-error');assert.equal(broken.actualHours,null);assert.equal(broken.balanceHours,null);assert(broken.errors.includes('E11'));
 });
 test('November trailing template cells never enter WWH flight, budget or dashboard totals',async t=>{
- const {request}=await fixture(t),model=await require('../hasReports').template('da','2026-11',{station:'LAX',account:'MU'});assert.equal(model.rows,158);assert.equal(model.days.at(-1).end,155);
+ const {request}=await fixture(t),model=await require('../has/server/hasReports').template('da','2026-11',{station:'LAX',account:'MU'});assert.equal(model.rows,158);assert.equal(model.days.at(-1).end,155);
  await request('Lead','/da/2026-11',{revision:0,values:{L151:2,K152:600}});await request('Supervisor','/wwh/2026-11',{revision:0,values:{C9:61}});
  const wwh=(await request('Supervisor','/wwh/2026-11')).data;assert.equal(wwh.cells.Z9.value,2);assert.equal(wwh.calculated.Z11,2);assert.equal(wwh.calculated.D9,122);assert.equal(wwh.calculated.D11,122);assert.equal(wwh.cells.Z9.sourceFormula,"SUM('DA Source'!L136:L155)");assert.equal(wwh.cells.U5.unit,'hours');assert.equal(wwh.cells.U5.numFmt,'0.00');for(const address of ['T5','V5','W5','X5']){assert.equal(wwh.cells[address].unit,'count');assert.equal(wwh.cells[address].numFmt,'0');}
  const summary=(await request('Supervisor','/dashboard/2026')).data.months[10];assert.equal(summary.flights,2);assert.equal(summary.budgetHours,122);assert.equal(summary.state,'surplus');assert.equal(summary.pax,600);
- assert.deepEqual(require('../public/public/has-report-math').calculate({A1:{value:'# Flights'},A2:{value:2},B1:{formula:'SUM(A1:A2)'}}),{B1:2});
+ assert.deepEqual(require('../has/public/has-report-math').calculate({A1:{value:'# Flights'},A2:{value:2},B1:{formula:'SUM(A1:A2)'}}),{B1:2});
 });

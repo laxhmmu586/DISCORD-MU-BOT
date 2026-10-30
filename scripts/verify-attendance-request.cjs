@@ -8,7 +8,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 (async () => {
   const app = express(), submissions = [], errors = [];
   app.use(express.json());
-  app.use(express.static(path.join(__dirname, '../public/public')));
+  app.use(require('../has/static').withShared(path.join(__dirname, '../public/public')));
   app.get('/attendance-api/employees', (_req, res) => res.json({ employees: [{ id:'test-one', name:'Test Employee' }, { id:'test-two', name:'Second Employee' }] }));
   app.post('/attendance-api/requests', (req, res) => {
     submissions.push(req.body);

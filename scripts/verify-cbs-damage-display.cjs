@@ -5,7 +5,7 @@ const {chromium}=require('playwright');
  const names=['label','escapeHtml','inferCaseType','hasValue','normalizeShippingMethodLabel','renderValue','fullPassengerFileHtml'];
  const functions=names.map(name=>{const start=source.indexOf(`function ${name}(`);return source.slice(start,source.indexOf('\n    function ',start+1));}).join('\n');
  const montage=fs.readFileSync(fs.existsSync('.verification/damage-export/hidden-0.jpg')?'.verification/damage-export/hidden-0.jpg':'public/public/assets/baggage-guide-3d/type-22R.jpg');
- const app=express();app.get('/fixture',(req,res)=>res.send(`<html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style><link rel="stylesheet" href="/assets/cbs-report.css"></head><body style="margin:12px"><main id="fixture"></main></body></html>`));app.use(express.static('public/public'));
+ const app=express();app.get('/fixture',(req,res)=>res.send(`<html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style><link rel="stylesheet" href="/assets/cbs-report.css"></head><body style="margin:12px"><main id="fixture"></main></body></html>`));app.use(require('../has/static').withShared('public/public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));let browser;
  try{
   browser=await chromium.launch({headless:true,executablePath:process.env.BROWSER_PATH||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});const page=await browser.newPage();

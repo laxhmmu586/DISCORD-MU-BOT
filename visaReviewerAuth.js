@@ -32,7 +32,7 @@ function createReviewerVerifier({fetcher=fetch, clock=()=>Date.now(), projectId=
     const certs=await keys();
     if(!Object.hasOwn(certs,header.kid)||!crypto.verify('RSA-SHA256',Buffer.from(parts[0]+'.'+parts[1]),certs[header.kid],Buffer.from(parts[2],'base64url')))throw Error('Invalid reviewer identity');
     const email=claims.email.toLowerCase();
-    if(!require('./serverOwners').isOwner(email)&&!reviewers.includes(email))throw Error('This account cannot publish visa policies');
+    if(!require('./has/server/serverOwners').isOwner(email)&&!reviewers.includes(email))throw Error('This account cannot publish visa policies');
     return {reviewer:email,uid:claims.sub};
   };
 }

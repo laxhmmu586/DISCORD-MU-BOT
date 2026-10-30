@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const { mailBody } = require('./pbbEtab');
+const { mailBody } = require('./has/server/pbbEtab');
 const ZONE = 'America/Los_Angeles';
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 

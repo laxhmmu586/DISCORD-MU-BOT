@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {parseEtab,createGateService}=require('../pbbEtab');
+const {parseEtab,createGateService}=require('../has/server/pbbEtab');
 test('ETAB gate lookup matches flight/date and works without ETA',()=>{
  assert.deepEqual(parseEtab('MU583/13OCT26\nGATE: 132','MU583','2026-10-13'),{flightNo:'MU583',date:'2026-10-13',gate:'132'});
  assert.equal(parseEtab('MU586/13OCT26 GATE 131\nMU583/14OCT26 GATE 132','MU583','2026-10-13'),null);

@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {createEmployeeStore,registerEmployees}=require('../employees');
+const {createEmployeeStore,registerEmployees}=require('../has/server/employees');
 const admin={email:'lake@mu.com'};
 async function fixture(t){
  const db=new Database(':memory:'),seed=[['hq','President','LAX','MU'],['manager','Business Manager','LAX','MU'],['supervisor','Supervisor','LAX','MU'],['agent','Agent','LAX','MU'],['other','Agent','LAX','XX'],['station','Agent','SFO','MU']].map(([id,position,station,account])=>({id,position,station,account,name:'FIXTURE '+id.toUpperCase(),eid:'00123',loginId:id+'@example.test',attach:false,detach:false,spotter:false}));
@@ -66,7 +66,7 @@ test('Supervisor edits all lower-level employee information and account assignme
 
 test('administrator can persist HeadQuarter as the main account without a station account membership',async t=>{
  const f=await fixture(t),draft=f.store.get(),agent=draft.employees.find(e=>e.id==='agent');agent.station='HQ';agent.account='HQ';
- const saved=f.store.save(draft,admin),actual=saved.employees.find(e=>e.id==='agent');assert.equal(actual.station,'HQ');assert.equal(actual.account,'HQ');assert(require('../public/public/employee-account-groups').isHeadquarter(actual));assert(!require('../public/public/employee-account-groups').belongs(actual,{station:'LAX',account:'MU'}));
+ const saved=f.store.save(draft,admin),actual=saved.employees.find(e=>e.id==='agent');assert.equal(actual.station,'HQ');assert.equal(actual.account,'HQ');assert(require('../has/public/employee-account-groups').isHeadquarter(actual));assert(!require('../has/public/employee-account-groups').belongs(actual,{station:'LAX',account:'MU'}));
 });
 
 for(const id of ['supervisor','manager'])test(id+' edits own contact and accounts but cannot promote own title or change own sign-in',async t=>{

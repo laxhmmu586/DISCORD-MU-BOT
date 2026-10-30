@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {createBriefingArchiveDrive}=require('../briefingDrive');
+const {createBriefingArchiveDrive}=require('../has/server/briefingDrive');
 test('Briefing archives use the authorized user Drive adapter and retry the reserved file ID',async()=>{
  let stored=false,creates=0,validated=0;
  const drive={validateFolder:async id=>{assert.equal(id,'folder');validated++;},files:{generateIds:async()=>({data:{ids:['reserved']}}),get:async()=>{if(!stored)throw Object.assign(Error('not found'),{code:404});return {data:{id:'reserved',appProperties:{briefingReportId:'report'}}};},create:async args=>{creates++;assert.equal(args.requestBody.id,'reserved');assert.deepEqual(args.requestBody.parents,['folder']);assert.equal(args.requestBody.appProperties.briefingReportId,'report');stored=true;return {data:{id:'reserved'}};}}};

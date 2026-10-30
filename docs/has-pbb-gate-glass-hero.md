@@ -4,7 +4,7 @@ The entry hero uses the selected pearl-white treatment, blue glass edges, a larg
 
 The three blue dashes are replaced independently: `---`, `1--`, `13-`, `132`. Deleting characters restores the corresponding dashes. The real labeled text input remains the source of truth, and existing flexible gate validation, optional suffix, driver qualification, shared confirmation and Clear behavior are preserved.
 
-Background asset: `public/public/assets/pbb/has-gate-terminal-132-205-v4.webp`.
+Background asset: `has/public/assets/pbb/has-gate-terminal-132-205-v4.webp`.
 
 Generated with built-in imagegen using the supplied airport reference. Prompt: bright blue-and-white airport apron with glass terminal buildings on both sides, a small departing aircraft and control tower at upper right, left Boeing 777-300ER, right Boeing 787 Dreamliner, accurate wings/engines/tail geometry, retracted jet bridges visibly separated from the aircraft, and black/yellow gate signs 132 left and 205 right. No interface in the photograph. The selected background rebuilds both complete aircraft with coherent fuselage, wing, tail and landing-gear proportions.
 

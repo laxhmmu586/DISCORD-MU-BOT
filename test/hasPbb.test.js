@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
-const items=require('../public/public/has-pbb-data').filter(q=>q.type==='arrival'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
+const {createEmployeeStore}=require('../has/server/employees'),{registerHasPbb}=require('../has/server/hasPbb');
+const items=require('../has/public/has-pbb-data').filter(q=>q.type==='arrival'),strokes=[[[.1,.2],[.4,.6],[.8,.1]]];
 test('Dashboard Config counts Arrival and Departure independently using their operating weekdays and enforces access/revisions',async t=>{
  const f=await fixture(t),config=(await f.request('lake','/dashboard/config')).data;
  assert.deepEqual(config.pairs,[]);assert.equal((await f.request('spotter','/dashboard/config')).status,403);assert.equal((await f.request('spotter','/dashboard/config',{revision:config.revision,pairs:[]})).status,403);
@@ -18,7 +18,7 @@ test('Dashboard Config counts Arrival and Departure independently using their op
  assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[]})).status,200);assert.equal((await f.request('lake','/dashboard')).data.daily.reduce((n,d)=>n+d.expectedFlights,0),0);
 });
 test('LAX terminal certificates have inclusive boundaries and never substitute for each other',async t=>{
- const license=require('../public/public/pbb-terminal-license'),f=await fixture(t);
+ const license=require('../has/public/pbb-terminal-license'),f=await fixture(t);
  for(const gate of ['0','1','12','128','130','131','159','159A','160','200','226','12345'])assert.equal(license.terminal('LAX',gate),'TBIT');
  for(const gate of ['201','225','225A'])assert.equal(license.terminal('LAX',gate),'MSC');
  for(const gate of ['TBA','132BAD'])assert.equal(license.terminal('LAX',gate),null);
@@ -33,7 +33,7 @@ test('LAX terminal certificates have inclusive boundaries and never substitute f
  await apply('spotter',{action:'sign',strokes});await apply('driver',{action:'move'});assert.deepEqual(r.driverQualification,{terminal:'MSC',id:'MSC-1091',expiry:'2027-01-31'});
  await apply('driver',{action:'answer',itemId:'floor',value:true});await apply('driver',{action:'dock'});for(const q of items.filter(q=>q.role==='driver'&&q.phase==='after'))await apply('driver',{action:'answer',itemId:q.id,value:true});
  await apply('driver',{action:'sign',strokes});assert.equal(r.signatures.driver.pbbId,'MSC-1091');assert.equal(r.signatures.driver.pbbTerminal,'MSC');
- const pdf=await require('../hasPbbPdf').buildHasPbbPdf(r);assert.ok(pdf.length>1000);
+ const pdf=await require('../has/server/hasPbbPdf').buildHasPbbPdf(r);assert.ok(pdf.length>1000);
  data=f.employees.get();e=data.employees.find(e=>e.id==='driver');e.pbbMscExpiry='2026-10-20';e.pbbExpiry='2027-01-31';f.employees.save(data,{email:'lake@mu.com'});
  assert.equal((await f.request('driver','/records',{role:'driver',flightNo:'MU999',gate:'225A',bridge:'L2'})).status,403);
  const nonLax=(await f.request('other','/records',{role:'driver',flightNo:'MU999',gate:'999',bridge:'L2'}));assert.equal(nonLax.status,201);
@@ -85,7 +85,7 @@ async function fixture(t,{failUpload=false,buildPdf,client,sendProblemEmail}={})
  const app=express();app.use(express.json({limit:'2mb'}));const service=registerHasPbb(app,{store:{db,now:()=>now},employees,profiles,client,authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!uid)throw Error('Sign in required');return {uid,email:uid==='lake'?'lake@mu.com':uid==='demo'?'demo@hm.com':uid+'@test.invalid'};},...(buildPdf?{buildPdf}:{}),...(sendProblemEmail?{sendProblemEmail}:{}),drive:{files:{generateIds:async()=>({data:{ids:['fake-id']}}),get:async()=>{throw {code:404};},create:async()=>{uploads++;if(failUpload)throw Error('fixture upload failure');return {data:{id:'fake-id'}};}}}});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
- const request=async(user,path='',body,method)=>{if(body?.action==='answer'&&body.value===false&&body.evidence===undefined)body={...body,evidence:{reason:'Fixture obstruction',photo:'data:image/webp;base64,'+require('node:fs').readFileSync(require('node:path').join(__dirname,'../public/public/assets/pbb/has-crew-acknowledgment-v1.webp')).toString('base64')}};const res=await fetch(base+'/has-pbb-api'+path,{method:method||(body?'POST':'GET'),headers:{Authorization:'Bearer '+user,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:res.headers.get('content-type')?.includes('json')?await res.json():Buffer.from(await res.arrayBuffer())};};
+ const request=async(user,path='',body,method)=>{if(body?.action==='answer'&&body.value===false&&body.evidence===undefined)body={...body,evidence:{reason:'Fixture obstruction',photo:'data:image/webp;base64,'+require('node:fs').readFileSync(require('node:path').join(__dirname,'../has/public/assets/pbb/has-crew-acknowledgment-v1.webp')).toString('base64')}};const res=await fetch(base+'/has-pbb-api'+path,{method:method||(body?'POST':'GET'),headers:{Authorization:'Bearer '+user,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:res.headers.get('content-type')?.includes('json')?await res.json():Buffer.from(await res.arrayBuffer())};};
  const create=(user='driver',bridge='L1')=>request(user,'/records',{role:user==='spotter'?'spotter':'driver',flightNo:'MU583',gate:'132',bridge});
  const change=async(user,r,body)=>request(user,'/records/'+r.id,{role:user==='spotter'?'spotter':'driver',revision:r.revision,...body});
  return {db,employees,service,base,request,create,change,uploads:()=>uploads,setTime:date=>{now=new Date(date);},recover:()=>{failUpload=false;}};
@@ -374,7 +374,7 @@ test('HQ is excluded from dashboard totals, scope filters and details even with 
  const mu=(await f.create()).data;mu.completedAt='2026-10-21T17:00:00Z';mu.delivery={status:'sent'};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(mu),mu.id);
  for(const [i,scope] of [{station:'HQ',account:'HQ'},{station:'LAX',account:'HEADQUARTER'},{station:'HEADQUARTERS',account:'MU'}].entries()){const r={...mu,...scope,id:'hq-historical-'+i};f.db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(r.id,r.station,r.account,r.date,r.flightNo,r.bridge,JSON.stringify(r));}
  const data=(await f.request('lake','/dashboard?start=2026-10-19&end=2026-10-25')).data;
- const isHq=require('../public/public/employee-account-groups').isHeadquarter;assert(data.scopes.every(s=>!isHq(s)));assert(data.byScope.every(s=>!isHq(s)));assert.deepEqual(data.records.map(r=>r.id),[mu.id]);assert.equal(data.daily.reduce((n,d)=>n+d.expectedFlights,0),14);assert.equal(data.daily.reduce((n,d)=>n+d.submittedChecklists,0),1);
+ const isHq=require('../has/public/employee-account-groups').isHeadquarter;assert(data.scopes.every(s=>!isHq(s)));assert(data.byScope.every(s=>!isHq(s)));assert.deepEqual(data.records.map(r=>r.id),[mu.id]);assert.equal(data.daily.reduce((n,d)=>n+d.expectedFlights,0),14);assert.equal(data.daily.reduce((n,d)=>n+d.submittedChecklists,0),1);
  const hq=(await f.request('lake','/dashboard?station=HQ&account=HQ')).data;assert.deepEqual(hq.byScope,[]);assert.deepEqual(hq.records,[]);assert(hq.daily.every(d=>d.expectedFlights===0&&d.submittedChecklists===0));
 });
 
@@ -462,14 +462,14 @@ test('each Business Manager downloads only Main Account PDFs while demo aggregat
 test('confirmed Gate is recorded for the template without adding manual checklist questions',async t=>{
  const f=await fixture(t);let r=(await f.create()).data;assert.equal(r.gateConfirmedAt,null);
  const gate=await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate:'132'});assert.equal(gate.status,200);r=(await f.create()).data;assert(r.gateConfirmedAt);assert.equal(r.gateConfirmedAt,gate.data.gateLocks[0].confirmedAt);
- const checks=require('../hasPbbPdf').templateChecks(r);assert.equal(checks[0],true);assert.equal(checks[6],false);r.ready.driver=true;assert.equal(require('../hasPbbPdf').templateChecks(r)[6],true);assert.equal(require('../hasPbbPdf').templateChecks(r)[8],false);
+ const checks=require('../has/server/hasPbbPdf').templateChecks(r);assert.equal(checks[0],true);assert.equal(checks[6],false);r.ready.driver=true;assert.equal(require('../has/server/hasPbbPdf').templateChecks(r)[6],true);assert.equal(require('../has/server/hasPbbPdf').templateChecks(r)[8],false);
  const reset=await f.request('driver','/records/'+r.id+'/reset',{role:'driver',revision:r.revision});assert.equal(reset.status,200);assert.equal(reset.data.gateConfirmedAt,r.gateConfirmedAt);assert.equal(reset.data.ready.driver,null);
 });
 
 
 test('saving a NO report atomically queues a scoped Business Manager email and duplicate report IDs do not send twice',async t=>{
  const sent=[],f=await fixture(t,{sendProblemEmail:async message=>{sent.push(message);return 'fake-delivery';}});const staff=f.employees.get();Object.assign(staff.employees.find(e=>e.id==='missing'),{position:'Business Manager',companyEmail:'manager@example.test'});Object.assign(staff.employees.find(e=>e.id==='other'),{position:'Business Manager',companyEmail:'outside@example.test'});f.employees.save(staff,{email:'lake@mu.com'});
- let r=(await f.create()).data;const photo='data:image/webp;base64,'+require('node:fs').readFileSync(require('node:path').join(__dirname,'../public/public/assets/pbb/has-crew-acknowledgment-v1.webp')).toString('base64');
+ let r=(await f.create()).data;const photo='data:image/webp;base64,'+require('node:fs').readFileSync(require('node:path').join(__dirname,'../has/public/assets/pbb/has-crew-acknowledgment-v1.webp')).toString('base64');
  assert.equal((await f.change('driver',r,{action:'answer',itemId:'serviceable',value:false,evidence:{photo,reason:''}})).status,400);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM has_pbb_problem_mail').get().n,0);
  const body={action:'answer',itemId:'serviceable',value:false,evidence:{photo,reason:'Fixture problem',reportId:'fixed-report-id'}};let response=await f.change('driver',r,body);assert.equal(response.status,200);r=response.data;await f.service.flushProblemMail();await new Promise(resolve=>setImmediate(resolve));assert.equal(sent.length,1);assert.equal(sent[0].to,'manager@example.test');assert.match(sent[0].photo,/^data:image\/jpeg;base64,/);
  response=await f.change('driver',r,body);assert.equal(response.status,200);await f.service.flushProblemMail();assert.equal(sent.length,1);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM has_pbb_problem_mail').get().n,1);

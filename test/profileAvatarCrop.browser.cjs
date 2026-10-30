@@ -2,10 +2,10 @@ const assert=require('node:assert/strict'),express=require('express'),Database=r
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const db=new Database(':memory:'),app=express();app.use(express.json({limit:'3mb'}));
- const employees={...require('../employees').createEmployeeStore(db,{seed:[{id:'one',name:'TEST EMPLOYEE',nickname:'Test',eid:'12345',position:'Agent',station:'LAX',account:'CI',loginId:'test@example.test',email:'test@example.test',phone:'6265550100',attach:false,detach:false,spotter:false}]}),db};
- const user={uid:'one',email:'test@example.test',provider:'password'},profiles=require('../employeeProfiles').registerProfiles(app,{employees,authenticate:async()=>user});profiles.status(user);
+ const employees={...require('../has/server/employees').createEmployeeStore(db,{seed:[{id:'one',name:'TEST EMPLOYEE',nickname:'Test',eid:'12345',position:'Agent',station:'LAX',account:'CI',loginId:'test@example.test',email:'test@example.test',phone:'6265550100',attach:false,detach:false,spotter:false}]}),db};
+ const user={uid:'one',email:'test@example.test',provider:'password'},profiles=require('../has/server/employeeProfiles').registerProfiles(app,{employees,authenticate:async()=>user});profiles.status(user);
  let postedBytes=0;
- app.use(express.static('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true});
+ app.use(require('../has/static').withShared('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true});
  const buffer=await sharp(require('node:crypto').randomBytes(1600*1400*3),{raw:{width:1600,height:1400,channels:3}}).png().toBuffer();assert(buffer.length>2*1024*1024);
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',req=>{if(req.url()===base+'/profile-api'&&req.method()==='POST')postedBytes=Buffer.byteLength(req.postData());});

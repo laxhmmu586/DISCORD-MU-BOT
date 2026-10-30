@@ -4,13 +4,13 @@
 
 ## Storage and deployment
 
-- Frontend: `public/public/attendance-request.html`, `request.css`, and `request.js`, served by the existing Firebase Hosting configuration and Express routes.
+- Frontend: `has/public/attendance-request.html`, `request.css`, and `request.js`, served by the existing Firebase Hosting configuration and Express routes.
 - Backend: `/attendance-api/requests`, mounted with the existing employee store in `index.js`.
 - Destination: [attendance spreadsheet](https://docs.google.com/spreadsheets/d/12tZLWvQin1bhbWvALdnlAxkR0iD_6ScUVWEnL6IziDY/edit?gid=580541604#gid=580541604), worksheet ID `580541604`. The worksheet title is resolved by ID rather than hard-coded.
 - Google authentication: existing `GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY`; grant this service account editor access to the destination spreadsheet. Credentials remain on the backend.
 - Discord: channel `1365021189998903418`, overridable with `ATTENDANCE_DISCORD_CHANNEL_ID`. The existing bot needs View Channel, Send Messages, Attach Files for PNGs, and Embed Links for native fallback cards.
 - Deploy the tracked `vendor/resvg-wasm/`, `vendor/fonts/`, and illustration assets with the backend. PNG generation uses the bundled WebAssembly renderer and Noto Sans font; no native image package or system fonts are needed. Provenance and licenses are documented in `vendor/ATTENDANCE_RENDERING.md`.
-- The unbranded Employee Services page and Discord cards share the two generated transparent illustrations in `public/public/assets/attendance/`; the generation prompts are recorded in `ATTENDANCE_ARTWORK.md`.
+- The unbranded Employee Services page and Discord cards share the two generated transparent illustrations in `has/public/assets/attendance/`; the generation prompts are recorded in `ATTENDANCE_ARTWORK.md`.
 - Discord cards additionally use the generated `late-luminous-v1.png` / `sick-luminous-v1.png` scene plates for reflective light trails and richer materials. Include both assets with the backend. Their prompts are recorded in `ATTENDANCE_PREMIUM_ARTWORK.md`; applicant data remains rendered from saved records. A gold or coral light trail aligns with the rounded card edge, and the submitted time is aligned to the bottom right.
 
 An empty worksheet receives Google Form-compatible headers plus request reference, employee ID, request date, scheduled start, and note. Existing columns stay in order; missing supported columns are appended. `RAW` writes preserve user text without interpreting formulas. No live Google Form submission is performed.

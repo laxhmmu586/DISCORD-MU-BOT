@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),express=require('express'),sharp=require('sharp');
 const {chromium}=require('playwright');
 (async()=>{
- const app=express();app.use(express.static('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));let browser;
+ const app=express();app.use(require('../has/static').withShared('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));let browser;
  try{
   browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',args:['--use-angle=swiftshader','--enable-webgl']});
   const page=await browser.newPage({viewport:{width:390,height:900},deviceScaleFactor:2});

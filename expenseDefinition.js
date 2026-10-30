@@ -1,1 +1,2 @@
-module.exports=require('./public/public/expense-definition');
+// Compatibility entry point. HAS implementation lives in has/server/.
+module.exports=require('./has/server/expenseDefinition');

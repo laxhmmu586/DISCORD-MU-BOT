@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync(require.resolve('../public/public/has-completion.js'),'utf8');
+const source=fs.readFileSync(require.resolve('../has/public/has-completion.js'),'utf8');
 function load(storage=new Map(),blocked=false){
  const scope={sessionStorage:{getItem:key=>{if(blocked)throw Error('Blocked');return storage.get(key)??null;},setItem:(key,value)=>{if(blocked)throw Error('Blocked');storage.set(key,value);}}};
  scope.window=scope;vm.runInNewContext(source,scope);return scope;

@@ -1,4 +1,4 @@
-Employee positions use the title catalog in `public/public/employee-positions.js` for both Admin and Request workflow validation. The source is the supplied Organizational Chart 2026.xlsx: HQ 2026 and all 2026 station sheets (LAX, SFO, HNL, OGG/KOA/LIH, SAN, ONT, CBS/L&F/CC, DFW, AUS, IAH, EWR, ATL and JFK). Historical 2023/2024 sheets are excluded.
+Employee positions use the title catalog in `has/public/employee-positions.js` for both Admin and Request workflow validation. The source is the supplied Organizational Chart 2026.xlsx: HQ 2026 and all 2026 station sheets (LAX, SFO, HNL, OGG/KOA/LIH, SAN, ONT, CBS/L&F/CC, DFW, AUS, IAH, EWR, ATL and JFK). Historical 2023/2024 sheets are excluded.
 
 Only position titles are carried over. Names, station assignments, employee records, order, account links, and current approval workflows are not imported or automatically reassigned. Repeated titles are deduplicated; Senior/SR/SR SUP and spelling variants are written consistently. CSA is Agent, per the user's instruction. Existing Manager and Lead remain available so existing employee records and workflow snapshots keep working.
 

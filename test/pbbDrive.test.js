@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {createPbbDrive,driveError}=require('../pbbDrive');
+const {createPbbDrive,driveError}=require('../has/server/pbbDrive');
 function fixture(folder){const calls=[];class OAuth2{constructor(...args){calls.push(['oauth',...args]);}setCredentials(value){calls.push(['credentials',value]);}}class GoogleAuth{constructor(){calls.push(['service']);}}
  const files={get:async opts=>{calls.push(['get',opts]);return {data:folder};},create:async opts=>({data:{id:opts.requestBody.id}}),generateIds:async()=>({data:{ids:['file-id']}})};return {calls,google:{auth:{OAuth2,GoogleAuth},drive:({auth})=>{calls.push(['drive',auth]);return {files};}}};}
 test('PBB dedicated OAuth overrides Gmail and permits uploads in a personal folder',async()=>{

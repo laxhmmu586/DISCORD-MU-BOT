@@ -53,7 +53,7 @@ test('unavailable image dependencies cannot prevent employee API startup or Shee
  assert.equal(result.status,0,result.stderr);
 });
 test('attendance immediately reflects saved admin employee changes including non-PBB staff',async t=>{
- const {createEmployeeStore,registerEmployees}=require('../employees');
+ const {createEmployeeStore,registerEmployees}=require('../has/server/employees');
  const db=new Database(':memory:'),store=createEmployeeStore(db,{seed:[{id:'one',name:'Original Employee',eid:'',discordId:'',attach:false,detach:false,spotter:false}]});
  const app=express();app.use(express.json());registerEmployees(app,{store,authenticate:async()=>({email:'lake@mu.com'})});
  const service=registerAttendance(app,{employees:store,db,storage:{},renderCards:async()=>[],client:{}});

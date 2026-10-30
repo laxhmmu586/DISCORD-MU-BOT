@@ -3,7 +3,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip');
 (async()=>{
  const db=new Database(':memory:'),app=express(),scope={station:'LAX',account:'MU'},users={s:{...scope,position:'Supervisor',name:'Test Supervisor'},a:{...scope,position:'Agent',name:'Test Agent'},l:{...scope,position:'Lead'},b:{...scope,position:'Business Manager'},other:{station:'SFO',account:'XX',position:'Business Manager'}};
- app.use(express.json({limit:'16mb'}));const reports=require('../hasReports').registerHasReports(app,{employees:{db},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!users[uid])throw Error();return {uid};}});app.use(express.static('public/public'));
+ app.use(express.json({limit:'16mb'}));const reports=require('../has/server/hasReports').registerHasReports(app,{employees:{db},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!users[uid])throw Error();return {uid};}});app.use(require('../has/static').withShared('public/public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true}),errors=[];
  const output=path.resolve('.verification/report-templates');fs.mkdirSync(output,{recursive:true});
  async function pageFor(id,url='/has-report.html'){

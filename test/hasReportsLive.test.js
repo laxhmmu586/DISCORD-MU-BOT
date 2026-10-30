@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3'),fs=require('node:fs');
 async function fixture(t,heartbeatMs){
  const db=new Database(':memory:'),users={one:{uid:'one',position:'Supervisor',station:'LAX',account:'MU'},two:{uid:'two',position:'Supervisor',station:'LAX',account:'MU'},other:{uid:'other',position:'Supervisor',station:'SFO',account:'XX'},agent:{uid:'agent',position:'Agent',station:'LAX',account:'MU'}},app=express();app.use(express.json({limit:'16mb'}));
- const service=require('../hasReports').registerHasReports(app,{employees:{db},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const user=users[req.headers.authorization];if(!user)throw Error('auth');return user;},liveHeartbeatMs:heartbeatMs});
+ const service=require('../has/server/hasReports').registerHasReports(app,{employees:{db},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const user=users[req.headers.authorization];if(!user)throw Error('auth');return user;},liveHeartbeatMs:heartbeatMs});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port+'/has-report-api';
  t.after(async()=>{service.close();server.closeAllConnections();await new Promise(r=>server.close(r));db.close();});
  const request=async(user,path,body)=>fetch(base+path,{headers:{Authorization:user,'Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
@@ -12,7 +12,7 @@ test('SSE publishes committed saves/imports and DA-to-WWH revisions only within 
  const {request,subscribe}=await fixture(t),da=await subscribe('one','/da/2026-10/stream?station=SFO&account=XX'),wwh=await subscribe('two','/wwh/2026-10/stream'),foreign=await subscribe('other','/da/2026-10/stream'),november=await subscribe('one','/da/2026-11/stream'),nextYear=await subscribe('one','/da/2027-10/stream');
  const initial=await da.wait(e=>e.revision===0);assert.deepEqual(initial.scope,{station:'LAX',account:'MU'});assert.equal('values' in initial,false);
  assert.equal((await request('two','/da/2026-10',{revision:0,values:{K7:292,L6:1}})).status,200);await da.wait(e=>e.revision===1);await wwh.wait(e=>e.daRevision===1);assert(foreign.events.every(e=>e.revision===0));assert(november.events.every(e=>e.revision===0));assert(nextYear.events.every(e=>e.revision===0));
- const file=fs.readFileSync('data/has-report-templates/da-2026.xlsx').toString('base64');assert.equal((await request('two','/da/2026-10/import',{revision:1,file})).status,200);await da.wait(e=>e.revision===2);await wwh.wait(e=>e.daRevision===2);
+ const file=fs.readFileSync('has/resources/has-report-templates/da-2026.xlsx').toString('base64');assert.equal((await request('two','/da/2026-10/import',{revision:1,file})).status,200);await da.wait(e=>e.revision===2);await wwh.wait(e=>e.daRevision===2);
  assert.equal((await request('agent','/da/2026-10/stream')).status,403);assert.equal((await request('agent','/wwh/2026-10/stream')).status,403);assert.equal((await request('','/da/2026-10/stream')).status,401);assert.equal((await request('one','/da/2025-01/stream')).status,400);
 });
 test('SSE rechecks permissions and ends streams when Main Account changes or role is revoked',async t=>{

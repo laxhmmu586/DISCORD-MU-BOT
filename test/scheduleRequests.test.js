@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),express=require('express'),Database=require('better-sqlite3');
-const {registerStaffSchedule}=require('../staffSchedule'),{createEmployeeStore}=require('../employees'),{applyAttendanceToSchedule}=require('../scheduleRequests');
-const DATE='2026-11-06',add=require('../public/public/schedule-summary').addDays;
+const {registerStaffSchedule}=require('../has/server/staffSchedule'),{createEmployeeStore}=require('../has/server/employees'),{applyAttendanceToSchedule}=require('../has/server/scheduleRequests');
+const DATE='2026-11-06',add=require('../has/public/schedule-summary').addDays;
 async function fixture(t){
  const db=new Database(':memory:');db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT)');
  const rows=[['one','Alice','Agent'],['two','Bob','Agent'],['three','Charlie','Agent'],['sup','Sue','Supervisor'],['test','Test','Agent'],['other','Outside','Agent']].map(([id,name,position],i)=>({id,name:id+' full name',nickname:name,eid:String(1000+i),position,station:'LAX',account:id==='other'?'CZ':'MU',loginId:id==='test'?'test@hm.com':''}));
@@ -106,7 +106,7 @@ test('live schedule stream invalidates schedule and private request changes with
 test('legacy color-specific skills merge into per-duty skills without changing weekly hours, and skill-only saves need no week',async t=>{
  const f=await fixture(t),legacy={people:{one:{capabilities:['A|#4f6200','A|#ff0000','C|#00ff00'],secondaryHours:{[DATE]:12}}},hours:{'F|#9999ff':6,'F|#6699ee':8}};
  f.db.prepare('UPDATE schedule_request_settings SET data=? WHERE id=1').run(JSON.stringify(legacy));
- const {roles,colors}=require('../staffSchedule');require('../scheduleRequests').createScheduleRequests({db:f.db,employees:f.employees,roster:()=>f.employees.get().employees,read:f.read,put:()=>{},roles,colors,today:()=>DATE});
+ const {roles,colors}=require('../has/server/staffSchedule');require('../has/server/scheduleRequests').createScheduleRequests({db:f.db,employees:f.employees,roster:()=>f.employees.get().employees,read:f.read,put:()=>{},roles,colors,today:()=>DATE});
  let config=(await f.request('sup','/requests/settings?period='+DATE)).data;assert.deepEqual(config.people.one.capabilities,['A','C']);assert.equal(config.people.one.secondaryHours[DATE],12);assert.equal(config.hours.F,8);
  const saved=await f.request('sup','/requests/settings',{revision:config.revision,employeeId:'one',capabilities:['F','B']});assert.equal(saved.status,200);config=saved.data;assert.deepEqual(config.people.one.capabilities,['F','B']);assert.equal(config.people.one.secondaryHours[DATE],12);
  assert.equal((await f.request('one','/requests/settings',{revision:config.revision,employeeId:'one',capabilities:['F']})).status,403);

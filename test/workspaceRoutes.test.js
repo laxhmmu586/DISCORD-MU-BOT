@@ -29,12 +29,12 @@ test('Firebase and Express use the same canonical routes without changing the ex
   assert.deepEqual(hosting.redirects.find(r => r.source === '/'), {source:'/',destination:'/flights.html',type:302});
   for (const name of WORKSPACE_PAGES) {
     assert(hosting.redirects.some(r => r.source === '/' + name + '.html' && r.destination === '/' + name && r.type === 301));
-    assert(hosting.rewrites.some(r => r.source === '/' + name && r.destination === '/' + name + '.html'));
+    assert(hosting.rewrites.some(r => r.source === '/' + name && r.destination === '/has/' + name + '.html'));
   }
 });
 
 test('early URL normalization preserves query, fragment and history state while leaving other routes alone', () => {
-  const source = fs.readFileSync(path.join(__dirname, '../public/public/workspace-routes.js'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '../has/public/workspace-routes.js'), 'utf8');
   for (const name of WORKSPACE_PAGES) {
     const calls = [], state = {entry:1};
     vm.runInNewContext(source, {location:{pathname:'/' + name + '.html',search:'?memo=123',hash:'#detail'},history:{state,replaceState:(...args)=>calls.push(args)}});

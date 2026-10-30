@@ -25,7 +25,7 @@ test('both card sets render in an isolated checkout without node_modules or syst
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'attendance-png-'));
   try {
     const root = path.join(__dirname, '..');
-    for (const name of ['attendanceCards.js', 'attendancePng.js', 'vendor/resvg-wasm', 'vendor/fonts', 'public/public/assets/attendance']) {
+    for (const name of ['attendanceCards.js', 'attendancePng.js', 'vendor/resvg-wasm', 'vendor/fonts', 'has/public/assets/attendance']) {
       const target = path.join(dir, name); fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.cpSync(path.join(root, name), target, { recursive: true });
     }

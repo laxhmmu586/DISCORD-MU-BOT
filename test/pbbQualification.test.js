@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const status=require('../public/public/pbb-qualification');
+const status=require('../has/public/pbb-qualification');
 test('qualification warning starts strictly below one calendar month; expired takes priority',()=>{
  assert.equal(status('2026-11-20','2026-10-21'),'warning');
  assert.equal(status('2026-11-21','2026-10-21'),'');

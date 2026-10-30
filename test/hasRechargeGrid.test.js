@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {parseTSV,planPaste}=require('../public/public/has-recharge-grid');
+const {parseTSV,planPaste}=require('../has/public/has-recharge-grid');
 test('Arrow keys, Tab and Enter navigate grid cells with correct boundaries',()=>{
- const {nextCell}=require('../public/public/has-recharge-grid');
+ const {nextCell}=require('../has/public/has-recharge-grid');
  for(const [key,target] of [['ArrowUp','C23'],['ArrowDown','C25'],['ArrowLeft','B24'],['ArrowRight','D24'],['Tab','D24'],['Enter','C25']])assert.equal(nextCell('C24',key),target);
  assert.equal(nextCell('C24','Tab',true),'B24');assert.equal(nextCell('C24','Enter',true),'C23');
  assert.equal(nextCell('N23','Tab'),'A24');assert.equal(nextCell('A24','Tab',true),'N23');

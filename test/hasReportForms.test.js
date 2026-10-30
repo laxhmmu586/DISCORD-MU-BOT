@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),Excel=require('exceljs'),express=require('express'),Database=require('better-sqlite3');
-const forms=require('../hasReportForms'),{registerHasReports}=require('../hasReports'),{calculate}=require('../public/public/has-report-math');
+const forms=require('../has/server/hasReportForms'),{registerHasReports}=require('../has/server/hasReports'),{calculate}=require('../has/public/has-report-math');
 const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip');
 test('every editable form cell survives export, including empty styled cells and later lines',async()=>{
  for(const kind of forms.kinds){const model=await forms.template(kind,'2026-10',{}),expected={};
@@ -21,7 +21,7 @@ test('forms retain template structure and formulas with blank private inputs',as
   assert.deepEqual(sheet.model.merges,model.workbook.worksheets[0].model.merges);
   assert.deepEqual(sheet.pageSetup,model.workbook.worksheets[0].pageSetup);
   if(kind==='expense'){assert(Math.abs(sheet.getCell('J72').result-108.2)<1e-9);assert.equal(sheet.getCell('J72').formula,'J68-J70');}
-  const original=await JSZip.loadAsync(await fs.readFile('data/has-report-templates/'+kind+'.xlsx')),exported=await JSZip.loadAsync(result);
+  const original=await JSZip.loadAsync(await fs.readFile('has/resources/has-report-templates/'+kind+'.xlsx')),exported=await JSZip.loadAsync(result);
   for(const name of Object.keys(original.files))if(!original.files[name].dir&&name!=='xl/worksheets/sheet1.xml')assert.deepEqual(await exported.file(name).async('nodebuffer'),await original.file(name).async('nodebuffer'),name+' preserved');
  }
 });
@@ -44,7 +44,7 @@ test('form endpoints enforce Supervisor+, shared saves, conflicts, account/month
 });
 
 test('Terrific Ten dynamic rows export populated cells while preserving other workbook parts',async()=>{
- const original=await JSZip.loadAsync(await fs.readFile('data/has-report-templates/terrific.xlsx'));
+ const original=await JSZip.loadAsync(await fs.readFile('has/resources/has-report-templates/terrific.xlsx'));
  for(const count of [1,14,23]){
   const model=await forms.template('terrific','2026-10',{}, {terrificRows:count}),address='G'+(count+2);assert.equal(model.rows,count+2);assert(model.cells[address].editable);model.cells[address].value='Last recipient '+count;
   const bytes=await forms.exportForm(model),book=new Excel.Workbook();await book.xlsx.load(bytes);assert.equal(book.worksheets[0].rowCount,count+2);assert.equal(book.worksheets[0].getCell(address).value,'Last recipient '+count);

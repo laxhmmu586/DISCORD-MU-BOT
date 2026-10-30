@@ -988,6 +988,7 @@ function findPDPassengerByFFFromLog(log, query) {
 // ===============================
 const app =
   express();
+app.use(require('./has/static').router());
 
 const allowedOrigins = [
   "https://china-eastern.web.app",
@@ -1104,8 +1105,8 @@ app.use(
 
 app.use('/assets/feedback', express.static(path.join(__dirname,'public','public','assets','feedback')));
 app.get(['/feedback.html','/feedback.css','/feedback-client.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
-app.use('/assets/pbb', express.static(path.join(__dirname,'public','public','assets','pbb')));
-app.use('/assets/attendance', express.static(path.join(__dirname,'public','public','assets','attendance')));
+app.use('/assets/pbb', express.static(path.join(__dirname,"has","public","assets","pbb")));
+app.use('/assets/attendance', express.static(path.join(__dirname,"has","public","assets","attendance")));
 app.get(['/attendance-calendar.js','/read-sign.html','/read-sign.css','/read-sign.js','/people-api.js','/profile-modules.js','/attendance.html','/attendance-history.js','/portal-cards.css','/info.html','/info.js','/uniform-notifications.js','/uniform.html','/uniform.css','/uniform-client.js','/uniform-api.js','/uniform-workflow.js','/profile.html','/profile.css','/profile.js','/employee-profile-api.js','/employee-phone.js','/flight-account.js','/dashboard-profile.js','/auth-confirm.css'],(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});
 app.get('/assets/mission-earth.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','mission-earth.png')));
 app.get('/assets/boarding-aurora-c.png',(req,res)=>res.sendFile(path.join(__dirname,'public','public','assets','boarding-aurora-c.png')));
@@ -1333,7 +1334,7 @@ const client =
 
 // ===============================
 // Jet Bridge checklist and restricted employee administration
-const pbbService = require('./pbb').registerPbb(app, { client });
+const pbbService = require('./has/server/pbb').registerPbb(app, { client });
 const ldmCpmMail = require('./ldmCpmMail');
 const ldmCpmMailService = ldmCpmMail.createService({
   db: pbbService.store.db,
@@ -1344,7 +1345,7 @@ const briefingAutoArchive = require('./briefingAutoArchive').createAutoArchive({
 require('./feedback').registerFeedback(app, { client, employees:pbbService.employees, db:pbbService.store.db });
 require('./attendanceRequests').registerAttendance(app, { client, employees: pbbService.employees, profiles:pbbService.profiles, db: pbbService.store.db });
 const etabAdvisory = require('./etabAdvisory');
-const briefingEtabStore = require('./briefingEtab').createBriefingEtab({db:pbbService.employees.db});
+const briefingEtabStore = require('./has/server/briefingEtab').createBriefingEtab({db:pbbService.employees.db});
 const etabService = etabAdvisory.createAdvisoryService({
   onAdvisorySent: (advisory,metadata) => briefingEtabStore.accept(advisory,metadata),
   getClient: require('./googleDrive').getNextDayInfoGmailClient,
@@ -1406,7 +1407,7 @@ app.get('/notes', async (req, res) => {
 
 app.post('/notes', async (req, res) => {
   try {
-    if (!require('./serverOwners').isOwner(requestEditorEmail(req))) {
+    if (!require('./has/server/serverOwners').isOwner(requestEditorEmail(req))) {
       return res.status(403).json({ error: 'Only a server owner can edit notes' });
     }
     const notes = sanitizeNotesList(req.body?.notes);

@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),sharp=require('sharp');
-const {DEFAULTS}=require('../briefing'),{reportSections,renderBriefingReport,buildBriefingPdf}=require('../briefingPdf'),{renderBriefingImageSvg,buildBriefingImage}=require('../briefingImage');
+const {DEFAULTS}=require('../has/server/briefing'),{reportSections,renderBriefingReport,buildBriefingPdf}=require('../has/server/briefingPdf'),{renderBriefingImageSvg,buildBriefingImage}=require('../has/server/briefingImage');
 const base={id:'assignment-layout',date:'2026-10-30',flight:'MU583',direction:'arrival',generatedAt:'2026-10-30T18:00:00Z',generatedBy:'Fixture'};
 test('Arrival hides only unassigned roles across PDF sections, report preview and photo',async()=>{
  const snapshot={...base,fields:{...DEFAULTS,arrivalLead:'Yogesh',announcement:'Terry',carousel:'Hana',phoneCall:'Yogesh',jetBridge:' ',finishEverything:'-',gShift:'—'}};

@@ -137,7 +137,7 @@ test('advisory sends once when the arrival employee has no Discord ID',async()=>
 });
 
 test('Briefing imports only after Discord acknowledges ETAB delivery',async()=>{
- const Database=require('better-sqlite3'),db=new Database(':memory:'),source=require('../briefingEtab').createBriefingEtab({db});
+ const Database=require('better-sqlite3'),db=new Database(':memory:'),source=require('../has/server/briefingEtab').createBriefingEtab({db});
  try{const f=fixture('fixture-channel','',[{name:'Terry'}],(advisory,metadata)=>source.accept(advisory,metadata));f.fail();await f.service.tick();assert.equal(source.read('2026-10-14','MU583').status,'unavailable');f.recover();await f.service.tick();assert.equal(source.read('2026-10-14','MU583').gate,'134');assert.equal(source.read('2026-10-14','MU583').discordMessageId,'sent1');f.change();await f.service.tick();assert.equal(source.read('2026-10-14','MU583').gate,'203');}finally{db.close();}
 });
 
@@ -150,7 +150,7 @@ test('already delivered ETAB backfills Briefing without another Discord send',as
  assert.equal(received[0].a.arrival.reg,'B-7343');assert.equal(received[0].m.discordMessageId,'discord-existing');
 });
 test('28 October mail fills registration, ETA, pax, crew and numeric or TBA gate',()=>{
- const Database=require('better-sqlite3'),{createBriefingEtab}=require('../briefingEtab');
+ const Database=require('better-sqlite3'),{createBriefingEtab}=require('../has/server/briefingEtab');
  const db=new Database(':memory:');try{const etab=createBriefingEtab({db});for(const gate of ['133','TBA']){
   const advisory=parseAdvisory(`MU583/28OCT. B-2002. ETA 0859L. GATE ${gate}. PAX 303/0. CREW 04/17.\nMU586/28OCT. STD 1230L.\nRegards/LAXOPS/RA.`,new Date('2026-10-28T15:00Z'));
   etab.accept(advisory,{discordMessageId:'delivered',received:1793199600000});

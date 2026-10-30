@@ -1,6 +1,6 @@
 # Profile visual assets
 
-The Profile page uses `public/public/assets/profile-ce777-night-v10.webp` as its airport background. It is a generated illustration, not an aircraft identification or engineering reference. On desktop, the image layer keeps the bitmap's native 2060:763 aspect ratio. Its fade is applied to that exact layer, so a wider banner cannot expose an opaque vertical image edge. The bitmap must not be stretched to the full banner's arbitrary dimensions. Mobile uses a covering image with the same aspect-preserving crop behavior.
+The Profile page uses `has/public/assets/profile-ce777-night-v10.webp` as its airport background. It is a generated illustration, not an aircraft identification or engineering reference. On desktop, the image layer keeps the bitmap's native 2060:763 aspect ratio. Its fade is applied to that exact layer, so a wider banner cannot expose an opaque vertical image edge. The bitmap must not be stretched to the full banner's arbitrary dimensions. Mobile uses a covering image with the same aspect-preserving crop behavior.
 
 The page base is `#000A18`, sampled from the supplied reference. Panels use a blue glass gradient, fine blue borders, restrained inset highlights and darker row separators. Profile and Admin share the same versioned stylesheet.
 

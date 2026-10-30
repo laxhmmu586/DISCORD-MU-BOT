@@ -6,7 +6,7 @@ Admin uses the full available desktop width. Profile has an isolated light style
 
 ## Generated raster assets
 
-- `public/public/assets/pbb/has-cables-stowed-v1.webp`: photorealistic, derived from the user cable-position reference; cables stored above the apron. Generated PNG optimized to WebP at 1400px, quality 88.
+- `has/public/assets/pbb/has-cables-stowed-v1.webp`: photorealistic, derived from the user cable-position reference; cables stored above the apron. Generated PNG optimized to WebP at 1400px, quality 88.
 - `public/public/assets/profile-tbit-daylight-v2.webp`: generated daylight artwork inspired by TBIT architecture; an illustration, not a location photograph. Architectural reference: https://populous.com/showcases/lax-tom-bradley-international-terminal . No airline branding. PNG optimized to WebP, quality 88.
 
 ### Cable prompt

@@ -6,7 +6,7 @@ function createSendMessageHandler({ client, etabAdvisory,
       const body = req.body || {};
       const { channelId, message, file } = body;
       if (!channelId) return res.status(400).json({ error: 'Missing channelId' });
-      if (require('./briefingSchedule').isLegacyBriefing(body)) {
+      if (require('./has/server/briefingSchedule').isLegacyBriefing(body)) {
         return res.json({ success: true, skipped: true, reason: 'Briefing PDFs are managed by MUFC' });
       }
       if (etabAdvisory.isLegacyEtabRequest(body,

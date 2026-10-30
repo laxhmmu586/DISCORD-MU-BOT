@@ -4,7 +4,7 @@ const express=require('express');
 const {chromium}=require('playwright');
 
 (async()=>{
- const app=express();app.use(express.static('public/public'));
+ const app=express();app.use(require('../has/static').withShared('public/public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.on('listening',resolve));
  let browser;
  try{
