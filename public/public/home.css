@@ -201,4 +201,4 @@ body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
 
 @media(min-width:1151px){.home-panels{grid-template-columns:1fr .8fr 1.5fr;gap:18px}.home-panels .home-report-panel{padding:24px 20px}.home-report-links strong{overflow-wrap:anywhere}}
 .home-emergency-panel{container-type:inline-size}.home-emergency-list>li{min-width:0}.home-emergency-role{overflow-wrap:anywhere}
-@container(min-width:500px){.home-emergency-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px;align-items:stretch}}
+.home-emergency-list{display:block}
