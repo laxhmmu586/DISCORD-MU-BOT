@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{roles,colors}=require('../staffSchedule'),summary=require('../public/public/schedule-summary');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{roles,colors}=require('../has/server/staffSchedule'),summary=require('../has/public/schedule-summary');
 (async()=>{
  const browser=await chromium.launch({channel:'msedge',headless:true}),page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.clock.setFixedTime(new Date('2026-10-27T18:00:00Z'));await page.addInitScript(()=>{const interval=window.setInterval;window.setInterval=(callback,ms,...args)=>{if(ms===60000&&String(callback).includes('liveDay'))window.testScheduleRefresh=callback;return interval(callback,ms,...args);};});
  let requestPending=0,mode='supervisor',navigationOnly=false,legacyStyles=false,horizon='2027-02-28',sync={enabled:true,state:'synced',queued:0,conflicts:0};
@@ -32,7 +32,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{roles,col
   }
   if(url.hostname==='api.mufcapp.net')return route.fulfill({json:{}});
   if(legacyStyles&&p==='/schedule-grid-layout.css')return route.fulfill({contentType:'text/css',body:''});
-if(legacyStyles&&p==='/schedule.css')return route.fulfill({contentType:'text/css',body:fs.readFileSync('public/public/schedule.css','utf8')+'\n#schedule-table,#coverage-table{width:1028px;min-width:1028px}.duty{width:42px;border-radius:9px}'});
+if(legacyStyles&&p==='/schedule.css')return route.fulfill({contentType:'text/css',body:fs.readFileSync('has/public/schedule.css','utf8')+'\n#schedule-table,#coverage-table{width:1028px;min-width:1028px}.duty{width:42px;border-radius:9px}'});
 const file=path.join(process.cwd(),'public/public',p);return fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.fulfill({status:404,body:''});
  });
  fs.mkdirSync('.verification/staff-schedule',{recursive:true});const cell=(r,c)=>page.locator(`td[data-row="${r}"][data-col="${c}"]`);

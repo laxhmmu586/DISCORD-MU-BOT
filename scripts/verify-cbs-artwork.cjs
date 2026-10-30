@@ -5,7 +5,7 @@ const fs = require('node:fs');
 
 (async () => {
   const app = express();
-  app.use(express.static('public/public'));
+  app.use(require('../has/static').withShared('public/public'));
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.on('listening', resolve));
   let browser;

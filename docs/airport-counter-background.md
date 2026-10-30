@@ -1,6 +1,6 @@
 # Airport counter background
 
-Asset: `public/public/assets/airport-counter-hd.png`.
+Asset: `has/public/assets/airport-counter-hd.png`.
 
 Built-in imagegen output, saved as an unmodified lossless PNG. Native dimensions: 1672 × 941. The generator did not return the requested 3840 × 2160 size; this file is not upscaled or described as native 4K. A group scene does not preserve the pixel detail of the original individual portrait PNGs.
 

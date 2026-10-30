@@ -24,19 +24,19 @@ The personnel table assigns widths to every column, including Station, Account, 
 
 ## Assets
 
-The supplied JPEG company logo is preserved in full as `public/public/assets/pbb/hallmark-logo-rgb-v1.webp`.
+The supplied JPEG company logo is preserved in full as `has/public/assets/pbb/hallmark-logo-rgb-v1.webp`.
 
 The built-in ImageGen tool produced the following raster WebP assets. The final consuming paths and prompts are retained here.
 
 ### Equipment inspection
 
-Path: `public/public/assets/pbb/has-equipment-yellow-bumper-v4.webp`
+Path: `has/public/assets/pbb/has-equipment-yellow-bumper-v4.webp`
 
 Prompt: Edit Image 1, the photographic jet-bridge equipment montage, using Image 2 as the correct BUMPER reference. The user identifies BUMPER as the YELLOW HORIZONTAL THRESHOLD / FLOOR EDGE STRIP at the aircraft doorway, indicated by the red arrow in Image 2. It is NOT the black exterior rubber pad currently labelled Bumper in Image 1. Remove that incorrect Bumper label from the black pad. Recompose as a coherent photographic training montage: TOP HALF wide exterior scene showing the China Eastern aircraft and bridge canopy and roll-up Roller door, keeping Canopy and Roller door labels accurate. BOTTOM HALF three equal photographic closeups: first the YELLOW HORIZONTAL BUMPER STRIP across the bridge/aircraft doorway threshold, with blue-trimmed aircraft door visible at one side, no people; label exactly 'Bumper' with pointer to YELLOW STRIP. Second the black safety shoe SENSOR STORED UPRIGHT in its cream wall-mounted open-top metal storage box, as already shown in original, label 'Safety shoe'. Third a metal safety chain secured across the jetbridge entrance, label 'Safety chain'. Preserve realistic photography, industrial textures, matching daylight and English callout style. No cartoons, no UI. Do not put the safety shoe under a door. Do not call any wheels rollers. Roller door remains a vertically opening shutter with horizontal slats. Bumper arrow must point to yellow strip, NOT black pad. Do not reproduce the reference red arrow or people.
 
 ### Pale airport background
 
-Path: `public/public/assets/pbb/has-gate-airport-pale-v1.webp`
+Path: `has/public/assets/pbb/has-gate-airport-pale-v1.webp`
 
 Prompt: Create a clean pale-blue aviation illustration background for an editable airport gate confirmation banner, using this reference only for visual style and airport scene. Wide landscape 2.4:1 ratio. Near-white, very light icy-blue and subtle cyan palette with delicate flowing blue ribbon curves. Minimal architectural airport control tower silhouette on the far right. Along the lower third, a softly rendered 3D terminal concourse stretching horizontally with THREE PARKED AIRLINERS, one centered and one on each side, small jetbridges connected to them; perspective from above, aircraft tails toward bottom edge. Use soft realistic 3D dimensional airport miniatures with low contrast and light-blue/gray shading. IMPORTANT: OMIT all text, title, icons in square boxes, gate number, dark-blue input card, blue selection dots, connector lines and all UI from the reference. Leave the upper-left and middle of the image airy, almost-white and uncluttered for real HTML text and input to be rendered separately. The only rendered items should be airport architecture, three small airplanes along bottom, control tower far right, tiny subtle airplane silhouette to left-middle, and faint curved ribbons. No labels, numbers, watermarks or borders. Keep full illustration with nothing cropped.
 

@@ -6,7 +6,7 @@ Each state rotates through three appropriate employee portraits, including Asian
 
 ## Final assets
 
-The production assets are transparent raster WebP images under `public/public/assets/pbb/staff/`:
+The production assets are transparent raster WebP images under `has/public/assets/pbb/staff/`:
 
 - `wait-man-v1.webp`, `wait-woman-v1.webp`, `wait-asian-man-v1.webp`
 - `ready-woman-v1.webp`, `ready-asian-woman-v1.webp`

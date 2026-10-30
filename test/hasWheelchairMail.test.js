@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {period,count,message,createSender}=require('../hasWheelchairMail');
+const {period,count,message,createSender}=require('../has/server/hasWheelchairMail');
 test('Los Angeles 9am boundaries, year rollover and leap-year month end',()=>{
  for(const [date,month,start,end] of [
   ['2026-10-16T15:59:00Z','2026-09',16,30],['2026-10-16T16:00:00Z','2026-10',1,15],

@@ -1,9 +1,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),express=require('express'),Database=require('better-sqlite3'),{chromium}=require('playwright');
-const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
+const {createEmployeeStore}=require('../has/server/employees'),{registerHasPbb}=require('../has/server/hasPbb');
 (async()=>{
  const db=new Database(':memory:'),employees=createEmployeeStore(db,{seed:[{id:'lake',name:'Lake',position:'Supervisor',eid:'123',station:'LAX',account:'MU',additionalAccounts:[{station:'LAX',account:'CZ'}],pbbId:'1071',pbbExpiry:'2027-10-21'}]});
  const app=express();app.use(express.json());const service=registerHasPbb(app,{store:{db,now:()=>new Date('2026-10-23T17:00:00Z')},employees,profiles:{status(){},linked:()=>employees.get().employees[0]},authenticate:async()=>({uid:'lake',email:'lake@mu.com'}),drive:{}});
- app.get('/profile-api',(_req,res)=>res.json({state:'ready',profile:{name:'Lake',nickname:'Lake'},revision:1}));app.use(express.static(path.join(__dirname,'../public/public')));
+ app.get('/profile-api',(_req,res)=>res.json({state:'ready',profile:{name:'Lake',nickname:'Lake'},revision:1}));app.use(require('../has/static').withShared(path.join(__dirname,'../public/public')));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true,channel:'msedge'}),output=path.join(__dirname,'../output/has-ops-lock');fs.mkdirSync(output,{recursive:true});
  try{
   const pair=(account,id)=>({id,station:'LAX',account,opsArrivalSpotter:account==='MU',inbound:{flightNo:account==='MU'?'MU583':'CZ327',days:[1,2,3,4,5,6,7]},outbound:{flightNo:account==='MU'?'MU586':'CZ328',days:[1,2,3,4,5,6,7]}});

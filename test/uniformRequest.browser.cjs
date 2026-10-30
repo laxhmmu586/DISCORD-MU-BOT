@@ -3,10 +3,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const express=require('express'),Database=require('better-sqlite3');
 (async()=>{
  const db=new Database(':memory:'),seed=['Agent','Supervisor','Manager'].map((position,i)=>({id:'e'+i,position,name:position+' TEST',eid:'00'+i,phone:'6268891216',email:position.toLowerCase()+'@example.com',companyEmail:position.toLowerCase()+'@company.example.com',loginId:i===2?'lake@mu.com':position.toLowerCase()+'@login.example.com',attach:false,detach:false,spotter:false}));
- const employees={...require('../employees').createEmployeeStore(db,{seed}),db},users=seed.map(e=>({uid:e.id,email:e.loginId,provider:'password'}));
+ const employees={...require('../has/server/employees').createEmployeeStore(db,{seed}),db},users=seed.map(e=>({uid:e.id,email:e.loginId,provider:'password'}));
  const app=express();app.use(express.json());const authenticate=async req=>{const u=users.find(u=>req.headers.authorization==='Bearer '+u.uid);if(!u)throw Error('Sign in required');return u;};
- const profiles=require('../employeeProfiles').registerProfiles(app,{employees,authenticate});users.forEach(u=>profiles.status(u));require('../employees').registerEmployees(app,{store:employees,authenticate});let deliveries=0;
- const service=require('../uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{deliveries++;}});app.use(express.static('public/public'));
+ const profiles=require('../has/server/employeeProfiles').registerProfiles(app,{employees,authenticate});users.forEach(u=>profiles.status(u));require('../has/server/employees').registerEmployees(app,{store:employees,authenticate});let deliveries=0;
+ const service=require('../has/server/uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{deliveries++;}});app.use(require('../has/static').withShared('public/public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true});try{
   const page=await browser.newPage(),errors=[];let who=0;page.on('pageerror',e=>errors.push(e.message));

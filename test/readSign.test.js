@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),express=require('express'),Database=require('better-sqlite3');
-const {createReadSignStore,registerReadSign,mailContent,signatureSVG}=require('../readSign');
+const {createReadSignStore,registerReadSign,mailContent,signatureSVG}=require('../has/server/readSign');
 function fixture(t){const db=new Database(':memory:');t.after(()=>db.close());const rows=['Agent','Supervisor','Manager','Lead'].map((position,i)=>({id:'e'+i,name:position+' EXAMPLE',eid:'100'+i,position,email:position.toLowerCase()+'@example.test'}));const employees={db,get:()=>({employees:rows})},profiles={linked:u=>rows.find(e=>e.id===u.uid)},users=rows.map(e=>({uid:e.id,email:e.email}));let time=new Date('2026-10-18T19:00:00Z');const args={employees,profiles,now:()=>time};return {...args,rows,users,store:createReadSignStore(args),setTime:v=>time=new Date(v)};}
 const body=()=>({requestId:crypto.randomUUID(),subject:'Security alert: Data Protection',memoNumber:'SOP-2026-018',body:'Please review the attached SOP.\nBy signing you acknowledge the updated procedure.',deadline:'2026-10-25T23:59:00-07:00',attachments:[{name:'SOP.txt',type:'text/plain',data:Buffer.from('Example policy').toString('base64')}]});
 const signed={acknowledged:true,strokes:[[[.1,.7],[.2,.2],[.3,.8],[.4,.4],[.5,.6],[.7,.3],[.8,.5]]]};
@@ -61,7 +61,7 @@ test('recipient additions validate the entire batch and accept overdue acknowled
 });
 
 test('every pictured management title can publish, inspect counts and append old memo recipients',t=>{
- const f=fixture(t),positions=require('../public/public/employee-positions');
+ const f=fixture(t),positions=require('../has/public/employee-positions');
  for(const position of positions.readSignPublishers){
   f.rows[1].position=position;const r=f.store.publish(f.users[1],body());assert.equal(f.store.list(f.users[1]).canPublish,true,position);
   f.store.sign(f.users[0],r.id,signed);const view=f.store.read(f.users[1],r.id);assert.equal(view.total,4,position);assert.equal(view.signed,1,position);assert.equal(view.canManage,true,position);assert.equal(view.roster.length,4,position);

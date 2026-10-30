@@ -51,7 +51,7 @@ function buildCardSvg(record) {
   if(record.note) fields.push({label:'Additional note',kind:'note',lines:wrap(record.note,25)});
   const panelHeight=fields.reduce((sum,field)=>sum+71+(field.lines.length-1)*25,0)+16;
   const height=Math.max(515+headerExtra,panelY+panelHeight+84),footerY=height-55;
-  const scene=fs.readFileSync(path.join(__dirname,'public','public','assets','attendance',late?'late-luminous-v1.png':'sick-luminous-v1.png')).toString('base64');
+  const scene=fs.readFileSync(path.join(__dirname,"has","public","assets","attendance",late?'late-luminous-v1.png':'sick-luminous-v1.png')).toString('base64');
   const sceneHeight=late?560:540;
   let content='<image x="0" y="0" width="800" height="'+sceneHeight+'" preserveAspectRatio="none" href="data:image/png;base64,'+scene+'"/>';
   content+='<rect x="0" y="'+(sceneHeight-65)+'" width="800" height="65" fill="url(#sceneFade)"/>';

@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),express=require('express');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
- const app=express();app.use(express.static('public/public'));app.get('/photo-test',(_req,res)=>res.send('<script src="/save-briefing-photo.js"></script><button id="save">Save</button><script>document.querySelector("button").onclick=async()=>{window.result=await saveBriefingPhoto(new Blob(["fixture"],{type:"image/png"}),"Arrival.png");};</script>'));
+ const app=express();app.use(require('../has/static').withShared('public/public'));app.get('/photo-test',(_req,res)=>res.send('<script src="/save-briefing-photo.js"></script><button id="save">Save</button><script>document.querySelector("button").onclick=async()=>{window.result=await saveBriefingPhoto(new Blob(["fixture"],{type:"image/png"}),"Arrival.png");};</script>'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true});
  try{
   const desktop=await browser.newPage();await desktop.addInitScript(()=>Object.defineProperty(navigator,'canShare',{value:undefined}));await desktop.goto(origin+'/photo-test');const downloaded=desktop.waitForEvent('download');await desktop.click('#save');assert.equal((await downloaded).suggestedFilename(),'Arrival.png');await desktop.waitForFunction(()=>window.result==='downloaded');await desktop.close();

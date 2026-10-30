@@ -4,14 +4,14 @@ const express=require('express'),Database=require('better-sqlite3');
 (async()=>{
  const db=new Database(':memory:');
  const seed=['Agent','Senior Supervisor','Business Manager'].map((position,i)=>({id:'e'+i,name:'EXISTING EMPLOYEE '+i,position,eid:'100'+i,phone:'626-555-0100',email:'person'+i+'@example.test',companyEmail:'person'+i+'@company.test',loginId:i===2?'lake@mu.com':'person'+i+'@login.test',discordId:'',attach:false,detach:false,spotter:false}));
- const employees={...require('../employees').createEmployeeStore(db,{seed}),db},users=seed.map(e=>({uid:e.id,email:e.loginId}));
+ const employees={...require('../has/server/employees').createEmployeeStore(db,{seed}),db},users=seed.map(e=>({uid:e.id,email:e.loginId}));
  const profiles={linked:u=>employees.get().employees.find(e=>e.id===u.uid)};
  const app=express();app.use(express.json());
  const authenticate=async req=>{const u=users.find(u=>req.headers.authorization==='Bearer '+u.uid);if(!u)throw Error('Sign in required');return u;};
- require('../employees').registerEmployees(app,{store:employees,authenticate});
+ require('../has/server/employees').registerEmployees(app,{store:employees,authenticate});
  app.get('/profile-api',async(req,res)=>{const user=await authenticate(req);res.json({state:'ready',revision:employees.get().revision,profile:profiles.linked(user)});});
- const service=require('../uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{}});
- app.use(express.static('public/public'));
+ const service=require('../has/server/uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{}});
+ app.use(require('../has/static').withShared('public/public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  let browser;
  try{

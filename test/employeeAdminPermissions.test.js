@@ -1,8 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express');
-const {registerEmployees}=require('../employees');
+const {registerEmployees}=require('../has/server/employees');
 
 test('linked Google Business Manager gets current own-account access without matching Original Login ID',async t=>{
- const Database=require('better-sqlite3'),{createEmployeeStore}=require('../employees'),{createProfileStore}=require('../employeeProfiles');
+ const Database=require('better-sqlite3'),{createEmployeeStore}=require('../has/server/employees'),{createProfileStore}=require('../has/server/employeeProfiles');
  const db=new Database(':memory:');const store=createEmployeeStore(db,{seed:[
   {id:'bm',name:'MANAGER',position:'Business Manager',station:'LAX',account:'CZ',eid:'1001',loginId:'original@example.test',attach:false,detach:false,spotter:false},
   {id:'agent',name:'AGENT',position:'Agent',station:'LAX',account:'CZ',eid:'1002',attach:false,detach:false,spotter:false},

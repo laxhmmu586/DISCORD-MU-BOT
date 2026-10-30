@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),Database=require('better-sqlite3');
-const {openEmployeeDatabase}=require('../employeeDatabase'),{createProfileStore}=require('../employeeProfiles');
+const {openEmployeeDatabase}=require('../has/server/employeeDatabase'),{createProfileStore}=require('../has/server/employeeProfiles');
 function setup(t){const legacy=new Database(':memory:'),employees=openEmployeeDatabase(legacy,{seed:[{id:'one',name:'FIRST EMPLOYEE',nickname:'First',eid:'00123',email:'personal@gmail.com',loginId:'legacy@example.com',phone:'',discordId:'',attach:false,detach:false,spotter:false},{id:'two',name:'SECOND EMPLOYEE',nickname:'Second',eid:'00456',email:'second@gmail.com',phone:'',discordId:'',attach:false,detach:false,spotter:false}]}),profiles=createProfileStore(employees);t.after(()=>{employees.close();legacy.close();});return {employees,profiles};}
 test('admin original sign-in email links a legacy password account without EID and survives contact edits',async t=>{
  const {employees,profiles}=setup(t),user={uid:'legacy-uid',email:'LEGACY@EXAMPLE.COM',provider:'password'};const ready=profiles.status(user);assert.equal(ready.state,'ready');assert.equal(ready.profile.id,'one');assert.equal(ready.profile.email,'personal@gmail.com');

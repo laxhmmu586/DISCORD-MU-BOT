@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {createEmployeeStore,registerEmployees}=require('../employees');
-const model=require('../public/public/organization-model');
+const {createEmployeeStore,registerEmployees}=require('../has/server/employees');
+const model=require('../has/public/organization-model');
 test('organization enforces downward editing, shared Supervisor teams, account isolation and atomic revision checks',async t=>{
   const db=new Database(':memory:');
   const seed=[['regional','Regional Manager'],['bm','Business Manager'],['sup1','Supervisor'],['sup2','Supervisor'],['agent','Agent'],['unassigned','Agent'],['default-agent','Agent'],['foreign','Agent']].map(([id,position])=>({id,name:id.toUpperCase(),position,station:'LAX',account:id==='foreign'?'EK':'MU',loginId:id+'@example.test',companyEmail:'',attach:false,detach:false,spotter:false}));
@@ -17,13 +17,13 @@ test('organization enforces downward editing, shared Supervisor teams, account i
   assert.equal((await update('bm','agent',{nickname:'Updated by manager'})).status,200);
   const permission=(uid,id,permissions,revision=store.get().revision)=>fetch(url+'/permissions',{method:'POST',headers:{'x-user':uid,'Content-Type':'application/json'},body:JSON.stringify({id,permissions,revision})});
   assert.equal((await permission('bm','agent',{'schedule.edit':true,'briefing.edit':false})).status,200);
-  let savedPermission=store.get().employees.find(row=>row.id==='agent');assert.equal(savedPermission.permissionOverrides['schedule.edit'],true);assert.equal(require('../staffSchedule').canEdit(null,savedPermission),true);
+  let savedPermission=store.get().employees.find(row=>row.id==='agent');assert.equal(savedPermission.permissionOverrides['schedule.edit'],true);assert.equal(require('../has/server/staffSchedule').canEdit(null,savedPermission),true);
   assert.equal((await permission('sup1','agent',{'briefing.config':true})).status,403);
   assert.equal((await permission('bm','bm',{'schedule.edit':false})).status,403);
   assert.equal((await permission('bm','foreign',{'schedule.edit':true})).status,403);
   assert.equal((await permission('bm','agent',{'not-real':true})).status,400);
   assert.equal((await permission('bm','agent',{},store.get().revision-1)).status,409);
-  assert.equal((await permission('admin','agent',{})).status,200);savedPermission=store.get().employees.find(row=>row.id==='agent');assert.equal(require('../staffSchedule').canEdit(null,savedPermission),false);
+  assert.equal((await permission('admin','agent',{})).status,200);savedPermission=store.get().employees.find(row=>row.id==='agent');assert.equal(require('../has/server/staffSchedule').canEdit(null,savedPermission),false);
 
   for(const id of ['bm','regional','foreign','unassigned'])assert.equal((await update('bm',id,{position:'Agent'})).status,403,id);
   assert.equal((await update('bm','agent',{position:'Business Manager'})).status,403);

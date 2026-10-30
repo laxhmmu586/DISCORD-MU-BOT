@@ -1,12 +1,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),express=require('express'),Database=require('better-sqlite3');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
-const {createEmployeeStore}=require('../employees'),{registerHasPbb}=require('../hasPbb');
-const items=require('../public/public/has-pbb-data').filter(q=>q.type==='arrival');
+const {createEmployeeStore}=require('../has/server/employees'),{registerHasPbb}=require('../has/server/hasPbb');
+const items=require('../has/public/has-pbb-data').filter(q=>q.type==='arrival');
 (async()=>{
  const db=new Database(':memory:'),now=()=>new Date('2026-10-29T18:00:00Z'),employees=createEmployeeStore(db,{seed:['driver','spotter'].map((id,i)=>({id,name:'EXAMPLE '+id.toUpperCase(),eid:String(100+i),position:'Agent',station:'LAX',account:'MU',pbbId:'TEST-'+id,pbbExpiry:'2099-01-01',attach:true,detach:true,spotter:true}))}),app=express();app.use(express.json());
  const service=registerHasPbb(app,{store:{db,now},employees,profiles:{status(){},linked:u=>employees.get().employees.find(e=>e.id===u.uid)},authenticate:async req=>({uid:String(req.headers.authorization||'').replace('Bearer ','')}),buildPdf:async()=>Buffer.from('%PDF-test'),sendProblemEmail:async()=>{throw Error('No mail expected');}});
  db.prepare('UPDATE has_pbb_schedule SET data=? WHERE singleton=1').run(JSON.stringify({revision:1,pairs:[{id:'test',station:'LAX',account:'MU',inbound:{flightNo:'MU583',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'MU586',days:[1,2,3,4,5,6,7]}}]}));
- app.use(express.static(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true}),errors=[];
+ app.use(require('../has/static').withShared(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true}),errors=[];
  const request=async(user,url,body,expected=200)=>{const response=await fetch(base+'/has-pbb-api'+url,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+user,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await response.json();assert.equal(response.status,expected,JSON.stringify(data));return data;};
  async function prepare(bridge){await request('driver','/gate',{role:'driver',flightNo:'MU583',gate:'132'});let r=await request('driver','/records',{role:'driver',flightNo:'MU583',gate:'132',bridge},201);const apply=async(role,body)=>r=await request(role,'/records/'+r.id,{role,revision:r.revision,...body});
   for(const role of ['driver','spotter']){for(const q of items.filter(q=>q.role===role&&q.phase==='pre'))await apply(role,{action:'answer',itemId:q.id,value:true});await apply(role,{action:'ready',value:true});}

@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express');
-const {createFlightService}=require('../pbbFlights'),{createStore,registerPbb}=require('../pbb');
+const {createFlightService}=require('../has/server/pbbFlights'),{createStore,registerPbb}=require('../has/server/pbb');
 const sy=(flight,date,gate,time='10:00:00',origin='LAX')=>`2026 October 13, Tuesday, ${time}\n>SY ${flight}/${date}\n SY: ${flight}/${date} ${origin}/0 OP/TEST\n777/773L/B0000 GTD/${gate} POS/GATE\n*${origin}PVG R000/000/000\n`;
 test('Departure uses only matching-day LAX SY flights and newest valid gate, never ETAB',async()=>{
  const log=sy('MU586','13OCT26','131')+sy('MU586','13OCT26','132','11:00:00')+sy('MU578','12OCT26','133')+sy('MU9578','14OCT26','134')+sy('MU9586','13OCT26','135','12:00:00','PVG')+sy('MU583','13OCT26','136');

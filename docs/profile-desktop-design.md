@@ -8,7 +8,7 @@ The page no longer imports the flight-selection stylesheet, whose global main la
 
 ## Airport background
 
-Tool: built-in imagegen. New generated image, used as a photographic background behind real HTML/CSS. Final workspace asset: `public/public/assets/profile-airport-night-v1.webp`. The original generated PNG is preserved outside the repository. The project asset is WebP encoded at quality 88.
+Tool: built-in imagegen. New generated image, used as a photographic background behind real HTML/CSS. Final workspace asset: `has/public/assets/profile-airport-night-v1.webp`. The original generated PNG is preserved outside the repository. The project asset is WebP encoded at quality 88.
 
 Final generation prompt:
 
@@ -20,7 +20,7 @@ The existing mocked browser suite checks 1920, 1440, 1024, 768, 390 and 320px la
 
 ## Reference-matched sidebar tail
 
-Tool: built-in imagegen, using the supplied sidebar crop as a visual reference. Final asset: `public/public/assets/profile-tail-night-v1.webp` (1100px tall, WebP quality 88). Original generated PNG preserved outside the repository.
+Tool: built-in imagegen, using the supplied sidebar crop as a visual reference. Final asset: `has/public/assets/profile-tail-night-v1.webp` (1100px tall, WebP quality 88). Original generated PNG preserved outside the repository.
 
 Final generation prompt:
 

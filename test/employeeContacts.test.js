@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {createEmployeeStore}=require('../employees');
+const {createEmployeeStore}=require('../has/server/employees');
 function database(){return new (require('better-sqlite3'))(':memory:');}
 const admin={email:'lake@mu.com'};
 test('custom employee order survives save and store reopen with each record intact',()=>{

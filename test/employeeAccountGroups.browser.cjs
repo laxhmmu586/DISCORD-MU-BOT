@@ -1,10 +1,10 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{createEmployeeStore,registerEmployees}=require('../employees');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{createEmployeeStore,registerEmployees}=require('../has/server/employees');
 (async()=>{
  const db=new Database(':memory:'),seed=[['a','Agent','LAX','MU'],['other','Agent','LAX','XX'],['c','Agent','LAX','MU'],['manager','Business Manager','LAX','MU'],['hq','Quality Assurance Manager & Project Coordinator','LAX','MU'],['supervisor','Supervisor','LAX','MU'],['foreign','Agent','SFO','MU']].map(([id,position,station,account])=>({id,position,station,account,name:'FIXTURE '+id.toUpperCase(),eid:'00123',loginId:id+'@example.test',phone:'6265550100',attach:false,detach:false,spotter:false}));
  const store=createEmployeeStore(db,{seed});for(const station of ['ORD','JFK'])store.changeAccount({revision:store.get().revision,station,account:'TEST'},{email:'lake@mu.com'});const app=express();app.use(express.json());let who='admin';
  const user=()=>({uid:who,email:who==='admin'?'lake@mu.com':who+'@example.test'});registerEmployees(app,{store,authenticate:async()=>user()});
- app.get('/profile-api',(_req,res)=>res.json({state:'ready',revision:store.get().revision,profile:store.get().employees.find(e=>e.id===who)||{name:'FIXTURE ADMIN'}}));app.use(express.static(path.join(__dirname,'../public/public')));
+ app.get('/profile-api',(_req,res)=>res.json({state:'ready',revision:store.get().revision,profile:store.get().employees.find(e=>e.id===who)||{name:'FIXTURE ADMIN'}}));app.use(require('../has/static').withShared(path.join(__dirname,'../public/public')));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true}),output=path.join(__dirname,'../output/admin-account-groups');fs.mkdirSync(output,{recursive:true});
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());

@@ -3,7 +3,7 @@ const root=process.argv[2]||path.resolve(__dirname,'..'),{createStore,registerPb
 const adminUser={uid:'admin',email:'lake@mu.com'},seed=[{id:'attach',name:'ATTACH ONLY',eid:'00123',attach:true,detach:false,spotter:false},{id:'detach',name:'DETACH ONLY',eid:'00456',attach:false,detach:true,spotter:false},{id:'legacy',name:'LEGACY DRIVER',eid:'',driver:true,spotter:true}];
 (async()=>{
  fs.mkdirSync(path.join(root,'output'),{recursive:true});
- const app=express();app.use(express.json());const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});const integration=registerPbb(app,{store,employeeSeed:seed,authenticate:async()=>adminUser,gateService:{read:async()=>({status:'unavailable'})}});app.use(express.static(path.join(root,'public/public')));
+ const app=express();app.use(express.json());const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});const integration=registerPbb(app,{store,employeeSeed:seed,authenticate:async()=>adminUser,gateService:{read:async()=>({status:'unavailable'})}});app.use(require('../has/static').withShared(path.join(root,'public/public')));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true});const errors=[];
  try{
   const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.addInitScript(({origin})=>{window.MU_API_BASE=origin;window.fixtureUser={email:'lake@mu.com',uid:'admin',getIdToken:async()=>'admin'};},{origin});

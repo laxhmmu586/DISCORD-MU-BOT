@@ -4,7 +4,7 @@ require('dotenv').config({quiet:true});
 async function main(){
  const channelId=process.argv[2],gates=process.argv.slice(3);
  if(!/^\d{17,20}$/.test(channelId||'')||!gates.length||gates.some(g=>!['TBA','203'].includes(g)))throw Error('Usage: node scripts/send-etab-image-test.cjs <authorized-channel-id> TBA [203]');
- const {REST,Routes}=require('discord.js'),{mailBody}=require('../pbbEtab'),{parseAdvisory}=require('../etabAdvisory');
+ const {REST,Routes}=require('discord.js'),{mailBody}=require('../has/server/pbbEtab'),{parseAdvisory}=require('../etabAdvisory');
  const {gmail,userId}=require('../googleDrive').getNextDayInfoGmailClient();
  const listed=await gmail.users.messages.list({userId,q:'from:(LAXHMXH@hallmark-aviation.com OR laxhm21@gmail.com) subject:ETAB newer_than:3d',maxResults:15},{timeout:15000});
  const candidates=[];

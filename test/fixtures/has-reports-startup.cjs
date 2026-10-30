@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),Module=require('node:module');
 const mode=process.argv[2],originalLoad=Module._load;
 if(mode==='missing-excel')Module._load=function(name,...rest){if(name==='exceljs')throw Object.assign(Error("Cannot find module 'exceljs'"),{code:'MODULE_NOT_FOUND'});return originalLoad.call(this,name,...rest);};
-const express=require('express'),{createStore,registerPbb}=require('../../pbb');
+const express=require('express'),{createStore,registerPbb}=require('../../has/server/pbb');
 (async()=>{
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'has-report-startup-')),blocker=path.join(tmp,'blocked');
  delete process.env.HAS_REPORT_DB_PATH;delete process.env.PBB_EMPLOYEE_DB_PATH;

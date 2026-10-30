@@ -1,9 +1,2 @@
-function createFirebaseDirectory({env=process.env,client}={}){
- let cache=null,cachedAt=0,inflight=null;
- const connection=async()=>{if(client)return client;const {google}=require('googleapis');client=await new google.auth.GoogleAuth({credentials:{client_email:env.GOOGLE_CLIENT_EMAIL,private_key:env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g,'\n')},scopes:['https://www.googleapis.com/auth/cloud-platform']}).getClient();return client;};
- const root='https://identitytoolkit.googleapis.com/v1/projects/'+encodeURIComponent(env.FIREBASE_PROJECT_ID||'china-eastern');
- const view=row=>({uid:row.localId,email:row.email||'',displayName:row.displayName||'',createdAt:row.createdAt?new Date(Number(row.createdAt)).toISOString():null,disabled:Boolean(row.disabled),providers:(row.providerUserInfo||[]).map(provider=>provider.providerId)});
- async function list(force=false){if(cache&&!force&&Date.now()-cachedAt<30000)return cache;if(inflight)return inflight;inflight=(async()=>{const result=[];let nextPageToken;do{const response=await (await connection()).request({url:root+'/accounts:batchGet',params:{maxResults:1000,...(nextPageToken?{nextPageToken}:{}),fields:'users(localId,email,displayName,createdAt,disabled,providerUserInfo),nextPageToken'},timeout:15000});result.push(...(response.data.users||[]).map(view));nextPageToken=response.data.nextPageToken;}while(nextPageToken);cache=result;cachedAt=Date.now();return result;})();try{return await inflight;}finally{inflight=null;}}
- return {list,async get(uid){const response=await (await connection()).request({url:root+'/accounts:lookup',method:'POST',data:{localId:[uid]},params:{fields:'users(localId,email,displayName,createdAt,disabled,providerUserInfo)'},timeout:15000});return response.data.users?.[0]?view(response.data.users[0]):null;}};
-}
-module.exports={createFirebaseDirectory};
+// Compatibility entry point. HAS implementation lives in has/server/.
+module.exports=require('./has/server/firebaseDirectory');

@@ -65,7 +65,7 @@ function createSheetsStorage({ sheets, spreadsheetId = SPREADSHEET_ID, sheetId =
 function history(data, record) {
   return data.rows.filter(row => row[data.index('Employee ID')] === record.employeeId && String(row[data.index('Request Date')]).startsWith(record.date.slice(0, 7))).map(row => ({ date: row[data.index('Request Date')], type: row[data.index('Call Type')] === 'COMING LATE' ? 'late' : 'sick' })).sort((a,b) => a.date.localeCompare(b.date));
 }
-function registerAttendance(app, { employees, client, db, profiles, authenticate = require('./pbbAuth').authenticate, storage = createSheetsStorage(), renderCards = (...args) => require('./attendanceCards').renderCards(...args), channelId = process.env.ATTENDANCE_DISCORD_CHANNEL_ID || '1365021189998903418', now = () => new Date() }) {
+function registerAttendance(app, { employees, client, db, profiles, authenticate = require('./has/server/pbbAuth').authenticate, storage = createSheetsStorage(), renderCards = (...args) => require('./attendanceCards').renderCards(...args), channelId = process.env.ATTENDANCE_DISCORD_CHANNEL_ID || '1365021189998903418', now = () => new Date() }) {
   db.exec('CREATE TABLE IF NOT EXISTS attendance_delivery (reference TEXT PRIMARY KEY, data TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0)');
   const active = new Map();
   app.get('/attendance-api/history', async (req,res) => {
@@ -120,7 +120,7 @@ function registerAttendance(app, { employees, client, db, profiles, authenticate
     try {
       const record = { ...validate(req.body, employees), submittedAt: now().toISOString() };
       saved = await storage.save(record);
-      require('./scheduleRequests').applyAttendanceToSchedule({db,employees,record:saved.record});
+      require('./has/server/scheduleRequests').applyAttendanceToSchedule({db,employees,record:saved.record});
     } catch (e) {
       if (!e.status) console.error('Attendance Sheets save failed:', e.message);
       return res.status(e.status || 503).json({ error: e.status ? e.message : 'Could not save your request to Google Sheets. Please retry with this page open.' });

@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),Database=require('better-sqlite3'),sharp=require('sharp');
-const {openEmployeeDatabase}=require('../employeeDatabase'),{createProfileStore,registerProfiles}=require('../employeeProfiles');
+const {openEmployeeDatabase}=require('../has/server/employeeDatabase'),{createProfileStore,registerProfiles}=require('../has/server/employeeProfiles');
 const seed=[{id:'one',name:'TEST EMPLOYEE',nickname:'Test',eid:'00123',email:'employee@gmail.com',phone:'555',discordId:'',attach:true,detach:false,spotter:true},{id:'two',name:'SECOND EMPLOYEE',nickname:'Second',eid:'00456',email:'second@example.com',phone:'',discordId:'',attach:false,detach:false,spotter:false}];
 const google={uid:'google-one',email:'Employee@Gmail.com',provider:'google.com',emailVerified:true};
 function fixture(t){const legacy=new Database(':memory:'),employees=openEmployeeDatabase(legacy,{seed}),profiles=createProfileStore(employees);t.after(()=>{employees.close();legacy.close();});return {employees,profiles};}

@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const Database=require('better-sqlite3');
-const {openEmployeeDatabase}=require('../employeeDatabase');
+const {openEmployeeDatabase}=require('../has/server/employeeDatabase');
 test('EP.DB migrates employee metadata once and retains later changes after reopening',t=>{
  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'employee-db-'));
  const legacy=new Database(path.join(folder,'pbb.db'));

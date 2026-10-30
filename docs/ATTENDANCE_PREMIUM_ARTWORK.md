@@ -3,8 +3,8 @@
 Created with the built-in image generation tool using the existing employee illustrations as character references. Dynamic applicant data, labels, headings, the edge light trail, and right-aligned submitted time are rendered separately by `attendanceCards.js`.
 
 Assets:
-- `public/public/assets/attendance/late-luminous-v1.png`
-- `public/public/assets/attendance/sick-luminous-v1.png`
+- `has/public/assets/attendance/late-luminous-v1.png`
+- `has/public/assets/attendance/sick-luminous-v1.png`
 
 The card edge now carries a single light trail aligned exactly to its rounded corners: gold for Coming Late, coral/rose-gold for Call Off / Sick, with a bright core and a softly dispersed aura. No separated secondary orbit is drawn. Both scenes are unbranded. The PNG canvas outside the rounded card is transparent, including partially transparent edge-light falloff, so no dark rectangular surround appears in light Discord themes.
 

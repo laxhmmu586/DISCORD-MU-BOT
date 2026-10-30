@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),Database=require('better-sqlite3');
 const {PDFDocument}=require('../vendor/pdf-lib/pdf-lib');
-const {createBriefingService,createGoogleExporter,isLegacyBriefing,validatePdf,JOBS,SPREADSHEET_ID}=require('../briefingSchedule');
+const {createBriefingService,createGoogleExporter,isLegacyBriefing,validatePdf,JOBS,SPREADSHEET_ID}=require('../has/server/briefingSchedule');
 async function pdf(width=612,height=792){const doc=await PDFDocument.create();doc.addPage([width,height]);return Buffer.from(await doc.save());}
 
 test('retired legacy sender cannot export or post, including restarts and dates before November 1',async t=>{

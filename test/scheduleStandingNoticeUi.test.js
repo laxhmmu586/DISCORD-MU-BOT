@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {parseHTML}=require('linkedom');
-const {DEFAULT_NOTICE}=require('../scheduleStandingNotice');
-const source=fs.readFileSync('public/public/schedule-notices.js','utf8').split('// Persistent schedule policy, separate from expiring announcements.')[1];
+const {DEFAULT_NOTICE}=require('../has/server/scheduleStandingNotice');
+const source=fs.readFileSync('has/public/schedule-notices.js','utf8').split('// Persistent schedule policy, separate from expiring announcements.')[1];
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture(){
  const {window,document}=parseHTML('<html><body><main><div class="schedule-heading"></div></main></body></html>');

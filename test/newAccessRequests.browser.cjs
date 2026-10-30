@@ -3,14 +3,14 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const db=new Database(':memory:'),app=express();app.use(express.json());
  const rows=[['bm','Business Manager','LAX','CI','bm@example.test'],['owner','President','HQ','HQ','lake@mu.com'],['sup','Supervisor','LAX','CI','sup@example.test'],['other','Business Manager','LAX','MU','other@example.test']].map(([id,position,station,account,loginId],i)=>({id,position,station,account,loginId,name:id.toUpperCase()+' FIXTURE',eid:String(1001+i),phone:'6265550100',email:loginId,companyEmail:id+'@company.test',additionalAccounts:[],attach:false,detach:false,spotter:false}));
- const employees={...require('../employees').createEmployeeStore(db,{seed:rows}),db},profiles={linked:u=>employees.get().employees.find(e=>e.id===u.uid)};
+ const employees={...require('../has/server/employees').createEmployeeStore(db,{seed:rows}),db},profiles={linked:u=>employees.get().employees.find(e=>e.id===u.uid)};
  const authenticate=async req=>{const uid=req.headers.authorization?.replace('Bearer ','');const row=rows.find(e=>e.id===uid);if(!row)throw Error('Sign in required');return {uid,email:row.loginId};};
- const access=require('../newAccessRequests').registerNewAccess(app,{employees,profiles,authenticate});
- const uniform=require('../uniformRequests').registerUniform(app,{employees,profiles,authenticate,send:async()=>{},notify:async()=>{}});
+ const access=require('../has/server/newAccessRequests').registerNewAccess(app,{employees,profiles,authenticate});
+ const uniform=require('../has/server/uniformRequests').registerUniform(app,{employees,profiles,authenticate,send:async()=>{},notify:async()=>{}});
  for(const kind of ['incident','expense','terrific'])require('../'+kind+'Reports')['register'+kind[0].toUpperCase()+kind.slice(1)+'Reports'](app,{employees,profiles,authenticate});
  app.get('/profile-api',async(req,res)=>res.json({state:'ready',profile:profiles.linked(await authenticate(req)),revision:1}));
  app.get('/read-sign-api',(_,res)=>res.json({memos:[]}));app.get('/has-report-api/context',(_,res)=>res.json({permissions:{},canAdmin:false}));
- app.use(express.static('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
+ app.use(require('../has/static').withShared('public/public'));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true}),errors=[];fs.mkdirSync('output/new-access',{recursive:true});
  try{
   async function pageFor(id,width=1440){const page=await browser.newPage({viewport:{width,height:1000}});page.on('pageerror',e=>errors.push(e.message));await page.route('https://www.gstatic.com/**',r=>r.fulfill({body:''}));await page.route('**/__/firebase/init.js',r=>r.fulfill({body:''}));await page.addInitScript(({base,id,email})=>{window.MU_API_BASE=base;const user={uid:id,email,providerData:[],getIdToken:async()=>id};window.firebase={apps:[{}],auth:()=>({currentUser:user,onAuthStateChanged:fn=>{setTimeout(()=>fn(user),0);return()=>{};}})};},{base,id,email:rows.find(r=>r.id===id).loginId});await page.goto(base+'/has-form.html');await page.waitForFunction(()=>window.RequestInbox?.data?.groups.some(g=>g.kind==='new-access'&&!g.error));return page;}

@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express');
-const {createStore,registerPbb}=require('../pbb'),items=require('../public/public/pbb-data');
+const {createStore,registerPbb}=require('../has/server/pbb'),items=require('../has/public/pbb-data');
 const strokes=[[[.1,.2],[.3,.5],[.6,.1]]];
 test('account signatures use canonical identity, block impersonation and unlinked sessions, and scope the ramp exception to Arrival Spotter',async()=>{
  const app=express();app.use(express.json());

@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3'),{randomUUID}=require('node:crypto');
-const {createNewAccessStore,registerNewAccess}=require('../newAccessRequests');
+const {createNewAccessStore,registerNewAccess}=require('../has/server/newAccessRequests');
 function fixture(t){
  const db=new Database(':memory:');t.after(()=>db.close());
  const rows=[['bm','Business Manager','LAX','CI','bm@example.test'],['other','Business Manager','LAX','MU','other@example.test'],['sup','Supervisor','LAX','CI','sup@example.test'],['owner','President','HQ','HQ','lake@mu.com'],['admin','Agent','LAX','CI','tamsun10@gmail.com']].map(([id,position,station,account,loginId])=>({id,name:id.toUpperCase(),eid:'1001',position,station,account,loginId,additionalAccounts:[{station:'SFO',account:'MU'}]}));

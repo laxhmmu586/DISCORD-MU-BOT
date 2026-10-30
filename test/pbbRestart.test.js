@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express');
-const {createStore,registerPbb}=require('../pbb');
+const {createStore,registerPbb}=require('../has/server/pbb');
 const user={uid:'test',email:'test@example.com'},info={type:'arrival',flightNo:'MU583',gate:'132',bridges:['L1']};
 test('bridge restart clears answers, signatures and PDF, preserves other bridge/type/date and rejects stale requests',()=>{
  const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')});

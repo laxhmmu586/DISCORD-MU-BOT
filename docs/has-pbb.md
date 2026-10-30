@@ -22,7 +22,7 @@ HAS stores its own records and PDFs in `has_pbb_records` in the existing PBB SQL
 
 ## Imagery
 
-Existing PBB photographs and height/clearance references are reused. New gate, cable stowage, aircraft-stop and crew-acknowledgment SVG diagrams supplement missing illustrations. The equipment question uses `public/public/assets/pbb/has-equipment-realistic-v3.webp`, generated with the built-in ImageGen tool and optimized for the web. Its final prompt is preserved in [has-pbb-equipment-image-prompt.md](has-pbb-equipment-image-prompt.md).
+Existing PBB photographs and height/clearance references are reused. New gate, cable stowage, aircraft-stop and crew-acknowledgment SVG diagrams supplement missing illustrations. The equipment question uses `has/public/assets/pbb/has-equipment-realistic-v3.webp`, generated with the built-in ImageGen tool and optimized for the web. Its final prompt is preserved in [has-pbb-equipment-image-prompt.md](has-pbb-equipment-image-prompt.md).
 
 ## Verification
 

@@ -2,10 +2,10 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),express=require
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const db=new Database(':memory:'),seed=['Agent','Supervisor','Supervisor','Manager','Regional Manager','General Manager'].map((position,i)=>({id:'e'+i,name:'EXAMPLE PERSON '+i,position,eid:'100'+i,phone:'626-555-0100',email:'person'+i+'@example.test',companyEmail:'person'+i+'@company.test',loginId:'person'+i+'@login.test',attach:false,detach:false,spotter:false}));
- const employees={...require('../employees').createEmployeeStore(db,{seed}),db},profiles={linked:u=>employees.get().employees.find(e=>e.id===u.uid)},users=seed.map(e=>({uid:e.id,email:e.loginId}));
+ const employees={...require('../has/server/employees').createEmployeeStore(db,{seed}),db},profiles={linked:u=>employees.get().employees.find(e=>e.id===u.uid)},users=seed.map(e=>({uid:e.id,email:e.loginId}));
  const app=express();app.use(express.json());const authenticate=async req=>{const u=users.find(u=>req.headers.authorization==='Bearer '+u.uid);if(!u)throw Error('Sign in required');return u;};
  app.get('/profile-api',async(req,res)=>res.json({state:'ready',profile:profiles.linked(await authenticate(req)),revision:employees.get().revision}));
- let sent=0;const service=require('../uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{sent++;}});app.use(express.static('public/public'));
+ let sent=0;const service=require('../has/server/uniformRequests').registerUniform(app,{employees,profiles,authenticate,notify:async()=>{},send:async()=>{sent++;}});app.use(require('../has/static').withShared('public/public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true});
  try{
   const page=await browser.newPage(),errors=[];let who=0;page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(15000);

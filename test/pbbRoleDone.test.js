@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {createStore}=require('../pbb'),items=require('../public/public/pbb-data'),groups=require('../pbbSignals');
+const {createStore}=require('../has/server/pbb'),items=require('../has/public/pbb-data'),groups=require('../has/server/pbbSignals');
 for(const type of ['arrival','departure'])for(const first of ['driver','spotter'])test(`${type}: ${first} signs independently and last signature completes automatically`,()=>{
  const store=createStore(':memory:',{now:()=>new Date('2026-10-14T16:00:00Z')}),user={uid:'fixture'},strokes=[[[.1,.2],[.3,.5]]];
  try{

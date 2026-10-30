@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {registerStaffSchedule}=require('../staffSchedule'),{createEmployeeStore}=require('../employees');
+const {registerStaffSchedule}=require('../has/server/staffSchedule'),{createEmployeeStore}=require('../has/server/employees');
 async function fixture(t){
  const db=new Database(':memory:');db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT NOT NULL)');db.prepare('INSERT INTO employee_avatars VALUES(?,?)').run('agent','data:image/png;base64,photo');
  const rows=[['agent','Agent','LAX','MU'],['peer','Agent','LAX','MU'],['lead','Lead','LAX','MU'],['sup','Supervisor','LAX','MU'],['regional','Regional Manager','LAX','MU'],['other','Supervisor','LAX','CZ'],['station','Supervisor','SFO','MU']].map(([id,position,station,account],i)=>({id,name:id+' employee',eid:String(1000+i),code:'',position,station,account,attach:false,detach:false,spotter:false}));
@@ -10,7 +10,7 @@ async function fixture(t){
 }
 
 test('Schedule rules are shared, Supervisor+ editable, revision protected and independent of edit overrides',async t=>{
- const {request,db}=await fixture(t),policy=require('../scheduleRules');
+ const {request,db}=await fixture(t),policy=require('../has/server/scheduleRules');
  assert.equal((await request(null,null,undefined,'/rules')).status,401);
  for(const id of ['other','station'])assert.equal((await request(id,null,undefined,'/rules')).status,403);
  for(const id of ['agent','lead']){const response=await request(id,null,undefined,'/rules');assert.equal(response.status,200);assert.equal(response.data.canEdit,false);assert.equal((await request(id,{revision:0,rules:policy.defaults},undefined,'/rules')).status,403);}
@@ -86,7 +86,7 @@ test('only Supervisor+ publish announcements; Got it persists separately for eac
 
 test('announcements require an expiry and can only be managed or deleted by Supervisor+',async t=>{const {request,db}=await fixture(t),body={date:'2026-10-28',title:'Expiry check',body:'Message',durationHours:1};assert.equal((await request('sup',{...body,durationHours:undefined},undefined,'/announcements')).status,400);const published=await request('sup',body,undefined,'/announcements'),id=published.data.id;assert.equal((await request('agent',null,undefined,'/announcements/manage')).status,403);assert.equal((await request('agent',{},undefined,'/announcements/'+id+'/delete')).status,403);const managed=(await request('sup',null,undefined,'/announcements/manage')).data.announcements;assert.equal(managed[0].id,id);assert(Date.parse(managed[0].expiresAt)>Date.now()+3500000);db.prepare('UPDATE staff_schedule_announcements SET expires_at=? WHERE id=?').run('2000-01-01T00:00:00.000Z',id);assert.equal((await request('agent',null,undefined,'/announcements')).data.announcements.length,0);assert.equal((await request('regional',{},undefined,'/announcements/'+id+'/delete')).status,200);assert.equal((await request('sup',null,undefined,'/announcements/manage')).data.announcements.length,0);});
 
-test('announcement date expiry covers the selected Los Angeles day through DST changes',async t=>{const {expiryForDate}=require('../scheduleNotices');assert.equal(expiryForDate('2026-10-28'),'2026-10-29T06:59:59.999Z');assert.equal(expiryForDate('2026-11-01'),'2026-11-02T07:59:59.999Z');assert.equal(expiryForDate('2026-03-08'),'2026-03-09T06:59:59.999Z');const {request,db}=await fixture(t),body={date:'2026-10-28',title:'Through date',body:'Message',expiresOn:'2099-01-01'};assert.equal((await request('sup',{...body,expiresOn:'2000-01-01'},undefined,'/announcements')).status,400);const result=await request('sup',body,undefined,'/announcements');assert.equal(result.status,200);assert.equal(db.prepare('SELECT expires_at FROM staff_schedule_announcements WHERE id=?').get(result.data.id).expires_at,expiryForDate('2099-01-01'));});
+test('announcement date expiry covers the selected Los Angeles day through DST changes',async t=>{const {expiryForDate}=require('../has/server/scheduleNotices');assert.equal(expiryForDate('2026-10-28'),'2026-10-29T06:59:59.999Z');assert.equal(expiryForDate('2026-11-01'),'2026-11-02T07:59:59.999Z');assert.equal(expiryForDate('2026-03-08'),'2026-03-09T06:59:59.999Z');const {request,db}=await fixture(t),body={date:'2026-10-28',title:'Through date',body:'Message',expiresOn:'2099-01-01'};assert.equal((await request('sup',{...body,expiresOn:'2000-01-01'},undefined,'/announcements')).status,400);const result=await request('sup',body,undefined,'/announcements');assert.equal(result.status,200);assert.equal(db.prepare('SELECT expires_at FROM staff_schedule_announcements WHERE id=?').get(result.data.id).expires_at,expiryForDate('2099-01-01'));});
 test('Supervisor can persist arbitrary employee row order with stale and scope protection',async t=>{const {request,employees}=await fixture(t),before=(await request('sup')).data;assert.equal(before.rosterRevision,0);const target=before.employees[0].id,moving=before.employees.at(-1).id,body={employeeId:moving,targetId:target,placement:'before',revision:0};for(const user of ['agent','lead','other'])assert.equal((await request(user,body,undefined,'/order')).status,403);assert.equal((await request('sup',{...body,targetId:'missing'},undefined,'/order')).status,400);const snapshot=employees.get();assert.equal((await request('sup',body,undefined,'/order')).status,200);const after=(await request('sup')).data;assert.equal(after.employees[0].id,moving);assert.equal(after.rosterRevision,1);assert.deepEqual(employees.get(),snapshot);assert.equal((await request('sup',body,undefined,'/order')).status,409);assert.equal((await request('regional',{...body,revision:1,employeeId:target,targetId:moving,placement:'before'},undefined,'/order')).status,200);assert.equal((await request('agent')).data.rosterRevision,undefined);});
 
 test('local schedule preserves legacy metadata and refuses to re-enable Sheet sync',async t=>{const {request,db}=await fixture(t);db.prepare('UPDATE staff_schedule_sync_settings SET data=? WHERE id=1').run(JSON.stringify({enabled:true,horizon:'2027-03-31'}));const result=await request('sup');assert.equal(result.data.sync.enabled,false);assert.equal(result.data.sync.state,'local');assert.equal(result.data.horizon,'2027-03-31');assert.equal((await request('sup',{enabled:true},undefined,'/sync')).status,410);assert.equal((await request('sup',{resolve:'sheet'},undefined,'/sync')).status,410);assert.equal((await request('sup',{date:'2026-10-26',revision:0,employeeId:'agent',code:'C',color:'#99ff00'})).status,200);assert.equal((await request('sup')).data.days[0].assignments.agent.code,'C');assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='staff_schedule_sync_outbox'").get().n,0);});
@@ -109,7 +109,7 @@ test('test login/email identities are restored to Schedule for workflow testing'
 test('the explicit test identity can use Schedule even when its display name is DEMO HAS',async t=>{
  const {request,db}=await fixture(t),data=JSON.parse(db.prepare('SELECT data FROM pbb_employees').get().data);data.employees.find(e=>e.id==='blocked0').loginId='test@hm.com';db.prepare('UPDATE pbb_employees SET data=?').run(JSON.stringify(data));
  const result=await request('blocked0');assert.equal(result.status,200);assert(result.data.employees.some(e=>e.id==='blocked0'));assert.equal((await request('blocked1')).status,403);
- const {allowed}=require('../staffSchedule');assert.equal(allowed(data.employees.find(e=>e.id==='blocked0')),false,'Briefing shared eligibility does not gain the Schedule-only exception');
+ const {allowed}=require('../has/server/staffSchedule');assert.equal(allowed(data.employees.find(e=>e.id==='blocked0')),false,'Briefing shared eligibility does not gain the Schedule-only exception');
 });
 
 test('Short supports alternative headcounts and mode changes create a new unread notice',async t=>{
@@ -144,7 +144,7 @@ test('MU membership in second and third accounts grants Schedule visibility',asy
 
 
 test('standing Notice is durable, scoped, manager-only and rejects stale edits',async t=>{
- const {request,db}=await fixture(t),defaults=require('../scheduleStandingNotice').DEFAULT_NOTICE;
+ const {request,db}=await fixture(t),defaults=require('../has/server/scheduleStandingNotice').DEFAULT_NOTICE;
  const get=user=>request(user,undefined,undefined,'/notice');
  const post=(user,body)=>request(user,body,undefined,'/notice');
  for(const user of ['agent','lead','sup','regional']){const result=await get(user);assert.equal(result.status,200);assert.equal(result.data.notice.body,defaults);assert.equal(result.data.canEdit,['sup','regional'].includes(user));}
@@ -157,6 +157,6 @@ test('standing Notice is durable, scoped, manager-only and rejects stale edits',
  assert.equal(db.prepare('SELECT updated_by FROM staff_schedule_standing_notice WHERE id=1').get().updated_by,'sup');
  assert.equal((await post('regional',{body:'Regional update',revision:1})).status,200);
  // Registering again against the saved database must never overwrite a customized notice.
- require('../scheduleStandingNotice').createScheduleStandingNotice({app:{get(){},post(){}},db,handler:fn=>fn,requireManager(){}});
+ require('../has/server/scheduleStandingNotice').createScheduleStandingNotice({app:{get(){},post(){}},db,handler:fn=>fn,requireManager(){}});
  assert.equal((await get('agent')).data.notice.body,'Regional update');
 });

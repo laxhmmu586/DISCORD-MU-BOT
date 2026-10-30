@@ -1,0 +1,50 @@
+{
+  "removedFiles": [
+    {
+      "path": "public/public/assets/china-eastern-777-300er-reference.png",
+      "bytes": 1974790
+    },
+    {
+      "path": "public/public/assets/night-character-redraw-v3-lossless.webp",
+      "bytes": 1808702
+    },
+    {
+      "path": "public/public/assets/cbs-damaged-header.png",
+      "bytes": 1326070
+    },
+    {
+      "path": "public/public/assets/cbs-delayed-header.png",
+      "bytes": 918581
+    },
+    {
+      "path": "public/public/assets/china-eastern-report-logo.png",
+      "bytes": 299277
+    },
+    {
+      "path": "public/public/assets/china-eastern-boarding-pass-example.png.png",
+      "bytes": 168299
+    },
+    {
+      "path": "has/public/assets/pbb/departure-spotter-box.png",
+      "bytes": 187176
+    },
+    {
+      "path": "has/public/assets/pbb/safety-shoe-storage.jpg",
+      "bytes": 133709
+    },
+    {
+      "path": ".vs/DISCORD-MU-BOT/v16/.suo",
+      "bytes": 13824
+    },
+    {
+      "path": ".vs/VSWorkspaceState.json",
+      "bytes": 78
+    },
+    {
+      "path": ".vs/slnx.sqlite",
+      "bytes": 90112
+    }
+  ],
+  "totalBytes": 6920618,
+  "basis": "Reviewed superseded images with no code references and Visual Studio-only workspace metadata. Dynamic assets, runtime data, backups and active configuration are excluded."
+}

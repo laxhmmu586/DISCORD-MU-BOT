@@ -1,10 +1,10 @@
 const {chromium}=require('playwright'),express=require('express'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
-const {createStore,registerPbb}=require('../pbb');
+const {createStore,registerPbb}=require('../has/server/pbb');
 (async()=>{
  const app=express();app.use(express.json());const store=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00Z')});let available=true;
  const pbb=registerPbb(app,{store,employeeSeed:require('../test/fixtures/pbb-employees.json'),authenticate:async()=>({uid:'fixture'}),gateService:{today:async(date,type)=>({flights:available?[{flightNo:type==='arrival'?'MU583':'MU586',gate:'132',date},{flightNo:type==='arrival'?'MU577':'MU578',gate:'131',date}]:[]}),read:async()=>({status:'unavailable'})},client:{channels:{fetch:async()=>({isTextBased:()=>true,send:async()=>({id:'fixture-message'})})}},drive:{files:{generateIds:async()=>({data:{ids:['fixture-file']}}),get:async()=>({data:{id:'fixture-file'}})}}});
  const staff=pbb.employees.get();staff.employees[3].driver=true;staff.employees[4].spotter=true;pbb.employees.save(staff,{email:'fixture-admin'});
- app.use(express.static(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));const origin='http://127.0.0.1:'+server.address().port;
+ app.use(require('../has/static').withShared(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.on('listening',r));const origin='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true});const output=path.resolve('output/pbb-daily-preview');await fs.mkdir(output,{recursive:true});const errors=[];
  const make=async()=>{const context=await browser.newContext({viewport:{width:390,height:844}});await context.addInitScript(origin=>window.MU_API_BASE=origin,origin);const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(origin+'/pbb.html');await page.locator('[data-type=arrival]').waitFor();return page;};
  try{

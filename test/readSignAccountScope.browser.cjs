@@ -7,8 +7,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   {id:'mu',name:'MU STAFF',position:'Agent',station:'LAX',account:'MU',email:'mu@example.test'},
  ];
  const app=express(),employees={db,get:()=>({employees:rows})};
- const service=require('../readSign').registerReadSign(app,{employees,profiles:{linked:u=>rows.find(p=>p.id===u.uid)},authenticate:async req=>({uid:req.headers.authorization?.replace('Bearer ','')}),send:async()=>{}});
- app.use(express.static(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
+ const service=require('../has/server/readSign').registerReadSign(app,{employees,profiles:{linked:u=>rows.find(p=>p.id===u.uid)},authenticate:async req=>({uid:req.headers.authorization?.replace('Bearer ','')}),send:async()=>{}});
+ app.use(require('../has/static').withShared(path.resolve('public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
   for(const id of ['hq','cz']){

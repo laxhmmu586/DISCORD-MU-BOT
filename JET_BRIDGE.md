@@ -23,6 +23,6 @@ Run `npm test`. `scripts/verify-pbb-ui.cjs` additionally exercises six independe
 
 The UI uses the bright ribbon/cloud background, white glass cards, navy text and blue-purple controls of the 240 form.
 
-Illustrations are generated reference images, not operational instructions. Final assets and generation specifications are in `public/public/assets/pbb/image-prompts.json`.
+Illustrations are generated reference images, not operational instructions. Final assets and generation specifications are in `has/public/assets/pbb/image-prompts.json`.
 
 The flight page displays live active bridge cards for the current flight, with Driver/Spotter joined or waiting states and direct join buttons. The same browser may work in both roles; completed signatures must still belong to different employees.
