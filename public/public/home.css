@@ -186,3 +186,7 @@ body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
  .home-topbar .top-nav>a,.home-topbar .department-nav>summary{min-width:58px}
  .department-menu{top:136px}
 }
+
+.top-nav>a{background:transparent;color:#547197;font-weight:600}.top-nav>a:after{display:none}.top-nav>a[aria-current=page]{color:#0866f1}.top-nav>a[aria-current=page]:after{display:block}.top-nav>a:hover{color:#0866f1}
+.home-report-description{font-size:10px;color:#8197b5;line-height:1.6;margin:12px 0 13px}.home-report-links{display:grid;gap:3px}.home-report-links>a{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #c4d8f04d}.home-report-links .art-icon{width:32px;height:32px}.home-report-links>a>span:nth-child(2){display:grid;gap:4px;flex:1}.home-report-links strong{font-size:10px;font-weight:600}.home-report-links small{font-size:8px;color:#889ebc}.home-report-links>a>span:last-child{font-size:13px;color:#6e9bd5}.home-report-empty{font-size:11px;color:#7b92b1;line-height:1.7}
+.icon-checklist,.icon-info{background-size:contain!important;background-position:center!important}.icon-checklist{background-image:url('/assets/home-icon-checklist-v1.webp')}.icon-info{background-image:url('/assets/home-icon-info-v1.webp')}

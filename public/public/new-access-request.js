@@ -4,6 +4,8 @@
  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const label=r=>r.canComplete||r.status==='approved'?'Approved — awaiting requester completion':({pending:'Awaiting Lake approval',completed:'Completed',rejected:'Rejected'}[r.status]||r.status);
  let data,selected,busy=false,requestId=crypto.randomUUID(),generation=0;
+ const accessOnly=document.body.hasAttribute('data-access-only');
+ const requestedTitles=['Duty Manager','Senior Supervisor','Supervisor','Lead','Agent'];
  async function api(path='',body){
   const user=firebase.auth().currentUser;if(!user)throw Error('Sign in required.');
   const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/new-access-api'+path,{method:body?'POST':'GET',cache:'no-store',signal:AbortSignal.timeout(30000),headers:{Authorization:'Bearer '+await user.getIdToken(),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
@@ -11,6 +13,8 @@
   const result=await response.json();if(!response.ok)throw Error(result.error||'Unable to load access requests.');return result;
  }
  function updateType(){
+  if(accessOnly){picker.replaceChildren(new Option('Request New Access','new-access'));picker.value='new-access';host.hidden=false;if(data){if(data.canCreate)draw();else host.innerHTML='<div class="profile-panel-title"><h2>Request New Access</h2></div><p class="info-note">Your Main Account Business Manager can submit this request. Use the tabs above to review your requests and approvals.</p>';}return;}
+
   let option=picker.querySelector('[value="new-access"]');
   if(data?.canCreate&&!option){option=new Option('Request New Access','new-access');picker.add(option,picker.querySelector('[value="uniform"]'));}
   if(!data?.canCreate&&option){if(picker.value==='new-access')picker.value='';option.remove();}
@@ -27,7 +31,7 @@
   const r=selected,e=data?.employee,scope=r?.fields||e;if(!scope)return;
   const title=r?.title||scope.station+'/'+scope.account+' Request New Access';
   const field=(name,text,value,type='text',locked=false)=>`<label>${text}<input name="${name}" type="${type}" value="${esc(value||'')}" ${locked?'readonly':''} ${name==='eid'?'inputmode="numeric" pattern="[0-9]{1,12}" maxlength="12"':name==='email'?'maxlength="254"':'maxlength="100"'} required></label>`;
-  host.innerHTML=`<div class="profile-panel-title"><h2>${esc(title)}</h2></div><p data-access-status role="status" aria-live="polite"></p>${r?`<p><strong>${esc(label(r))}</strong></p>`:'<p class="info-note">Submit to Lake for approval. After approval, return here and select Complete to finish the request.</p>'}<form data-access-form><div class="new-access-fields">${field('name','Employee name',r?.fields.name,'text',!!r)}${r?.fields.eid?field('eid','EID',r.fields.eid,'text',true):''}${field('station','Station',scope.station,'text',true)}${field('account','Account',scope.account,'text',true)}${field('email','HALLMARK EMAIL or preferred username',r?.fields.email,'text',!!r)}</div>${!r&&data.canCreate?'<button type="submit" class="profile-primary">Submit request</button>':''}</form>${progress(r,e)}`;
+  host.innerHTML=`<div class="profile-panel-title"><h2>${esc(title)}</h2></div><p data-access-status role="status" aria-live="polite"></p>${r?`<p><strong>${esc(label(r))}</strong></p>`:'<p class="info-note">Submit to Lake for approval. After approval, return here and select Complete to finish the request.</p>'}<form data-access-form><div class="new-access-fields">${field('name','Employee name',r?.fields.name,'text',!!r)}<label>Position<select name="position" required ${r?'disabled':''}><option value="">Select a title</option>${requestedTitles.map(title=>`<option value="${esc(title)}" ${(r?.fields.position||'Agent')===title&&r?'selected':''}>${esc(title)}</option>`).join('')}</select></label>${r?.fields.eid?field('eid','EID',r.fields.eid,'text',true):''}${field('station','Station',scope.station,'text',true)}${field('account','Account',scope.account,'text',true)}${field('email','HALLMARK EMAIL or preferred username',r?.fields.email,'text',!!r)}</div>${!r&&data.canCreate?'<button type="submit" class="profile-primary">Submit request</button>':''}</form>${progress(r,e)}`;
   async function perform(work){if(busy)return;busy=true;const buttons=[...host.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);try{selected=await work();draw();window.dispatchEvent(new Event('request-changed'));}catch(error){host.querySelector('[data-access-status]').textContent=error.message;}finally{busy=false;buttons.forEach(b=>{if(b.isConnected)b.disabled=false;});}}
   host.querySelector('[data-access-form]').onsubmit=event=>{event.preventDefault();if(selected||!data.canCreate)return;const fields=Object.fromEntries(new FormData(event.currentTarget));perform(()=>api('',{requestId,fields}));};
   host.querySelectorAll('[data-access-action]').forEach(b=>b.onclick=()=>{const note=host.querySelector('[data-access-note]').value.trim();if(b.dataset.accessAction==='reject'&&!note){host.querySelector('[data-access-status]').textContent='Enter a rejection reason.';return;}perform(()=>api('/'+r.id+'/decision',{revision:r.revision,action:b.dataset.accessAction,note}));});
@@ -35,13 +39,14 @@
   const refresh=host.querySelector('[data-access-refresh]');if(refresh)refresh.onclick=()=>perform(()=>api('/'+r.id));
  }
  picker.addEventListener('change',()=>{host.hidden=picker.value!=='new-access';if(!host.hidden&&data?.canCreate){selected=null;requestId=crypto.randomUUID();draw();}});
- window.addEventListener('start-new-request',()=>{selected=null;requestId=crypto.randomUUID();host.hidden=true;});
+ window.addEventListener('start-new-request',()=>{selected=null;requestId=crypto.randomUUID();host.hidden=!accessOnly;if(accessOnly&&data?.canCreate){picker.value='new-access';draw();}});
  window.addEventListener('open-report-request',async event=>{
   if(event.detail.kind!=='new-access')return;host.hidden=false;
   try{selected=await api('/'+event.detail.id);draw();host.scrollIntoView({block:'start'});}catch(error){host.textContent=error.message;}
  });
+ if(accessOnly){host.hidden=false;host.innerHTML='<p class="info-note">Sign in to request new access.</p>';new MutationObserver(()=>{const other=[...picker.options].filter(option=>option.value!=='new-access');if(other.length)other.forEach(option=>option.remove());}).observe(picker,{childList:true});}
  firebase.auth().onAuthStateChanged(async user=>{
   const version=++generation;selected=null;data=null;host.hidden=true;host.replaceChildren();updateType();if(!user)return;
-  try{const loaded=await api();if(version!==generation)return;data=loaded;updateType();}catch(error){if(version===generation)host.textContent=error.message;}
+  try{const loaded=await api();if(version!==generation)return;data=loaded;updateType();}catch(error){if(version===generation){host.hidden=false;host.textContent=error.message;}}
  });
 })();

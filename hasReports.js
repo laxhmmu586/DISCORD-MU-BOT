@@ -13,8 +13,11 @@ const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});}
 const unavailable=()=>fail('Reports are temporarily unavailable. Please retry later.',503);
 function excel(){try{return require('exceljs');}catch(error){console.error('HAS report Excel dependency:',error);unavailable();}}
 const DA_ROLES=['Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'];
-function access(employee){const role=positions.normalize(employee?.position),main=employee&&!groups.isHeadquarter(employee);return {da:Boolean(main&&DA_ROLES.includes(role)),wwh:Boolean(main&&['Supervisor','Business Manager'].includes(role))};}
-function canDashboard(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&DA_ROLES.filter(role=>role!=='Lead').includes(positions.normalize(employee.position)));}
+const permissionPolicy=require('./public/public/employee-permissions');
+function access(employee){const main=employee&&!groups.isHeadquarter(employee);return {da:Boolean(main&&permissionPolicy.allowed(employee,'report.da')),wwh:Boolean(main&&permissionPolicy.allowed(employee,'report.wwh'))};}
+function canDashboard(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&permissionPolicy.allowed(employee,'report.dashboard'));}
+function canHrSafety(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&permissionPolicy.allowed(employee,'report.hrSafety'));}
+function canChecklistManage(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&permissionPolicy.allowed(employee,'checklist.supervisor'));}
 function monthFormat(cell,name){cell.style={...cell.style,numFmt:'"'+name.toUpperCase()+'"-yy'};}
 async function template(kind,month,scope,extraRows={}){
  const {year,name}=reportMonth(month);
@@ -63,9 +66,9 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  const handler=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){const infrastructure=['ENOENT','EACCES','EPERM','ENOTDIR'].includes(e.code)||String(e.code||'').startsWith('SQLITE_');if(infrastructure)console.error('HAS report request:',e);const status=infrastructure?503:e.status||400;if(status===503)res.set('Retry-After','30');res.status(status).json({error:infrastructure?'Reports are temporarily unavailable. Please retry later.':e.message});}};
  const build=async req=>{const ctx=authorize(req);reportMonth(req.params.month);const saved=read(ctx.scope,req.params.kind,req.params.month),model=await template(req.params.kind,req.params.month,ctx.scope,saved.extraRows);return {ctx,model,saved};};
  const apply=(model,values,stored=false)=>{if(!values||typeof values!=='object'||Array.isArray(values))fail('Invalid report values.');for(const [address,value] of Object.entries(values)){const cell=model.cells[address];if(!cell?.editable){if(stored)continue;fail('This template cell cannot be edited: '+address);}if(!['string','number'].includes(typeof value)||String(value).length>4000||typeof value==='number'&&!Number.isFinite(value))fail('Invalid cell value.');if(cell.webOnly&&value!==''&&(!Number.isSafeInteger(Number(value))||Number(value)<0))fail('Wheelchair counts must be non-negative whole numbers.');setInput(cell,value);}return model;};
- app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser),supervisor=canDashboard(employee);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee),...Object.fromEntries(wordForms.kinds.map(kind=>[kind,supervisor]))},canChecklist:require('./hasChecklists').allowed(employee),canDashboard:supervisor,canAdmin:permissions.wwh||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
- wordForms.register(app,{context,database,read,key,handler,allowed:canDashboard});
- require('./hasChecklists').register(app,{context,handler,supervisor:canDashboard,database,read,key});
+ app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser),supervisor=canHrSafety(employee);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee),...Object.fromEntries(wordForms.kinds.map(kind=>[kind,supervisor]))},canChecklist:require('./hasChecklists').allowed(employee),canDashboard:canDashboard(employee),canAdmin:['Supervisor','Business Manager'].includes(positions.normalize(employee.position))||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
+ wordForms.register(app,{context,database,read,key,handler,allowed:canHrSafety});
+ require('./hasChecklists').register(app,{context,handler,supervisor:canChecklistManage,database,read,key});
  const linkDA=async(model,scope)=>{
   if(model.kind!=='wwh')return null;
   for(let r=5;r<=10;r++)for(const c of ['I','N','T','U','V','W','X'])if(model.cells[c+r]&&!model.cells[c+r].formula&&model.cells[c+r].value==='')model.cells[c+r].value=0;

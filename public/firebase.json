@@ -86,6 +86,36 @@
         "source": "/admin/",
         "destination": "/admin",
         "type": 301
+      },
+      {
+        "source": "/hr.html",
+        "destination": "/hr",
+        "type": 301
+      },
+      {
+        "source": "/hr/",
+        "destination": "/hr",
+        "type": 301
+      },
+      {
+        "source": "/info.html",
+        "destination": "/info",
+        "type": 301
+      },
+      {
+        "source": "/info/",
+        "destination": "/info",
+        "type": 301
+      },
+      {
+        "source": "/has-checklist.html",
+        "destination": "/has-checklist",
+        "type": 301
+      },
+      {
+        "source": "/has-checklist/",
+        "destination": "/has-checklist",
+        "type": 301
       }
     ],
     "headers": [
@@ -223,6 +253,24 @@
             "value": "no-cache, no-store, must-revalidate"
           }
         ]
+      },
+      {
+        "source": "/{hr,hr.html,hr.js,hr.css,hr-reference.js,organization-model.js,info,info.html,info.js,info-access.js,has-checklist,has-checklist.html,has-checklist.js,resource-preview.js,workspace-resources.css,approval-glass.css,new-access-request.js,new-access-request.css,request-dashboard.js,uniform-client.js}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/employee-permissions.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       }
     ],
     "ignore": [
@@ -262,6 +310,18 @@
       {
         "source": "/admin",
         "destination": "/admin.html"
+      },
+      {
+        "source": "/hr",
+        "destination": "/hr.html"
+      },
+      {
+        "source": "/info",
+        "destination": "/info.html"
+      },
+      {
+        "source": "/has-checklist",
+        "destination": "/has-checklist.html"
       }
     ]
   }

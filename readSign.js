@@ -3,7 +3,7 @@ const crypto = require('node:crypto');
 const emailOK = v => typeof v === 'string' && v.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(v);
 const fail = (message, status = 400) => { throw Object.assign(Error(message), { status }); };
 const accountGroups = require('./public/public/employee-account-groups');
-const publishRole = e => require('./public/public/employee-positions').canPublishReadSign(e.position);
+const publishRole = e => require('./public/public/employee-permissions').allowed(e,'readSign.publish');
 function signatureSVG(strokes) {
   if (!Array.isArray(strokes) || !strokes.length || strokes.length > 60) fail('Draw your handwritten signature.');
   let points = 0, length = 0;

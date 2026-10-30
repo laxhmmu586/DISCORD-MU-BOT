@@ -54,3 +54,5 @@ test('new access accepts a preferred username without EID and retains email subm
  const f=fixture(t),draft=f.draft();delete draft.fields.eid;draft.fields.email='new.employee';const r=f.store.create(f.users.bm,draft);assert.equal(r.fields.email,'new.employee');assert.equal(r.fields.eid,undefined);assert.equal(f.store.create(f.users.bm,draft).id,r.id);
  for(const email of ['bad@','two names','<script>','bad@example'])assert.throws(()=>f.store.create(f.users.bm,{...f.draft(),fields:{...draft.fields,email}}));
 });
+
+test('requested Position is retained after approval without changing actual employee titles',t=>{const f=fixture(t),draft=f.draft();draft.fields.position='Supervisor';const request=f.store.create(f.users.bm,draft);assert.equal(request.fields.position,'Supervisor');assert.equal(f.store.decide(f.users.owner,request.id,{revision:1,action:'approve'}).fields.position,'Supervisor');for(const position of ['President','Business Manager','Invalid'])assert.throws(()=>f.store.create(f.users.bm,{...f.draft(),fields:{...f.draft().fields,position}}),error=>error.status===403);assert.equal(f.rows[0].position,'Business Manager');});
