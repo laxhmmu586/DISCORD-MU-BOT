@@ -3,7 +3,7 @@
  const api=(path='',body)=>peopleApi('/staff-schedule-api/requests'+path+(!body&&state&&!state.canEdit?(path.includes('?')?'&':'?')+'view=self':''),body);
  const dateNow=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  let refreshRetry=null,state=null,inbox=null,config=null,generation=0,requestId=null,menuDate=null,focusRequest=null,linkedRequest=new URLSearchParams(location.search).get('request');
- const button=el('button',undefined,'schedule-request-status');button.id='schedule-requests-button';button.type='button';button.hidden=true;button.setAttribute('aria-label','Schedule requests');document.querySelector('.schedule-dates').prepend(button);
+ const button=el('button',undefined,'schedule-request-status');button.id='schedule-requests-button';button.type='button';button.hidden=true;button.setAttribute('aria-label','Schedule requests');document.querySelector('.schedule-dates').append(button);
  const skillAction=el('button','Edit Skill');skillAction.id='schedule-edit-skill';skillAction.type='button';$('schedule-add-edit-panel').append(skillAction);
  const monthHeading=document.querySelector('.team-week-heading');if(monthHeading&&matchMedia('(max-width:600px)').matches)monthHeading.append(button);
  const statusIcon=pending=>'<img class="request-status-art" src="/assets/home-icon-status-'+(pending?'pending':'ok')+'-v1.webp" alt="" width="48" height="48">';
