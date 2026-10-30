@@ -34,7 +34,7 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
-        "source": "/{pbb.html,pbb.css,pbb-light.css,pbb-client.js,pbb-data.js,pbb-signals.js,admin.html,employees-client.js}",
+        "source": "/{pbb.css,pbb-light.css,pbb-data.js,pbb-signals.js,admin.html,employees-client.js}",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
