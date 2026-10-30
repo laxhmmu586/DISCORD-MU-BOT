@@ -171,7 +171,7 @@ body.home-page .home-topbar .flight-account>.login-button:hover,body.home-page .
 body.home-page .home-topbar .flight-user-avatar{display:grid;place-items:center;width:32px;height:32px;border:2px solid #fff;border-radius:50%;overflow:hidden;background:linear-gradient(145deg,#f9fcff,#bcd7ff);color:#2d65ac;box-shadow:0 2px 5px #4d7cba24}
 body.home-page .home-topbar .flight-user-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
 body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
-@media(max-width:760px){body.home-page .home-topbar .flight-account>.login-button{width:40px;height:40px;min-height:40px;padding:3px!important;justify-content:center}body.home-page .home-topbar .flight-user-avatar{width:30px;height:30px}}
+@media(max-width:760px){body.home-page .home-topbar .flight-account>.login-button{width:44px;height:44px;min-height:44px;padding:4px!important;justify-content:center;border-radius:50%!important}body.home-page .home-topbar .flight-user-avatar{flex:0 0 34px;width:34px;height:34px;border-radius:50%;overflow:hidden}body.home-page .home-topbar .flight-user-avatar img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover}}
 
 /* Mobile header: centered brand above a shared navigation and menu row. */
 @media(max-width:760px){

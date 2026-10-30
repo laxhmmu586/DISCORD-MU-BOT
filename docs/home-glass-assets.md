@@ -47,3 +47,5 @@ The date and account controls share a right-aligned header group. The avatar men
 Schedule status assets: public/public/assets/home-icon-status-pending-v1.webp (red clock/documents) and home-icon-status-ok-v1.webp (green check/documents). Generated using the built-in imagegen tool, with home-icon-request-v3.webp as a style reference.
 
 Prompt: two equal square icons on a transparent horizontal 2:1 sheet, matching the rounded glossy 3D white-document family and colored beveled sides. Pending uses red document accents and a red circular clock badge; OK uses green document accents and a green circular badge with a white check. Match size, viewpoint, upper-left lighting, subtle contact shadows and transparent padding. No text, numbers, background tiles or extra objects.
+
+Mobile drawer follow-up: explicitly override the legacy 55px navigation-bar height with 100vh/100dvh, allow vertical scrolling, and reserve safe-area padding. Mobile avatar controls use a 44px circular glass button with a 34px circular portrait.
