@@ -1,39 +1,7 @@
-# System-managed briefing PDFs
+# Retired Google Sheets Briefing sender
 
-The MUFC backend generates and sends both briefing PDFs itself. No Google Apps
-Script installation, synchronization, authorization, or trigger is required.
-The existing Google spreadsheet remains the data source; the system uses its
-existing Google service account connection to read it and export each tab.
+The legacy daily MU583/MU586 Discord sender (PDF attachment plus Open briefing sheet Google Sheets link) is retired immediately, ahead of its former November 1 cutoff. The backend no longer constructs or starts the scheduler. Its compatibility service is inert, including retries, catch-up and restarts. Existing delivery history and posted Discord messages are retained.
 
-Every day at UTC 15:49 (Los Angeles 08:49 PDT / 07:49 PST), the backend exports
-ARRIVAL and DEPARTURE, range A1:R67, as portrait Letter PDFs with single-page
-scaling and 0.10-inch margins. This replaces the landscape layout that left wide
-blank side areas. A restart after the scheduled time catches up the current day.
+The /send endpoint continues to suppress matching legacy Apps Script uploads in the known Briefing channels, so old triggers cannot reintroduce these posts. Other /send messages and attachments remain supported.
 
-Each Discord message includes both the PDF attachment and an **Open briefing
-sheet** link to the matching ARRIVAL or DEPARTURE tab in the source Google
-spreadsheet. The link lets recipients open the online sheet when their PDF
-viewer cannot open the attachment. It shows the live sheet, while the attachment
-is the dated PDF snapshot. Existing Google sharing permissions still apply.
-The exporter resolves the tab ID from Google metadata so each flight links to
-the same tab used for its PDF. No Drive upload or new public sharing is required.
-
-- MU583 Arrival: Discord channel 1563411695936864447
-- MU586 Departure: Discord channel 1563411615351574528
-
-Delivery state persists in briefing_deliveries in the existing system SQLite
-database. Completed flights are skipped across restarts. Export failures retry
-after five minutes without blocking the other flight. An ambiguous Discord send
-is reconciled against the bot's recent PDF attachments; it is never blindly
-resent. Unconfirmed deliveries remain uncertain for investigation.
-
-The /send endpoint ignores legacy Apps Script briefing uploads for the known
-briefing channels to prevent duplicate posts. Other text, embed, and PDF requests
-retain their existing behavior and 8 MiB PDF attachment limit.
-
-Deploy the backend through the existing process. The existing Google service
-account must have read access to spreadsheet
-1-BnQrtRj6-uTgoC89uj8zQ1dZTcSh96QFRH-_Tf4JEQ. The Discord bot must be able to view
-channel history and send attachments in the two destination channels.
-Old Google briefing triggers may be removed later, but the system does not rely
-on them and ignores their duplicate send requests.
+Website Finish PNG delivery, PDF archiving to Drive, ETAB, and LDM/CPM mail remain separate and enabled. The exporter utility is retained for existing callers, but is not scheduled. Deploy/restart the backend to apply this retirement to the running service.
