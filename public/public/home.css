@@ -205,3 +205,5 @@ body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
 
 .home-emergency-list>li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:20px}.home-emergency-call-heading{grid-column:1;grid-row:1}.home-emergency-person{grid-column:1;grid-row:2}.home-emergency-list .home-emergency-phone{grid-column:2;grid-row:1 / span 2;align-self:center;justify-self:end;text-align:right;margin:0;max-width:170px}.home-emergency-list>li:not(:has(.home-emergency-person)) .home-emergency-phone{grid-row:1}
 @media(max-width:480px){.home-emergency-list>li{column-gap:12px}.home-emergency-call-heading{grid-template-columns:minmax(0,1fr);gap:3px}.home-emergency-person{margin-left:0}.home-emergency-list .home-emergency-phone{font-size:14px;max-width:140px}}
+
+.home-page .home-overview{padding-bottom:0}.home-page .home-overview:after{display:none}.home-page .home-overview .home-hero{border-radius:25px}

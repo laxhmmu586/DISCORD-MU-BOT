@@ -8,6 +8,21 @@ async function fixture(t){
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
  const request=async(user,body,start='2026-10-26',suffix='',schema='2')=>{const res=await fetch('http://127.0.0.1:'+server.address().port+'/staff-schedule-api'+suffix+(body?'':'?start='+start+(schema?'&schema='+schema:'')),{method:body?'POST':'GET',headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:await res.json()};};return {request,employees,db};
 }
+
+test('Schedule rules are shared, Supervisor+ editable, revision protected and independent of edit overrides',async t=>{
+ const {request,db}=await fixture(t),policy=require('../scheduleRules');
+ assert.equal((await request(null,null,undefined,'/rules')).status,401);
+ for(const id of ['other','station'])assert.equal((await request(id,null,undefined,'/rules')).status,403);
+ for(const id of ['agent','lead']){const response=await request(id,null,undefined,'/rules');assert.equal(response.status,200);assert.equal(response.data.canEdit,false);assert.equal((await request(id,{revision:0,rules:policy.defaults},undefined,'/rules')).status,403);}
+ db.prepare('INSERT OR REPLACE INTO employee_permission_overrides VALUES(?,?)').run('agent',JSON.stringify({'schedule.edit':true}));assert.equal((await request('agent',{revision:0,rules:policy.defaults},undefined,'/rules')).status,403);
+ const rules=policy.defaults.map(row=>({...row}));rules[0].body='Submit a call-off request at least 2 hours before your shift starts.';
+ assert.equal((await request('sup',{revision:0,rules},undefined,'/rules')).status,200);
+ const saved=(await request('agent',null,undefined,'/rules')).data;assert.deepEqual(saved.rules,rules);assert.equal(saved.revision,1);assert.equal(JSON.parse(db.prepare('SELECT data FROM staff_schedule_rules WHERE id=1').get().data).revision,1);
+ assert.equal((await request('regional',{revision:0,rules},undefined,'/rules')).status,409);
+ assert.equal((await request('sup',{revision:1,rules:[]},undefined,'/rules')).status,400);
+ assert.equal((await request('regional',{revision:1,rules},undefined,'/rules')).status,200);
+ assert(policy.canEdit({email:'nextweek1216@gmail.com'},{position:'Agent'}));assert(!policy.canEdit({email:'agent@example.test'},{position:'Agent'}));
+});
 test('all staff see same-account team assignments but only managers receive totals and budgets',async t=>{
  const {request}=await fixture(t);await request('sup',{date:'2026-10-26',revision:0,employeeId:'peer',code:'VAC',color:'#fff2cc'});
  for(const user of ['agent','lead']){const {data,status}=await request(user);assert.equal(status,200);assert.equal(data.canViewAll,true);assert.equal(data.canEdit,false);assert(data.employees.some(e=>e.id==='peer'));assert.equal(data.days[0].assignments.peer.code,'VAC');for(const key of ['planned','budget','revision'])assert.equal(data.days[0][key],undefined);assert.equal(data.dailyBudget,undefined);assert(!data.employees.some(e=>e.id==='station'));}
