@@ -35,10 +35,12 @@
     const supervisorIds=new Map([...groups].flatMap(([id,members])=>members.map(member=>[member.id,id])));
     return [...rows.filter(row=>!supervisorIds.has(row.id)).map(row=>({...row,reportsTo:supervisorIds.get(row.reportsTo)||row.reportsTo})),...[...groups].map(([id,members])=>({id,members,name:'Supervisor team',position:'Supervisor',station:members[0].station,account:members[0].account,reportsTo:members[0].reportsTo}))];
   }
-  function drawConnections(){
-    const tree=$('#org-tree');tree.querySelector('.org-connectors')?.remove();
+  function drawConnections(){for(const surface of [$('#org-tree'),...$('#org-unassigned').querySelectorAll('.org-unassigned-tree')])drawSurfaceConnections(surface);}
+  function drawSurfaceConnections(tree){
+    tree.querySelector('.org-connectors')?.remove();
     if(!tree.getClientRects().length)return;
-    const available=Math.max(1,($('#org-canvas').clientWidth-52)/zoom);
+    const viewportWidth=tree===$('#org-tree')?$('#org-canvas').clientWidth:tree.parentElement.clientWidth;
+    const available=Math.max(1,(viewportWidth-52)/zoom);
     for(const grid of tree.querySelectorAll('.org-member-grid')){const card=grid.querySelector('.org-card'),cardWidth=card?card.getBoundingClientRect().width/zoom:182,columns=Math.max(1,Math.min(5,Math.floor((available+20)/(cardWidth+20))));grid.style.setProperty('--org-member-columns',String(columns));}
     const bounds=tree.getBoundingClientRect(),scale=zoom,width=bounds.width/scale,height=bounds.height/scale;
     const point=(element,bottom)=>{const rect=element.getBoundingClientRect();return {x:(rect.left+rect.width/2-bounds.left)/scale,y:((bottom?rect.bottom:rect.top)-bounds.top)/scale};};
@@ -74,7 +76,7 @@
     const unassignedIds=new Set(unassigned.map(r=>r.id));
     const roots=display.filter(r=>(!r.reportsTo||!ids.has(r.reportsTo))&&!unassignedIds.has(r.id));
     $('#org-tree').innerHTML=roots.length?`<ul class="org-list">${roots.map(row=>renderNode(row,display)).join('')}</ul>`:'';
-    $('#org-unassigned').innerHTML=unassigned.length?`<section class="hr-unassigned"><h3>Reporting line not assigned · ${unassigned.length}</h3><div><ul class="org-list">${unassigned.map(row=>renderNode(row,display)).join('')}</ul></div></section>`:'';
+    $('#org-unassigned').innerHTML=unassigned.length?`<section class="hr-unassigned"><h3>Reporting line not assigned · ${unassigned.length}</h3><div><div class="org-unassigned-tree"><ul class="org-list">${unassigned.map(row=>renderNode(row,display)).join('')}</ul></div></div></section>`:'';
     $('#hr-status').textContent=!loaded?'Sign in to view your organization.':!data.employees.length?'No employees are available in this workspace.':!display.length?'No people match your search.':!roots.length&&unassigned.length?'Assign reporting managers in each profile to build your organization chart.':'';
     $('#org-canvas').hidden=!roots.length;
     $('#org-accounts').innerHTML=[...employeeAccountGroups.regions,'Other stations'].map(region=>{const accounts=(data.accounts||[]).filter(account=>(account.station==='HQ'?'West Coast':employeeAccountGroups.regionName(account.station))===region);if(!accounts.length)return '';return `<section class="hr-account-region"><h3>${escape(region)} <span>${accounts.length} workspaces</span></h3><div>${accounts.map(account=>{const count=data.employees.filter(r=>key(r)===key(account)).length;return `<button type="button" class="hr-account-card" data-scope="${escape(key(account))}"><small>${account.station==='HQ'?'HEADQUARTERS':'STATION / ACCOUNT'}</small><strong>${escape(label(key(account)))}</strong><span>${count} ${count===1?'person':'people'}</span><em>Explore team →</em></button>`;}).join('')}</div></section>`;}).join('');
@@ -87,8 +89,8 @@
   }
   function chooseScope(value){scope=value;$('#org-scope').value=value;collapsed.clear();if(scope==='HQ|HQ'||scope==='all')data.employees.filter(r=>r.reportsTo==='president').forEach(r=>collapsed.add(r.id));if(scope==='station:LAX')data.employees.filter(r=>r.reportsTo==='regional').forEach(r=>collapsed.add(r.id));render();requestAnimationFrame(()=>{const canvas=$('#org-canvas');canvas.scrollLeft=Math.max(0,(canvas.scrollWidth-canvas.clientWidth)/2);});}
   function setView(value){view=value;for(const [name,panel] of [['chart','org-chart-panel'],['accounts','org-accounts-panel']]){const button=$('#'+name+'-tab');button.setAttribute('aria-selected',String(value===name));button.tabIndex=value===name?0:-1;$('#'+panel).hidden=value!==name;}$('#org-search').disabled=value!=='chart';}
-  function applyZoom(){$('#org-tree').style.zoom=String(zoom);$('#zoom-reset').textContent=Math.round(zoom*100)+'%';requestAnimationFrame(drawConnections);}
-  const chartResize=new ResizeObserver(()=>requestAnimationFrame(drawConnections));chartResize.observe($('#org-tree'));chartResize.observe($('#org-canvas'));
+  function applyZoom(){$('#org-tree').style.zoom=String(zoom);$('#org-unassigned').querySelectorAll('.org-unassigned-tree').forEach(surface=>surface.style.zoom=String(zoom));$('#zoom-reset').textContent=Math.round(zoom*100)+'%';requestAnimationFrame(drawConnections);}
+  const chartResize=new ResizeObserver(()=>requestAnimationFrame(drawConnections));chartResize.observe($('#org-tree'));chartResize.observe($('#org-canvas'));chartResize.observe($('#org-unassigned'));
   async function api(options,suffix=''){const token=await user.getIdToken();const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/employee-admin-api/organization'+suffix,{cache:'no-store',...options,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}});const result=await response.json();if(!response.ok)throw Error(result.error||'Organization unavailable.');return result;}
   function insertionTitles(id){const cacheKey=data.revision+'|'+role()?.employeeId+'|'+role()?.mode+'|'+id;if(titleCache.has(cacheKey))return titleCache.get(cacheKey);const values=employeePositions.selectablePositions.filter(position=>{try{model.insertionPlan(id,position,'New employee',role(),data.employees);return true;}catch{return false;}});titleCache.set(cacheKey,values);return values;}
   function updateInsertTitles(){const form=$('#insert-form'),titles=insertionTitles(form.elements.target.value);form.elements.position.innerHTML=titles.map(title=>`<option>${escape(title)}</option>`).join('');const target=groupedRows(data.employees).find(row=>row.id===form.elements.target.value),manager=target&&data.employees.find(row=>row.id===target.reportsTo);$('#insert-route').textContent=target?`${manager?.name||'Supervisor team'} → New level → ${target.name}`:'';$('#confirm-insert').disabled=!titles.length;}
