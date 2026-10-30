@@ -116,6 +116,16 @@
         "source": "/has-checklist/",
         "destination": "/has-checklist",
         "type": 301
+      },
+      {
+        "source": "/admin",
+        "destination": "/hr",
+        "type": 302
+      },
+      {
+        "source": "/account-settings.html",
+        "destination": "/account-settings",
+        "type": 301
       }
     ],
     "headers": [
@@ -271,6 +281,15 @@
             "value": "no-cache, no-store, must-revalidate"
           }
         ]
+      },
+      {
+        "source": "/{account-settings,account-settings.html}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       }
     ],
     "ignore": [
@@ -322,6 +341,10 @@
       {
         "source": "/has-checklist",
         "destination": "/has-checklist.html"
+      },
+      {
+        "source": "/account-settings",
+        "destination": "/account-settings.html"
       }
     ]
   }

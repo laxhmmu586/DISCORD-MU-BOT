@@ -28,7 +28,7 @@
     if(path.has(row.id))return '';const next=new Set([...path,row.id]),children=rows.filter(r=>r.reportsTo===row.id&&!next.has(r.id));
     const anchor=row.members?`<div class="org-team-group org-anchor"><span class="org-team-label">SUPERVISOR TEAM</span><div class="org-team-members">${row.members.map(member=>card(member)).join('')}</div><span class="org-team-note">Agents report to all Supervisors in this account</span></div>`:card(row).replace('class="org-card','class="org-anchor org-card');
     const insert=row.reportsTo&&rows.some(parent=>parent.id===row.reportsTo)&&!row.unassigned&&insertionTitles(row.id).length?`<button type="button" class="org-insert-on-line" data-insert-target="${escape(row.id)}" aria-label="Insert a level above ${escape(row.name)}" title="Insert a level above ${escape(row.name)}">＋</button>`:'';
-    return `<li>${insert}${anchor}${children.length?`<button type="button" class="org-expand" data-expand="${escape(row.id)}" aria-expanded="${!collapsed.has(row.id)}">${children.length} ${row.members?'team members':'direct report'+(children.length===1?'':'s')} <span aria-hidden="true">${collapsed.has(row.id)?'+':'−'}</span></button>${collapsed.has(row.id)?'':`<ul class="org-list">${children.map(child=>renderNode(child,rows,next)).join('')}</ul>`}`:''}</li>`;
+    return `<li>${insert}${anchor}${children.length?`<button type="button" class="org-expand" data-expand="${escape(row.id)}" aria-expanded="${!collapsed.has(row.id)}">${children.length} ${row.members?'team members':'direct report'+(children.length===1?'':'s')} <span aria-hidden="true">${collapsed.has(row.id)?'+':'−'}</span></button>${collapsed.has(row.id)?'':`<ul class="org-list${children.length>5&&children.every(child=>['Agent','Lead'].includes(child.position))?' org-member-grid':''}">${children.map(child=>renderNode(child,rows,next)).join('')}</ul>`}`:''}</li>`;
   }
   function groupedRows(rows){
     const groups=new Map();for(const row of rows.filter(r=>r.position==='Supervisor'&&!r.unassigned&&r.reportsTo)){const id=model.supervisorGroup(row);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(row);}
@@ -38,16 +38,22 @@
   function drawConnections(){
     const tree=$('#org-tree');tree.querySelector('.org-connectors')?.remove();
     if(!tree.getClientRects().length)return;
+    const available=Math.max(1,($('#org-canvas').clientWidth-52)/zoom);
+    for(const grid of tree.querySelectorAll('.org-member-grid')){const card=grid.querySelector('.org-card'),cardWidth=card?card.getBoundingClientRect().width/zoom:182,columns=Math.max(1,Math.min(5,Math.floor((available+20)/(cardWidth+20))));grid.style.setProperty('--org-member-columns',String(columns));}
     const bounds=tree.getBoundingClientRect(),scale=zoom,width=bounds.width/scale,height=bounds.height/scale;
     const point=(element,bottom)=>{const rect=element.getBoundingClientRect();return {x:(rect.left+rect.width/2-bounds.left)/scale,y:((bottom?rect.bottom:rect.top)-bounds.top)/scale};};
     const paths=[];
     for(const li of tree.querySelectorAll('li')){
       const parent=li.querySelector(':scope > .org-anchor'),children=[...li.querySelectorAll(':scope > .org-list > li > .org-anchor')];if(!parent||!children.length)continue;
-      const from=point(parent,true),targets=children.map(child=>point(child,false)),busY=Math.min(...targets.map(p=>p.y))-28;
-      paths.push(`M ${from.x} ${from.y} V ${busY}`);
-      const xs=targets.map(p=>p.x);if(children.length>1)paths.push(`M ${Math.min(...xs)} ${busY} H ${Math.max(...xs)}`);
-      for(const to of targets)paths.push(`M ${to.x} ${busY} V ${to.y}`);
-      children.forEach((child,index)=>{const button=child.parentElement.querySelector(':scope > .org-insert-on-line');if(!button)return;const liBounds=child.parentElement.getBoundingClientRect();button.style.left=(targets[index].x-(liBounds.left-bounds.left)/scale)+'px';button.style.top=(busY-(liBounds.top-bounds.top)/scale-button.offsetHeight/2)+'px';});
+      const from=point(parent,true),targets=children.map(child=>point(child,false));
+      const grid=li.querySelector(':scope > .org-member-grid');
+      const rows=[];targets.forEach((target,index)=>{let row=rows.find(row=>Math.abs(row.y-target.y)<2);if(!row){row={y:target.y,indices:[]};rows.push(row);}row.indices.push(index);});rows.sort((a,b)=>a.y-b.y);
+      const firstBusY=rows[0].y-28;paths.push(`M ${from.x} ${from.y} V ${firstBusY}`);
+      let railX=null;
+      if(grid&&rows.length>1){const left=Math.min(...children.map(child=>(child.getBoundingClientRect().left-bounds.left)/scale));railX=left-14;paths.push(`M ${railX} ${firstBusY} H ${from.x}`,`M ${railX} ${firstBusY} V ${rows.at(-1).y-28}`);}
+      for(const row of rows){const busY=row.y-28,xs=row.indices.map(index=>targets[index].x),minX=railX===null?Math.min(from.x,...xs):railX,maxX=grid?Math.max(...xs):Math.max(from.x,...xs);if(minX!==maxX)paths.push(`M ${minX} ${busY} H ${maxX}`);
+        for(const index of row.indices){const target=targets[index],child=children[index];paths.push(`M ${target.x} ${busY} V ${target.y}`);const button=child.parentElement.querySelector(':scope > .org-insert-on-line');if(!button)continue;const liBounds=child.parentElement.getBoundingClientRect();button.style.left=(target.x-(liBounds.left-bounds.left)/scale)+'px';button.style.top=(busY-(liBounds.top-bounds.top)/scale-button.offsetHeight/2)+'px';}
+      }
     }
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.classList.add('org-connectors');svg.setAttribute('aria-hidden','true');svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths.join(' '));svg.append(path);tree.prepend(svg);
@@ -82,7 +88,7 @@
   function chooseScope(value){scope=value;$('#org-scope').value=value;collapsed.clear();if(scope==='HQ|HQ'||scope==='all')data.employees.filter(r=>r.reportsTo==='president').forEach(r=>collapsed.add(r.id));if(scope==='station:LAX')data.employees.filter(r=>r.reportsTo==='regional').forEach(r=>collapsed.add(r.id));render();requestAnimationFrame(()=>{const canvas=$('#org-canvas');canvas.scrollLeft=Math.max(0,(canvas.scrollWidth-canvas.clientWidth)/2);});}
   function setView(value){view=value;for(const [name,panel] of [['chart','org-chart-panel'],['accounts','org-accounts-panel']]){const button=$('#'+name+'-tab');button.setAttribute('aria-selected',String(value===name));button.tabIndex=value===name?0:-1;$('#'+panel).hidden=value!==name;}$('#org-search').disabled=value!=='chart';}
   function applyZoom(){$('#org-tree').style.zoom=String(zoom);$('#zoom-reset').textContent=Math.round(zoom*100)+'%';requestAnimationFrame(drawConnections);}
-  new ResizeObserver(()=>requestAnimationFrame(drawConnections)).observe($('#org-tree'));
+  const chartResize=new ResizeObserver(()=>requestAnimationFrame(drawConnections));chartResize.observe($('#org-tree'));chartResize.observe($('#org-canvas'));
   async function api(options,suffix=''){const token=await user.getIdToken();const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/employee-admin-api/organization'+suffix,{cache:'no-store',...options,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}});const result=await response.json();if(!response.ok)throw Error(result.error||'Organization unavailable.');return result;}
   function insertionTitles(id){const cacheKey=data.revision+'|'+role()?.employeeId+'|'+role()?.mode+'|'+id;if(titleCache.has(cacheKey))return titleCache.get(cacheKey);const values=employeePositions.selectablePositions.filter(position=>{try{model.insertionPlan(id,position,'New employee',role(),data.employees);return true;}catch{return false;}});titleCache.set(cacheKey,values);return values;}
   function updateInsertTitles(){const form=$('#insert-form'),titles=insertionTitles(form.elements.target.value);form.elements.position.innerHTML=titles.map(title=>`<option>${escape(title)}</option>`).join('');const target=groupedRows(data.employees).find(row=>row.id===form.elements.target.value),manager=target&&data.employees.find(row=>row.id===target.reportsTo);$('#insert-route').textContent=target?`${manager?.name||'Supervisor team'} → New level → ${target.name}`:'';$('#confirm-insert').disabled=!titles.length;}
@@ -114,6 +120,7 @@
     $('#person-status').textContent='';$('#save-person').hidden=!editable;$('#save-person').disabled=false;
     if(!$('#person-dialog').open)$('#person-dialog').showModal();render();
   }
+  $('.hr-settings').onclick=event=>{event.preventDefault();setView('accounts');};
   const closePerson=()=>{if(saving)return;$('#person-dialog').close();selected=null;render();};
   $('#person-form').elements.name.addEventListener('input',event=>{if(assignmentId){const text=event.target.value;showPerson(selected);event.target.value=text;}assignmentId=null;$('#assignment-note').hidden=true;const query=event.target.value.trim().toLowerCase(),host=$('#employee-suggestions');const matches=query?data.employees.filter(row=>row.id!==selected&&!row.createdForOrganization&&model.assignable(row,role(),data.employees)&&(row.name+' '+(row.nickname||'')).toLowerCase().includes(query)).slice(0,8):[];host.innerHTML=matches.map(row=>`<button type="button" data-assign-person="${escape(row.id)}">${avatar(row)}<span><strong>${escape(row.name)}</strong><small>${escape(row.position+' · '+label(key(row)))}</small></span></button>`).join('');host.hidden=!matches.length;event.target.setAttribute('aria-expanded',String(!!matches.length));});
   $('#employee-suggestions').addEventListener('click',event=>{const button=event.target.closest('[data-assign-person]');if(!button)return;assignmentId=button.dataset.assignPerson;const source=data.employees.find(row=>row.id===assignmentId),target=data.employees.find(row=>row.id===selected);const form=$('#person-form');form.elements.name.value=source.name;for(const field of ['nickname','companyEmail','pbbId','pbbExpiry','pbbMscId','pbbMscExpiry']){form.elements[field].value=source[field]||'';form.elements[field].disabled=true;}for(const field of ['position','reportsTo','scope'])form.elements[field].disabled=true;$('#employee-suggestions').hidden=true;$('#person-form').elements.name.setAttribute('aria-expanded','false');$('#assignment-note').hidden=false;$('#assignment-note').textContent=`Assign ${source.name} to ${target.position} · ${label(key(target))}. Their existing profile and PBB details will be retained.${target.createdForOrganization?'':` ${target.name} will move to Unassigned.`}`;});
@@ -168,7 +175,6 @@
     loaded=true;$('#hr-preview-note').hidden=false;$('#demo-role-label').hidden=false;populateScopes();chooseScope(scope);
     // Keep the complete local design journey in preview mode, including Home → HR.
     document.querySelectorAll('a[href="/home"],a[href="/hr"]').forEach(link=>link.href+='?preview=1');
-    $('.hr-settings').onclick=event=>{event.preventDefault();setView('accounts');};
   }else if(window.firebase?.apps?.length){
     firebase.auth().onAuthStateChanged(async current=>{user=current;data={employees:[],accounts:[],access:null};loaded=false;render();if(!user){$('#hr-status').innerHTML='Sign in to view HR. <a href="/login.html">Sign in →</a>';return;}try{data=await api();loaded=true;populateScopes();chooseScope(scope);}catch(error){$('#hr-status').textContent=error.message;}});
   }else{$('#hr-status').innerHTML='Sign in to view HR. <a href="/login.html">Sign in →</a>';}
