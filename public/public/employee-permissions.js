@@ -12,7 +12,7 @@
   {key:'report.hrSafety',label:'Safety & HR reports',description:'Incident Investigation, COS, PAF and Record of Discussion',roles:above('Supervisor'),scope:'Main Account'},
   {key:'checklist.supervisor',label:'Checklist management',description:'Edit Emergency Procedure; view Incident and Workers Comp forms',roles:above('Supervisor'),scope:'Main Account'},
   {key:'readSign.publish',label:'Read & Sign publishing',description:'Publish and manage acknowledgments for permitted recipients',roles:positions.readSignPublishers,scope:'Authorized recipient accounts'},
-  {key:'request.newAccess',label:'Request New Access',description:'Submit a new access request for Lake approval',roles:['Business Manager'],scope:'Main Account'}
+  {key:'request.newAccess',label:'Request New Access',description:'Submit a new access request for System Admin approval',roles:['Business Manager'],scope:'Main Account'}
  ];
  const isOwner=row=>row?.isServerOwner===true||['lax@mu.com','nextweek1216@gmail.com','lake@mu.com'].includes(String(row?.loginId||'').trim().toLowerCase());
  function defaultAllowed(row,key){const item=catalog.find(item=>item.key===key);return !!item&&(isOwner(row)||item.roles.includes(positions.normalize(row?.position)));}

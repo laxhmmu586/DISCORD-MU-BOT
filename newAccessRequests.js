@@ -33,10 +33,10 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
    const fields=cleanFields(body.fields||{},e),existing=db.prepare('SELECT data FROM new_access_requests WHERE id=?').get(body.requestId);
    if(existing){const old=JSON.parse(existing.data);if(old.employee.id!==e.id||JSON.stringify({...old.fields,position:old.fields.position||'Agent'})!==JSON.stringify(fields))fail('Request reference already used.',409);return view(old,user,e);}
    const scope=accounts.scope(e),r={id:body.requestId,title:scope.station+'/'+scope.account+' Request New Access',employee:{id:e.id,name:e.name,eid:e.eid||'',...scope},fields,status:'pending',revision:1,approvals:[],history:[]};
-   r.submittedAt=event(r,e,'submit','Submitted to Lake for approval');put(r);return view(r,user,e);
+   r.submittedAt=event(r,e,'submit','Submitted to System Admin for approval');put(r);return view(r,user,e);
   }),
   decide:db.transaction((user,id,body)=>{
-   const e=employee(user);if(!owner(user,e))fail('Only Lake can approve new access requests.',403);
+   const e=employee(user);if(!owner(user,e))fail('Only a System Admin can approve new access requests.',403);
    const r=get(id);if(body.revision!==r.revision)fail('Request changed. Refresh before reviewing.',409);
    if(r.status!=='pending')fail('This request is no longer awaiting approval.',409);
    if(!['approve','reject'].includes(body.action))fail('Choose approve or reject.');
@@ -48,7 +48,7 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
   complete:db.transaction((user,id,body)=>{
    const e=employee(user),r=get(id);if(r.employee.id!==e.id)fail('Only the requester can complete this request.',403);
    if(body.revision!==r.revision)fail('Request changed. Refresh before completing.',409);
-   if(r.status!=='approved')fail('Lake must approve this request before you can complete it.',409);
+   if(r.status!=='approved')fail('A System Admin must approve this request before you can complete it.',409);
    r.completedAt=event(r,e,'complete','Completed by requester');r.status='completed';r.revision++;put(r);return view(r,user,e);
   })
  };
