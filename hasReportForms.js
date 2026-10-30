@@ -19,6 +19,8 @@ async function template(kind,month,scope,extraRows={}){
   const numeric=kind==='terrific'?c===1:r>=10&&r<=11&&c===7||r>=14&&r<=21&&c>=9||r>=26&&r<=35&&c>=2||r>=40&&r<=43&&c>=4||r>=48&&r<=65&&c>=6||r===74&&c===10;
   cells[cell.address]={value:cell.formula?'':value instanceof Date?value.toISOString().slice(0,10):value??'',...(cell.formula?{formula:cell.formula}:{}),editable,formulaAllowed:editable&&numeric,type:'text',multiline:editable&&!numeric,numFmt:cell.numFmt||'',style:{background:cell.fill?.fgColor?.argb,bold:cell.font?.bold,align:cell.alignment?.horizontal}};
  }
+ const account=[scope.station,scope.account].filter(Boolean).join('/');
+ if(kind==='terrific'){for(let row=3;row<=rows;row++)if(cells['F'+row]&&!String(cells['F'+row].value||'').trim())cells['F'+row].value=account;}else if(cells.A7&&!String(cells.A7.value||'').trim())cells.A7.value=account;
  return {kind,month,scope,rows,columns,cells,days:[],...(kind==='terrific'?{extraRows:{terrificRows:count}}:{}),merges:sheet.model.merges,widths:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).width||12),hiddenColumns:[],heights:Array.from({length:rows},(_,i)=>sheet.getRow(i+1).height||20),sheetName:sheet.name,workbook};
 }
 const escape=value=>String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

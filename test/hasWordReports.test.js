@@ -8,7 +8,7 @@ async function fixture(t){
  app.use(express.json());const reports=require('../hasReports').registerHasReports(app,{employees:{db},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const uid=req.headers.authorization;if(!users[uid])throw Error();return {uid};}});
  app.use(express.static(path.join(__dirname,'../public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  t.after(()=>{reports.close();server.close();db.close();});
- const request=(user,url,body)=>fetch('http://127.0.0.1:'+server.address().port+'/has-report-api'+url,{headers:{authorization:user,'content-type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
+ const request=(user,url,body,headers={})=>fetch('http://127.0.0.1:'+server.address().port+'/has-report-api'+url,{headers:{authorization:user,'content-type':'application/json',...headers},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
  return {request,users};
 }
 test('Word packages fill every declared slot and preserve all non-content parts',async()=>{
@@ -45,7 +45,7 @@ test('All Supervisor+ Word forms use only primary Main Account; deny lower roles
  const body={revision:0,values:{name:'Primary account only'},station:'SFO',account:'XX',scope:{station:'SFO',account:'XX'}};
  assert.equal((await request('Business Manager','/word/cos?station=SFO&account=XX',body)).status,200);
  const own=await (await request('Business Manager','/word/cos')).json();assert.equal(own.values.name,'Primary account only');assert.deepEqual(own.scope,{station:'LAX',account:'MU'});
- assert.deepEqual((await (await request('other','/word/cos')).json()).values,{});
+ assert.deepEqual((await (await request('other','/word/cos')).json()).values,{department:'SFO/XX'});
  assert.equal((await request('Business Manager','/word/cos',body)).status,409);
  for(const role of ['Agent','CSA','Lead','hq'])for(const kind of Word.kinds){assert.equal((await request(role,'/word/'+kind,{revision:0,values:{}})).status,403);assert.equal((await request(role,'/word/'+kind+'/export')).status,403);}
  const download=await request('Business Manager','/word/cos/export?account=XX');assert.equal(download.status,200);assert.match(download.headers.get('content-type'),/wordprocessingml/);assert.match(await (await JSZip.loadAsync(await download.arrayBuffer())).file('word/document.xml').async('string'),/Primary account only/);
@@ -86,3 +86,7 @@ test('Recharge headings are scoped labels and do not change WWH manual hours or 
  const entry={day:2,lines:[{row:23,name:'Example',role:'Agent',category:'ST',hours:2}]};assert.equal((await request('Business Manager','/rechargeable/2026-10',{revision:1,entry})).status,200);
  const saved=await (await request('Supervisor','/rechargeable/2026-10')).json();assert.deepEqual(saved.roleLabels,labels);assert.equal(saved.entries[0].lines[0].role,'Agent');
 });
+
+test('all Word Account fields default to the active assigned workspace and retain saved text',async t=>{const {request}=await fixture(t),keys={investigation:'detail_1_0',cos:'department',paf:'employee_5',discussion:'detail_3_1'},headers={'X-Workspace-Account':JSON.stringify({station:'SFO',account:'XX'})};for(const [kind,key] of Object.entries(keys)){const form=await (await request('Supervisor','/word/'+kind,undefined,headers)).json();assert.equal(form.values[key],'SFO/XX');const saved=await request('Supervisor','/word/'+kind,{revision:0,values:{[key]:'Custom account text'}},headers);assert.equal(saved.status,200);assert.equal((await saved.json()).values[key],'Custom account text');assert.equal((await (await request('Supervisor','/word/'+kind,undefined,headers)).json()).values[key],'Custom account text');assert.equal((await (await request('Supervisor','/word/'+kind)).json()).values[key],'LAX/MU');}});
+
+test('PAF provides all 44 handbook rules and retains multiple rules in editable Word output',async()=>{const policies=require('../public/public/paf-company-policies');assert.equal(policies.items.length,44);assert.deepEqual(policies.items.map(p=>p.number),Array.from({length:44},(_,i)=>i+1));assert(policies.items[0].text.startsWith('Obtaining employment based on false or misleading information'));assert(policies.items[16].text.includes('at least 2 hours notice'));assert.equal(policies.items[43].text,'Any other violations of rules and policies of the Company.');assert(policies.items.every(p=>p.text&&!p.text.includes('Employee Handbook')&&!p.text.includes('6.8 Employee Counseling')));const text=policies.items.map(p=>p.number+'. '+p.text).join('\n\n');assert(text.length<Word.definition('paf').fields.find(f=>f.key==='narrative_17').maxLength);const bytes=await Word.exportWord('paf',{employee_5:'SFO/XX',narrative_17:text}),zip=await JSZip.loadAsync(bytes),xml=await zip.file('word/document.xml').async('string');assert(xml.includes('Obtaining employment based on false or misleading information'));assert(xml.includes('44. Any other violations of rules and policies of the Company.'));assert(xml.includes('SFO/XX'));});

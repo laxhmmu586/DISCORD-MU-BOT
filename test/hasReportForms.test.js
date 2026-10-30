@@ -11,7 +11,7 @@ test('every editable form cell survives export, including empty styled cells and
 test('forms retain template structure and formulas with blank private inputs',async()=>{
  for(const kind of forms.kinds){
   const model=await forms.template(kind,'2026-10',{station:'LAX',account:'MU'});
-  assert(Object.values(model.cells).filter(c=>c.editable).every(c=>c.value===''));
+  assert(Object.entries(model.cells).filter(([address,c])=>c.editable).every(([address,c])=>c.value===''||c.value==='LAX/MU'&&(kind==='terrific'?/^F\d+$/.test(address):address==='A7')));
   assert.doesNotThrow(()=>calculate(model.cells));
   if(kind==='terrific'){assert.equal(model.cells.A2.value,'Amount ($) *');assert.match(model.cells.G2.value,/1500 character/);}
   const address=kind==='terrific'?'C4':'A4';model.cells[address].value='Entered & checked <value>';
@@ -60,3 +60,5 @@ test('Terrific Ten rows persist, reject stale layouts, and require confirmation 
  assert.equal((await request('',{revision:state.revision,layoutRevision:state.layoutRevision,values:{G16:'Keep until confirmed'}})).status,200);state=(await request()).data;
  assert.equal((await request('/rows',{revision:state.revision,layoutRevision:state.layoutRevision,delta:-1})).status,409);assert.equal((await request('/rows',{revision:state.revision,layoutRevision:state.layoutRevision,delta:-1,confirmRemoval:true})).status,200);state=(await request()).data;assert.equal(state.rows,15);assert.equal(state.cells.G16,undefined);assert.equal(state.values.G16,undefined);
 });
+
+test('Expense and all Terrific Ten Account rows use the active scope and preserve manual account text in exports',async()=>{for(const kind of forms.kinds){const model=await forms.template(kind,'2026-10',{station:'SFO',account:'XX'},kind==='terrific'?{terrificRows:20}:{}),address=kind==='terrific'?'F3':'A7';assert.equal(model.cells[address].value,'SFO/XX');if(kind==='terrific')assert.equal(model.cells.F22.value,'SFO/XX');model.cells[address].value='Manual department';const book=new Excel.Workbook();await book.xlsx.load(await forms.exportForm(model));assert.equal(book.worksheets[0].getCell(address).value,'Manual department');}});
