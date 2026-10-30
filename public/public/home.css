@@ -207,3 +207,5 @@ body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
 @media(max-width:480px){.home-emergency-list>li{column-gap:12px}.home-emergency-call-heading{grid-template-columns:minmax(0,1fr);gap:3px}.home-emergency-person{margin-left:0}.home-emergency-list .home-emergency-phone{font-size:14px;max-width:140px}}
 
 .home-page .home-overview{padding-bottom:0}.home-page .home-overview:after{display:none}.home-page .home-overview .home-hero{border-radius:25px}
+
+.top-nav [data-department][aria-disabled=true]{opacity:.42;cursor:default}.top-nav [data-department][aria-disabled=true]>summary{cursor:default}.top-nav a[data-department][aria-disabled=true]:hover{color:inherit;transform:none}

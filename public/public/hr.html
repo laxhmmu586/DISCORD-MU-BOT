@@ -6,12 +6,12 @@
   <script src="/workspace-routes.js?v=20261030-hr"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script defer src="/__/firebase/init.js"></script>
   <script defer src="/employee-positions.js"></script><script defer src="/employee-permissions.js"></script><script defer src="/employee-account-groups.js"></script><script defer src="/organization-model.js?v=20261030-owner-gm"></script><script defer src="/hr-reference.js?v=20261030-hr"></script><script defer src="/hr.js?v=20261030-green-switches"></script><link rel="stylesheet" href="/employee-pending.css?v=20261030-hr-dialog"><script defer src="/employee-pending.js?v=20261030-hr-dialog"></script>
-</head><body class="home-page hr-page">
+<script defer src="/department-access.js?v=20261030-access"></script></head><body class="home-page hr-page">
 <div class="app-frame">
   <header class="home-topbar profile-topbar">
     <button class="menu-toggle" aria-label="Open HR navigation" aria-expanded="false" aria-controls="hr-sidebar">☰</button>
     <a class="home-brand" href="/home" aria-label="Hallmark Home"><img src="/assets/home-hallmark-transparent-v1.png" alt="Hallmark Aviation Services"></a>
-    <nav class="top-nav" aria-label="Main navigation"><a href="/home">Home</a><a href="/hr" aria-current="page">HR</a><details class="department-nav"><summary>Finance</summary><div class="department-menu"><a href="/has-report">Report</a></div></details></nav>
+    <nav class="top-nav" aria-label="Main navigation"><a href="/home">Home</a><a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1" aria-current="page">HR</a><details class="department-nav" data-department="finance" aria-disabled="true" inert><summary aria-disabled="true" tabindex="-1">Finance</summary><div class="department-menu"><a href="/has-report">Report</a></div></details></nav>
     <span class="topbar-date" id="hr-date"></span><div id="flight-account"><a href="/profile" class="hr-user" aria-label="My profile"><span class="hr-user-avatar">H</span><span>My workspace</span></a></div>
   </header>
   <button class="sidebar-scrim" aria-label="Close HR navigation" hidden></button>
