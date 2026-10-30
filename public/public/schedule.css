@@ -28,3 +28,16 @@
 .duty.has-remark::after{content:"";position:absolute;top:-8px;left:-8px;width:24px;height:24px;background:transparent url("/assets/schedule-message-blue-badge-v2.svg") center/contain no-repeat;pointer-events:none}
 
 #shortage-positions .shortage-mode-control{margin:0 0 12px;gap:6px;font-size:11px;color:#58718c}#shortage-positions .shortage-mode-control select{width:100%;min-height:36px;padding:7px 9px;font-size:12px;border:1px solid #d8e3ef;border-radius:8px;background:#f8fbff;color:#24486c;box-sizing:border-box}
+
+/* A durable policy card fills the space above the schedule on every screen. */
+.schedule-standing-notice{margin:0 0 20px;padding:20px 24px;border:1px solid #fff;border-radius:20px;background:linear-gradient(125deg,#ffffffbd,#e2eeff9c);box-shadow:inset 0 1px white,0 8px 24px #4673aa12;color:#25466d}
+.schedule-standing-notice[hidden]{display:none}
+.standing-notice-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.standing-notice-heading h2{margin:0;font-size:18px;color:#153b6a}
+.schedule-shell .standing-notice-heading button{padding:6px 16px;min-height:32px;border:1px solid white;border-radius:12px;background:#ffffffa6;color:#146be0;font-size:12px}
+.schedule-standing-notice ul{padding-left:19px;margin:12px 0 0;display:grid;gap:9px;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.schedule-standing-notice li::marker{color:#4a91eb}
+.standing-notice-status:empty{display:none}
+.standing-notice-status{font-size:12px;margin:10px 0 0}
+.schedule-shell #schedule-start,.schedule-shell #today{display:none!important}
+@media(max-width:600px){.schedule-standing-notice{padding:16px;margin-bottom:14px;border-radius:16px}.schedule-standing-notice ul{font-size:12px;gap:8px}}

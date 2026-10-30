@@ -126,3 +126,22 @@ test('custom display text persists and excludes the original duty from coverage 
 });
 
 test('MU membership in second and third accounts grants Schedule visibility',async t=>{const {request}=await fixture(t);for(const user of ['second','third']){const result=await request(user);assert.equal(result.status,200);assert.equal(result.data.canEdit,false);assert(result.data.employees.some(e=>e.id===user));assert.equal((await request(user,{date:'2026-10-26',revision:0,budget:100})).status,403);}});
+
+
+test('standing Notice is durable, scoped, manager-only and rejects stale edits',async t=>{
+ const {request,db}=await fixture(t),defaults=require('../scheduleStandingNotice').DEFAULT_NOTICE;
+ const get=user=>request(user,undefined,undefined,'/notice');
+ const post=(user,body)=>request(user,body,undefined,'/notice');
+ for(const user of ['agent','lead','sup','regional']){const result=await get(user);assert.equal(result.status,200);assert.equal(result.data.notice.body,defaults);assert.equal(result.data.canEdit,['sup','regional'].includes(user));}
+ for(const user of ['agent','lead'])assert.equal((await post(user,{body:'Unauthorized',revision:0})).status,403);
+ for(const user of [null,'other','station']){assert.equal((await get(user)).status,user?403:401);assert.equal((await post(user,{body:'Unauthorized',revision:0})).status,user?403:401);}
+ for(const body of [{body:'',revision:0},{body:'x'.repeat(4001),revision:0},{body:12,revision:0},{body:'valid',revision:-1},{body:'valid',revision:'0'}])assert.equal((await post('sup',body)).status,400);
+ const saved=await post('sup',{body:'Updated **one month** reminder',revision:0});assert.equal(saved.status,200);assert.equal(saved.data.notice.revision,1);
+ assert.equal((await post('regional',{body:'Stale change',revision:0})).status,409);
+ assert.equal((await get('agent')).data.notice.body,'Updated **one month** reminder');
+ assert.equal(db.prepare('SELECT updated_by FROM staff_schedule_standing_notice WHERE id=1').get().updated_by,'sup');
+ assert.equal((await post('regional',{body:'Regional update',revision:1})).status,200);
+ // Registering again against the saved database must never overwrite a customized notice.
+ require('../scheduleStandingNotice').createScheduleStandingNotice({app:{get(){},post(){}},db,handler:fn=>fn,requireManager(){}});
+ assert.equal((await get('agent')).data.notice.body,'Regional update');
+});
