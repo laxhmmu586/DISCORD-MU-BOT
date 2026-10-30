@@ -18,12 +18,12 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
  const event=(r,e,action,label,note='')=>{const at=now().toISOString();r.updatedAt=at;r.history.push({employeeId:e.id,name:e.name,action,label,note,at});return at;};
  const cleanFields=(body,e)=>{
   const text=(value,label,max)=>{if(typeof value!=='string'||!value.trim()||value.trim().length>max||/[\x00-\x1f\x7f]/.test(value))fail('Enter a valid '+label+'.');return value.trim();};
-  const name=text(body.name,'employee name',100),eid=text(body.eid,'EID',12),email=text(body.email,'email',254);
-  if(!/^\d{1,12}$/.test(eid))fail('Enter a valid EID.');
-  if(!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email))fail('Enter a valid email address.');
+  const name=text(body.name,'employee name',100),eid=body.eid===undefined||body.eid===''?'':text(body.eid,'EID',12),email=text(body.email,'Hallmark email or preferred username',254);
+  if(eid&&!/^\d{1,12}$/.test(eid))fail('Enter a valid EID.');
+  if(email.includes('@')?!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email):!/^[A-Za-z0-9][A-Za-z0-9._+-]{0,99}$/.test(email))fail('Enter a valid Hallmark email or preferred username.');
   const scope=accounts.scope(e);
   if(!body.station||!body.account||!accounts.same(body,scope))fail('Use your Main Account station and account.',403);
-  return {name,eid,...scope,email};
+  return {name,...(eid?{eid}:{}),...scope,email};
  };
  return {db,get,read,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position,...accounts.scope(e)},canCreate:canCreate(e),requests:db.prepare('SELECT data FROM new_access_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,user,e)).map(r=>view(r,user,e))};},
   create:db.transaction((user,body)=>{

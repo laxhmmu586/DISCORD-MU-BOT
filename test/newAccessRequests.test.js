@@ -33,7 +33,7 @@ test('Lake approval returns to the original requester and completion is a separa
  assert.throws(()=>reopened.complete(f.users.bm,r.id,{revision:3}),e=>e.status===409);
 });
 test('invalid request fields and rejection paths do not prematurely complete a request',t=>{
- const f=fixture(t);for(const fields of [{name:''},{eid:'not-an-id'},{email:'bad'},{email:'line\nbreak@example.test'}])assert.throws(()=>f.store.create(f.users.bm,{...f.draft(),fields:{...f.draft().fields,...fields}}));
+ const f=fixture(t);for(const fields of [{name:''},{eid:'not-an-id'},{email:'bad username'},{email:'line\nbreak@example.test'}])assert.throws(()=>f.store.create(f.users.bm,{...f.draft(),fields:{...f.draft().fields,...fields}}));
  assert.equal(f.store.list(f.users.bm).requests.length,0);
  const r=f.store.create(f.users.bm,f.draft());assert.throws(()=>f.store.decide(f.users.owner,r.id,{revision:1,action:'reject'}));
  const rejected=f.store.decide({...f.users.owner,email:'nextweek1216@gmail.com'},r.id,{revision:1,action:'reject',note:'Check the EID'});assert.equal(rejected.status,'rejected');assert.equal(f.store.read(f.users.bm,r.id).canComplete,false);assert.throws(()=>f.store.complete(f.users.bm,r.id,{revision:2}),e=>e.status===409);
@@ -47,4 +47,10 @@ test('authenticated HTTP endpoints enforce cross-account and action permissions'
  assert.equal((await call('other','/'+r.id)).status,404);assert.equal((await call('bm','/'+r.id+'/decision',{revision:1,action:'approve'})).status,403);
  assert.equal((await call('owner','/'+r.id+'/decision',{revision:1,action:'approve'})).status,200);
  assert.equal((await call('bm','/'+r.id+'/complete',{revision:2})).status,200);assert.equal(service.store.get(r.id).status,'completed');
+});
+
+
+test('new access accepts a preferred username without EID and retains email submissions',t=>{
+ const f=fixture(t),draft=f.draft();delete draft.fields.eid;draft.fields.email='new.employee';const r=f.store.create(f.users.bm,draft);assert.equal(r.fields.email,'new.employee');assert.equal(r.fields.eid,undefined);assert.equal(f.store.create(f.users.bm,draft).id,r.id);
+ for(const email of ['bad@','two names','<script>','bad@example'])assert.throws(()=>f.store.create(f.users.bm,{...f.draft(),fields:{...draft.fields,email}}));
 });
