@@ -19,7 +19,7 @@
     const row=document.createElement('li');row.dataset.call=String(call.number);
     const heading=document.createElement('div');heading.className='home-emergency-call-heading';
     const order=document.createElement('span');order.className='home-emergency-order';order.textContent=call.ordinal+' CALL';
-    const title=document.createElement('strong');title.className='home-emergency-role';title.textContent=call.title;heading.append(order,title);row.append(heading);
+    const title=document.createElement('strong');title.className='home-emergency-role';title.textContent=(call.number===4&&data.directory?.find(person=>person.name===contacts[call.name])?.position)||call.title;heading.append(order,title);row.append(heading);
     if(call.name){const name=document.createElement('span');name.className='home-emergency-person';name.textContent=contacts[call.name]||'Name not set';row.append(name);}
     const phone=document.createElement('a'),number=String(contacts[call.phone]||'').trim();phone.className='home-emergency-phone';phone.textContent=number||'Phone not set';phone.setAttribute('aria-label',call.ordinal+' call '+call.title+' phone number');if(/^[+\d() .-]+$/.test(number))phone.href='tel:'+number.replace(/[^+\d]/g,'');row.append(phone);list.append(row);
    }
