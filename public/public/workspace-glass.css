@@ -103,3 +103,6 @@ body.workspace-glass.profile-page{display:flow-root;min-width:320px;min-height:1
  .workspace-glass.profile-page .profile-sidebar nav,.workspace-glass.profile-page .profile-sidebar>.workspace-features{height:auto;max-height:none;overflow:visible;flex-shrink:0}
  .workspace-glass.profile-page .profile-sidebar .sidebar-caption,.workspace-glass.profile-page .profile-sidebar .sidebar-footer{flex-shrink:0}
 }
+
+/* The glass header is in normal flow; reserve no legacy fixed-header space. */
+@media(max-width:600px){body.workspace-glass.profile-page .profile-shell.schedule-shell{margin-top:0!important}}

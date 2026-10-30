@@ -49,3 +49,10 @@ Schedule status assets: public/public/assets/home-icon-status-pending-v1.webp (r
 Prompt: two equal square icons on a transparent horizontal 2:1 sheet, matching the rounded glossy 3D white-document family and colored beveled sides. Pending uses red document accents and a red circular clock badge; OK uses green document accents and a green circular badge with a white check. Match size, viewpoint, upper-left lighting, subtle contact shadows and transparent padding. No text, numbers, background tiles or extra objects.
 
 Mobile drawer follow-up: explicitly override the legacy 55px navigation-bar height with 100vh/100dvh, allow vertical scrolling, and reserve safe-area padding. Mobile avatar controls use a 44px circular glass button with a 34px circular portrait.
+
+
+## Schedule standing Notice
+
+Schedule now displays a permanent Notice card above the roster/calendar, including on mobile. The legacy fixed-header top margin is removed for the glass layout. The three initial reminders are stored once in SQLite; later updates survive restarts and are not replaced during initialization. Only existing Schedule Supervisor+ editors may save, with revision checks to protect concurrent edits. Rendering supports plain text and **bold** spans without injecting HTML. Expiring announcements remain separate.
+
+The date field and Today control are hidden; History toggles back to the current schedule so removing Today does not remove the return path. Focused validation: 70 Schedule, request, route, shell and Notice UI tests passed. Live browser/iPhone visual verification remains unavailable because browser access is disabled in Work settings.

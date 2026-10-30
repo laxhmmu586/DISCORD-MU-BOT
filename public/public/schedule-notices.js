@@ -22,3 +22,48 @@
  window.addEventListener('schedule-live-update',()=>void refreshAnnouncements());
  window.addEventListener('schedule-state',event=>{const changed=state?.employeeId!==event.detail?.employeeId||state?.canEdit!==event.detail?.canEdit;state=event.detail;if(!changed)return;clearTimeout(retry);generation++;publish.hidden=!state?.canEdit;if(!state){items=[];banner.hidden=true;modal.close();composer.close();return;}if(state.canEdit){items=[];render();return;}void refreshAnnouncements();});
 })();
+
+// Persistent schedule policy, separate from expiring announcements.
+(()=>{
+ const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
+ const card=make('section');card.id='schedule-standing-notice';card.className='schedule-standing-notice';card.hidden=true;card.setAttribute('aria-labelledby','standing-notice-title');
+ const heading=make('div'),title=make('h2','Notice'),edit=make('button','Edit');title.id='standing-notice-title';edit.type='button';edit.hidden=true;heading.className='standing-notice-heading';heading.append(title,edit);
+ const content=make('div'),status=make('p');status.setAttribute('role','status');status.className='standing-notice-status';card.append(heading,content,status);document.querySelector('.schedule-heading').before(card);
+ const dialog=make('dialog');dialog.className='schedule-dialog';dialog.setAttribute('aria-labelledby','standing-notice-edit-title');
+ dialog.innerHTML='<form><h2 id="standing-notice-edit-title">Edit Notice</h2><label>Reminders<textarea rows="9" maxlength="4000" required></textarea></label><p>One reminder per line. Use **text** for bold text.</p><p role="status"></p><div class="dialog-actions"><button type="button">Cancel</button><button type="submit">Save</button></div></form>';document.body.append(dialog);
+ const form=dialog.querySelector('form'),input=dialog.querySelector('textarea'),error=dialog.querySelector('[role=status]'),cancel=dialog.querySelector('[type=button]'),save=dialog.querySelector('[type=submit]');
+ let state=null,notice=null,epoch=0,request=0,editingRevision=0;
+ const api=body=>peopleApi('/staff-schedule-api/notice',body);
+ function render(){
+  content.replaceChildren();
+  const list=make('ul');
+  for(const line of notice.body.split(/\r?\n/).filter(line=>line.trim())){
+   const item=make('li');
+   for(const [i,part] of line.split(/\*\*(.+?)\*\*/g).entries())item.append(i%2?make('strong',part):document.createTextNode(part));
+   list.append(item);
+  }
+  content.append(list);edit.hidden=!state?.canEdit;
+ }
+ async function refresh(){
+  if(!state)return;
+  const run=++request,session=epoch;
+  try{const result=await api();if(session!==epoch||run!==request)return;notice=result.notice;status.textContent='';render();}
+  catch(e){if(session===epoch&&run===request)status.textContent='Unable to load Notice. '+e.message;}
+ }
+ edit.onclick=()=>{if(!state?.canEdit||!notice)return;editingRevision=notice.revision;input.value=notice.body;error.textContent='';dialog.showModal();};
+ cancel.onclick=()=>{dialog.close();void refresh();};
+ form.onsubmit=async event=>{
+  event.preventDefault();if(!state?.canEdit)return;
+  const session=epoch;save.disabled=true;error.textContent='';
+  try{const result=await api({body:input.value,revision:editingRevision});if(session!==epoch)return;request++;notice=result.notice;render();dialog.close();status.textContent='Notice saved.';}
+  catch(e){if(session===epoch)error.textContent=e.message;}
+  finally{save.disabled=false;}
+ };
+ window.addEventListener('schedule-state',event=>{
+  const next=event.detail,changed=state?.employeeId!==next?.employeeId||state?.canEdit!==next?.canEdit;state=next;
+  if(changed){epoch++;request++;dialog.close();notice=null;content.replaceChildren();status.textContent='';}
+  card.hidden=!state;edit.hidden=!state?.canEdit||!notice;
+  if(state)void refresh();
+ });
+ window.addEventListener('schedule-live-update',()=>void refresh());
+})();
