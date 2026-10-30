@@ -94,3 +94,12 @@ The shortcuts open focused same-origin forms in a dialog with the existing auto-
 Briefing and Schedule accept LAX / MU in Main Account, 2nd Account, or 3rd Account, independent of the currently selected assigned workspace. Navigation uses the same membership rule. Existing employee exclusions and title-based editing permissions still apply.
 
 Take photo downloads the current saved flight/date as a single PNG, after flushing local edits. Arrival includes Flight Information, Passenger Information, Details, Team Assignment, Time Record, and Notes. Departure includes Flight Information, PAX Booking, Special Information, Time Check, Details, Counter Assignment, and Gate Assignment. Gate Lead Control Sheet operational times, final counts, and delay announcements are excluded from this download. The image expands vertically for long content, including all sections on mobile. Taking a photo does not archive a report, start Finish, or send to Discord/Drive. Existing Gate Lead preview and Finish images remain separate.
+
+
+## Camera save and report presentation
+
+The camera icon sits between the date and Arrival/Departure controls. Touch devices that support PNG file sharing open the native save/share menu; the user chooses Save Image / Add to Photos. A website cannot silently write to the system photo library. If file sharing is unsupported or its activation expires while rendering, a preview supports long-press saving, a fresh native-menu button where supported, and image download. Cancelling native sharing does not trigger a download. Desktop clicks download directly.
+
+Empty, dash-only and numeric-zero Special values are hidden in employee view and newly rendered reports/images. Managers retain all entry controls. A fully empty special section is omitted. Departure reports place the F/J/Y Config/PAX/INF table on the left and populated Special Information on the right, with TTL PAX and PLF below the booking table. PDF, HTML preview, and photo use one shared drawing layout. Existing archived PDF bytes are unchanged.
+
+Departure STD and Gate Lead Boarding complete entry controls are removed, along with their report/image display. Existing persisted values are not deleted. The legacy Google Sheets PDF sender is retired; website Finish remains enabled.

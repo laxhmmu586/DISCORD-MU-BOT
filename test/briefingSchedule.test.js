@@ -2,73 +2,19 @@ const test=require('node:test'),assert=require('node:assert/strict'),Database=re
 const {PDFDocument}=require('../vendor/pdf-lib/pdf-lib');
 const {createBriefingService,createGoogleExporter,isLegacyBriefing,validatePdf,JOBS,SPREADSHEET_ID}=require('../briefingSchedule');
 async function pdf(width=612,height=792){const doc=await PDFDocument.create();doc.addPage([width,height]);return Buffer.from(await doc.save());}
-async function fixture(t,{failExport=false,ambiguous=false}={}){
- const db=new Database(':memory:');t.after(()=>db.close());let instant=new Date('2026-10-25T15:48:00Z'),exports=0;const sends=[];
- const bytes=await pdf(),client={user:{id:'bot'},channels:{fetch:async channelId=>({messages:{fetch:async()=>({find:fn=>sends.map(s=>({id:s.id,author:{id:'bot'},attachments:new Map([[0,{name:s.name}]])})).find(fn)})},send:async options=>{const item={channelId,name:options.files[0].name,id:'id-'+(sends.length+1),content:options.content,files:options.files,allowedMentions:options.allowedMentions};sends.push(item);if(ambiguous)throw Error('timeout');return {id:item.id,attachments:new Map([[0,options.files[0]]])};}})}};
- const options={db,client,now:()=>instant,logger:{error(){}},exportPdf:async job=>{exports++;if(failExport&&job.flight==='MU583')throw Error('export unavailable');return {bytes,viewUrl:'https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/edit#gid='+(job.flight==='MU583'?17:29)};}};
- return {db,sends,options,service:createBriefingService(options),time:s=>instant=new Date(s),exports:()=>exports};
-}
-test('system sends both briefings at UTC 15:49 once daily across restart',async t=>{
- const h=await fixture(t);await h.service.tick();assert.equal(h.sends.length,0);h.time('2026-10-25T15:49:00Z');await h.service.tick();await h.service.tick();await createBriefingService(h.options).tick();assert.equal(h.sends.length,2);assert.equal(h.exports(),2);assert.deepEqual(h.sends.map(s=>s.channelId),JOBS.map(j=>j.channelId));assert.match(h.sends[0].name,/2026-10-25 MU583 ARRIVAL/);
- h.time('2026-10-26T15:49:00Z');await h.service.tick();assert.equal(h.sends.length,4);
-});
 
-test('each Discord message includes the matching online sheet link and PDF attachment together',async t=>{
- const h=await fixture(t);h.time('2026-10-26T15:49:00Z');await h.service.tick();
- assert.equal(h.sends.length,2);
- for(const [i,sent] of h.sends.entries()){
-  assert(sent.content.includes('2026-10-26 '+JOBS[i].flight+' '+JOBS[i].sheet+' BRIEFING SHEET.pdf'));
-  assert(sent.content.includes('https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/edit#gid='+(i===0?17:29)));
-  assert.equal(sent.files.length,1);assert.equal(sent.files[0].name,sent.name);assert.equal(sent.files[0].attachment.subarray(0,5).toString(),'%PDF-');
-  assert.deepEqual(sent.allowedMentions,{parse:[]});
+test('retired legacy sender cannot export or post, including restarts and dates before November 1',async t=>{
+ const db=new Database(':memory:');t.after(()=>db.close());
+ const unexpected=()=>{assert.fail('Retired scheduler must never access Discord or export PDFs');};
+ for(const date of ['2026-10-25T15:49:00Z','2026-10-30T15:49:00Z','2026-10-31T15:49:00Z','2026-11-01T15:49:00Z']){
+  const service=createBriefingService({db,client:{channels:{fetch:unexpected}},exportPdf:unexpected,now:()=>new Date(date)});service.start();await service.tick();await service.tick();service.close();
  }
+ assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='briefing_deliveries'").get(),undefined);
+});
+test('production starts website Finish and mail services without the legacy PDF scheduler',()=>{
+ const source=require('node:fs').readFileSync(require.resolve('../index.js'),'utf8');assert(!source.includes('briefingService'));assert.match(source,/briefingAutoArchive\.start\(\)/);assert.match(source,/ldmCpmMailService\.start\(\)/);
 });
 
-test('legacy PDFs continue through October 31 LA time and stop on November 1 across restart',async t=>{
- const h=await fixture(t);
- h.time('2026-10-31T15:49:00Z');await h.service.tick();
- assert.equal(h.sends.length,2);assert(h.sends.every(s=>s.name.startsWith('2026-10-31 ')));
- // UTC November 1 is still October 31 in Los Angeles; the normal UTC window is closed.
- h.time('2026-11-01T06:59:59Z');await h.service.tick();assert.equal(h.sends.length,2);
- // The UTC send window is closed at local midnight; also check the next open window.
- for(const instant of ['2026-11-01T07:00:00Z','2026-11-01T15:49:00Z','2026-11-02T15:49:00Z','2026-12-01T15:49:00Z']){
-  h.time(instant);await h.service.tick();await createBriefingService(h.options).tick();
- }
- assert.equal(h.exports(),2);assert.equal(h.sends.length,2);
- assert(h.db.prepare('SELECT date FROM briefing_deliveries').all().every(r=>r.date==='2026-10-31'));
-});
-
-test('production enables both legacy flights alongside the independent website and mail services',()=>{
- const source=require('node:fs').readFileSync(require.resolve('../index.js'),'utf8');
- const setup=source.match(/const briefingService = [^\n]+/)[0];
- assert(!setup.includes('includeArrival:false'));
- assert.match(source,/briefingService\.start\(\)/);
- assert.match(source,/briefingAutoArchive\.start\(\)/);
- assert.match(source,/ldmCpmMailService\.start\(\)/);
-});
-
-test('a missing or invalid fallback link fails before posting either message',async t=>{
- const h=await fixture(t),bytes=await pdf();h.time('2026-10-26T15:49:00Z');
- for(const viewUrl of [undefined,'https://example.test/briefing','https://docs.google.com/spreadsheets/d/other/edit#gid=17']){
-  h.options.exportPdf=async()=>({bytes,viewUrl});await createBriefingService(h.options).tick();assert.equal(h.sends.length,0);
-  h.db.prepare('DELETE FROM briefing_deliveries').run();
- }
-});
-test('failed export does not block the other flight; retries respect backoff',async t=>{
- const h=await fixture(t,{failExport:true});h.time('2026-10-25T15:49:00Z');await h.service.tick();assert.equal(h.sends.length,1);assert.equal(h.sends[0].channelId,JOBS[1].channelId);await h.service.tick();assert.equal(h.exports(),2);h.time('2026-10-25T15:55:00Z');await h.service.tick();assert.equal(h.exports(),3);assert.equal(h.sends.length,1);
-});
-test('ambiguous sends reconcile attachments without duplicate posts',async t=>{
- const h=await fixture(t,{ambiguous:true});h.time('2026-10-25T15:49:00Z');await h.service.tick();assert.equal(h.sends.length,2);await h.service.tick();assert.equal(h.sends.length,2);assert(h.db.prepare('SELECT state FROM briefing_deliveries').all().every(r=>r.state==='sent'));
-});
-test('adopts PDFs already sent manually today instead of resending on deployment',async t=>{
- const h=await fixture(t);h.time('2026-10-25T15:49:00Z');h.sends.push(...JOBS.map(j=>({channelId:j.channelId,name:'2026-10-25 '+j.flight+' '+j.sheet+' BRIEFING SHEET.pdf',id:'manual-'+j.flight})));
- await h.service.tick();assert.equal(h.sends.length,2);assert.equal(h.exports(),0);assert(h.db.prepare('SELECT state FROM briefing_deliveries').all().every(r=>r.state==='sent'));
-});
-test('a history lookup failure never makes an ambiguous send eligible for retry',async t=>{
- const h=await fixture(t,{ambiguous:true});h.time('2026-10-25T15:49:00Z');await h.service.tick();
- h.options.client.channels.fetch=async()=>{throw Error('history unavailable');};await h.service.tick();
- assert(h.db.prepare('SELECT state FROM briefing_deliveries').all().every(r=>r.state==='uncertain'));assert.equal(h.sends.length,2);
-});
 test('exporter selects tab and requests single-page portrait Letter with narrow margins',async()=>{
  const bytes=await pdf();let request;
  const exporter=createGoogleExporter({getSheets:()=>({spreadsheets:{get:async()=>({data:{sheets:[{properties:{sheetId:17,title:'ARRIVAL'}}]}})}}),getClient:async()=>({request:async options=>{request=options;return {data:bytes};}})});
@@ -78,5 +24,3 @@ test('exporter selects tab and requests single-page portrait Letter with narrow 
 test('recognizes legacy briefing calls only in configured channels',()=>{
  assert(isLegacyBriefing({channelId:'1252032370920656907',file:{name:'2026-10-25 MU586 DEPARTURE BRIEFING SHEET.pdf'}}));assert(!isLegacyBriefing({channelId:'123',file:{name:'MU586 BRIEFING SHEET.pdf'}}));assert(!isLegacyBriefing({channelId:JOBS[0].channelId,message:'ordinary message'}));
 });
-
-test('website Arrival automation replaces legacy Arrival export while Departure continues',async t=>{const h=await fixture(t);h.time('2026-10-26T15:49:00Z');await createBriefingService({...h.options,includeArrival:false}).tick();assert.equal(h.sends.length,1);assert.equal(h.sends[0].channelId,JOBS[1].channelId);assert.match(h.sends[0].name,/MU586 DEPARTURE/);});
