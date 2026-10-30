@@ -1422,6 +1422,10 @@
       {
         "source": "/pbb-signals.js",
         "destination": "/has/pbb-signals.js"
+      },
+      {
+        "source": "/operations-glass.css",
+        "destination": "/has/operations-glass.css"
       }
     ],
     "predeploy": [

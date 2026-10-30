@@ -1,0 +1,25 @@
+/* Briefing and Schedule share the workspace card treatment. Duty colors and grid geometry stay with their feature stylesheets. */
+.workspace-glass .briefing-shell,.workspace-glass .schedule-shell{--ops-glass:linear-gradient(130deg,#ffffffc7,#e4efff99);--ops-edge:#fffffff0;--ops-shadow:inset 0 1px 1px #fff,0 8px 25px #4776bb12}
+.workspace-glass .briefing-shell :is(.briefing-card,.briefing-roster),.workspace-glass .schedule-shell :is(.schedule-budgets>div,.schedule-legend,.schedule-standing-notice,.schedule-announcement-banner){border-color:var(--ops-edge);border-radius:20px;background:var(--ops-glass);box-shadow:var(--ops-shadow)}
+.workspace-glass .briefing-shell .briefing-card h2,.workspace-glass .briefing-shell .briefing-card summary{color:#294f80}
+.workspace-glass .briefing-shell .briefing-mobile-tabs{border-color:#fff;background:linear-gradient(135deg,#ffffffb8,#dfeaffb5);border-radius:15px;box-shadow:inset 0 1px #fff,0 5px 15px #517bbf0e;backdrop-filter:blur(12px)}
+.workspace-glass .briefing-shell .briefing-mobile-tabs button[aria-selected=true]{background:linear-gradient(135deg,#fff,#edf5ff);border-radius:11px;box-shadow:inset 0 1px #fff,0 3px 10px #5686c51c;color:#2075de}
+.workspace-glass .briefing-shell .briefing-card :is(input,select,textarea){border-color:#ffffffed;border-radius:10px;background-color:#ffffffb3;box-shadow:inset 0 1px 2px #5075a208;color:#345c8c}
+.workspace-glass .briefing-shell .briefing-card :is(input,select,textarea):focus-visible{outline:2px solid #62a4f4;outline-offset:1px}
+.workspace-glass .briefing-shell .briefing-notepaper{background-image:linear-gradient(#ffffffb3,#f0f6ff9e)}
+.workspace-glass :is(.briefing-reference-dialog,.briefing-report-dialog,.schedule-dialog){border-color:#fff;border-radius:22px;background:linear-gradient(135deg,#f7fbfff5,#e5effff5);box-shadow:inset 0 1px #fff,0 22px 65px #224d812e;color:#294f80}
+.workspace-glass :is(.briefing-reference-dialog,.briefing-report-dialog,.schedule-dialog)::backdrop{background:#23487645;backdrop-filter:blur(4px)}
+.workspace-glass .briefing-reference-dialog>header,.workspace-glass .briefing-reference-dialog .reference-editor{border-color:#d3e2f3;background:linear-gradient(120deg,#f5fafff5,#e8f1fff5)}
+.workspace-glass .briefing-reference-dialog .reference-card,.workspace-glass .schedule-request-card{border-color:#fffffff0;border-radius:16px;background:linear-gradient(130deg,#ffffffc9,#e5efff99);box-shadow:inset 0 1px #fff,0 5px 16px #4776bb10}
+.workspace-glass .schedule-shell .schedule-grid{border-color:#ffffffed;border-radius:18px;background:linear-gradient(135deg,#ffffffb3,#e2eeff80);box-shadow:inset 0 1px #fff,0 7px 22px #4776bb10}
+.workspace-glass .schedule-shell .team-week-table :is(thead th,tbody th){background:#edf4ff;color:#315782}
+.workspace-glass .schedule-shell .team-week-table tbody td{background:#f6faffae}
+.workspace-glass .schedule-shell .team-week-table .my-schedule-row>:is(th,td){background:#e9f3ff;border-bottom-color:#c2d8f4}
+.workspace-glass .schedule-shell .team-week-group td{background:linear-gradient(120deg,#e5efffbf,#f4f8ffb8);color:#6c87ab;border-color:#d0e0f2}
+.workspace-glass .schedule-shell .clock-in-time,.workspace-glass .schedule-shell .schedule-notice{border-color:#fff;border-radius:18px;background:var(--ops-glass);box-shadow:var(--ops-shadow)}
+.workspace-glass .schedule-dialog :is(input,textarea,select){border-color:#fff;border-radius:11px;background:#ffffffbd;box-shadow:inset 0 1px 2px #5477a008;color:#345c8c}
+.workspace-glass .schedule-dialog .request-card-note{border:1px solid #ffffffc9;border-radius:10px;background:#e9f2ff99}
+.workspace-glass .schedule-dialog .dialog-actions button:not(.request-submit):not([type=submit]),.workspace-glass .briefing-shell .briefing-datebar button{border-color:#fff;border-radius:11px;background:linear-gradient(135deg,#ffffffed,#dceaffb0);box-shadow:inset 0 1px #fff,0 4px 11px #5782bc16;color:#3d79c3}
+@media(max-width:760px){.workspace-glass .briefing-shell :is(.briefing-card,.briefing-roster){border-radius:16px}.workspace-glass .schedule-shell .schedule-grid{border-radius:14px}.workspace-glass :is(.briefing-reference-dialog,.briefing-report-dialog,.schedule-dialog){border-radius:18px}}
+
+.workspace-glass .schedule-shell .team-week-scroll{border-radius:20px;background:linear-gradient(135deg,#ffffffb3,#e2eeff80);box-shadow:inset 0 0 0 1px #ffffffed,0 7px 22px #4776bb10}@media(max-width:760px){.workspace-glass .schedule-shell .team-week-scroll{border-radius:15px}}
