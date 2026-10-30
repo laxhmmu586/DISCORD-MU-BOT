@@ -6,4 +6,9 @@ function scopeEmployee(employee,value){
  if(!groups.belongs(employee,scope))throw Object.assign(Error('This account is not assigned to you.'),{status:403});
  return {...employee,...groups.scope(scope)};
 }
-module.exports={scopeEmployee};
+// These shared MU tools accept MU in any assigned account slot.
+function scopeOperationsEmployee(employee,value){
+ const selected=scopeEmployee(employee,value);
+ return employee&&groups.belongs(employee,{station:'LAX',account:'MU'})?{...employee,station:'LAX',account:'MU'}:selected;
+}
+module.exports={scopeEmployee,scopeOperationsEmployee};

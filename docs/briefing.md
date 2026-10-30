@@ -87,3 +87,10 @@ The Arrival Time panel includes a separate Notes box below Time Record. Eligible
 The flight selection page has compact Arrival Time Record and Gate Lead Control Sheet shortcuts between flight cards and the service row. Both use clipboard icons. They load independently of the SY flight list, using today's shared MU583 Arrival and MU586 Departure records rather than the selected flight. Arrival is shown to staff with today's A shift or Lead and above; Gate is shown to today's assigned Gate Lead/Assist or Lead and above. Lead and above retain the Arrival shortcut even without an A shift.
 
 The shortcuts open focused same-origin forms in a dialog with the existing auto-save, explicit Save and Finish controls. Finish submission hides the corresponding shared shortcut during pending/processing/completed states; cancellation restores it. Closing flushes outstanding edits first. Availability refreshes independently, on focus and periodically, and server-derived permissions revoke an open task when its assignment changes. Existing Briefing links, pages and flight selection remain unchanged.
+
+
+## Shared account access and briefing photos
+
+Briefing and Schedule accept LAX / MU in Main Account, 2nd Account, or 3rd Account, independent of the currently selected assigned workspace. Navigation uses the same membership rule. Existing employee exclusions and title-based editing permissions still apply.
+
+Take photo downloads the current saved flight/date as a single PNG, after flushing local edits. Arrival includes Flight Information, Passenger Information, Details, Team Assignment, Time Record, and Notes. Departure includes Flight Information, PAX Booking, Special Information, Time Check, Details, Counter Assignment, and Gate Assignment. Gate Lead Control Sheet operational times, final counts, and delay announcements are excluded from this download. The image expands vertically for long content, including all sections on mobile. Taking a photo does not archive a report, start Finish, or send to Discord/Drive. Existing Gate Lead preview and Finish images remain separate.
