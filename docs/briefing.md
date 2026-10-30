@@ -103,3 +103,6 @@ The camera icon sits between the date and Arrival/Departure controls. Touch devi
 Empty, dash-only and numeric-zero Special values are hidden in employee view and newly rendered reports/images. Managers retain all entry controls. A fully empty special section is omitted. Departure reports place the F/J/Y Config/PAX/INF table on the left and populated Special Information on the right, with TTL PAX and PLF below the booking table. PDF, HTML preview, and photo use one shared drawing layout. Existing archived PDF bytes are unchanged.
 
 Departure STD and Gate Lead Boarding complete entry controls are removed, along with their report/image display. Existing persisted values are not deleted. The legacy Google Sheets PDF sender is retired; website Finish remains enabled.
+
+
+Arrival Team Assignment omits unstaffed roles in employee view and newly rendered reports/photos; manager assignment slots remain available. If no Arrival roles are staffed, the exported Team Assignment section is omitted. Departure photos now use one Team Assignment heading with Counter on the left and Gate on the right, matching the existing PDF/preview tables. Each row places the role beside its assigned names, preserves custom labels, nicknames, multiple assignees and Gate Lead/Assist times, and expands for wrapped text. Departure unstaffed rows remain visible.
