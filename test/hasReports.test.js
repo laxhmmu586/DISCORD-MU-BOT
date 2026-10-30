@@ -54,3 +54,10 @@ test('DA annual exports format daily and total counts as integers while retainin
   const selected=book.getWorksheet(month==='2026-10'?'Oct':'Feb'),model=(await request('lead','/da/'+month)).data;assert.equal(selected.getCell('L6').value,1);assert.equal(selected.getCell('L'+(model.rows-1)).result,3);assert.equal(selected.getCell('M'+(model.rows-1)).result,1);assert.equal(selected.getCell('E6').value.toISOString().slice(11,16),'09:05');assert.equal(selected.getCell('H7').value.toISOString().slice(11,16),'12:30');assert.equal(selected.getCell('N6').formula,model.cells.N6.formula);
  }
 });
+
+test('DA downloads shade every cell in each date block consistently, including added rows and merged counts',async t=>{
+ const {request}=await fixture(t);assert.equal((await request('lead','/da/2026-10/rows',{revision:0,day:1})).status,200);
+ const result=await request('lead','/da/2026-10/export');assert.equal(result.status,200);const book=new Excel.Workbook();await book.xlsx.load(result.data);
+ for(let m=1;m<=12;m++){const month='2026-'+String(m).padStart(2,'0'),model=(await request('lead','/da/'+month)).data,sheet=book.getWorksheet(model.sheetName);for(const day of model.days){const expected=day.day%2?'FFFFFFFF':'FFEDF5FF';for(let row=day.start;row<=day.end;row++)for(let column=1;column<=13;column++){const cell=sheet.getCell(row,column);assert.equal(cell.fill?.fgColor?.argb,expected,month+' '+cell.address+' day '+day.day);}}}
+ const original=await template('da','2026-10',{station:'LAX',account:'MU'},{1:1}),sheet=book.getWorksheet('Oct'),baseline=original.workbook.getWorksheet('Oct');for(const address of ['A6','J7','L6','N6'])assert.deepEqual(sheet.getCell(address).border,baseline.getCell(address).border);assert.deepEqual(sheet.getCell('C4').fill,baseline.getCell('C4').fill);assert.deepEqual(sheet.model.merges,baseline.model.merges);assert.equal(sheet.getCell('N6').formula,baseline.getCell('N6').formula);assert.equal(sheet.getCell('L6').numFmt,'0');assert.equal(sheet.getCell('E6').numFmt,'hh:mm');
+});
