@@ -42,7 +42,12 @@ function register(app,{context,database,read,key,handler,allowed}){
  // Drafts belong to the authenticated primary Main Account, like other reports.
  const storage=form=>'word-'+form;
  const visibleValues=(kind,values)=>Object.fromEntries(Object.entries(values).filter(([key])=>!definition(kind).fields.find(field=>field.key===key)?.printOnly));
- const defaults=(kind,ctx,values)=>kind==='investigation'?{...values,detail_1_0:values.detail_1_0||ctx.scope.station+'/'+ctx.scope.account,detail_2_0:values.detail_2_0||ctx.employee.name||ctx.employee.nickname||'',detail_2_1:values.detail_2_1||require('./public/public/employee-positions').normalize(ctx.employee.position)||''}:values;
+ const defaults=(kind,ctx,values)=>{
+  const result={...values},account=ctx.scope.station+'/'+ctx.scope.account;
+  for(const field of definition(kind).fields)if(field.type==='text'&&/account/i.test(field.label)&&!String(result[field.key]||'').trim())result[field.key]=account;
+  if(kind==='investigation'){result.detail_2_0=result.detail_2_0||ctx.employee.name||ctx.employee.nickname||'';result.detail_2_1=result.detail_2_1||require('./public/public/employee-positions').normalize(ctx.employee.position)||'';}
+  return result;
+ };
  app.get('/has-report-api/word/:form',handler(async(req,res)=>{
   const ctx=auth(req),saved=read(ctx.scope,storage(req.params.form),'draft');
   const form=definition(req.params.form);res.json({...form,fields:form.fields.filter(field=>!field.printOnly),layout:layouts[req.params.form],...saved,values:defaults(req.params.form,ctx,visibleValues(req.params.form,saved.values)),scope:ctx.scope});

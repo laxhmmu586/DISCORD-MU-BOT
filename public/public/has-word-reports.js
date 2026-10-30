@@ -1,6 +1,6 @@
 (() => {
  const $=id=>document.getElementById(id),kinds=['investigation','cos','paf','discussion'];
- let root,state,inputs={},pending=false,saveQueue=Promise.resolve(),generation=0;
+ let root,workspace,state,inputs={},pending=false,saveQueue=Promise.resolve(),generation=0;
  const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
  const message=text=>{$('report-status').textContent=text;};
  function inputFor(field){
@@ -25,6 +25,27 @@
   if(spec.tag==='img'){node.src=spec.src;node.alt=spec.alt||'';}
   node.append(...(spec.children||[]).map(templateNode));return node;
  }
+ function mountPolicyPicker(){
+  const target=inputs.narrative_17,source=window.PafCompanyPolicies;if(!target||!source?.items?.length)return;
+  const version=generation;workspace=el('div');workspace.className='word-report-workspace';root.replaceWith(workspace);
+  const aside=el('aside');aside.className='paf-policy-picker';aside.setAttribute('aria-label','Company Policy');
+  aside.append(el('h2','Company Policy'),el('p',source.title),el('small',source.source+' · pp. '+source.pages));
+  const help=el('p','Drag a policy into Company Policy, or click to add it. You can edit the inserted text.');help.id='paf-policy-help';aside.append(help);
+  const label=el('label','Search policies'),search=el('input');search.type='search';search.id='paf-policy-search';search.placeholder='Number or keyword';label.htmlFor=search.id;aside.append(label,search);
+  const count=el('p');count.className='paf-policy-count';count.setAttribute('aria-live','polite');const list=el('div');list.className='paf-policy-list';aside.append(count,list);workspace.append(aside,root);
+  target.classList.add('paf-policy-dropbox');target.setAttribute('aria-describedby',help.id);
+  const add=item=>{if(version!==generation)return;const text=item.number+'. '+item.text,existing=target.value.trimEnd(),value=existing?existing+'\n\n'+text:text;
+   if(value.length>target.maxLength){message('Company Policy is full. Shorten the text before adding another policy.');return;}
+   target.value=value;target.dispatchEvent(new Event('input',{bubbles:true}));target.focus({preventScroll:true});target.setSelectionRange(value.length,value.length);target.scrollTop=target.scrollHeight;message('Policy '+item.number+' added. Save form or Download Word to save.');
+  };
+  function draw(){list.replaceChildren();const query=search.value.trim().toLowerCase(),items=source.items.filter(item=>!query||(item.number+'. '+item.text).toLowerCase().includes(query));count.textContent=items.length+' of '+source.items.length+' policies';
+   for(const item of items){const button=el('button');button.type='button';button.draggable=true;button.className='paf-policy-card';button.dataset.policyNumber=item.number;button.setAttribute('aria-label','Add policy '+item.number+': '+item.text);button.append(el('strong',String(item.number)+'.'),el('span',item.text));button.onclick=()=>add(item);
+    button.ondragstart=event=>{event.dataTransfer.setData('application/x-mufc-company-policy',String(item.number));event.dataTransfer.setData('text/plain',item.number+'. '+item.text);event.dataTransfer.effectAllowed='copy';button.classList.add('is-dragging');};button.ondragend=()=>{button.classList.remove('is-dragging');target.classList.remove('policy-drop-active');};list.append(button);
+   }if(!items.length)list.append(el('p','No matching policies.'));
+  }
+  target.ondragover=event=>{if(event.dataTransfer.types.includes('application/x-mufc-company-policy')){event.preventDefault();event.dataTransfer.dropEffect='copy';target.classList.add('policy-drop-active');}};target.ondragleave=()=>target.classList.remove('policy-drop-active');
+  target.ondrop=event=>{target.classList.remove('policy-drop-active');const number=event.dataTransfer.getData('application/x-mufc-company-policy');if(!number)return;event.preventDefault();const item=source.items.find(item=>String(item.number)===number);if(item)add(item);};search.oninput=draw;draw();
+ }
  function values(){return Object.fromEntries(state.fields.map(field=>[field.key,field.type==='checkbox'?inputs[field.key].checked:inputs[field.key].value]));}
  async function flush(){
   const form=state,version=generation;if(!form||!pending)return saveQueue;
@@ -36,7 +57,7 @@
   });saveQueue=task;return task;
  }
  async function open(kind){
-  const version=++generation;state=null;pending=false;root?.remove();inputs={};
+  const version=++generation;state=null;pending=false;workspace?.remove();workspace=null;root?.remove();inputs={};
   $('report-editor').hidden=true;$('report-export').hidden=true;$('report-instructions').hidden=true;
   document.querySelector('.report-hint').hidden=true;
   document.querySelector('.report-month-field').hidden=true;
@@ -53,11 +74,11 @@
    const form=el('form');form.className='word-report-fields';form.onsubmit=e=>e.preventDefault();
    if(state.layout){form.className='word-template-scroll';const page=el('div');page.className='word-template word-template-'+kind;page.append(...state.layout.map(templateNode));form.append(page);}
    else for(const field of state.fields){const label=el('label'),input=inputFor(field);if(field.type==='textarea')label.className='word-report-narrative';if(field.type==='checkbox'){label.className='word-report-check';label.append(input,document.createTextNode(field.label));}else label.append(document.createTextNode(field.label+(field.key==='detail_0_0'?' (optional)':'')),input);form.append(label);}
-   form.oninput=()=>{pending=true;message('Unsaved changes. Save form or Download Word to save.');};root.append(form);
+   form.oninput=()=>{pending=true;message('Unsaved changes. Save form or Download Word to save.');};root.append(form);if(kind==='paf')mountPolicyPicker();
    message(state.updatedAt?'Saved by '+state.updatedBy+' · '+new Date(state.updatedAt).toLocaleString():'New form · '+state.scope.station+'/'+state.scope.account);
   }catch(error){if(version===generation)message(error.message);}
  }
- function hide(){generation++;root?.remove();root=null;state=null;inputs={};pending=false;$('report-editor').hidden=false;$('report-export').hidden=false;document.querySelector('.report-hint').hidden=false;document.querySelector('.report-month-field').hidden=false;}
+ function hide(){generation++;workspace?.remove();workspace=null;root?.remove();root=null;state=null;inputs={};pending=false;$('report-editor').hidden=false;$('report-export').hidden=false;document.querySelector('.report-hint').hidden=false;document.querySelector('.report-month-field').hidden=false;}
  window.addEventListener('beforeunload',e=>{if(pending){e.preventDefault();e.returnValue='';}});
  window.addEventListener('has-report-context',()=>{hide();});
  window.hasWordReports={kinds,open,hide,flush,currentKind:()=>state?.kind};

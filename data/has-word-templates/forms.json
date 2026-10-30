@@ -686,7 +686,7 @@
         "label": "Company Policy",
         "type": "textarea",
         "fallback": "",
-        "maxLength": 1500,
+        "maxLength": 20000,
         "slots": [
           "narrative_17",
           "narrative_17_line1"
