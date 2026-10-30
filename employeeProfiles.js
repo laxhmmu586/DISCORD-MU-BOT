@@ -1,7 +1,7 @@
 const sharp=require('sharp');
 const formatEmployeePhone=require('./public/public/employee-phone');
 const normalize=value=>String(value||'').trim().toLowerCase();
-const restricted=user=>/^[^@\s]+@mu\.com$/i.test(normalize(user.email))&&normalize(user.email)!=='lake@mu.com';
+const restricted=user=>/^[^@\s]+@mu\.com$/i.test(normalize(user.email))&&!require('./serverOwners').isOwner(user);
 function requireProfileAccess(user){if(restricted(user))fail('Profile access is unavailable for this account.',403);}
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
 function createProfileStore(employees){
@@ -11,8 +11,8 @@ function createProfileStore(employees){
  CREATE TABLE IF NOT EXISTS employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS employee_link_attempts(uid TEXT PRIMARY KEY,count INTEGER NOT NULL,started INTEGER NOT NULL);`);
  const account=uid=>db.prepare('SELECT * FROM employee_accounts WHERE uid=?').get(uid);
- const linked=user=>{const link=account(user.uid);return link&&employees.get().employees.find(row=>row.id===link.employee_id);};
- const profile=row=>({id:row.id,canViewOperations:require('./public/public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'})&&!require('./public/public/employee-account-groups').isHeadquarter(row),canViewForm:require('./staffSchedule').canEdit(null,row)||require('./public/public/employee-permissions').allowed(row,'request.newAccess')||require('./public/public/employee-positions').normalize(row.position)==='Lead',name:row.name,nickname:row.nickname||'',eid:row.eid||'',station:row.station,account:row.account,pbbId:row.pbbId||'',pbbExpiry:row.pbbExpiry||'',pbbMscId:row.pbbMscId||'',pbbMscExpiry:row.pbbMscExpiry||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
+ const linked=user=>{const link=account(user.uid);const row=link&&employees.get().employees.find(row=>row.id===link.employee_id);return row&&{...row,isServerOwner:require('./serverOwners').isOwner(user)};};
+ const profile=row=>({id:row.id,canViewOperations:row.isServerOwner||(require('./public/public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'})&&!require('./public/public/employee-account-groups').isHeadquarter(row)),canViewForm:require('./staffSchedule').canEdit(null,row)||require('./public/public/employee-permissions').allowed(row,'request.newAccess')||require('./public/public/employee-positions').normalize(row.position)==='Lead',name:row.name,nickname:row.nickname||'',eid:row.eid||'',station:row.station,account:row.account,pbbId:row.pbbId||'',pbbExpiry:row.pbbExpiry||'',pbbMscId:row.pbbMscId||'',pbbMscExpiry:row.pbbMscExpiry||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
  function candidate(user,eid,allowMissing=false){
   requireProfileAccess(user);
   if(user.provider==='google.com'&&!user.emailVerified)fail('A verified Google email is required.',403);
@@ -29,7 +29,7 @@ function createProfileStore(employees){
   return row;
  }
  function status(user){
-  if(restricted(user)&&!linked(user))return {state:'external'};
+  if(restricted(user))return {state:'external'};
   const row=linked(user);
   if(row)return {state:'ready',profile:profile(row),revision:employees.get().revision};
   const original=employees.get().employees.filter(item=>normalize(item.loginId)&&normalize(item.loginId)===normalize(user.email));

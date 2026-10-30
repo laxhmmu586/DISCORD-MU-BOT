@@ -28,12 +28,12 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
     CREATE TABLE IF NOT EXISTS read_sign_mail(memo_id TEXT NOT NULL, employee_id TEXT NOT NULL, recipient TEXT NOT NULL, status TEXT NOT NULL, error TEXT, sent_at TEXT, last_attempt TEXT, PRIMARY KEY(memo_id,employee_id));`);
   const employee = user => { const e = profiles.linked(user); if (!e?.name) fail('Link your employee profile first.',403); return e; };
   const hasEmail=e=>!hiddenFromOperationalRosters(e)&&[e?.companyEmail,e?.email].some(emailOK);
-  const inScope=(actor,person)=>accountGroups.isHeadquarter(actor)||accountGroups.same(accountGroups.scope(actor),accountGroups.scope(person));
+  const inScope=(actor,person)=>(actor.isServerOwner||accountGroups.isHeadquarter(actor))||accountGroups.same(accountGroups.scope(actor),accountGroups.scope(person));
   const candidates=actor=>employees.get().employees.filter(p=>p.name&&hasEmail(p)&&inScope(actor,p));
   const accountChoices=actor=>[...new Map(candidates(actor).map(p=>[accountGroups.key(p),accountGroups.scope(p)])).values()].sort((a,b)=>(a.station+a.account).localeCompare(b.station+b.account));
   const recipients=(actor,target)=>{
-    const own=accountGroups.key(actor),selected=target===undefined?(accountGroups.isHeadquarter(actor)?'ALL':own):target;
-    if(typeof selected!=='string'||(!accountGroups.isHeadquarter(actor)&&selected!==own))fail('You can only send to your Main Account.',403);
+    const own=accountGroups.key(actor),selected=target===undefined?((actor.isServerOwner||accountGroups.isHeadquarter(actor))?'ALL':own):target;
+    if(typeof selected!=='string'||(!(actor.isServerOwner||accountGroups.isHeadquarter(actor))&&selected!==own))fail('You can only send to your Main Account.',403);
     if(selected!=='ALL'&&!accountChoices(actor).some(a=>accountGroups.key(a)===selected))fail('Choose an available account.');
     const people=candidates(actor).filter(p=>selected==='ALL'||accountGroups.key(p)===selected);
     if(!people.length)fail('No eligible employees in this account.');
@@ -44,10 +44,10 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
   const get = id => { const r = db.prepare('SELECT data FROM read_sign_memos WHERE id=?').get(id); if (!r) fail('Read & Sign not found.',404); return visibleRoster(JSON.parse(r.data)); };
   // Old memos did not persist their target accounts; derive those from the saved roster.
   const memoAccounts=r=>{if(r.recipientAccounts)return r.recipientAccounts;const match=/^([^/]+) \/ ([^/]+)$/.exec(r.recipientLabel||'');if(match)return [{station:match[1].trim(),account:match[2].trim()}];return [...new Map(r.roster.map(p=>employees.get().employees.find(e=>e.id===p.id)).filter(Boolean).map(p=>[accountGroups.key(p),accountGroups.scope(p)])).values()];};
-  const canView=(e,r)=>accountGroups.isHeadquarter(e)||memoAccounts(r).some(a=>accountGroups.same(a,accountGroups.scope(e)));
+  const canView=(e,r)=>(e.isServerOwner||accountGroups.isHeadquarter(e))||memoAccounts(r).some(a=>accountGroups.same(a,accountGroups.scope(e)));
   const scopedMemo=(e,r)=>{
     if(!canView(e,r))fail('Read & Sign not found.',404);
-    if(accountGroups.isHeadquarter(e))return r;
+    if((e.isServerOwner||accountGroups.isHeadquarter(e)))return r;
     const ids=new Set(employees.get().employees.filter(p=>inScope(e,p)).map(p=>p.id));
     return {...r,roster:r.roster.filter(p=>ids.has(p.id))};
   };
@@ -100,7 +100,7 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
     if(added.length){r.recipientAccounts=[...new Map([...memoAccounts(r),...people.map(accountGroups.scope)].map(a=>[accountGroups.key(a),a])).values()];r.recipientHistory=[...(r.recipientHistory||[]),{at:now().toISOString(),employeeId:actor.id,added}];db.prepare('UPDATE read_sign_memos SET data=? WHERE id=?').run(JSON.stringify(r),id);}
     return read(user,id);
   });
-  return {db,employee,get,read,publish,addRecipients,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position||'Agent'},canPublish:publishRole(e),canSelectAccounts:publishRole(e)&&accountGroups.isHeadquarter(e),recipientAccounts:publishRole(e)?accountChoices(e):[],mainAccount:accountGroups.scope(e),memos:db.prepare('SELECT data FROM read_sign_memos ORDER BY rowid DESC').all().map(row=>visibleRoster(JSON.parse(row.data))).filter(r=>canView(e,r)).map(r=>summary(scopedMemo(e,r),e))};},
+  return {db,employee,get,read,publish,addRecipients,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position||'Agent'},canPublish:publishRole(e),canSelectAccounts:publishRole(e)&&(e.isServerOwner||accountGroups.isHeadquarter(e)),recipientAccounts:publishRole(e)?accountChoices(e):[],mainAccount:accountGroups.scope(e),memos:db.prepare('SELECT data FROM read_sign_memos ORDER BY rowid DESC').all().map(row=>visibleRoster(JSON.parse(row.data))).filter(r=>canView(e,r)).map(r=>summary(scopedMemo(e,r),e))};},
     sign:db.transaction((user,id,body)=>{const e=employee(user),r=scopedMemo(e,get(id));if(!r.roster.some(p=>p.id===e.id))fail('You were not assigned to this memo.',403);if(body.acknowledged!==true)fail('Confirm that you have read and understood this memo.');if(db.prepare('SELECT 1 FROM read_sign_signatures WHERE memo_id=? AND employee_id=?').get(id,e.id))return read(user,id);const svg=signatureSVG(body.strokes);db.prepare('INSERT INTO read_sign_signatures VALUES(?,?,?,?,?)').run(id,e.id,r.roster.find(p=>p.id===e.id).name,now().toISOString(),svg);return read(user,id);}),
     attachment(user,id,fileId){const e=employee(user);if(!publishRole(e))fail('Your position is not authorized to download attachments.',403);scopedMemo(e,get(id));const f=db.prepare('SELECT * FROM read_sign_attachments WHERE memo_id=? AND id=?').get(id,fileId);if(!f)fail('Attachment not found.',404);return f;}
   };

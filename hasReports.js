@@ -14,10 +14,10 @@ const unavailable=()=>fail('Reports are temporarily unavailable. Please retry la
 function excel(){try{return require('exceljs');}catch(error){console.error('HAS report Excel dependency:',error);unavailable();}}
 const DA_ROLES=['Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'];
 const permissionPolicy=require('./public/public/employee-permissions');
-function access(employee){const main=employee&&!groups.isHeadquarter(employee);return {da:Boolean(main&&permissionPolicy.allowed(employee,'report.da')),wwh:Boolean(main&&permissionPolicy.allowed(employee,'report.wwh'))};}
-function canDashboard(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&permissionPolicy.allowed(employee,'report.dashboard'));}
-function canHrSafety(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&permissionPolicy.allowed(employee,'report.hrSafety'));}
-function canChecklistManage(employee){return Boolean(employee&&!groups.isHeadquarter(employee)&&permissionPolicy.allowed(employee,'checklist.supervisor'));}
+function access(employee){const main=employee&&(employee.isServerOwner||require('./serverOwners').isOwner(employee.loginId)||!groups.isHeadquarter(employee));return {da:Boolean(main&&permissionPolicy.allowed(employee,'report.da')),wwh:Boolean(main&&permissionPolicy.allowed(employee,'report.wwh'))};}
+function canDashboard(employee){return Boolean(employee&&(employee.isServerOwner||require('./serverOwners').isOwner(employee.loginId)||!groups.isHeadquarter(employee))&&permissionPolicy.allowed(employee,'report.dashboard'));}
+function canHrSafety(employee){return Boolean(employee&&(employee.isServerOwner||require('./serverOwners').isOwner(employee.loginId)||!groups.isHeadquarter(employee))&&permissionPolicy.allowed(employee,'report.hrSafety'));}
+function canChecklistManage(employee){return Boolean(employee&&(employee.isServerOwner||require('./serverOwners').isOwner(employee.loginId)||!groups.isHeadquarter(employee))&&permissionPolicy.allowed(employee,'checklist.supervisor'));}
 function monthFormat(cell,name){cell.style={...cell.style,numFmt:'"'+name.toUpperCase()+'"-yy'};}
 async function template(kind,month,scope,extraRows={}){
  const {year,name}=reportMonth(month);

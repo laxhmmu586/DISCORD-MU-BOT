@@ -6,7 +6,7 @@
  auth.onAuthStateChanged(async user=>{
   const request=++generation;content.hidden=true;
   if(!user){location.replace('/login.html');return;}
-  document.querySelector('#profile-admin-nav').hidden=!['lake@mu.com','nextweek1216@gmail.com','tamsun10@gmail.com'].includes(user.email?.toLowerCase());
+  document.querySelector('#profile-admin-nav').hidden=!['lax@mu.com','lake@mu.com','nextweek1216@gmail.com','tamsun10@gmail.com'].includes(user.email?.toLowerCase());
   status.textContent='Checking access…';
   try{
    const allowed=await window.employeeInfoAccess(user);
