@@ -39,7 +39,8 @@
   function drawSurfaceConnections(tree){
     tree.querySelector('.org-connectors')?.remove();
     if(!tree.getClientRects().length)return;
-    const available=Math.max(1,($('#org-canvas').clientWidth-52)/zoom);
+    const viewportWidth=tree===$('#org-tree')?$('#org-canvas').clientWidth:tree.parentElement.clientWidth;
+    const available=Math.max(1,(viewportWidth-52)/zoom);
     for(const grid of tree.querySelectorAll('.org-member-grid')){const card=grid.querySelector('.org-card'),cardWidth=card?card.getBoundingClientRect().width/zoom:182,columns=Math.max(1,Math.min(5,Math.floor((available+20)/(cardWidth+20))));grid.style.setProperty('--org-member-columns',String(columns));}
     const bounds=tree.getBoundingClientRect(),scale=zoom,width=bounds.width/scale,height=bounds.height/scale;
     const point=(element,bottom)=>{const rect=element.getBoundingClientRect();return {x:(rect.left+rect.width/2-bounds.left)/scale,y:((bottom?rect.bottom:rect.top)-bounds.top)/scale};};
