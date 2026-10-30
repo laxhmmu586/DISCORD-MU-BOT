@@ -1,4 +1,4 @@
-@import url('/home.css?v=20261030-workspace-rollout');
+@import url('/home.css?v=20261030-mobile-drawer');
 
 /* The home design system surrounds existing editors without changing their geometry or data. */
 html:has(body.workspace-glass){color-scheme:light;background:#dce9fc}
@@ -95,4 +95,11 @@ body.workspace-glass.profile-page{display:flow-root;min-width:320px;min-height:1
  .workspace-glass .profile-topbar,.workspace-glass .profile-sidebar,.workspace-glass .sidebar-scrim{display:none!important}
  .workspace-glass.profile-page .profile-shell{margin:0!important;padding:0;width:100%}
  .workspace-glass .profile-shell :is(.profile-panel,.pbb-panel,.briefing-card){background:white;box-shadow:none;backdrop-filter:none}
+}
+
+/* Override the legacy 55px mobile navigation bar height with a full-height drawer. */
+@media(max-width:760px){
+ .workspace-glass.profile-page .profile-sidebar{top:0!important;bottom:0!important;height:100vh!important;height:100dvh!important;max-height:100vh!important;max-height:100dvh!important;min-height:0!important;margin:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
+ .workspace-glass.profile-page .profile-sidebar nav,.workspace-glass.profile-page .profile-sidebar>.workspace-features{height:auto;max-height:none;overflow:visible;flex-shrink:0}
+ .workspace-glass.profile-page .profile-sidebar .sidebar-caption,.workspace-glass.profile-page .profile-sidebar .sidebar-footer{flex-shrink:0}
 }

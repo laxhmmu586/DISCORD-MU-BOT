@@ -27,6 +27,7 @@ for (const page of pages) test(page + ': glass shell preserves controls and dial
   vm.runInContext(source('workspace-shell.js'), f.context);
   assert.equal(f.document.querySelector('.app-frame main'), main);
   assert.equal(f.document.getElementById('flight-account'), account);
+  assert.equal(f.document.querySelector('.home-brand').getAttribute('href'),'/profile');
   for (const control of controls) assert(main.contains(control), 'existing control was moved out of its page');
   for (const dialog of dialogs) assert(f.document.body.contains(dialog));
   assert.equal(f.document.querySelectorAll('.profile-topbar .top-nav').length, 0, 'Home/HR/Finance belong only to Home');
@@ -76,9 +77,11 @@ test('employee art changes only on page entry, is random, and never repeats the 
   }
 });
 
-test('Home keeps its three top tabs and routes Report/Request/Read & Sign to the existing services', () => {
+test('development Home is not linked from navigation; Report/Request/Read & Sign retain their services', () => {
   const f = fixture('home');
-  assert.equal(f.document.querySelectorAll('.top-nav>a,.top-nav>details').length, 3);
+  assert.equal(f.document.querySelector('.home-brand').getAttribute('href'),'/profile');
+  assert.equal(f.document.querySelectorAll('.top-nav>a,.top-nav>details').length, 2);
+  assert.equal(f.document.querySelector('a[href="/home"]'),null);
   assert.deepEqual([...f.document.querySelectorAll('.shortcuts>a')].map(a=>a.getAttribute('href')), ['/has-report','/has-form','/read-sign']);
   assert.equal(f.document.querySelector('.profile-sidebar [data-briefing-nav]').hidden, true);
   assert.equal(f.document.querySelector('.profile-sidebar [data-schedule-nav]').hidden, true);
@@ -128,5 +131,10 @@ test('LAX/MU Briefing and Schedule stay in the left sidebar after account-header
     for(const selector of ['[data-briefing-nav]','[data-schedule-nav]']){
       const link=f.document.querySelector(selector);assert(link);assert.equal(link.hidden,false);assert(f.document.querySelector('.profile-sidebar').contains(link));assert.equal(f.document.querySelector('.profile-topbar').contains(link),false);
     }
+    const navigation=[...f.document.querySelectorAll('.profile-sidebar nav a')].filter(link=>!link.hidden).map(link=>link.getAttribute('href'));
+    assert.deepEqual(navigation.slice(0,2),['/briefing','/schedule']);
+    assert.equal(navigation.at(-1),'/has-pbb.html');
+    assert.equal(navigation.includes('/home'),false);
+    assert.equal(f.document.body.classList.contains('workspace-has-features'),false,'sidebar features must not trigger the legacy mobile top-row layout');
   }
 });

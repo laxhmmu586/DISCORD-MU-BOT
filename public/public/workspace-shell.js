@@ -9,16 +9,15 @@
   const artwork = (name) => `<span class="art-icon icon-${name}" aria-hidden="true"></span>`;
   const menuIcon = '<svg class="menu-icon" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="workspace-menu-blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a8e4ff"/><stop offset=".42" stop-color="#469aff"/><stop offset="1" stop-color="#105bd4"/></linearGradient></defs><g fill="#175bc0" opacity=".22"><rect x="10" y="12" width="28" height="7" rx="3.5"/><rect x="10" y="23" width="28" height="7" rx="3.5"/><rect x="10" y="34" width="28" height="7" rx="3.5"/></g><g fill="url(#workspace-menu-blue)" stroke="#c6e7ff" stroke-width="1"><rect x="10" y="9" width="28" height="7" rx="3.5"/><rect x="10" y="20" width="28" height="7" rx="3.5"/><rect x="10" y="31" width="28" height="7" rx="3.5"/></g></svg>';
   header.classList.add('home-topbar');
-  header.innerHTML = `<button class="menu-toggle" type="button" aria-label="Open workspace navigation" aria-controls="workspace-sidebar" aria-expanded="false">${menuIcon}</button><a class="home-brand" href="/home" aria-label="Hallmark Aviation Services home"><img src="/assets/home-hallmark-transparent-v1.png" alt="Hallmark Aviation Services" width="178" height="76"></a><span class="topbar-date" id="workspace-date"></span>`;
+  header.innerHTML = `<button class="menu-toggle" type="button" aria-label="Open workspace navigation" aria-controls="workspace-sidebar" aria-expanded="false">${menuIcon}</button><a class="home-brand" href="/profile" aria-label="Hallmark Aviation Services profile"><img src="/assets/home-hallmark-transparent-v1.png" alt="Hallmark Aviation Services" width="178" height="76"></a><span class="topbar-date" id="workspace-date"></span>`;
   header.append(account);
   const admin = sidebar.querySelector('#profile-admin-nav');
   const links = [
-    ['/home', 'Home', 'home', ''],
+    ['/briefing', 'Briefing', 'briefing', 'data-briefing-nav hidden'],
+    ['/schedule', 'Schedule', 'schedule', 'data-schedule-nav hidden'],
     ['/has-report', 'Report', 'report', 'data-report-access hidden'],
     ['/has-form', 'Request', 'request', 'hidden'],
     ['/read-sign', 'Read & Sign', 'sign', ''],
-    ['/briefing', 'Briefing', 'briefing', 'data-briefing-nav hidden'],
-    ['/schedule', 'Schedule', 'schedule', 'data-schedule-nav hidden'],
     ['/has-pbb.html', 'PBB checklist', 'bridge', '']
   ];
   sidebar.id = 'workspace-sidebar'; sidebar.classList.add('home-sidebar');
