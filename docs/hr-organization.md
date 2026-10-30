@@ -16,4 +16,4 @@ Deploy the backend and Firebase Hosting from the same revision. The backend must
 
 Local previews run with `node scripts/preview-hr.cjs` at http://127.0.0.1:9185/home?preview=1. The preview server uses an in-memory database and a simulated Lake login. Reference charts and preview resource behavior are restricted to localhost. Production HR always uses authenticated API data, even when a preview query parameter is supplied.
 
-The legacy /admin entry redirects to /hr. Advanced pending-login, account-membership and import maintenance remains available only via Account settings within HR Accounts, at /account-settings.
+The legacy /admin and /account-settings entries redirect to HR. Pending accounts opens directly in an HR dialog for authorized owners. Admins add accounts and delete empty accounts in the HR Accounts view; the API rejects deletion when any main or additional membership remains.

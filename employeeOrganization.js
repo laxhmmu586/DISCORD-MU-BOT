@@ -9,7 +9,7 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange}){
   const view=access=>{
     const data=store.get(),all=rows(),scoped=scopedView({...data,employees:all},access);
     // Only fields needed by HR are returned; private contacts and sign-in credentials stay out of this view.
-    return {revision:data.revision,accounts:scoped.accounts,access,employees:scoped.employees.map(({id,name,nickname,position,station,account,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,permissionOverrides})=>({id,name,nickname,position,station,account,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,permissionOverrides}))};
+    return {revision:data.revision,accounts:scoped.accounts.map(account=>({...account,employeeCount:all.filter(row=>require('./public/public/employee-account-groups').belongs(row,account)).length})),access,employees:scoped.employees.map(({id,name,nickname,position,station,account,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,permissionOverrides})=>({id,name,nickname,position,station,account,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,permissionOverrides}))};
   };
   app.get('/employee-admin-api/organization',(req,res)=>res.json(view(req.employeeAccess)));
   const save=db.transaction(req=>{
