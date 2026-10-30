@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#dceaff">
   <title>Home · Hallmark Aviation Services</title>
   <meta name="description" content="Your Hallmark workspace. People, operations, and everything you need for a seamless day.">
-  <link rel="stylesheet" href="/home.css?v=20261030-hr-report">
+  <link rel="stylesheet" href="/home.css?v=20261030-emergency">
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="/__/firebase/init.js"></script>
@@ -15,6 +15,7 @@
   <script defer src="/employee-sidebar-art.js?v=20261030-glass-clean-routes"></script>
   <script defer src="/info-access.js?v=20261030-resources"></script>
   <script defer src="/home.js?v=20261030-hr-report"></script>
+  <script defer src="/home-emergency.js?v=20261030-emergency"></script>
 </head>
 <body class="home-page">
   <div class="app-frame">
@@ -69,7 +70,7 @@
       <div class="home-panels">
         <section class="glass-panel home-tasks-panel" aria-labelledby="home-tasks-heading"><div class="panel-heading"><h2 id="home-tasks-heading">To-do</h2><span class="panel-tag">MY UPDATES</span></div><div class="home-task-tabs" role="tablist" aria-label="To-do notifications"><button type="button" id="home-tab-approve" role="tab" aria-selected="true" aria-controls="home-approve-panel">Pending Approve <span id="home-approve-count" hidden></span></button><button type="button" id="home-tab-sign" role="tab" aria-selected="false" aria-controls="home-sign-panel" tabindex="-1">Read &amp; Sign <span id="home-sign-count" hidden></span></button></div><div id="home-approve-panel" role="tabpanel" aria-labelledby="home-tab-approve" tabindex="0"><p class="home-task-empty">Sign in to view pending approvals.</p></div><div id="home-sign-panel" role="tabpanel" aria-labelledby="home-tab-sign" tabindex="0" hidden><p class="home-task-empty">Sign in to view documents awaiting your signature.</p></div></section>
         <section class="glass-panel home-report-panel" aria-labelledby="home-report-heading"><div class="panel-heading"><h2 id="home-report-heading">Report</h2><a class="panel-view-all" href="/has-report" data-report-access>View All <span aria-hidden="true">→</span></a></div><p class="home-report-description">Your team’s reports, in one place.</p><nav class="home-report-links" aria-label="Report shortcuts"><a href="/has-report?kind=da" data-report-access><span class="art-icon icon-report" aria-hidden="true"></span><span><strong>Daily Flight Activity</strong><small>DA · Daily operations</small></span><span aria-hidden="true">↗</span></a><a href="/has-report?kind=wwh" data-report-access><span class="art-icon icon-schedule" aria-hidden="true"></span><span><strong>Weekly Worked Hours</strong><small>WWH · Team hours</small></span><span aria-hidden="true">↗</span></a><a href="/has-report?kind=rechargeable" data-report-access><span class="art-icon icon-request" aria-hidden="true"></span><span><strong>Rechargeable hours</strong><small>Account reporting</small></span><span aria-hidden="true">↗</span></a></nav><p class="home-report-empty" id="home-report-empty">Sign in to view available reports.</p></section>
-        <section class="glass-panel home-quick-panel" aria-labelledby="home-quick-heading"><div class="panel-heading"><h2 id="home-quick-heading">Quick Access</h2></div></section>
+        <section class="glass-panel home-quick-panel home-emergency-panel" aria-labelledby="home-quick-heading"><div class="panel-heading"><h2 id="home-quick-heading">Emergency Procedure Notification</h2></div><p id="home-emergency-status" class="home-emergency-status" role="status">Sign in to view your account’s emergency contact.</p><div id="home-emergency-contact" hidden><div class="home-emergency-meta"><span>1st CALL</span><span id="home-emergency-scope"></span></div><strong class="home-emergency-name">Airport Police</strong><a id="home-emergency-phone" class="home-emergency-phone" aria-label="Airport Police phone number"></a></div><a href="/has-checklist" class="home-emergency-all">View full procedure →</a></section>
       </div>
       <footer class="page-footer"><span>HALLMARK AVIATION SERVICES</span><span>One team. A world of possibilities.</span></footer>
     </main>
