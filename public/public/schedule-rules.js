@@ -1,7 +1,7 @@
 (() => {
  const request=document.getElementById('schedule-requests-button');if(!request)return;
  const make=(tag,text,cls)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
- const actions=make('div',undefined,'schedule-header-actions');actions.id='schedule-header-actions';actions.hidden=true;request.before(actions);const button=make('button','Rules','schedule-rules-button');button.type='button';button.setAttribute('aria-haspopup','dialog');actions.append(request,button);
+ const actions=make('div',undefined,'schedule-header-actions');actions.id='schedule-header-actions';actions.hidden=document.getElementById('schedule-content')?.hidden!==false;request.before(actions);const button=make('button','Rules','schedule-rules-button');button.type='button';button.setAttribute('aria-haspopup','dialog');actions.append(request,button);
  const dialog=make('dialog',undefined,'schedule-dialog schedule-rules-dialog');dialog.id='schedule-rules-dialog';dialog.setAttribute('aria-labelledby','schedule-rules-title');
  const heading=make('div',undefined,'schedule-rules-heading'),title=make('h2','Schedule Rules'),close=make('button','×');title.id='schedule-rules-title';close.type='button';close.setAttribute('aria-label','Close Rules');heading.append(title,close);dialog.append(heading,make('p','A quick guide to requests, followed by our attendance rules.','schedule-rules-intro'));
  const guides=[
