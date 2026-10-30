@@ -9,3 +9,5 @@ Shared prompt: Match the existing glossy 3D blue icon family: thick rounded extr
 - Resource cards: folded document with two raised cyan lines and a dimensional round blue badge containing a raised white checkmark.
 
 Assets are saved in public/public/assets as home-icon-checklist-v1.webp, home-icon-info-v1.webp, and checklist-resource-icon-v1.webp. Transparent alpha retained; icons normalized to 256 by 256 pixels.
+
+Approval clock: generated with built-in imagegen using the Briefing icon as a style reference. Prompt: one transparent glossy blue 3D analog clock with thick electric-blue/cyan rim, icy white face, blue hands, four ticks, no numbers or text, readable at 18px. Saved as public/public/assets/approval-clock-blue-v1.webp. The current-state dot uses a code-native glossy radial-gradient sphere.
