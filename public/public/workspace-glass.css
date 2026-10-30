@@ -1,0 +1,98 @@
+@import url('/home.css?v=20261030-workspace-rollout');
+
+/* The home design system surrounds existing editors without changing their geometry or data. */
+html:has(body.workspace-glass){color-scheme:light;background:#dce9fc}
+body.workspace-glass.profile-page{display:flow-root;min-width:320px;min-height:100vh;margin:0;background:#dce9fc;color:#18365d;font-family:Inter,"Segoe UI",Arial,sans-serif;--profile-border:#d8e6fa;--profile-muted:#7186a3}
+.workspace-glass.profile-page .app-frame{background:#eaf2ff;grid-template-rows:98px 1fr;min-width:0}
+.workspace-glass.profile-page .profile-topbar{position:relative;inset:auto;width:auto;height:98px;min-height:0;display:flex;align-items:center;gap:30px;padding:14px 30px;border:0;border-bottom:1px solid #ffffffc4;background:linear-gradient(105deg,#ffffffb8,#e6f0ff80);box-shadow:none;z-index:40}
+.workspace-glass .home-brand{min-width:0;flex:none;margin:0}
+.workspace-glass .home-brand img{width:178px;height:76px;object-fit:contain}
+.workspace-glass.profile-page .profile-sidebar{position:relative;inset:auto;display:flex;flex-direction:column;width:100%;padding:27px 13px 24px 20px;overflow:visible;background:transparent;border:0;border-right:1px solid #ffffffb3;min-height:0;z-index:25}
+.workspace-glass.profile-page .profile-shell{grid-column:2;grid-row:2;display:block;min-width:0;width:auto;max-width:none;margin:0!important;padding:24px 28px 32px 24px;background:transparent;color:#18365d}
+.workspace-glass.profile-page .profile-sidebar nav{display:flex;flex-direction:column;gap:7px}
+.workspace-glass.profile-page .profile-sidebar nav a{min-height:56px;display:flex;align-items:center;gap:10px;padding:5px 12px 5px 7px;border:1px solid transparent;border-radius:15px;color:#526d92;font-size:12px;background:transparent}
+.workspace-glass.profile-page .profile-sidebar nav a:hover{background:#ffffff80;color:#1769d4}
+.workspace-glass.profile-page .profile-sidebar nav a.is-active{color:#0869e7;background:linear-gradient(110deg,#ffffffc4,#ffffff42);border-color:#ffffffd9;box-shadow:0 5px 14px #709bd120,inset 0 1px white}
+.workspace-glass.profile-page .profile-sidebar nav a.is-active:before{left:-10px;top:18px;bottom:18px;background:#347ef0;box-shadow:none}
+.workspace-glass .profile-sidebar .workspace-features{display:flex;flex-direction:column;align-items:stretch;margin:7px 0 0;gap:7px;max-width:none;overflow:visible}
+.workspace-glass .profile-sidebar .workspace-features[hidden]{display:none!important}
+.workspace-glass .profile-sidebar .art-icon{width:40px;height:40px;flex:none}
+.workspace-glass .sidebar-caption{font-size:10px;letter-spacing:2px;font-weight:700;color:#7d96b9;margin:0 0 20px 17px}
+.workspace-glass .profile-sidebar .home-team-art{order:1;min-height:190px;height:260px;flex:none;margin:auto -8px 14px;padding-top:30px}
+.workspace-glass .home-team-art .has-sidebar-employee{display:block;position:static;left:auto;transform:none;width:100%;max-width:none;height:100%;object-fit:contain;object-position:center bottom;margin:0}
+.workspace-glass .profile-sidebar .sidebar-footer{order:2;flex:none;margin:0 15px;padding-top:20px;min-height:0;background:none}
+.workspace-glass .profile-sidebar .sidebar-collapse{display:grid;place-items:center;position:absolute;inset:340px -21px auto auto;width:42px;height:42px;border:2px solid white;border-radius:50%;background:linear-gradient(140deg,#f6faff,#b9d6ff);box-shadow:0 5px 18px #497ac344,inset 0 1px white;padding:0;z-index:35}
+.workspace-glass .profile-sidebar .collapse-arrow{width:31px;height:31px;stroke:none;fill:none;border:0;padding:0;background:none;border-radius:0;box-shadow:none}
+.workspace-glass .flight-account{max-width:none;display:flex;align-items:center;gap:10px;margin-left:auto;color:#24466f}
+.workspace-glass .flight-account .login-button{color:#24466f!important}
+.workspace-glass .flight-account .login-menu{background:#f3f8ff!important;border:1px solid white!important;border-radius:16px;color:#24466f;box-shadow:0 16px 40px #244d892b!important}
+.workspace-glass .login-menu button{color:#24466f!important;border-top-color:#dce7f4!important}
+.workspace-glass .login-menu button:hover{background:#dfebff!important}
+.workspace-glass .flight-user-avatar{background:linear-gradient(135deg,#fff,#b0d0ff);color:#205caf;border:2px solid white;width:38px;height:38px}
+.workspace-glass .workspace-account{border:1px solid #fff9;border-radius:12px;background:#ffffff70}
+.workspace-glass .workspace-bell{color:#37639c}
+.workspace-glass .workspace-notifications{background:#f4f8fff5;border:1px solid white;border-radius:16px;backdrop-filter:blur(18px);box-shadow:0 16px 40px #244d892b}
+
+/* Glass surfaces and controls. Spreadsheet cells retain their existing backgrounds and dimensions. */
+.workspace-glass .profile-shell :is(.profile-panel,.pbb-panel,.rs-stat,.rs-list button,.rs-sign-box,.uniform-progress-panel,.oa-current-card,.attendance-calendar,.briefing-card,.briefing-roster,.schedule-card,.employee-account-card,.request-dashboard-list){border:1px solid #ffffffd9;border-radius:21px;background:linear-gradient(135deg,#ffffffb8,#edf4ff8c);box-shadow:0 9px 24px #4776bb12,inset 0 1px white;backdrop-filter:blur(14px);color:#203b60}
+.workspace-glass .profile-panel-title h2,.workspace-glass .profile-shell :is(h1,h2,h3){color:#16365f}
+.workspace-glass .profile-shell>h1,.workspace-glass .profile-shell>div>h1{font-size:28px;letter-spacing:-.8px}
+.workspace-glass .profile-shell .profile-hero{border:1px solid #ffffffc4;border-radius:24px;box-shadow:0 12px 30px #5c85be12;background-color:#e5efff;background-image:linear-gradient(90deg,#e8f1ff,#e3eeffd9 38%,#d4e5ff40 75%),url('/assets/home-team-banner-v1.webp');background-position:center,right center;background-size:cover;background-repeat:no-repeat}
+.workspace-glass .profile-shell .profile-hero:before,.workspace-glass .profile-shell .profile-hero:after{display:none}
+.workspace-glass .profile-shell .profile-hero :is(h1,p){color:#173d6d}
+.workspace-glass .profile-avatar-wrap{border-color:white;background:linear-gradient(135deg,#fff,#c8dfff);box-shadow:0 5px 20px #3c76ba20}
+.workspace-glass .profile-identity h1{font-size:32px}
+.workspace-glass .profile-shell :is(.panel-icon,.activity-icon){border:1px solid #fff9;border-radius:50%;background:linear-gradient(135deg,#fff9,#c8dfff9c);box-shadow:0 4px 10px #5584c21a;color:#267be7}
+.workspace-glass .profile-shell :is(.profile-primary,.profile-edit-link,.profile-pbb-primary){background:linear-gradient(150deg,#6acbff,#2b8bfa 45%,#176cdd);color:white;border:1px solid #b9e4ff;border-radius:14px;box-shadow:inset 0 1px 2px #ffffffa8,0 5px 12px #2a7bd62b}
+.workspace-glass .profile-shell :is(input,select,textarea){color-scheme:light}
+.workspace-glass .profile-shell :is(.request-dashboard-tabs,.report-dashboard-tabs,.briefing-tabs,.schedule-view-tabs){gap:12px}
+.workspace-glass .request-dashboard-tabs button,.workspace-glass .briefing-tabs button,.workspace-glass .report-dashboard-tabs button{border:1px solid #fff9;border-radius:17px;background:linear-gradient(135deg,#ffffffa3,#dceaff8c);box-shadow:0 6px 18px #4776bb12,inset 0 1px white;color:#4b6b96}
+.workspace-glass .request-dashboard-tabs button[aria-pressed=true],.workspace-glass .briefing-tabs button[aria-selected=true],.workspace-glass .report-dashboard-tabs button[aria-selected=true]{color:#1469df;background:linear-gradient(135deg,#fff,#d7e8ff);border-color:#fff}
+.workspace-glass .request-tab-icon{background:linear-gradient(135deg,#f6faff,#cfe2ff);border:1px solid white;border-radius:50%;box-shadow:0 4px 12px #497ec322}
+.workspace-glass .request-tab-icon img{width:100%;height:100%;object-fit:contain}
+.workspace-glass :is(.profile-edit-dialog,.rs-dialog,.flight-password){border:1px solid #fff;border-radius:21px;background:#f2f7ff;color:#203b60;box-shadow:0 20px 70px #244d8933}
+.workspace-glass :is(.profile-edit-dialog,.rs-dialog,.flight-password)::backdrop{background:#183b6859;backdrop-filter:blur(5px)}
+.workspace-glass .report-editor,.workspace-glass .schedule-grid,.workspace-glass .uniform-table-wrap{border-color:#ccdef5;border-radius:15px;background:#f8fbff}
+.workspace-glass .schedule-grid .duty{backdrop-filter:none}
+.workspace-glass .briefing-roster{top:16px}
+.workspace-glass .profile-shell .request-dashboard-tabs .request-tab-icon img{filter:drop-shadow(0 3px 2px #4c86cc22)}
+
+@media(min-width:761px){
+ .workspace-glass.profile-page.sidebar-collapsed .profile-sidebar{padding-left:12px;padding-right:12px}
+ .workspace-glass.profile-page.sidebar-collapsed .profile-sidebar nav a{justify-content:center;padding:7px 0;gap:0;font-size:0}
+ .workspace-glass.sidebar-collapsed .profile-sidebar nav a>span:not(.art-icon):not(.request-alert){display:none}
+ .workspace-glass.sidebar-collapsed .profile-sidebar .home-team-art,.workspace-glass.sidebar-collapsed .sidebar-footer,.workspace-glass.sidebar-collapsed .sidebar-caption{display:none}
+}
+@media(max-width:1100px) and (min-width:761px){.workspace-glass.profile-page .profile-topbar{gap:18px;padding:12px 22px}.workspace-glass .home-brand{width:150px}.workspace-glass .home-brand img{width:145px}.workspace-glass .top-nav{margin-left:0;gap:4px}.workspace-glass .department-nav>summary{min-width:65px;padding:0 10px}.workspace-glass .profile-shell{padding-right:20px}}
+@media(max-width:760px){
+ .workspace-glass.profile-page .app-frame{display:block}
+ .workspace-glass.profile-page .profile-topbar{display:grid;position:relative;grid-template-columns:44px minmax(0,1fr) 44px;grid-template-rows:68px 40px;gap:3px 8px;height:auto;min-height:0;padding:7px 14px 9px}
+ .workspace-glass .home-brand{grid-column:1/-1;grid-row:1;justify-self:center;width:120px;height:64px}
+ .workspace-glass .home-brand img{width:120px;height:64px}
+ .workspace-glass .profile-topbar>#flight-account{grid-column:3;grid-row:1;justify-self:end;margin:0}
+ .workspace-glass .profile-topbar .menu-toggle{grid-column:1;grid-row:2;display:grid;place-items:center;width:38px;height:38px;padding:2px;border:1px solid #fff;border-radius:12px;background:linear-gradient(140deg,#ffffffc4,#d2e5ff9c);box-shadow:inset 0 1px white,0 4px 10px #4d7fbd20}
+ .workspace-glass .profile-topbar .menu-icon{width:32px;height:32px;stroke:none;fill:none}
+ .workspace-glass .profile-topbar .top-nav{grid-column:2/4;grid-row:2;display:flex;align-items:center;justify-content:space-evenly;gap:8px;height:38px;width:auto;order:initial;margin:0}
+ .workspace-glass .flight-account .workspace-account{display:none}
+ .workspace-glass .flight-account-name{display:none}
+ .workspace-glass .workspace-notifications{position:fixed;top:80px;right:12px}
+ .workspace-glass.profile-page .profile-sidebar{display:flex!important;position:fixed;top:0;bottom:0;left:0;right:auto;width:240px;max-width:82vw;overflow-y:auto;min-height:0;padding:35px 20px;background:linear-gradient(150deg,#f2f7ff,#dceaff);border-right:1px solid white;z-index:50;transform:translateX(-110%);box-shadow:15px 0 50px #204e8d33}
+ .workspace-glass.profile-page.sidebar-open .profile-sidebar{transform:translateX(0)}
+ .workspace-glass .profile-sidebar .sidebar-collapse{display:none}
+ .workspace-glass.profile-page .profile-sidebar nav{display:flex;flex-direction:column;overflow:visible;flex:none;max-width:none}
+ .workspace-glass.profile-page .profile-sidebar nav a{font-size:13px;flex:none;justify-content:flex-start;gap:10px}
+ .workspace-glass .profile-sidebar .home-team-art{height:190px;min-height:190px;margin-top:25px;padding-top:0}
+ .workspace-glass.profile-page .profile-shell{display:block;max-width:100%;width:auto;margin:0!important;padding:16px 12px 28px}
+ .workspace-glass .profile-shell .profile-hero{border-radius:18px}
+ .workspace-glass .profile-identity h1{font-size:26px}
+ .workspace-glass .profile-sidebar>.workspace-features{display:flex;flex-direction:column;overflow:visible;max-width:none;margin:7px 0 0}
+ .workspace-glass .department-menu{top:136px}
+ .workspace-glass .request-dashboard-tabs{gap:8px}
+ .workspace-glass .request-dashboard-tabs button{border-radius:14px}
+}
+@media print{
+ body.workspace-glass.profile-page,.workspace-glass.profile-page .app-frame{display:block;min-height:0;margin:0;background:white;border:0;box-shadow:none}
+ .workspace-glass .profile-topbar,.workspace-glass .profile-sidebar,.workspace-glass .sidebar-scrim{display:none!important}
+ .workspace-glass.profile-page .profile-shell{margin:0!important;padding:0;width:100%}
+ .workspace-glass .profile-shell :is(.profile-panel,.pbb-panel,.briefing-card){background:white;box-shadow:none;backdrop-filter:none}
+}

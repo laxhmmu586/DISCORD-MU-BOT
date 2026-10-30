@@ -2,67 +2,226 @@
   "hosting": {
     "public": "public",
     "redirects": [
-      { "source": "/", "destination": "/flights.html", "type": 302 }
+      {
+        "source": "/",
+        "destination": "/flights.html",
+        "type": 302
+      },
+      {
+        "source": "/home.html",
+        "destination": "/home",
+        "type": 301
+      },
+      {
+        "source": "/home/",
+        "destination": "/home",
+        "type": 301
+      },
+      {
+        "source": "/profile.html",
+        "destination": "/profile",
+        "type": 301
+      },
+      {
+        "source": "/profile/",
+        "destination": "/profile",
+        "type": 301
+      },
+      {
+        "source": "/has-form.html",
+        "destination": "/has-form",
+        "type": 301
+      },
+      {
+        "source": "/has-form/",
+        "destination": "/has-form",
+        "type": 301
+      },
+      {
+        "source": "/has-report.html",
+        "destination": "/has-report",
+        "type": 301
+      },
+      {
+        "source": "/has-report/",
+        "destination": "/has-report",
+        "type": 301
+      },
+      {
+        "source": "/read-sign.html",
+        "destination": "/read-sign",
+        "type": 301
+      },
+      {
+        "source": "/read-sign/",
+        "destination": "/read-sign",
+        "type": 301
+      },
+      {
+        "source": "/briefing.html",
+        "destination": "/briefing",
+        "type": 301
+      },
+      {
+        "source": "/briefing/",
+        "destination": "/briefing",
+        "type": 301
+      },
+      {
+        "source": "/schedule.html",
+        "destination": "/schedule",
+        "type": 301
+      },
+      {
+        "source": "/schedule/",
+        "destination": "/schedule",
+        "type": 301
+      },
+      {
+        "source": "/admin.html",
+        "destination": "/admin",
+        "type": 301
+      },
+      {
+        "source": "/admin/",
+        "destination": "/admin",
+        "type": 301
+      }
     ],
     "headers": [
       {
+        "source": "/{home,profile,has-form,has-report,read-sign,briefing,schedule,admin,home.html,home.css,home.js,workspace-glass.css,workspace-shell.js,workspace-routes.js,workspace-header.js,flight-account.js,request-inbox.js,employee-sidebar-art.js}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "/{flights.html,flight-briefing.js,flight-account.js,workspace-header.js,workspace-header.css,briefing.html,briefing.js,briefing.css,briefing-fields.js,briefing-reference.js,briefing-reference.css}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{schedule.html,schedule.css,schedule-requests.css,schedule-requests.js,schedule-live.js,schedule-grid-layout.css,schedule.js,schedule-summary.js,schedule-grid.js}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{has-network.js,service-common.js,has-pbb-config.js}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{attendance-calendar.js,read-sign.html,read-sign.css,read-sign.js,people-api.js,profile-modules.js,attendance.html,attendance-history.js,uniform-notifications.js,uniform.html,uniform.css,uniform-client.js,uniform-api.js,uniform-workflow.js,login.html,auth-confirm.css,flight-account.js,employee-profile-api.js,employee-phone.js,portal-cards.css,info.html,info.js,profile.html,profile.css,profile-light.css,portal-light.css,profile.js,dashboard-profile.js}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{feedback.html,feedback.css,feedback-client.js}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{has-form.html,has-report.html,has-report.js,has-report.css,has-report-access.js,has-report-math.js,has-report-live.js,attendance-request.html,request.html,request.css,request-light.css,request.js}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{240.html,contact-form.html,cbs-form.html,pir-form.html,aviation-glass.css,transit-240.css,transit-240-restore.css}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{pbb.css,pbb-light.css,pbb-data.js,pbb-signals.js,admin.html,employees-client.js}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/{has-completion.js,has-login.html,has-login.css,has-login.js,pbb-qualification.js,has-pbb.html,has-pbb.css,has-pbb-client.js,has-pbb-data.js,has-pbb-dashboard.html,has-pbb-dashboard.js,has-pbb-nav.js}",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/scan.html",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/scan2.html",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/m-board.html",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
         "source": "/index.html",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
         ]
       },
       {
         "source": "/cbs.html",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
         ]
       }
     ],
@@ -70,6 +229,40 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/home",
+        "destination": "/home.html"
+      },
+      {
+        "source": "/profile",
+        "destination": "/profile.html"
+      },
+      {
+        "source": "/has-form",
+        "destination": "/has-form.html"
+      },
+      {
+        "source": "/has-report",
+        "destination": "/has-report.html"
+      },
+      {
+        "source": "/read-sign",
+        "destination": "/read-sign.html"
+      },
+      {
+        "source": "/briefing",
+        "destination": "/briefing.html"
+      },
+      {
+        "source": "/schedule",
+        "destination": "/schedule.html"
+      },
+      {
+        "source": "/admin",
+        "destination": "/admin.html"
+      }
     ]
   }
 }
