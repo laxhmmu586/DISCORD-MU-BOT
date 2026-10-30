@@ -13,6 +13,7 @@
   header.append(account);
   const navigation = document.createElement('nav'); navigation.className = 'top-nav'; navigation.setAttribute('aria-label', 'Main navigation');
   navigation.innerHTML = '<a href="/home">Home</a><a href="/hr">HR</a><details class="department-nav"><summary>Finance</summary><div class="department-menu"><p>Finance</p><a href="/has-report">Report</a></div></details>';
+  navigation.hidden = ['/profile','/profile.html','/profile/'].includes(current);
   header.querySelector('.topbar-date').before(navigation);
   const admin = sidebar.querySelector('#profile-admin-nav');
   const links = [
