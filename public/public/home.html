@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/workspace-routes.js?v=20261030-glass"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#dceaff">
+  <title>Home · Hallmark Aviation Services</title>
+  <meta name="description" content="Your Hallmark workspace. People, operations, and everything you need for a seamless day.">
+  <link rel="stylesheet" href="/home.css?v=20261030-mobile-header-v6">
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="/__/firebase/init.js"></script>
+  <script defer src="/employee-profile-api.js?v=20261026-avatar-crop"></script>
+  <script defer src="/employee-sidebar-art.js?v=20261030-glass-clean-routes"></script>
+  <script defer src="/home.js?v=20261030-empty-count-v6"></script>
+</head>
+<body class="home-page">
+  <div class="app-frame">
+    <header class="home-topbar profile-topbar">
+      <button class="menu-toggle" type="button" aria-label="Open workspace navigation" aria-controls="home-sidebar" aria-expanded="false"><svg class="menu-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="blue" x1="10" y1="8" x2="35" y2="39" gradientUnits="userSpaceOnUse"><stop stop-color="#a8e4ff"/><stop offset=".42" stop-color="#469aff"/><stop offset="1" stop-color="#105bd4"/></linearGradient>
+    <linearGradient id="edge" x1="10" y1="10" x2="38" y2="37" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#8bc5ff"/></linearGradient>
+  </defs>
+  <g fill="#175bc0" opacity=".22"><rect x="10" y="12" width="28" height="7" rx="3.5"/><rect x="10" y="23" width="28" height="7" rx="3.5"/><rect x="10" y="34" width="28" height="7" rx="3.5"/></g>
+  <g fill="url(#blue)" stroke="url(#edge)" stroke-width="1"><rect x="10" y="9" width="28" height="7" rx="3.5"/><rect x="10" y="20" width="28" height="7" rx="3.5"/><rect x="10" y="31" width="28" height="7" rx="3.5"/></g>
+  <g stroke="#fff" stroke-opacity=".75" stroke-width="1.2" stroke-linecap="round"><path d="M14 11h18M14 22h18M14 33h18"/></g>
+</svg></button>
+      <a class="home-brand" href="/home" aria-label="Hallmark Aviation Services home"><img src="/assets/home-hallmark-transparent-v1.png" alt="Hallmark Aviation Services"></a>
+      <nav class="top-nav" aria-label="Main navigation">
+        <a href="/home" aria-current="page">Home</a>
+        <details class="department-nav"><summary>HR</summary><div class="department-menu"><p>HR</p><a href="/has-form"><span class="art-icon icon-request" aria-hidden="true"></span>Request</a><a href="/read-sign"><span class="art-icon icon-sign" aria-hidden="true"></span>Read &amp; Sign</a></div></details>
+        <details class="department-nav"><summary>Finance</summary><div class="department-menu"><p>Finance</p><a href="/has-report" data-report-access><span class="art-icon icon-report" aria-hidden="true"></span>Report</a></div></details>
+      </nav>
+      <span class="topbar-date" id="home-date"></span><div id="flight-account" class="flight-account"></div>
+    </header>
+    <button class="sidebar-scrim" aria-label="Close workspace navigation" hidden></button>
+    <aside id="home-sidebar" class="home-sidebar profile-sidebar" aria-label="Workspace navigation">
+      <button class="sidebar-collapse" type="button" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="home-sidebar"><svg class="collapse-arrow" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="arrow-blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#91d6ff"/><stop offset=".45" stop-color="#328aff"/><stop offset="1" stop-color="#0951c8"/></linearGradient><linearGradient id="arrow-edge" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e7f7ff"/><stop offset="1" stop-color="#7ebaff"/></linearGradient></defs><path d="M25 10 11 22a4 4 0 0 0 0 6l14 12a3.8 3.8 0 0 0 6-3v-5h8a4 4 0 0 0 4-4v-5a4 4 0 0 0-4-4h-8v-6a3.8 3.8 0 0 0-6-3Z" fill="#0e53bd" opacity=".24" transform="translate(0 2)"/><path d="M24 8 10 20a4 4 0 0 0 0 6l14 12a3.8 3.8 0 0 0 6-3v-5h8a4 4 0 0 0 4-4v-5a4 4 0 0 0-4-4h-8v-6a3.8 3.8 0 0 0-6-3Z" fill="url(#arrow-blue)" stroke="url(#arrow-edge)" stroke-width="1.5"/><path d="m25 11-13 11m19-2h7" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <p class="sidebar-caption">MY WORKSPACE</p>
+      <nav>
+        <a href="/home" class="is-active" aria-current="page"><span class="art-icon icon-home" aria-hidden="true"></span><span>Home</span></a>
+        <a href="/admin" id="profile-admin-nav" hidden><span class="art-icon icon-profile" aria-hidden="true"></span><span>Admin</span></a>
+        <a href="/has-report" data-report-access><span class="art-icon icon-report" aria-hidden="true"></span><span>Report</span></a>
+        <a href="/has-form"><span class="art-icon icon-request" aria-hidden="true"></span><span>Request</span></a>
+        <a href="/read-sign"><span class="art-icon icon-sign" aria-hidden="true"></span><span>Read &amp; Sign</span></a>
+        <a href="/briefing" data-briefing-nav hidden><span class="art-icon icon-briefing" aria-hidden="true"></span><span>Briefing</span></a>
+        <a href="/schedule" data-schedule-nav hidden><span class="art-icon icon-schedule" aria-hidden="true"></span><span>Schedule</span></a>
+        <a href="/has-pbb.html"><span class="art-icon icon-bridge" aria-hidden="true"></span><span>PBB checklist</span></a>
+      </nav>
+      <div class="home-team-art" data-employee-art></div>
+      <div class="sidebar-footer"><span class="footer-mark">HALLMARK</span><p>People. Operations.<br>Together.</p><span class="footer-line"></span><small>Providing Peace of Mind.</small></div>
+    </aside>
+    <main class="home-main">
+      <div class="home-overview">
+      <section class="home-hero" aria-labelledby="hero-title">
+        <div class="hero-copy"><p class="eyebrow">WELCOME TO HALLMARK</p><h1 id="hero-title">Peace of Mind.<br><span>Every step of the way.</span></h1><p class="hero-description">Great people. Seamless operations.<br>One team, keeping the world moving.</p><a class="hero-link" href="/profile">My workspace <span aria-hidden="true">↗</span></a></div>
+        <div class="hero-caption"><span class="status-dot"></span> PEOPLE AT THE HEART OF AVIATION</div>
+      </section>
+      <section class="shortcuts" aria-label="Workspace shortcuts">
+        <a href="/has-report" data-report-access><span class="art-icon icon-report" aria-hidden="true"></span><strong>Report</strong><span class="shortcut-description">Your reporting hub</span></a>
+        <a href="/has-form"><span class="art-icon icon-request" aria-hidden="true"></span><strong>Request</strong><span class="shortcut-description">Forms &amp; services</span></a>
+        <a href="/read-sign"><span class="art-icon icon-sign" aria-hidden="true"></span><strong>Read &amp; Sign</strong><span class="shortcut-description">Stay informed</span></a>
+      </section>
+      </div>
+      <div class="home-panels">
+        <section class="glass-panel home-tasks-panel" aria-labelledby="home-tasks-heading"><div class="panel-heading"><h2 id="home-tasks-heading">To-do</h2><span class="panel-tag">MY UPDATES</span></div><div class="home-task-tabs" role="tablist" aria-label="To-do notifications"><button type="button" id="home-tab-approve" role="tab" aria-selected="true" aria-controls="home-approve-panel">Pending Approve <span id="home-approve-count" hidden></span></button><button type="button" id="home-tab-sign" role="tab" aria-selected="false" aria-controls="home-sign-panel" tabindex="-1">Read &amp; Sign <span id="home-sign-count" hidden></span></button></div><div id="home-approve-panel" role="tabpanel" aria-labelledby="home-tab-approve" tabindex="0"><p class="home-task-empty">Sign in to view pending approvals.</p></div><div id="home-sign-panel" role="tabpanel" aria-labelledby="home-tab-sign" tabindex="0" hidden><p class="home-task-empty">Sign in to view documents awaiting your signature.</p></div></section>
+        <section class="glass-panel home-flight-panel" aria-labelledby="home-flight-heading"><div class="panel-heading"><h2 id="home-flight-heading">Flight Operations</h2><a class="panel-view-all" href="/flights.html">View All <span aria-hidden="true">→</span></a></div><div class="home-flight-route"><h3 id="home-flight-title">Today’s flight</h3><span id="home-flight-date" class="flight-date-tag" hidden></span></div><p id="home-flight-status" class="home-flight-status" role="status">Sign in to view today’s flights.</p><div class="home-flight-details"><dl><div><dd id="home-flight-etd">—</dd><dt>ETD</dt></div><div><dd id="home-flight-boarding">—</dd><dt>Boarding</dt></div><div><dd id="home-flight-gate">—</dd><dt>Gate</dt></div></dl><a class="home-flight-thumbnail" href="/flights.html" aria-label="View flight operations"><span class="art-icon icon-flight" aria-hidden="true"></span></a></div></section>
+        <section class="glass-panel home-quick-panel" aria-labelledby="home-quick-heading"><div class="panel-heading"><h2 id="home-quick-heading">Quick Access</h2></div><nav class="home-quick-links" aria-label="Quick access"><a href="/has-pbb.html"><span class="quick-icon"><span class="art-icon icon-flight" aria-hidden="true"></span></span><strong>PBB</strong></a><a href="/baggage.html"><span class="quick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="14" rx="3"/><path d="M9 6V3h6v3M9 10v6m6-6v6M8 20v2m8-2v2"/></svg></span><strong>Baggage</strong></a><a href="/cbs.html"><span class="quick-icon"><span class="art-icon icon-request" aria-hidden="true"></span></span><strong>CBS</strong></a><a href="/contact-form.html"><span class="quick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg></span><strong>Contact</strong></a></nav></section>
+      </div>
+      <footer class="page-footer"><span>HALLMARK AVIATION SERVICES</span><span>One team. A world of possibilities.</span></footer>
+    </main>
+  </div>
+</body>
+</html>

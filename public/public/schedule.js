@@ -65,7 +65,7 @@
  function chip(code,color,tag='span',cls='duty'){const el=node(tag,code==='VAC'?'🏖️':code,cls);el.style.backgroundColor=['N','CS'].includes(code)?'#000000':color;el.style.color=['N','CS'].includes(code)?'#ff3535':code==='X'?'#0000ff':ink(color);return el;}
  function mobileColumns(){const nameWidth=92;return {nameWidth,dayWidth:Math.max(28,(($('mobile-schedule').clientWidth||document.querySelector('.schedule-shell').clientWidth-16||innerWidth-16)-nameWidth-18)/7)};}
  function sizeColumns(table){
-  const dayWidth=renderedMobile?mobileColumns().dayWidth:54,nameWidth=data.canViewAll?(renderedMobile?mobileColumns().nameWidth:360):0,total=nameWidth+data.days.length*dayWidth,frame=table.parentElement;
+  const dayWidth=renderedMobile?mobileColumns().dayWidth:54,nameWidth=data.canViewAll?(renderedMobile?mobileColumns().nameWidth:240):0,total=nameWidth+data.days.length*dayWidth,frame=table.parentElement;
   for(const [name,value] of [['width',total+'px'],['min-width',total+'px'],['max-width',total+'px'],['table-layout','fixed'],['border-spacing','0']])table.style.setProperty(name,value,'important');
   table.style.setProperty('--schedule-days',data.days.length);frame.style.setProperty('--schedule-days',data.days.length);frame.style.setProperty('--schedule-name-width',nameWidth+'px');frame.style.width=total+18+'px';frame.style.maxWidth='100%';frame.style.overflow='auto';
   for(const col of table.querySelectorAll('col')){const width=col.classList.contains('employee-column')?nameWidth:dayWidth;col.style.width=width+'px';}

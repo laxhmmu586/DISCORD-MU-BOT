@@ -17,40 +17,40 @@
   button.onclick=()=>{menu.hidden=!menu.hidden;button.setAttribute('aria-expanded',String(!menu.hidden));};
   document.addEventListener('click',event=>{if(!host.contains(event.target))close();});
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
-  const profileButton=document.createElement('button');profileButton.type='button';profileButton.hidden=true;profileButton.textContent='PROFILE';profileButton.onclick=()=>location.assign('/profile.html');host.querySelector('#change-password').before(profileButton);
+  const profileButton=document.createElement('button');profileButton.type='button';profileButton.hidden=true;profileButton.textContent='PROFILE';profileButton.onclick=()=>location.assign('/profile');host.querySelector('#change-password').before(profileButton);
   const avatar=document.createElement('span');avatar.className='flight-user-avatar';avatar.setAttribute('aria-hidden','true');host.querySelector('svg').replaceWith(avatar);
   style.textContent+='.flight-user-avatar{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:#254965;color:#fff;font-size:13px;font-weight:700;border:1px solid #84b1d4;overflow:hidden}.flight-user-avatar img{width:100%;height:100%;object-fit:cover}';
   function renderProfile(profile,user=auth?.currentUser){
     const externalMu=/^[^@\s]+@mu\.com$/i.test(String(user?.email||'').trim())&&String(user?.email||'').trim().toLowerCase()!=='lake@mu.com';document.body.classList.toggle('mu-external-services',externalMu);
     for(const nav of document.querySelectorAll('.profile-sidebar nav,.workspace-features')){
       let schedule=nav.querySelector('[data-schedule-nav]');
-      if(!schedule){const profileLink=nav.querySelector('a[href="/profile.html"]');if(profileLink){schedule=document.createElement('a');schedule.href='/schedule.html';schedule.dataset.scheduleNav='';schedule.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18M7 15h2m4 0h2"/></svg><span>Schedule</span>';profileLink.after(schedule);}}
-      const profileLink=nav.querySelector('a[href="/profile.html"],a[data-briefing-nav]');
-      if(profileLink){profileLink.href='/briefing.html';profileLink.dataset.briefingNav='';profileLink.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h4"/></svg><span>Briefing</span>';profileLink.classList.remove('is-active');profileLink.removeAttribute('aria-current');profileLink.hidden=!(profile?.canViewOperations??(profile?.station==='LAX'&&profile?.account==='MU'));if(location.pathname==='/briefing.html'){profileLink.classList.add('is-active');profileLink.setAttribute('aria-current','page');}}
-      if(schedule){const testAccount=[profile?.loginId,profile?.email,profile?.companyEmail,user?.email].some(v=>String(v||'').trim().toLowerCase()==='test@hm.com');const excluded=!testAccount&&[profile?.name,profile?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));schedule.hidden=excluded||!(profile?.canViewOperations??(profile?.station==='LAX'&&profile?.account==='MU'));if(location.pathname==='/schedule.html'){schedule.classList.add('is-active');schedule.setAttribute('aria-current','page');}}
+      if(!schedule){const profileLink=nav.querySelector('a[href="/profile"]');if(profileLink){schedule=document.createElement('a');schedule.href='/schedule';schedule.dataset.scheduleNav='';schedule.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18M7 15h2m4 0h2"/></svg><span>Schedule</span>';profileLink.after(schedule);}}
+      const profileLink=nav.querySelector('a[href="/profile"],a[data-briefing-nav]');
+      if(profileLink){profileLink.href='/briefing';profileLink.dataset.briefingNav='';profileLink.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h4"/></svg><span>Briefing</span>';profileLink.classList.remove('is-active');profileLink.removeAttribute('aria-current');profileLink.hidden=!(profile?.canViewOperations??(profile?.station==='LAX'&&profile?.account==='MU'));if(location.pathname==='/briefing'){profileLink.classList.add('is-active');profileLink.setAttribute('aria-current','page');}}
+      if(schedule){const testAccount=[profile?.loginId,profile?.email,profile?.companyEmail,user?.email].some(v=>String(v||'').trim().toLowerCase()==='test@hm.com');const excluded=!testAccount&&[profile?.name,profile?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));schedule.hidden=excluded||!(profile?.canViewOperations??(profile?.station==='LAX'&&profile?.account==='MU'));if(location.pathname==='/schedule'){schedule.classList.add('is-active');schedule.setAttribute('aria-current','page');}}
     }
     for(const link of document.querySelectorAll('[data-flight-workspace-service]'))link.hidden=externalMu||!(profile?.station==='LAX'&&profile?.account==='MU');
-    for(const link of document.querySelectorAll('a[href="/has-form.html"]'))link.hidden=!profile?.canViewForm;
+    for(const link of document.querySelectorAll('a[href="/has-form"]'))link.hidden=!profile?.canViewForm;
     window.workspaceProfile={profile,user};window.dispatchEvent(new CustomEvent('workspace-profile',{detail:{profile,user}}));
     const label=profile?.nickname||profile?.name||user?.displayName||'Account';host.querySelector('#current-user').textContent=label;host.querySelector('.flight-account-name').textContent=label;
     avatar.replaceChildren();if(profile?.avatar){const img=document.createElement('img');img.alt='';img.src=profile.avatar;avatar.append(img);}else avatar.textContent=label.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
   }
-  const headerScript=document.createElement('script');headerScript.src='/workspace-header.js?v=20261030-operations-access';document.head.append(headerScript);
+  const headerScript=document.createElement('script');headerScript.src='/workspace-header.js?v=20261030-glass-clean-routes';document.head.append(headerScript);
   window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
   auth?.onAuthStateChanged(async user=>{
     const generation=++profileGeneration;activeScope=null;try{if(user)activeScope=JSON.parse(sessionStorage.getItem('workspace-account:'+user.uid)||'null');}catch{}
     const allowed=Boolean(user)&&(!/^[^@\s]+@mu\.com$/i.test(user.email||'')||(user.email||'').trim().toLowerCase()==='lake@mu.com');
     profileButton.hidden=!allowed;
-    document.querySelectorAll('a[href="/profile.html"]').forEach(link=>{link.hidden=!allowed;});
-    if(user&&!allowed&&location.pathname==='/profile.html'){location.replace('/flights.html');return;}
+    document.querySelectorAll('a[href="/profile"]').forEach(link=>{link.hidden=!allowed;});
+    if(user&&!allowed&&location.pathname==='/profile'){location.replace('/flights.html');return;}
     renderProfile(null,user);if(!user)return;
     try{
       const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/profile-api',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});const result=await response.json();
       if(generation!==profileGeneration)return;
       if(!response.ok)throw Error(result.error||'Unable to load account.');
       if(result.state==='ready'||(result.profile&&!user.providerData.some(item=>item.providerId==='google.com')))renderProfile(result.profile,user);
-      else if(!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');
-    }catch(error){if(generation===profileGeneration&&!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile.html')location.replace('/login.html');}
+      else if(!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile')location.replace('/login.html');
+    }catch(error){if(generation===profileGeneration&&!/^[^@\s]+@mu\.com$/i.test(user.email||'')&&user.providerData.some(item=>item.providerId==='google.com')&&location.pathname!=='/profile')location.replace('/login.html');}
   });
   async function logout(){
     const loginOrigin=readLoginOrigin();
