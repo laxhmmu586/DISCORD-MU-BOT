@@ -29,12 +29,13 @@
     }
     if(managerId===row.id||descendants(row.id,rows).has(managerId))throw Error('A person cannot report to themselves or someone below them.');
     const manager=rows.find(r=>r.id===managerId);if(!manager)throw Error('Choose an existing manager.');
-    if(['Agent','Lead'].includes(normalize(row.position))&&normalize(manager.position)==='Supervisor')throw Error('Choose the Supervisor team so all Supervisors can manage this employee.');
+    if(normalize(row.position)==='Lead'&&normalize(manager.position)==='Supervisor'&&(row.station!==manager.station||row.account!==manager.account))throw Error('Choose a Supervisor from this employee’s Main Account.');
+    if(normalize(row.position)==='Agent'&&normalize(manager.position)==='Supervisor')throw Error('Choose the Supervisor team so all Supervisors can manage this employee.');
     if(rank(manager.position)>=0&&rank(row.position)>=0&&rank(manager.position)>=rank(row.position))throw Error('The reporting manager must hold a higher title.');
     return managerId;
   }
-  function managersFor(row,access,rows){const managers=rows.filter(manager=>{if(['Agent','Lead'].includes(normalize(row.position))&&normalize(manager.position)==='Supervisor')return false;if(access.mode!=='admin'&&manager.id!==access.employeeId&&!canEdit(manager,access,rows))return false;try{validateLine(row,manager.id,rows);return true;}catch{return false;}});
-    if(['Agent','Lead'].includes(normalize(row.position))){const id=supervisorGroup(row);try{validateLine(row,id,rows);const members=reportingManagers({...row,reportsTo:id},rows);if(access.mode==='admin'||members.some(manager=>manager.id===access.employeeId||canEdit(manager,access,rows)))managers.unshift({id,name:'All Supervisors',position:'Supervisor team',station:row.station,account:row.account});}catch{}}
+  function managersFor(row,access,rows){const managers=rows.filter(manager=>{if(normalize(row.position)==='Agent'&&normalize(manager.position)==='Supervisor')return false;if(access.mode!=='admin'&&manager.id!==access.employeeId&&!canEdit(manager,access,rows))return false;try{validateLine(row,manager.id,rows);return true;}catch{return false;}});
+    if(['Agent','Lead'].includes(normalize(row.position))){const id=supervisorGroup(row);try{validateLine(row,id,rows);const members=reportingManagers({...row,reportsTo:id},rows);if(access.mode==='admin'||members.some(manager=>manager.id===access.employeeId||canEdit(manager,access,rows)))managers.unshift({id,name:'All Supervisors · '+members.map(member=>member.name).join(', '),position:'Supervisor team',station:row.station,account:row.account});}catch{}}
     return managers;
   }
   function insertionPlan(targetId,position,name,access,rows){
