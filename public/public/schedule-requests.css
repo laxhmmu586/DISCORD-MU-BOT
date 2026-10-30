@@ -87,3 +87,16 @@
 @media(max-width:600px){.profile-page .schedule-shell{padding-top:6px}.schedule-shell.mobile-employee-schedule>.schedule-heading{display:none}.team-week-heading{min-height:38px;margin:0 0 4px;align-items:center}.team-week-heading #schedule-requests-button{flex:none;margin:0}.team-week-heading>strong{line-height:1.25}}
 
 @media(max-width:600px){body.profile-page .profile-shell.schedule-shell{margin-top:var(--schedule-header-height,64px)!important}}
+
+/* Touch remarks are independent controls so viewing a note never opens a shift request. */
+.schedule-remark-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;color:#254568}
+.team-week-table tr:not(.my-schedule-row) td.has-touch-remark{position:relative}
+.team-week-table td.has-touch-remark .duty.has-remark::after{display:none}
+.team-week-table .schedule-remark-trigger{position:absolute;top:-8px;left:-7px;z-index:3;width:24px;height:24px;min-height:24px;padding:0;border:0;border-radius:50%;box-shadow:none;cursor:pointer;background:transparent url('/assets/schedule-message-blue-badge-v2.svg') center/18px 18px no-repeat}
+.team-week-table td.has-touch-remark:has(.has-schedule-request) .schedule-remark-trigger{left:auto;right:-7px}
+.team-week-table .schedule-remark-trigger:focus-visible{outline:2px solid #1687ff;outline-offset:1px}
+@media(max-width:600px){
+ .schedule-shell #coverage-panel:not([hidden]){display:block!important}
+ .schedule-shell #coverage-panel .coverage-grid{display:block!important;max-height:70dvh}
+ .schedule-shell #coverage-panel .employee-cell{position:sticky;left:0;font-size:10px;white-space:normal;overflow-wrap:anywhere}
+}
