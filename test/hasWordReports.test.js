@@ -5,7 +5,7 @@ async function fixture(t){
  const express=require('express'),Database=require('better-sqlite3'),db=new Database(':memory:'),app=express();
  const users={};for(const role of ['Agent','CSA','Lead','Supervisor','Senior Supervisor','Duty Manager','Business Manager','Manager','Airport Operations Manager','Airport Manager','Interim General Manager','General Manager','Regional Manager'])users[role]={position:role,station:'LAX',account:'MU',name:role,additionalAccounts:[{station:'SFO',account:'XX'}]};
  users.other={position:'Business Manager',station:'SFO',account:'XX',name:'Other'};users.hq={position:'Supervisor',station:'HQ',account:'HQ'};
- app.use(express.json());const reports=require('../hasReports').registerHasReports(app,{employees:{db},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const uid=req.headers.authorization;if(!users[uid])throw Error();return {uid};}});
+ app.use(express.json());const reports=require('../hasReports').registerHasReports(app,{employees:{db,get:()=>({employees:Object.values(users)})},profiles:{linked:u=>users[u.uid]},authenticate:async req=>{const uid=req.headers.authorization;if(!users[uid])throw Error();return {uid};}});
  app.use(express.static(path.join(__dirname,'../public/public')));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
  t.after(()=>{reports.close();server.close();db.close();});
  const request=(user,url,body,headers={})=>fetch('http://127.0.0.1:'+server.address().port+'/has-report-api'+url,{headers:{authorization:user,'content-type':'application/json',...headers},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
@@ -64,14 +64,24 @@ test('Checklist category order, per-item Agent access and scoped emergency editi
  }
  assert.equal((await request('hq','/checklist')).status,403);
  for(const category of sup.categories)for(const item of category.items){
-  if(item.format==='pdf'){const result=await request('Supervisor','/checklist/'+item.id+'/export');assert.equal(result.status,200);const source=require('../hasChecklists').items.find(i=>i.id===item.id);assert.deepEqual(Buffer.from(await result.arrayBuffer()),await fs.readFile(path.join(__dirname,'../data/has-checklists',source.file)));}
+  if(item.format==='pdf'&&item.id!=='emergency-notification'){const result=await request('Supervisor','/checklist/'+item.id+'/export');assert.equal(result.status,200);const source=require('../hasChecklists').items.find(i=>i.id===item.id);assert.deepEqual(Buffer.from(await result.arrayBuffer()),await fs.readFile(path.join(__dirname,'../data/has-checklists',source.file)));}
  }
  const edit={revision:0,values:{paragraph_11:'Phone: 555-0100\nLAX/MU only'},scope:{station:'SFO',account:'XX'}};
  assert.equal((await request('Business Manager','/checklist/emergency-notification/content',edit)).status,200);assert.equal((await request('Business Manager','/checklist/emergency-notification/content',edit)).status,409);
  const current=await (await request('Agent','/checklist/emergency-notification/content')).json();assert.equal(current.values.paragraph_11,edit.values.paragraph_11);assert.equal(current.canEdit,false);assert.deepEqual(current.scope,{station:'LAX',account:'MU'});
  assert.deepEqual((await (await request('other','/checklist/emergency-notification/content')).json()).values,{});
- const downloaded=await request('Agent','/checklist/emergency-notification/export'),zip=await JSZip.loadAsync(await downloaded.arrayBuffer());assert.match(await zip.file('word/document.xml').async('string'),/555-0100/);
+ const downloaded=await request('Agent','/checklist/emergency-notification/export');assert.match(downloaded.headers.get('content-type'),/application\/pdf/);assert.match(downloaded.headers.get('content-disposition'),/\.pdf/);assert.equal(Buffer.from(await downloaded.arrayBuffer()).subarray(0,5).toString(),'%PDF-');
  assert.deepEqual(await Emergency.exportWord(),await fs.readFile(path.join(__dirname,'../data/has-checklists/emergency-procedure-notification.docx')));
+ const model=require('../public/public/emergency-notification-model');assert.equal(current.contacts.call2Phone,'555-0100\nLAX/MU only');assert(current.directory.some(person=>person.position==='General Manager'));
+ const values={...model.normalize(),call1Phone:'310-555-0100',call2Name:'Account manager',call2Phone:'310-555-0101',call3Name:'Client manager',call3Phone:'310-555-0102',call4Name:'General Manager',call4Phone:'310-555-0103'};
+ assert.equal(values.call5Name,'Matthew Overmyer');assert.equal(values.call6Phone,'347-806-0039');assert.equal(values.call7Name,'Paula Hooks');
+ for(const patch of [{call1Phone:''},{call2Name:'x'.repeat(161)},{call3Phone:'bad\nphone'},{call2Name:'姓名'}])assert.equal((await request('Business Manager','/checklist/emergency-notification/content',{revision:1,values:{...values,...patch}})).status,400);
+ assert.equal((await request('Business Manager','/checklist/emergency-notification/content',{revision:1,values})).status,200);
+ const updated=await(await request('Agent','/checklist/emergency-notification/content')).json();assert.deepEqual(updated.contacts,values);assert.equal((await request('Agent','/checklist/emergency-notification/content',{revision:2,values})).status,403);
+ assert.equal((await request('Business Manager','/checklist/emergency-notification/content',{revision:1,values})).status,409);
+ const pdf=await(await request('Agent','/checklist/emergency-notification/export')).arrayBuffer();assert.equal((await require('../vendor/pdf-lib/pdf-lib').PDFDocument.load(pdf)).getPageCount(),1);
+ assert.deepEqual((await(await request('other','/checklist/emergency-notification/content')).json()).contacts,model.normalize());
+
 });
 test('Recharge headings are scoped labels and do not change WWH manual hours or charge roles',async t=>{
  const {request}=await fixture(t);

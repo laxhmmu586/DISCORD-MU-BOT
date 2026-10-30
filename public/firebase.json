@@ -274,7 +274,7 @@
         ]
       },
       {
-        "source": "/employee-permissions.js",
+        "source": "/{employee-permissions.js,emergency-notification-model.js}",
         "headers": [
           {
             "key": "Cache-Control",
