@@ -1,10 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
 const {registerStaffSchedule}=require('../has/server/staffSchedule'),{createEmployeeStore}=require('../has/server/employees');
-async function fixture(t){
+async function fixture(t,options={}){
  const db=new Database(':memory:');db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT NOT NULL)');db.prepare('INSERT INTO employee_avatars VALUES(?,?)').run('agent','data:image/png;base64,photo');
  const rows=[['agent','Agent','LAX','MU'],['peer','Agent','LAX','MU'],['lead','Lead','LAX','MU'],['sup','Supervisor','LAX','MU'],['regional','Regional Manager','LAX','MU'],['other','Supervisor','LAX','CZ'],['station','Supervisor','SFO','MU']].map(([id,position,station,account],i)=>({id,name:id+' employee',eid:String(1000+i),code:'',position,station,account,attach:false,detach:false,spotter:false}));
  rows.push({id:'second',name:'Second account',eid:'2001',attach:false,detach:false,spotter:false,position:'Agent',station:'LAX',account:'CZ',additionalAccounts:[{station:'LAX',account:'MU'}]},{id:'third',name:'Third account',eid:'2002',attach:false,detach:false,spotter:false,position:'Agent',station:'SFO',account:'CZ',additionalAccounts:[{station:'SFO',account:'AA'},{station:'LAX',account:'MU'}]});rows.push(...['DEMO HAS','HAS OPS RAMP'].map((name,i)=>({id:'blocked'+i,name,eid:'999'+i,position:'Supervisor',station:'LAX',account:'MU',attach:false,detach:false,spotter:false})));
- const employees={...createEmployeeStore(db,{seed:rows}),db},app=express();app.use(express.json());const service=registerStaffSchedule(app,{sync:false,employees,profiles:{linked:u=>employees.get().employees.find(e=>e.id===u.uid)},authenticate:async req=>{if(!req.headers.authorization)throw Error();return {uid:req.headers.authorization,email:'test@example.test'};}});
+ const employees={...createEmployeeStore(db,{seed:rows}),db},app=express();app.use(express.json());const service=registerStaffSchedule(app,{...options,sync:false,employees,profiles:{linked:u=>employees.get().employees.find(e=>e.id===u.uid)},authenticate:async req=>{if(!req.headers.authorization)throw Error();return {uid:req.headers.authorization,email:'test@example.test'};}});
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
  const request=async(user,body,start='2026-10-26',suffix='',schema='2')=>{const res=await fetch('http://127.0.0.1:'+server.address().port+'/staff-schedule-api'+suffix+(body?'':'?start='+start+(schema?'&schema='+schema:'')),{method:body?'POST':'GET',headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:await res.json()};};return {request,employees,db};
 }
@@ -159,4 +159,11 @@ test('standing Notice is durable, scoped, manager-only and rejects stale edits',
  // Registering again against the saved database must never overwrite a customized notice.
  require('../has/server/scheduleStandingNotice').createScheduleStandingNotice({app:{get(){},post(){}},db,handler:fn=>fn,requireManager(){}});
  assert.equal((await get('agent')).data.notice.body,'Regional update');
+});
+
+test('homepage Today Team uses the current LA date and returns only working eligible staff',async t=>{
+ const {request,db}=await fixture(t,{now:()=>new Date('2026-11-01T06:30:00Z')});
+ db.prepare('INSERT INTO staff_schedule_days VALUES(?,0,?)').run('2026-10-31',JSON.stringify({assignments:{agent:{code:'A'},peer:{code:'X'},lead:{code:'CS'},sup:{code:'C',color:'#99ff00'},regional:{code:'VAC'},other:{code:'C'},station:{code:'A'},second:{code:'B'},third:{code:'CO'},blocked0:{code:'C'}}}));
+ assert.equal((await request(null,null,undefined,'/today-team')).status,401);assert.equal((await request('other',null,undefined,'/today-team')).status,403);
+ const {data,status}=await request('agent',null,undefined,'/today-team');assert.equal(status,200);assert.equal(data.date,'2026-10-31');assert.deepEqual(data.employees.map(p=>p.id).sort(),['agent','second','sup']);assert.equal(data.employees.find(p=>p.id==='agent').avatar,'data:image/png;base64,photo');assert(data.employees.every(p=>!('eid' in p)&&!('email' in p)&&!('remark' in p)));
 });

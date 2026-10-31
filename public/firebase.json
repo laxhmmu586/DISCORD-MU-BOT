@@ -283,7 +283,7 @@
         ]
       },
       {
-        "source": "/{employee-permissions.js,emergency-notification-model.js,home-emergency.js,profile-emergency.css,schedule-rules.js,schedule-rules.css,department-access.js}",
+        "source": "/{employee-permissions.js,emergency-notification-model.js,home-emergency.js,home-today-team.css,home-today-team.js,profile-emergency.css,schedule-rules.js,schedule-rules.css,department-access.js}",
         "headers": [
           {
             "key": "Cache-Control",
@@ -1118,6 +1118,14 @@
       {
         "source": "/home-emergency.js",
         "destination": "/has/home-emergency.js"
+      },
+      {
+        "source": "/home-today-team.css",
+        "destination": "/has/home-today-team.css"
+      },
+      {
+        "source": "/home-today-team.js",
+        "destination": "/has/home-today-team.js"
       },
       {
         "source": "/home.css",

@@ -106,3 +106,5 @@ Departure STD and Gate Lead Boarding complete entry controls are removed, along 
 
 
 Arrival Team Assignment omits unstaffed roles in employee view and newly rendered reports/photos; manager assignment slots remain available. If no Arrival roles are staffed, the exported Team Assignment section is omitted. Departure photos now use one Team Assignment heading with Counter on the left and Gate on the right, matching the existing PDF/preview tables. Each row places the role beside its assigned names, preserves custom labels, nicknames, multiple assignees and Gate Lead/Assist times, and expands for wrapped text. Departure unstaffed rows remain visible.
+
+Departure PAX Booking uses the latest SY R reservation counts for the exact flight and date, mapped to F / J / Y. Manual PAX entries take precedence; clearing an entry restores its SY value. Config and INF remain manually controlled. TTL PAX and PLF use the displayed booking values, and generated reports use the same SY fallback. Missing or incomplete SY does not borrow another flight or day's counts.
