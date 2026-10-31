@@ -1,0 +1,20 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {parseHTML}=require('linkedom');
+test('Profile report card follows report permissions and clears access when signed out',()=>{
+ const {window}=parseHTML(fs.readFileSync('has/public/profile.html','utf8'));
+ const card=window.document.querySelector('.profile-report-panel');
+ assert(card.closest('.profile-pbb-column'));
+ assert.equal(card.querySelectorAll('[data-report-access]').length,4);
+ const location={href:'https://mufcapp.net/profile'};
+ vm.runInNewContext(fs.readFileSync('has/public/profile-report-card.js','utf8'),{window,document:window.document,location,URL});
+ const send=detail=>window.dispatchEvent(new window.CustomEvent('has-report-context',{detail}));
+ const link=kind=>card.querySelector(`[href="/has-report?kind=${kind}"]`);
+ assert(link('da').hidden);
+ send({permissions:{da:true,wwh:false,rechargeable:true}});
+ assert.equal(link('da').hidden,false);assert.equal(link('wwh').hidden,true);assert.equal(link('rechargeable').hidden,false);
+ assert.equal(card.querySelector('.panel-view-all').hidden,false);
+ assert.equal(window.document.getElementById('profile-report-empty').hidden,true);
+ send({error:'Please sign in first.'});
+ assert([...card.querySelectorAll('[data-report-access]')].every(a=>a.hidden));
+ assert.equal(window.document.getElementById('profile-report-empty').textContent,'Please sign in first.');
+});

@@ -308,6 +308,22 @@
     ],
     "rewrites": [
       {
+        "source": "/assets/hero-globe-north-america-v1.webp",
+        "destination": "/has/assets/hero-globe-north-america-v1.webp"
+      },
+      {
+        "source": "/assets/hero-globe-north-america-mobile-v1.webp",
+        "destination": "/has/assets/hero-globe-north-america-mobile-v1.webp"
+      },
+      {
+        "source": "/profile-report-card.css",
+        "destination": "/has/profile-report-card.css"
+      },
+      {
+        "source": "/profile-report-card.js",
+        "destination": "/has/profile-report-card.js"
+      },
+      {
         "source": "/home",
         "destination": "/has/home.html"
       },

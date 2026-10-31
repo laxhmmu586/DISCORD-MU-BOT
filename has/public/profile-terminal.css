@@ -1,5 +1,5 @@
-/* Profile-only airport background. Home retains its team banner. */
-.workspace-glass .profile-shell .profile-hero{background-color:#e7f0ff;background-image:linear-gradient(90deg,#e8f1fff5 0%,#e8f1ffe8 25%,#e3eeff99 43%,#d4e5ff20 68%,#d4e5ff00 100%),url('/has/assets/profile-terminal-evening-v1.webp');background-position:center,center 53%;background-size:cover;background-repeat:no-repeat}
+/* North America globe background, shared artwork with Home. */
+.workspace-glass .profile-shell .profile-hero{background-color:#e7f0ff;background-image:linear-gradient(90deg,#e8f1fff5 0%,#e8f1ffe8 25%,#e3eeff99 43%,#d4e5ff20 68%,#d4e5ff00 100%),url('/has/assets/hero-globe-north-america-v1.webp');background-position:center,right top;background-size:cover;background-repeat:no-repeat}
 @media(min-width:1101px){.workspace-glass .profile-shell .profile-hero{height:clamp(300px,22vw,350px);min-height:300px;padding:38px 44px}}
-@media(min-width:701px) and (max-width:1100px){.workspace-glass .profile-shell .profile-hero{min-height:280px;background-position:center,58% center}}
-@media(max-width:700px){.workspace-glass .profile-shell .profile-hero{height:auto;min-height:260px;background-image:linear-gradient(90deg,#e8f1fff2,#e6f0ffdf 52%,#e3eeff80),url('/has/assets/profile-terminal-evening-mobile-v1.webp');background-position:center,60% center}}
+@media(min-width:701px) and (max-width:1100px){.workspace-glass .profile-shell .profile-hero{min-height:280px;background-position:center,70% top}}
+@media(max-width:700px){.workspace-glass .profile-shell .profile-hero{height:auto;min-height:260px;background-image:linear-gradient(90deg,#e8f1fff2,#e6f0ffdf 52%,#e3eeff80),url('/has/assets/hero-globe-north-america-mobile-v1.webp');background-position:center,70% top}}

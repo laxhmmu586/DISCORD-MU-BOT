@@ -1,0 +1,19 @@
+.profile-pbb-column{display:grid;gap:20px;align-content:start;min-width:0}
+.profile-pbb-column>.profile-panel{margin:0!important}
+.profile-report-panel .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.profile-report-panel h2{font-size:16px;margin:0}
+.profile-report-panel .panel-view-all{font-size:11px;color:#287ce8;white-space:nowrap}
+.profile-report-panel .home-report-description{font-size:11px;color:#8197b5;line-height:1.6;margin:12px 0 13px}
+.profile-report-panel .home-report-links{display:grid;gap:3px}
+.profile-report-panel .home-report-links>a{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid #c4d8f04d;text-decoration:none}
+.profile-report-panel .art-icon{display:block;flex:none;width:36px;height:36px;background-size:contain;background-position:center;background-repeat:no-repeat}
+.profile-report-panel .icon-report{background-image:url('/has/assets/home-icon-report-v2.webp')}
+.profile-report-panel .icon-schedule{background-image:url('/has/assets/home-icon-calendar-v2.webp')}
+.profile-report-panel .icon-request{background-image:url('/has/assets/home-icon-request-v3.webp')}
+.profile-report-panel .home-report-links>a>span:nth-child(2){display:grid;gap:5px;flex:1;min-width:0}
+.profile-report-panel strong{font-size:12px;font-weight:600;color:#294f80;overflow-wrap:anywhere}
+.profile-report-panel small{font-size:10px;color:#889ebc}
+.profile-report-panel .home-report-links>a>span:last-child{font-size:13px;color:#6e9bd5}
+.profile-report-panel .home-report-empty{font-size:12px;color:#7b92b1;line-height:1.7}
+.profile-report-panel a:focus-visible{outline:2px solid #287ce8;outline-offset:4px;border-radius:8px}
+
