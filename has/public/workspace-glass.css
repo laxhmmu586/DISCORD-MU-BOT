@@ -122,8 +122,10 @@ body.workspace-glass.profile-page{display:flow-root;min-width:320px;min-height:1
 /* Mirror sidebar operations before Home on phones, preserving one scrollable row. */
 .home-topbar .top-nav>.mobile-operation{display:none}
 @media(max-width:760px){
- .home-topbar .top-nav,.workspace-glass.profile-page .profile-topbar>.top-nav{display:flex;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;justify-content:flex-start;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+ .home-topbar .top-nav,.workspace-glass.profile-page .profile-topbar>.top-nav{display:flex;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;overscroll-behavior-x:contain;justify-content:flex-start;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
  .home-topbar .top-nav>*,.workspace-glass .profile-topbar>.top-nav>*{flex-shrink:0}
  .home-topbar .top-nav>.mobile-operation{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
  .home-topbar .top-nav>.mobile-operation .art-icon{width:24px;height:24px;flex:none}
 }
+
+@media(max-width:760px){.home-topbar .top-nav::-webkit-scrollbar,.workspace-glass.profile-page .profile-topbar>.top-nav::-webkit-scrollbar{display:none;width:0;height:0}}
