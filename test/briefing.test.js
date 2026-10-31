@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
 const {registerBriefing,CONTACTS}=require('../has/server/briefing'),{createEmployeeStore}=require('../has/server/employees'),{createBriefingEtab}=require('../has/server/briefingEtab');
 const DATE='2026-10-28';
-async function fixture(t){
+async function fixture(t,options={}){
  const db=new Database(':memory:');db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT);CREATE TABLE staff_schedule_days(date TEXT PRIMARY KEY,revision INTEGER,data TEXT)');db.prepare('INSERT INTO employee_avatars VALUES(?,?)').run('agent','data:image/png;base64,photo');
  const rows=[['agent','Agent'],['peer','Agent'],['rest','Agent'],['sup','Supervisor'],['lead','Lead'],['regional','Regional Manager'],['other','Supervisor']].map(([id,position])=>({id,name:id+' employee',nickname:id,eid:id,position,station:'LAX',account:id==='other'?'CZ':'MU'}));
  rows.push(...[['demo','DEMO HAS','MU'],['ramp','HAS OPS RAMP','MU'],['hq','HQ employee','Headquarter']].map(([id,name,account])=>({id,name,eid:id,position:'Agent',station:'LAX',account})));
@@ -9,7 +9,7 @@ async function fixture(t){
  const employees={...createEmployeeStore(db,{seed:rows}),db},profiles={linked:user=>employees.get().employees.find(e=>e.id===user.uid)},app=express();app.use(express.json());
  db.prepare('INSERT INTO staff_schedule_days VALUES(?,0,?)').run(DATE,JSON.stringify({assignments:{agent:{code:'A'},peer:{code:'C'},rest:{code:'X'},other:{code:'D'}}}));
  const etab=createBriefingEtab({db});etab.accept({date:DATE,arrival:{flight:'MU583',reg:'B-7369',eta:'1217L',gate:'154',pax:'306/01',crew:'4/17'}},{discordMessageId:'fixture-delivery',receivedAt:DATE+'T16:00:00Z'});
- registerBriefing(app,{employees,profiles,etab,now:()=>new Date(DATE+'T18:00:00Z'),authenticate:async req=>{if(!req.headers.authorization)throw Error();return {uid:req.headers.authorization};}});
+ registerBriefing(app,{...options,employees,profiles,etab,now:()=>new Date(DATE+'T18:00:00Z'),authenticate:async req=>{if(!req.headers.authorization)throw Error();return {uid:req.headers.authorization};}});
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{server.closeAllConnections();server.close();db.close();});
  const request=async(user,path='',body)=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/briefing-api'+path,{method:body?'POST':'GET',headers:{...(user?{Authorization:user}:{}),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,data:response.headers.get('content-type')?.includes('json')?await response.json():Buffer.from(await response.arrayBuffer())};};
  return {db,request,etab,employees,profiles};
@@ -274,3 +274,17 @@ test('flight-page quick tasks are today-scoped, assignment-gated and hidden afte
 });
 
 test('MU in any account slot can read Briefing and download PNG without archiving',async t=>{const {request,db}=await fixture(t);for(const user of ['agent','second','third']){const state=await request(user,'?date='+DATE);assert.equal(state.status,200);assert.equal(state.data.canEditBriefing,false);for(const flight of ['MU583','MU586']){const result=await request(user,'/photo?date='+DATE+'&flight='+flight);assert.equal(result.status,200);assert.equal(result.data.subarray(0,8).toString('hex'),'89504e470d0a1a0a');}}assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_reports').get().n,0);for(const user of ['other','demo','ramp','hq'])assert.equal((await request(user,'/photo?date='+DATE)).status,403);assert.equal((await request(null,'/photo?date='+DATE)).status,401);});
+
+test('Departure SY booking is exact, refreshes, preserves overrides and freezes into reports',async t=>{
+ let values={bookingF:'1',bookingJ:'55',bookingY:'248'},exported;
+ const booking={read:async(date,flight)=>({status:'available',fields:date===DATE&&flight==='MU586'?values:{}})};
+ const {request}=await fixture(t,{booking,buildPdf:async snapshot=>{exported=snapshot;return Buffer.from('%PDF-fixture');}}),path='?date='+DATE+'&flight=MU586&direction=departure';
+ const first=(await request('sup',path)).data;assert.deepEqual(first.booking.fields,values);assert.equal(first.fields.bookingF,'');
+ assert.equal((await request('sup','?date='+DATE+'&flight=MU583')).data.booking,null);
+ assert.deepEqual((await request('sup','?date=2026-10-29&flight=MU586')).data.booking.fields,{});
+ await request('sup','',{date:DATE,flight:'MU586',field:'bookingJ',value:'50',previous:''});
+ values={bookingF:'2',bookingJ:'56',bookingY:'249'};
+ const updated=(await request('sup',path)).data;assert.equal(updated.fields.bookingJ,'50');assert.equal(updated.booking.fields.bookingF,'2');
+ assert.equal((await request('sup','/reports',{date:DATE,flight:'MU586',expected:updated.fields})).status,200);
+ assert.equal(exported.fields.bookingF,'2');assert.equal(exported.fields.bookingJ,'50');assert.equal(exported.fields.bookingY,'249');assert.equal(exported.fields.configF,'6');assert.equal(exported.fields.infantJ,'');
+});

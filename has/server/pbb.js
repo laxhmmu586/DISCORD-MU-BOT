@@ -82,7 +82,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  const employees=require('./employeeDatabase').openEmployeeDatabase(store.db,{seed:employeeSeed});
  const profiles=require('./employeeProfiles').registerProfiles(app,{employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
  const staffScheduleService=require('./staffSchedule').registerStaffSchedule(app,{employees,profiles,authenticate});
- const briefing=require('./briefing').registerBriefing(app,{employees,profiles,authenticate});
+ const briefing=require('./briefing').registerBriefing(app,{employees,profiles,authenticate,booking:require('./briefingBooking').createBriefingBooking()});
  require('./uniformRequests').registerUniform(app,{employees,profiles,authenticate});
  require('./newAccessRequests').registerNewAccess(app,{employees,profiles,authenticate});
  const hasReportService=require('./hasReports').registerHasReports(app,{employees,profiles,authenticate});

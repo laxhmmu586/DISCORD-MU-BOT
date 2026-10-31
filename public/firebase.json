@@ -283,7 +283,7 @@
         ]
       },
       {
-        "source": "/{employee-permissions.js,emergency-notification-model.js,home-emergency.js,profile-emergency.css,schedule-rules.js,schedule-rules.css,department-access.js}",
+        "source": "/{employee-permissions.js,emergency-notification-model.js,home-emergency.js,today-team.css,today-team.js,profile-emergency.css,schedule-rules.js,schedule-rules.css,department-access.js}",
         "headers": [
           {
             "key": "Cache-Control",

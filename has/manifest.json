@@ -280,6 +280,7 @@
   "server": [
     "approvalAccountScope.js",
     "briefing.js",
+    "briefingBooking.js",
     "briefingDrive.js",
     "briefingEtab.js",
     "briefingFinish.js",
