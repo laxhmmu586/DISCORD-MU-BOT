@@ -12,7 +12,7 @@
   header.innerHTML = `<button class="menu-toggle" type="button" aria-label="Open workspace navigation" aria-controls="workspace-sidebar" aria-expanded="false">${menuIcon}</button><a class="home-brand" href="/profile" aria-label="Hallmark Aviation Services profile"><img src="/assets/home-hallmark-transparent-v1.png" alt="Hallmark Aviation Services" width="178" height="76"></a><span class="topbar-date" id="workspace-date"></span>`;
   header.append(account);
   const navigation = document.createElement('nav'); navigation.className = 'top-nav'; navigation.setAttribute('aria-label', 'Main navigation');
-  navigation.innerHTML = '<a href="/home">Home</a><a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1">HR</a><details class="department-nav" data-department="finance" aria-disabled="true" inert><summary aria-disabled="true" tabindex="-1">Finance</summary><div class="department-menu"><p>Finance</p><a href="/has-report">Report</a></div></details><span class="top-nav-placeholder" aria-disabled="true">QA</span>';
+  navigation.innerHTML = '<a href="/home">Home</a><a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1">HR</a><span class="top-nav-placeholder" aria-disabled="true">Finance</span><span class="top-nav-placeholder" aria-disabled="true">QA</span>';
 
   header.querySelector('.topbar-date').before(navigation);
   if(!document.querySelector('script[src*="department-access.js"]')){const access=document.createElement('script');access.src='/department-access.js?v=20261030-access';document.head.append(access);}
