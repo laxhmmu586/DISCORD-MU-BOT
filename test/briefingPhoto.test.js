@@ -7,6 +7,11 @@ test('Departure photo stacks populated specials under booking and places compact
  for(const [,value] of prices.cards().flatMap(card=>card.rows))assert(plan.commands.some(c=>c.value===value),value);
  const svg=renderBriefingImageSvg(sample,{photo:true});assert.equal((svg.match(/SPECIAL INFORMATION/g)||[]).length,1);assert.equal((svg.match(/>PRICE</g)||[]).length,1);assert.equal((svg.match(/TIME CHECK/g)||[]).length,1);assert(svg.includes('TEAM ASSIGNMENT'));
 });
+test('default Price descriptions keep their full text on one line beside both amount columns',()=>{
+ const plan=summaryLayout(sample,{photo:true}),commands=plan.commands.filter(c=>c.kind==='text');
+ for(const [label,amount] of prices.cards()[0].rows){const text=commands.find(c=>c.value===label);assert(text,'Unbroken label: '+label);const fee=commands.find(c=>c.value===amount&&c.y===text.y&&c.x>text.x);assert(fee,'Fee stays on the same row: '+label);const measured=[...label].reduce((sum,char)=>sum+text.size*(char.codePointAt(0)>255?1:.62),0);assert(text.x+measured<=fee.x-4,'Description fits before the price: '+label);}
+ assert(commands.some(c=>c.value==='Business overweight · 33–45 kg'));assert(commands.some(c=>c.value==='Platinum card · exit seat / first row'));assert(commands.some(c=>c.value==='Intl'));
+});
 test('Price preserves legacy editable keys, saved labels/fees and added reference cards',()=>{
  const reference={values:{'price.0':'Saved route heading','price.1':'Saved fee label','price.2':'$222'},boxes:{price:[{id:'card-custom',title:'Saved extra fee',text:'USD 25\n第二行'}]}};
  const cards=prices.cards(reference);assert.equal(cards[0].title,'Saved route heading');assert.deepEqual(cards[0].rows[0],['Saved fee label','$222']);assert.equal(cards.at(-1).text,'USD 25\n第二行');
@@ -20,4 +25,4 @@ test('photo plan expands for long content without overlapping sections; defaults
  const empty=summaryLayout({...sample,fields:{...DEFAULTS}},{photo:true});assert(!empty.commands.some(c=>c.value==='SPECIAL INFORMATION'));assert(empty.commands.some(c=>c.value==='PRICE'));
  const arrival=renderBriefingImageSvg({...sample,direction:'arrival',flight:'MU583'},{photo:true});assert(!arrival.includes('>PRICE<'));
 });
-test('Departure photo renders as a complete PNG',async()=>{const bytes=await buildBriefingImage(sample,{photo:true}),metadata=await sharp(bytes).metadata();assert.equal(metadata.width,1400);assert(metadata.height>=1680);fs.mkdirSync('.verification/departure-photo',{recursive:true});fs.writeFileSync('.verification/departure-photo/departure.png',bytes);fs.writeFileSync('.verification/departure-photo/summary.svg',summarySvg(sample,{photo:true}));});
+test('Departure photo renders as a complete PNG',async()=>{const bytes=await buildBriefingImage(sample,{photo:true}),metadata=await sharp(bytes).metadata();assert.equal(metadata.width,1400);assert(metadata.height>=1680);fs.mkdirSync('.verification/departure-photo',{recursive:true});fs.writeFileSync('.verification/departure-photo/departure.png',bytes);fs.writeFileSync('.verification/departure-photo/summary.svg',summarySvg(sample,{photo:true}));fs.writeFileSync('.verification/departure-photo/summary.png',await sharp(Buffer.from(summarySvg(sample,{photo:true}))).resize({width:1400}).png().toBuffer());});
