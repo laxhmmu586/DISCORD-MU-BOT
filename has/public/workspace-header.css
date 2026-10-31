@@ -14,3 +14,7 @@
 .profile-page .flight-account .workspace-account{margin:0;padding:6px;align-self:center;font-size:13px}
 .profile-page .flight-account .workspace-account select{display:block;width:auto;min-width:0;min-height:0;height:auto;margin:0;padding:4px;border:0;border-radius:0;background:transparent;box-shadow:none;color:inherit;font:inherit;color-scheme:light}
 @media(max-width:760px){.profile-page .flight-account .workspace-account{padding:3px;font-size:12px}}
+
+/* Keep the bell centered independently of form-button padding and SVG defaults. */
+.profile-topbar .flight-account>.workspace-bell{display:flex;align-items:center;justify-content:center;flex:none;padding:0;line-height:1;transform:none}
+.profile-topbar .flight-account>.workspace-bell>svg{display:block;flex:none;width:21px;height:21px;margin:0;padding:0;transform:none}
