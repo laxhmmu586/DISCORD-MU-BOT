@@ -143,3 +143,10 @@
 @media(min-width:601px){.schedule-shell .schedule-toolbar{margin-bottom:28px}}
 
 .coverage-heading-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:18px 0 10px}.coverage-heading-row #coverage-title,.coverage-heading-row .schedule-desktop-month{margin:0}
+
+/* Keep ribbons in a stable sibling layer; page scroll moves the layer natively. */
+.schedule-ribbon-frame{position:relative;isolation:isolate;overflow:visible;margin-top:var(--ribbon-extra-headroom,0px)}.schedule-ribbon-frame>.schedule-ribbon-overlay{position:absolute;inset:0;z-index:50;display:block;pointer-events:none;overflow:visible}.schedule-ribbon-frame>.schedule-ribbon-overlay .date-badges{align-items:center;transform-origin:center center}
+@media(max-width:600px){.schedule-ribbon-frame[data-primary=true]{display:none}.schedule-mobile-ribbon-frame{margin-top:calc(24px + var(--ribbon-extra-headroom,0px))}.schedule-mobile-ribbon-frame .team-week-scroll{padding-top:0}.schedule-mobile-ribbon-frame .team-week-table thead th,.schedule-mobile-ribbon-frame .team-week-table thead th.multiple-week-ribbons{padding:8px 2px;height:52px;box-sizing:border-box;top:0}.team-week-table .team-week-badges{visibility:hidden}.schedule-mobile-ribbon-frame .schedule-ribbon-overlay .date-status{font-size:10px;line-height:13px;padding:3px 8px}.schedule-ribbon-frame .schedule-grid .date-badges{visibility:hidden}}
+.schedule-ribbon-frame>.schedule-ribbon-overlay .date-badges{transform:none}.schedule-ribbon-frame>.schedule-ribbon-overlay .date-status{transform:rotate(-12deg);transform-origin:center center}
+
+@media(max-width:600px){.schedule-ribbon-frame .schedule-ribbon-overlay .date-status{font-size:10px;line-height:13px;padding:3px 8px}}
