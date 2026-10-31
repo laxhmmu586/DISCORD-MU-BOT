@@ -4,7 +4,7 @@ const {DEFAULT_NOTICE}=require('../has/server/scheduleStandingNotice');
 const source=fs.readFileSync('has/public/schedule-notices.js','utf8').split('// Persistent schedule policy, separate from expiring announcements.')[1];
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture(){
- const {window,document}=parseHTML('<html><body><main><div class="schedule-heading"></div></main></body></html>');
+ const {window,document}=parseHTML('<html><body><main><div class="schedule-heading"></div><details id="clock-in-time"></details></main></body></html>');
  let notice={body:DEFAULT_NOTICE,revision:0},writes=0,fail=false;
  const api=async(path,body)=>{assert.equal(path,'/staff-schedule-api/notice');if(body){writes++;if(fail)throw Error('Notice changed. Cancel and reopen the editor to load the latest version.');assert.equal(body.revision,notice.revision);notice={body:body.body,revision:notice.revision+1};}return {notice};};
  vm.runInNewContext(source,{window,document,peopleApi:api});

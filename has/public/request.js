@@ -1,5 +1,8 @@
 (() => {
  const $=id=>document.getElementById(id);
+ const params=new URLSearchParams(location.search),embedded=params.get('embedded')==='1'&&window.parent!==window;
+ if(embedded)document.body.classList.add('attendance-embedded');
+ const tellParent=message=>{if(embedded)window.parent.postMessage(message,location.origin);};
  const base=(window.MU_API_BASE||(['localhost','127.0.0.1'].includes(location.hostname)?location.origin:'https://api.mufcapp.net')).replace(/\/$/,'');
  let screen='choose',type='',employees=[],requestId=crypto.randomUUID(),busy=false,pendingPayload=null;
  const label=t=>t==='late'?'Coming Late':'Call Off / Sick';
@@ -18,7 +21,7 @@
   }catch(error){if(controller.signal.aborted)throw Error('The service took too long to respond. Please retry with this page open; the same request reference will be used.');throw error;}
   finally{clearTimeout(timer);}
  }
- async function loadEmployees(){ $('employee').disabled=true;$('continue').disabled=true;$('retry-employees').hidden=true;try{const data=await api('/attendance-api/employees');employees=data.employees;if(!employees.length)throw Error('No employees are available. Please contact your supervisor.');$('employee').replaceChildren(new Option('Select your name',''),...employees.map(e=>new Option(e.name,e.id)));$('employee').disabled=false;$('continue').disabled=false;$('status').textContent='';}catch(e){$('employee').replaceChildren(new Option('Unable to load employees',''));$('status').textContent=e.message;$('retry-employees').hidden=false;}}
+ async function loadEmployees(){ $('employee').disabled=true;$('continue').disabled=true;$('retry-employees').hidden=true;try{const data=await api('/attendance-api/employees');employees=data.employees;if(!employees.length)throw Error('No employees are available. Please contact your supervisor.');$('employee').replaceChildren(new Option('Select your name',''),...employees.map(e=>new Option(e.name,e.id)));if(embedded&&employees.some(e=>e.id===params.get('employee')))$('employee').value=params.get('employee');$('employee').disabled=false;$('continue').disabled=false;$('status').textContent='';}catch(e){$('employee').replaceChildren(new Option('Unable to load employees',''));$('status').textContent=e.message;$('retry-employees').hidden=false;}}
  function updateTime(){if(!$('arrival').value)return;const[h,m]=$('arrival').value.split(':').map(Number);$('arrival-slider').value=h*60+m;const parts=timeLabel($('arrival').value).split(' ');$('time-display').replaceChildren(document.createTextNode(parts[0]+' '),Object.assign(document.createElement('small'),{textContent:parts[1]}));$('arrival-slider').style.setProperty('--arrival-progress',((h*60+m)/1439*100)+'%');}
  function refreshPastArrival(){
   const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Los_Angeles',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
@@ -35,8 +38,8 @@
  $('reason').oninput=()=>{$('reason').setCustomValidity('');$('reason-count').textContent=$('reason').value.length+'/1000';};$('retry-employees').onclick=loadEmployees;$('arrival').oninput=updateTime;
  $('arrival-slider').oninput=()=>{const m=Number($('arrival-slider').value);$('arrival').value=`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;updateTime();};
  $('details-form').onsubmit=e=>{e.preventDefault();const p=payload(),employee=employees.find(e=>e.id===p.employeeId);if(!p.reason){$('reason').setCustomValidity('Please explain why you are submitting this request.');$('reason').reportValidity();return;}if(!employee)return;const fields=[['Employee',employee.name],['Date',dateLabel(p.date)]];if(type==='late')fields.push(['Arrival',timeLabel(p.arrivalTime)]);fields.push(['Reason',p.reason||'No reason provided']);$('review-type').textContent=(type==='late'?'◷  ':'✚  ')+label(type);fill($('review-fields'),fields);show('review');};
- $('submit').onclick=async()=>{if(busy)return;busy=true;pendingPayload??=payload();$('submit').disabled=true;$('back').disabled=true;$('note').disabled=true;$('sending').hidden=false;$('status').textContent='';try{const data=await api('/attendance-api/requests',{method:'POST',body:JSON.stringify(pendingPayload)}),r=data.record;const fields=[['Reference',r.reference],['Type',label(r.type)],['Employee',r.employeeName],['Date',dateLabel(r.date)]];if(r.arrivalTime)fields.push(['Arrival',timeLabel(r.arrivalTime)]);fields.push(['Submitted',new Date(r.submittedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles',dateStyle:'medium',timeStyle:'short'})+' PT']);fill($('receipt'),fields);$('notification-status').textContent=data.notificationPending?'Saved to Google Sheets. Your Discord notification is pending delivery.':'Saved to Google Sheets and sent to your team.';show('success','replace');}catch(e){if(e.status===400){pendingPayload=null;$('note').disabled=false;}$('status').textContent=e.message;}finally{busy=false;$('submit').disabled=false;$('back').disabled=false;$('sending').hidden=true;}};
- $('home').onclick=()=>{reset();$('note').disabled=false;show('choose','replace');loadEmployees();};
+ $('submit').onclick=async()=>{if(busy)return;busy=true;tellParent({attendanceBusy:true});pendingPayload??=payload();$('submit').disabled=true;$('back').disabled=true;$('note').disabled=true;$('sending').hidden=false;$('status').textContent='';try{const data=await api('/attendance-api/requests',{method:'POST',body:JSON.stringify(pendingPayload)}),r=data.record;const fields=[['Reference',r.reference],['Type',label(r.type)],['Employee',r.employeeName],['Date',dateLabel(r.date)]];if(r.arrivalTime)fields.push(['Arrival',timeLabel(r.arrivalTime)]);fields.push(['Submitted',new Date(r.submittedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles',dateStyle:'medium',timeStyle:'short'})+' PT']);fill($('receipt'),fields);$('notification-status').textContent=data.notificationPending?'Saved to Google Sheets. Your Discord notification is pending delivery.':'Saved to Google Sheets and sent to your team.';show('success','replace');}catch(e){if(e.status===400){pendingPayload=null;$('note').disabled=false;}$('status').textContent=e.message;}finally{busy=false;tellParent({attendanceBusy:false});$('submit').disabled=false;$('back').disabled=false;$('sending').hidden=true;}};
+ $('home').onclick=()=>{if(embedded){tellParent({attendanceClose:true});return;}reset();$('note').disabled=false;show('choose','replace');loadEmployees();};
  window.addEventListener('popstate',event=>{
   if(busy||pendingPayload||screen==='success'){
    history.replaceState(historyState(screen),'');
@@ -47,5 +50,5 @@
   if(state?.attendanceRequest===requestId&&['choose','details','review'].includes(state.screen))show(state.screen,'none');
   else show('choose','replace');
  });
- reset();show('choose','replace');loadEmployees();
+ reset();show('choose','replace');loadEmployees();if(embedded&&['late','sick'].includes(params.get('type'))){document.querySelector('[data-type="'+params.get('type')+'"]').click();$('back').hidden=true;$('home').textContent='Done';}
 })();

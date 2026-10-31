@@ -28,7 +28,7 @@
  const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
  const card=make('section');card.id='schedule-standing-notice';card.className='schedule-standing-notice';card.hidden=true;card.setAttribute('aria-labelledby','standing-notice-title');
  const heading=make('div'),title=make('h2','Notice'),edit=make('button','Edit');title.id='standing-notice-title';edit.type='button';edit.hidden=true;heading.className='standing-notice-heading';heading.append(title,edit);
- const content=make('div'),status=make('p');status.setAttribute('role','status');status.className='standing-notice-status';card.append(heading,content,status);document.querySelector('.schedule-heading').before(card);
+ const content=make('div'),status=make('p');status.setAttribute('role','status');status.className='standing-notice-status';card.append(heading,content,status);document.getElementById('clock-in-time').before(card);
  const dialog=make('dialog');dialog.className='schedule-dialog';dialog.setAttribute('aria-labelledby','standing-notice-edit-title');
  dialog.innerHTML='<form><h2 id="standing-notice-edit-title">Edit Notice</h2><label>Reminders<textarea rows="9" maxlength="4000" required></textarea></label><p>One reminder per line. Use **text** for bold text.</p><p role="status"></p><div class="dialog-actions"><button type="button">Cancel</button><button type="submit">Save</button></div></form>';document.body.append(dialog);
  const form=dialog.querySelector('form'),input=dialog.querySelector('textarea'),error=dialog.querySelector('[role=status]'),cancel=dialog.querySelector('[type=button]'),save=dialog.querySelector('[type=submit]');
