@@ -164,3 +164,14 @@
 .date-label-presets .date-preset-pay{background:#075985;color:#fff}
 .date-label-presets .date-preset-holiday{background:#237244;color:#fff}
 .date-label-presets button[aria-pressed=true]{outline:3px solid #3189ed;outline-offset:2px}
+
+/* A raised glossy face, shaded thickness and folded corner give each label depth. */
+.schedule-ribbon-frame .schedule-ribbon-overlay .date-status:not(.date-status-icon){padding:0;border:0;background:transparent;clip-path:none;box-shadow:none;isolation:isolate;filter:drop-shadow(1px 4px 3px #10243b45);text-shadow:0 1px 1px #0005}
+.schedule-ribbon-overlay .date-status-face{position:relative;display:block;padding:5px 16px 5px 10px;clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%);background:linear-gradient(165deg,#ffffff60 0%,#ffffff18 32%,#ffffff00 48%,#00000025 100%),var(--ribbon-color);box-shadow:inset 0 1px 0 #ffffff99,inset 0 -2px 0 #00000035,inset 1px 0 0 #ffffff55}
+.schedule-ribbon-overlay .date-status:has(.date-status-face):before{content:'';position:absolute;inset:0;transform:translateY(4px);clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%);background:linear-gradient(#0004,#0007),var(--ribbon-color);z-index:-1}
+.schedule-ribbon-overlay .date-status:has(.date-status-face):after{content:'';position:absolute;left:0;bottom:-8px;width:7px;height:9px;background:linear-gradient(135deg,#0006,#0001),var(--ribbon-color);clip-path:polygon(0 0,100% 0,100% 100%);z-index:-2}
+.schedule-ribbon-overlay .date-badges:before{content:none}
+@media(max-width:600px){.schedule-ribbon-overlay .date-status-face{padding:3px 8px}}
+@keyframes schedule-typhoon-turn{to{transform:rotate(360deg)}}
+[data-date-icon=typhoon] img,[data-date-label=Typhoon] img{animation:schedule-typhoon-turn 20s linear infinite;transform-origin:center}
+@media(prefers-reduced-motion:reduce){[data-date-icon=typhoon] img,[data-date-label=Typhoon] img{animation:none}}

@@ -59,8 +59,8 @@
  function ribbon(text,cls){
   const label=text.trim().toLowerCase(),icon=/^(new year|lunar new year|chinese new year)$/.test(label)?'firecrackers':label==='typhoon'?'typhoon':null;
   const el=node('span',undefined,cls);
-  if(icon){el.classList.add('date-status-icon');el.dataset.dateIcon=icon;el.title=text;const img=node('img');img.src='/has/assets/schedule-'+icon+'.svg';img.alt=text;img.width=32;img.height=32;el.append(img);return el;}
-  el.textContent=['today','short','holiday'].includes(label)?label.toUpperCase():text;
+  if(icon){el.classList.add('date-status-icon');el.dataset.dateIcon=icon;el.title=text;const img=node('img');img.src=icon==='typhoon'?'/has/assets/schedule-typhoon-cloud-v1.webp':'/has/assets/schedule-'+icon+'.svg';img.alt=text;img.width=32;img.height=32;el.append(img);return el;}
+  const caption=['today','short','holiday'].includes(label)?label[0].toUpperCase()+label.slice(1):text;el.append(node('span',caption,'date-status-face'));
   const palette=['#2563a6','#b64d21','#087e83','#9b3780','#58652c','#6845a8'];let hash=0;for(const c of label)hash=(hash*31+c.charCodeAt(0))>>>0;
   const color=label==='today'?'#7944bc':label==='short'?'#dc263f':/holiday/.test(label)?'#237244':/double pay/.test(label)?'#075985':palette[hash%palette.length];el.style.setProperty('--ribbon-color',color);return el;
  }
