@@ -131,5 +131,5 @@
 
 /* Isolate wide desktop grid paints from the surrounding page while scrolling. */
 @media(min-width:601px){.schedule-grid{contain:layout paint;isolation:isolate}}
-/* Match the month row's actual box to the date row's sticky offset. */
-.schedule-grid{--schedule-month-row-height:32px}.schedule-grid thead .month-heading{height:var(--schedule-month-row-height)}.schedule-grid thead .month-heading th{top:0;box-sizing:border-box;height:var(--schedule-month-row-height);min-height:var(--schedule-month-row-height);max-height:var(--schedule-month-row-height);padding:0 7px;line-height:31px;white-space:nowrap;vertical-align:middle}.schedule-grid thead .month-heading .month-label{line-height:31px;white-space:nowrap;vertical-align:top}.schedule-grid thead .date-heading th{top:var(--schedule-month-row-height)}
+/* Month headings live above the scrolling grids, matching the mobile calendar. */
+.schedule-grid thead .date-heading th{top:0}.schedule-desktop-month{font-size:18px;font-weight:700;color:#173f70;margin:14px 0 10px;line-height:1.4}@media(max-width:600px){.schedule-desktop-month{display:none}}
