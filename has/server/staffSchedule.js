@@ -6,7 +6,7 @@ const roles={K:'K',D:'Management',C:'Check-in',CL:'Check in + Lost and Found',FL
 const colors={K:'#ffff00',D:'#ffff00',C:'#99ff00',CL:'#77933c',FL:'#3333ff',F:'#9999ff',B:'#66b3c2',BL:'#66b3c2',A:'#4f6200',GS:'#9371c7',Q:'#4b183c',EC:'#a9c48b',X:'#ffffff',VAC:'#fff2cc',N:'#000000',CS:'#000000',CO:'#d8def5',TK:'#dddddd'};
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const excluded=row=>[row?.name,row?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));
-const allowed=row=>Boolean(row&&(row.isServerOwner||require('./serverOwners').isOwner(row.loginId)||!excluded(row)&&groups.belongs(row,{station:'LAX',account:'MU'})&&!groups.isHeadquarter(row)));
+const allowed=row=>Boolean(row&&!row.mergedInto&&(row.isServerOwner||require('./serverOwners').isOwner(row.loginId)||!excluded(row)&&groups.belongs(row,{station:'LAX',account:'MU'})&&!groups.isHeadquarter(row)));
 const canEdit=(user,row)=>require('../public/employee-permissions').allowed(row,'schedule.edit');
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function date(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value)fail('Choose a valid date.');return value;}
@@ -18,7 +18,7 @@ function registerStaffSchedule(app,{employees,profiles,authenticate=require('./p
  const put=day=>db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,?,?)').run(day.date,day.revision,JSON.stringify({assignments:day.assignments,budget:day.budget,dateColor:day.dateColor||null,labels:day.labels||[]}));
  db.exec('CREATE TABLE IF NOT EXISTS staff_schedule_roster_order(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,data TEXT NOT NULL)');db.prepare('INSERT OR IGNORE INTO staff_schedule_roster_order VALUES(1,0,?)').run('[]');
  const savedOrder=()=>{const row=db.prepare('SELECT revision,data FROM staff_schedule_roster_order WHERE id=1').get();return {revision:row.revision,ids:JSON.parse(row.data)};};
- const roster=()=>{const rows=orderRoster(employees.get().employees.filter(row=>row.name&&(!excluded(row)||isTestRosterAccount(row))&&groups.belongs(row,{station:'LAX',account:'MU'}))),order=savedOrder(),indices=new Map(order.ids.map((id,i)=>[id,i]));return rows.sort((a,b)=>(indices.get(a.id)??1e9)-(indices.get(b.id)??1e9));};
+ const roster=()=>{const rows=orderRoster(employees.get().employees.filter(row=>!row.mergedInto&&row.name&&(!excluded(row)||isTestRosterAccount(row))&&groups.belongs(row,{station:'LAX',account:'MU'}))),order=savedOrder(),indices=new Map(order.ids.map((id,i)=>[id,i]));return rows.sort((a,b)=>(indices.get(a.id)??1e9)-(indices.get(b.id)??1e9));};
  const sync=createLocalSchedule({db,roles,colors});
  colors.N=colors.CS='#000000';
  // Match picker defaults to the colors actually used by the current team.

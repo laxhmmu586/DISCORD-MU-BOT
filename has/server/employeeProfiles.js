@@ -11,14 +11,14 @@ function createProfileStore(employees){
  CREATE TABLE IF NOT EXISTS employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS employee_link_attempts(uid TEXT PRIMARY KEY,count INTEGER NOT NULL,started INTEGER NOT NULL);`);
  const account=uid=>db.prepare('SELECT * FROM employee_accounts WHERE uid=?').get(uid);
- const linked=user=>{const link=account(user.uid);const row=link&&employees.get().employees.find(row=>row.id===link.employee_id);return row&&{...row,isServerOwner:require('./serverOwners').isOwner(user)};};
+ const linked=user=>{const link=account(user.uid);const row=link&&employees.get().employees.find(row=>row.id===(employees.resolveId?.(link.employee_id)||link.employee_id));return row&&{...row,isServerOwner:require('./serverOwners').isOwner(user)};};
  const profile=row=>({id:row.id,canViewOperations:row.isServerOwner||(require('../public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'})&&!require('../public/employee-account-groups').isHeadquarter(row)),canViewForm:require('./staffSchedule').canEdit(null,row)||require('../public/employee-permissions').allowed(row,'request.newAccess')||require('../public/employee-positions').normalize(row.position)==='Lead',name:row.name,nickname:row.nickname||'',eid:row.eid||'',station:row.station,account:row.account,pbbId:row.pbbId||'',pbbExpiry:row.pbbExpiry||'',pbbMscId:row.pbbMscId||'',pbbMscExpiry:row.pbbMscExpiry||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
  function candidate(user,eid,allowMissing=false){
   requireProfileAccess(user);
   if(user.provider==='google.com'&&!user.emailVerified)fail('A verified Google email is required.',403);
   const rows=employees.get().employees;
   const emailRows=rows.filter(row=>normalize(user.email)&&[normalize(row.email),normalize(row.loginId)].includes(normalize(user.email)));
-  const matches=emailRows.length?emailRows:(eid?rows.filter(row=>row.eid&&row.eid===String(eid).trim()):[]);
+  const candidates=emailRows.length?emailRows:(eid?rows.filter(row=>row.eid&&row.eid===String(eid).trim()):[]),matches=[...new Map(candidates.map(row=>{const target=rows.find(person=>person.id===(row.mergedInto||row.id));return [target.id,target];})).values()];
   if(allowMissing&&matches.length===0)return null;
   if(matches.length!==1){if(!eid&&!emailRows.length)return null;fail('Employee record not found or ambiguous. Please contact an administrator.',403);}
   const row=matches[0];
