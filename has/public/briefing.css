@@ -146,3 +146,5 @@ body.profile-page.briefing-quick main.profile-shell.briefing-shell{margin:0!impo
 @media(max-width:600px){.departure-briefing .briefing-mobile-tabs .mobile-gate-lead{display:flex}}
 
 @media(max-width:600px){.briefing-shell .briefing-mobile-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.briefing-flight-row>.briefing-card:has(#briefing-details){margin:0}}
+
+.departure-time-checks .briefing-card:first-child>span{font-size:13px}@media(max-width:600px){.departure-time-checks .briefing-card:first-child>span{font-size:11px}}
