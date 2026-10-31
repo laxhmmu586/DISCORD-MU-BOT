@@ -46,7 +46,7 @@
   for(const id of ['team','employee-search'])$(id).hidden=!data.canViewAll;$('add-month').hidden=!data.canEdit;$('schedule-add-edit').hidden=!data.canEdit;if(!data.canEdit)closeAddEdit();
   $('schedule-help').textContent=data.canEdit?'Click a duty to choose its letter · Double-click to change color · Drag cells or blank separators to copy/paste · Drag dates/month bar to select full columns · Drag names to reorder.':'Only your own assignments are shown. Use History to view one month at a time.';
   $('coverage-help').textContent='Full team counts · Daily Hour = '+staffScheduleSummary.formula+'. Each Friday–Thursday period adds 40 once, including days folded out of the current view.';
-  drawTable();renderClockIn();renderSync();$('duty-legend').replaceChildren();for(const [code,label] of Object.entries(data.roles)){const entry=node('span',undefined,'legend-entry');entry.append(chip(code,data.colors[code]||'#eeeeee','span','legend-chip'),node('span',label));$('duty-legend').append(entry);}
+  drawTable();renderClockIn();renderSync();$('duty-legend').replaceChildren();for(const [code,label] of Object.entries(data.roles)){const entry=node('span',undefined,'legend-entry');entry.append(chip(code,data.colors[code]||'#eeeeee','span','legend-chip'),node('span',label.replace('🏖️','').trim()));$('duty-legend').append(entry);}
  }
  function ribbon(text,cls){const el=node('span',text,cls),label=text.toLowerCase(),palette=['#2563a6','#b64d21','#087e83','#9b3780','#58652c','#6845a8'];let hash=0;for(const c of label)hash=(hash*31+c.charCodeAt(0))>>>0;const color=label==='today'?'#7944bc':label==='short'?'#dc263f':/holiday/.test(label)?'#237244':/double pay/.test(label)?'#6740a1':palette[hash%palette.length];el.style.setProperty('--ribbon-color',color);return el;}
  function renderClockIn(){
@@ -57,7 +57,7 @@
   for(const duty of staffScheduleSummary.clockInTimes('2026-11-01')){const row=node('div'),code=node('dt',duty.code,'clock-in-code'),color=data.colors[duty.code]||data.colors[duty.code==='G'?'GS':duty.code]||'#eeeeee';code.style.backgroundColor=color;code.style.color=ink(color);row.append(code,node('dd',duty.time));list.append(row);}panel.append(list);
   panel.append(node('p','From March 14, 2027 · All times +1 hour','clock-in-period'));
  }
- function chip(code,color,tag='span',cls='duty'){const el=node(tag,code==='VAC'?'🏖️':code,cls);el.style.backgroundColor=['N','CS'].includes(code)?'#000000':color;el.style.color=['N','CS'].includes(code)?'#ff3535':code==='X'?'#0000ff':ink(color);return el;}
+ function chip(code,color,tag='span',cls='duty'){const el=node(tag,code==='VAC'?'':code,cls);if(code==='VAC'){const img=node('img');img.className='vacation-duty-art';img.src='/assets/vacation-yellow-v1.png';img.alt='Vacation';el.classList.add('vacation-duty');el.append(img);}el.style.backgroundColor=['N','CS'].includes(code)?'#000000':code==='VAC'?'#ffe400':color;el.style.color=['N','CS'].includes(code)?'#ff3535':code==='X'?'#0000ff':ink(color);return el;}
  function mobileColumns(){const nameWidth=92;return {nameWidth,dayWidth:Math.max(28,(($('mobile-schedule').clientWidth||document.querySelector('.schedule-shell').clientWidth-16||innerWidth-16)-nameWidth-18)/7)};}
  function sizeColumns(table){
   const dayWidth=renderedMobile?mobileColumns().dayWidth:54,nameWidth=data.canViewAll?(renderedMobile?mobileColumns().nameWidth:240):0,total=nameWidth+data.days.length*dayWidth,frame=table.parentElement;

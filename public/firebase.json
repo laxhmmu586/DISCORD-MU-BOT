@@ -1344,6 +1344,10 @@
         "destination": "/has/assets/report-timesheet-person-v3.png"
       },
       {
+        "source": "/assets/vacation-yellow-v1.png",
+        "destination": "/has/assets/vacation-yellow-v1.png"
+      },
+      {
         "source": "/assets/request-off-calendar-v1.png",
         "destination": "/has/assets/request-off-calendar-v1.png"
       },
