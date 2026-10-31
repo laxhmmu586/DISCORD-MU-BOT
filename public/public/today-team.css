@@ -5,4 +5,4 @@
 @media(max-width:760px){#home-today-team{top:155px;max-height:calc(100dvh - 185px);padding:14px}#home-today-team-toggle{padding:15px 8px;font-size:15px}}
 
 #home-today-team-list .team-code{flex:0 0 auto;min-width:78px;white-space:nowrap;overflow-wrap:normal;word-break:normal;font-size:28px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;color:#303b70}#home-today-team-list li{min-height:60px}#home-today-team-list .team-name{font-size:18px}
-@media(max-width:480px){#home-today-team-list .team-code{min-width:74px;font-size:24px}#home-today-team-list li{gap:8px;padding:9px 7px}#home-today-team-list .team-avatar{width:28px;height:28px}#home-today-team-list .team-name{font-size:16px}#home-today-team-list .team-shift{font-size:18px}}
+@media(max-width:480px){#home-today-team{right:42px;width:calc(100vw - 50px);padding:12px}#home-today-team-list .team-code{min-width:74px;font-size:24px}#home-today-team-list li{gap:8px;padding:9px 7px}#home-today-team-list .team-avatar{width:28px;height:28px}#home-today-team-list .team-name{font-size:16px}#home-today-team-list .team-shift{font-size:18px}}
