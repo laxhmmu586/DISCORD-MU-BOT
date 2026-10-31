@@ -148,3 +148,5 @@ body.profile-page.briefing-quick main.profile-shell.briefing-shell{margin:0!impo
 @media(max-width:600px){.briefing-shell .briefing-mobile-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.briefing-flight-row>.briefing-card:has(#briefing-details){margin:0}}
 
 .departure-time-checks .briefing-card>span{font-size:13px}@media(max-width:600px){.departure-time-checks .briefing-card>span{font-size:11px}}
+
+.briefing-shell .gate-role textarea,.briefing-shell .gate-role input{color:#fff!important;-webkit-text-fill-color:#fff!important}.briefing-shell .gate-role textarea::placeholder,.briefing-shell .gate-role input::placeholder{color:#fff;opacity:1}
