@@ -1340,6 +1340,10 @@
         "destination": "/has/schedule-live.js"
       },
       {
+        "source": "/assets/report-timesheet-blue-v2.png",
+        "destination": "/has/assets/report-timesheet-blue-v2.png"
+      },
+      {
         "source": "/attendance-embedded.css",
         "destination": "/has/attendance-embedded.css"
       },
