@@ -288,3 +288,10 @@ test('Departure SY booking is exact, refreshes, preserves overrides and freezes 
  assert.equal((await request('sup','/reports',{date:DATE,flight:'MU586',expected:updated.fields})).status,200);
  assert.equal(exported.fields.bookingF,'2');assert.equal(exported.fields.bookingJ,'50');assert.equal(exported.fields.bookingY,'249');assert.equal(exported.fields.configF,'6');assert.equal(exported.fields.infantJ,'');
 });
+
+test('Departure photo reads saved Price reference without changing Arrival photo data',async t=>{
+ const {request}=await fixture(t),image=require('../has/server/briefingImage'),original=image.buildBriefingImage,captured=[];t.after(()=>image.buildBriefingImage=original);image.buildBriefingImage=async(snapshot,options)=>{captured.push({snapshot,options});return Buffer.from('photo-fixture');};
+ const before=(await request('lead','/reference')).data;assert.equal((await request('lead','/reference',{revision:before.revision,values:{'price.2':'$222'},boxes:{price:[{id:'card-price',title:'Extra fee',text:'USD 25'}]}})).status,200);
+ assert.equal((await request('lead','/photo?date='+DATE+'&flight=MU586&direction=departure')).status,200);assert.equal(captured[0].snapshot.priceReference.values['price.2'],'$222');assert.equal(captured[0].snapshot.priceReference.boxes.price[0].text,'USD 25');assert.equal(captured[0].options.photo,true);
+ assert.equal((await request('lead','/photo?date='+DATE+'&flight=MU583&direction=arrival')).status,200);assert(!('priceReference' in captured[1].snapshot));
+});

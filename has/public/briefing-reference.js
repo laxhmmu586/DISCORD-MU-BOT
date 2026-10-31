@@ -20,11 +20,7 @@
  ]))+card('Documents & itinerary',rows([
   ['Any passport + Mainland Travel Permit for Taiwan Residents (TBZ card)','Swipe passport'],['Any passport + Exit-entry Permit (Pink card)','Swipe passport'],['To HKG · same-day transit, no Pink card','Release form'],['To HKG → SZX by bus, no Pink card','Release form'],['240 · itinerary booked separately','Release form'],['240 · last-minute ticket','Release form'],['Travel with children but no seats together','Release form']
  ]));
- const prices=()=>'<p class="reference-intro"><strong class="reference-no-cash">No Cash</strong> · All amounts in USD unless marked CNY.</p>'+card('US–China',rows([
-  ['1st extra bag · 23 kg','$195'],['2nd extra bag · 23 kg','$300'],['Economy overweight · 24–32 kg','$150'],['Business overweight · 33–45 kg','$405'],['Oversize · 159–202 cm','$150'],['Oversize · 203–302 cm','$405'],['Exit seat / first row','$135'],['Platinum card · exit seat / first row','Free']
- ]))+card('US–China–International',rows([
-  ['1st extra bag · 23 kg','$180'],['2nd extra bag · 23 kg','$300'],['Economy overweight · 24–32 kg','$150'],['Oversize · 159–202 cm','$150'],['Oversize · 203–302 cm','$300']
- ]))+card('Economy → Business (I)',rows([['Y / B / M / E','$1,100'],['H / K / L','$2,200'],['N / R / S','$2,700'],['V','$3,020']]))+card('Business → First (F)',rows([['J','$1,000'],['C / D / Q / I','$2,500']]))+card('Special baggage',rows([['1,000 CNY','$150'],['3,500 CNY','$525'],['2,000 CNY','$300'],['4,500 CNY','$674']]))+'<p class="reference-footnote">Special baggage USD amounts follow the supplied reference (exchange rate 0.14988089). All paid extra bags are limited to 23 kg.</p>';
+ const prices=()=>BriefingPrices.html();
  const lostFoundTabs={
   ahl:{title:'Delay Bag (AHL)',content:'<ul class="baggage-reference-list"><li>Baggage Receipt</li><li>If the passenger has a photo of their baggage</li><li>Boarding Pass Picture</li></ul><p>Please ask PAX to provide an address where they will be available to receive the baggage for at least the next 7 days.</p><p>If the passenger is traveling, please also indicate the last date this address will be valid for delivery.</p>'},
   dpr:{title:'Damage Bag (DPR)',content:'<ul class="baggage-reference-list"><li>Baggage Receipt</li><li>Photo of the baggage tag attached to the baggage</li><li>Damaged area</li><li>Boarding Pass Picture</li></ul><p>Damage cases will be handled directly by MU after submission.</p><p>Contact Info<br><a href="mailto:laxllmu@chinaeastern-usa.com">laxllmu@chinaeastern-usa.com</a></p>'},
