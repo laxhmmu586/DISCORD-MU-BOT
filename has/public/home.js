@@ -55,7 +55,7 @@
   new MutationObserver(moveFeatures).observe(header, {childList: true}); moveFeatures();
   if (window.firebase?.apps?.length && typeof firebase.auth === 'function') {
     const accountScript = document.createElement('script'); accountScript.src = '/flight-account.js?v=20261030-visual-followup';
-    const inboxScript = document.createElement('script'); inboxScript.src = '/request-inbox.js?v=20261031-timesheet';
+    const inboxScript = document.createElement('script'); inboxScript.src = '/request-inbox.js?v=20261031-off-range-v3';
     accountScript.async = false; inboxScript.async = false;
     accountScript.onload = () => { const accessScript = document.createElement('script'); accessScript.src = '/has-report-access.js?v=20261030-glass-clean-routes'; document.head.append(accessScript); };
     document.head.append(accountScript, inboxScript);

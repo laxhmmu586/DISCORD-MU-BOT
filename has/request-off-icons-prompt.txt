@@ -1,0 +1,7 @@
+Generated with the built-in imagegen tool. Both assets have transparent backgrounds.
+
+Timesheet prompt: Create one polished 3D Report Timesheet app icon on transparent background. A simplified blue employee bust on the left behind a small upright timesheet clipboard in the lower-right foreground; round head and shoulder shape, not a realistic face. Frosted white form, cyan beveled edges, royal-blue depth, cobalt clip and three blue lines. Premium rounded sculpted materials, glossy highlights, nearly front-facing three-quarter perspective, restrained blue shadows. No clock, calendar grid, text, tile or flat-vector styling. Compact centered icon, readable at 48px.
+Asset: has/public/assets/report-timesheet-person-v3.png
+
+Request Off prompt: One isolated premium 3D desk calendar app icon. Glossy cobalt-blue top, two rounded light-blue binder loops, frosted white face with pale-blue day squares and one coral-red square with white X. A glossy coral vacation badge overlaps bottom right with a white umbrella and lounge chair. Soft rounded materials, blue ambient shadow and cyan edge highlights. Near-front three-quarter view. No words, letters or background tile. Transparent background; readable at 48px.
+Asset: has/public/assets/request-off-calendar-v1.png
