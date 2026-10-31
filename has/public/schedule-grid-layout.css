@@ -133,3 +133,13 @@
 @media(min-width:601px){.schedule-grid{contain:layout paint;isolation:isolate}}
 /* Month headings live above the scrolling grids, matching the mobile calendar. */
 .schedule-grid thead .date-heading th{top:0}.schedule-desktop-month{font-size:18px;font-weight:700;color:#173f70;margin:14px 0 10px;line-height:1.4}@media(max-width:600px){.schedule-desktop-month{display:none}}
+
+/* Keep the desktop month in the existing toolbar's right-hand slot. */
+.schedule-shell .schedule-toolbar{flex-wrap:nowrap}.schedule-shell .schedule-toolbar #schedule-desktop-month{margin:0 0 0 auto;flex:none;white-space:nowrap;font-size:18px}.schedule-shell .schedule-toolbar #employee-search{flex:1 1 180px;min-width:80px;max-width:240px;width:auto}.schedule-shell .schedule-toolbar #team{flex:0 1 180px;min-width:80px;max-width:180px}.schedule-toolbar>button,.schedule-toolbar .schedule-add-edit{white-space:nowrap;flex-shrink:0}
+@media(min-width:601px) and (max-width:1100px){.schedule-shell .schedule-toolbar{gap:5px}.schedule-shell .schedule-toolbar>button,.schedule-shell .schedule-toolbar #schedule-add-edit-tab{font-size:11px;padding:8px}.schedule-shell .schedule-toolbar #schedule-desktop-month{font-size:15px}.schedule-shell .schedule-toolbar #team{max-width:120px;width:100px}.schedule-shell .schedule-toolbar #employee-search{min-width:65px}}
+/* Paint ribbon copies outside the clipped scrolling grids. */
+@media(min-width:601px){.schedule-grid .date-badges{visibility:hidden}}
+.schedule-ribbon-overlay{position:fixed;inset:0;z-index:100;pointer-events:none;overflow:visible}.schedule-ribbon-overlay .date-badges{position:absolute;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:max-content;margin:0;transform:rotate(-12deg);transform-origin:0 10px;filter:drop-shadow(0 3px 3px #75511430)}.schedule-ribbon-overlay .date-status{position:relative;display:block;box-sizing:border-box;width:max-content;margin:0;padding:5px 16px 5px 10px;border:1px solid var(--ribbon-color,#2563a6);border-radius:0;clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%);background:var(--ribbon-color,#2563a6);color:white;font:800 12px/16px 'Segoe UI',sans-serif;letter-spacing:0;white-space:nowrap;text-align:center;box-shadow:0 2px 5px #8b641b25}.schedule-ribbon-overlay .date-badges:before{content:'';position:absolute;left:0;bottom:-5px;width:6px;height:6px;background:#d8a23b;clip-path:polygon(0 0,100% 0,100% 100%)}@media(max-width:600px){.schedule-ribbon-overlay{display:none}}
+@media(min-width:601px){.schedule-shell .schedule-toolbar{margin-bottom:28px}}
+
+.coverage-heading-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:18px 0 10px}.coverage-heading-row #coverage-title,.coverage-heading-row .schedule-desktop-month{margin:0}
