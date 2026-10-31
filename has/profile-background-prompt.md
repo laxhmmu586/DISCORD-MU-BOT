@@ -1,6 +1,6 @@
 # Profile terminal background
 
-Created with the built-in image generation/editing tool from the user-provided airport terminal reference (image 1). Home's team banner is unchanged.
+Created with the built-in image generation/editing tool from the user-provided airport terminal reference (image 1). Initially applied to Profile; subsequently reused for Home at the user's request.
 
 Final assets:
 
