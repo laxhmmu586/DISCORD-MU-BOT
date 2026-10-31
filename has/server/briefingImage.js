@@ -24,9 +24,9 @@ function renderBriefingImageSvg(snapshot,{control=snapshot.direction==='departur
  }
  const sections=control?controlSections(snapshot):require('./briefingPdf').reportSections(snapshot);
  for(const [title,entries,columns] of sections.filter(([title])=>!photo||snapshot.direction!=='departure'||!['Operational Times','Final PAX Count','Delay - Boarding Announcement'].includes(title))){
-  if(photo&&snapshot.direction==='departure'&&['Special Information','Gate Assignment'].includes(title))continue;
+  if(photo&&snapshot.direction==='departure'&&['Special Information','Time Check','Gate Assignment'].includes(title))continue;
   if(photo&&snapshot.direction==='departure'&&title==='Counter Assignment'){assignments(entries,sections.find(([name])=>name==='Gate Assignment')[1]);continue;}
-  if(photo&&snapshot.direction==='departure'&&title==='PAX Booking'){const {summaryLayout,summarySvg}=require('./briefingSummary'),plan=summaryLayout(snapshot),scale=CW/plan.width;parts.push('<g transform="translate('+M+' '+y+') scale('+scale+')">'+summarySvg(snapshot).replace(/^<svg[^>]*>/,'').replace('</svg>','')+'</g>');y+=plan.height*scale+24;continue;}
+  if(photo&&snapshot.direction==='departure'&&title==='PAX Booking'){const {summaryLayout,summarySvg}=require('./briefingSummary'),plan=summaryLayout(snapshot,{photo:true}),scale=CW/plan.width;parts.push('<g transform="translate('+M+' '+y+') scale('+scale+')">'+summarySvg(snapshot,{photo:true}).replace(/^<svg[^>]*>/,'').replace('</svg>','')+'</g>');y+=plan.height*scale+24;continue;}
   parts.push(`<rect x="${M}" y="${y}" width="${CW}" height="42" rx="5" fill="#edf5fc"/>`);text(title.toUpperCase(),M+14,y+7,20,true,'#0878bb');y+=56;
   if(!columns){for(const line of lines(entries||'-',CW-30,22)){text(line,M+15,y,22);y+=31;}y+=18;continue;}
   const gap=12,width=(CW-gap*(columns-1))/columns;

@@ -148,7 +148,7 @@
         ]
       },
       {
-        "source": "/{flights.html,flight-briefing.js,flight-account.js,workspace-header.js,workspace-header.css,briefing.html,briefing.js,briefing.css,briefing-fields.js,briefing-reference.js,briefing-reference.css}",
+        "source": "/{flights.html,flight-briefing.js,flight-account.js,workspace-header.js,workspace-header.css,briefing.html,briefing.js,briefing.css,briefing-fields.js,briefing-prices.js,briefing-reference.js,briefing-reference.css}",
         "headers": [
           {
             "key": "Cache-Control",
@@ -890,6 +890,10 @@
       {
         "source": "/briefing-fields.js",
         "destination": "/has/briefing-fields.js"
+      },
+      {
+        "source": "/briefing-prices.js",
+        "destination": "/has/briefing-prices.js"
       },
       {
         "source": "/briefing-live.js",
