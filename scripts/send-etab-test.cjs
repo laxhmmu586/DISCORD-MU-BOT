@@ -15,8 +15,8 @@ async function main(){
   const rest=new REST({version:'10'}).setToken(process.env.DISCORD_TOKEN);
   const channel=await rest.get(Routes.channel(channelId));console.log(JSON.stringify({testChannel:channel.id,name:channel.name,gateOverride:testTba?'TBA':null}));
   const store=createStateStore(stateDb);let failed=false;
-  const service=createAdvisoryService({getClient:gd.getNextDayInfoGmailClient,readSchedule:gd.readEtabSchedule,nonceScope:(testTba?'test-tba':'test-original')+(revision?':'+revision:''),
-   getEmployees:()=>JSON.parse(employeeDb.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data).employees,
+  const getArrivalTeam=require('../etabSchedule').createArrivalTeamReader({employees:{db:employeeDb,get:()=>JSON.parse(employeeDb.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data)}});
+  const service=createAdvisoryService({getClient:gd.getNextDayInfoGmailClient,getArrivalTeam,nonceScope:(testTba?'test-tba':'test-original')+(revision?':'+revision:''),
    channel:async()=>({id:channelId,send:payload=>rest.post(Routes.channelMessages(channelId),{body:{content:testTba?payload.content.replace(/(GATE:)\S+/,'$1TBA').replace(/\n# 🚨 MSC GATE OPERATION$/,''):payload.content,nonce:payload.nonce,enforce_nonce:payload.enforceNonce,allowed_mentions:payload.allowedMentions}})}),
    store,log:{info:console.log,error:(...a)=>{failed=true;console.error(...a);}}
   });

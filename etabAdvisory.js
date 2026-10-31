@@ -90,7 +90,7 @@ function createStateStore(db) {
   db.exec('CREATE TABLE IF NOT EXISTS etab_advisory_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL)');
   return {get:()=>JSON.parse(db.prepare('SELECT data FROM etab_advisory_state WHERE id=1').get()?.data || '{}'),put:state=>db.prepare('INSERT INTO etab_advisory_state VALUES(1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(JSON.stringify(state))};
 }
-function createAdvisoryService({getClient,readSchedule,getEmployees,channel,store,now=()=>new Date(),log=console,nonceScope='',onAdvisorySent=async()=>{}}) {
+function createAdvisoryService({getClient,getArrivalTeam,channel,store,now=()=>new Date(),log=console,nonceScope='',onAdvisorySent=async()=>{}}) {
   let busy=false,stopped=false,timer,restoredMessageId;
   const messageCache=new Map();
   async function latest(state) {
@@ -131,7 +131,7 @@ function createAdvisoryService({getClient,readSchedule,getEmployees,channel,stor
         const item=await latest(state);if(!item)return;
         const hash=crypto.createHash('sha256').update(JSON.stringify(item.advisory)).digest('hex');
         if(hash===state.lastHash){store.put({...state,lastMessageId:item.messageId,lastReceived:item.received});return;}
-        const ids=arrivalTeam(await readSchedule(),item.advisory.date,getEmployees(),log);
+        const ids=await getArrivalTeam(item.advisory.date);
         state={...state,pending:{...item,hash,ids}};store.put(state);
       }
       const p=state.pending, target=await channel();

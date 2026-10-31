@@ -1349,8 +1349,7 @@ const briefingEtabStore = require('./has/server/briefingEtab').createBriefingEta
 const etabService = etabAdvisory.createAdvisoryService({
   onAdvisorySent: (advisory,metadata) => briefingEtabStore.accept(advisory,metadata),
   getClient: require('./googleDrive').getNextDayInfoGmailClient,
-  readSchedule: require('./googleDrive').readEtabSchedule,
-  getEmployees: () => pbbService.employees.get().employees,
+  getArrivalTeam: require('./etabSchedule').createArrivalTeamReader({employees:pbbService.employees}),
   channel: () => client.channels.fetch(process.env.ETAB_DISCORD_CHANNEL_ID || '1252026975720046655'),
   store: etabAdvisory.createStateStore(pbbService.store.db)
 });
