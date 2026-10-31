@@ -15,6 +15,7 @@
  document.addEventListener('click',event=>{if(!panel.hidden&&!panel.contains(event.target)&&!toggle.contains(event.target)){generation++;close();}});
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!panel.hidden){generation++;close(true);}});
  function profileChanged(context){generation++;clear();const {profile,user}=context||{};eligible=Boolean(user&&profile&&(profile.canViewOperations??(profile.station==='LAX'&&profile.account==='MU')));toggle.hidden=!eligible;if(!eligible)close();else void refresh();}
- window.addEventListener('workspace-profile',event=>profileChanged(event.detail));if(window.workspaceProfile)profileChanged(window.workspaceProfile);
+ const auth=window.firebase?.apps?.length&&window.firebase?.auth?firebase.auth():null;
+ auth?.onAuthStateChanged(async user=>{profileChanged(null);if(!user)return;const run=generation;try{const result=await window.employeeProfileApi();if(run!==generation||auth.currentUser?.uid!==user.uid)return;profileChanged({profile:result.profile,user});}catch{}});
  window.addEventListener('focus',()=>void refresh());document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh();});setInterval(()=>{if(!document.hidden)void refresh();},60000);
 })();

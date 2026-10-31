@@ -22,7 +22,7 @@ async function serve(){
  try{
   page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));await page.clock.setFixedTime(new Date(DATE+'T18:00:00Z'));
   await page.route('**/www.gstatic.com/**',r=>r.fulfill({body:'',contentType:'text/javascript'}));
-  await page.route('**/__/firebase/init.js',r=>r.fulfill({contentType:'text/javascript',body:`window.MU_API_BASE=${JSON.stringify(origin)};const user={uid:'sup',email:'fixture@example.test',providerData:[],getIdToken:async()=>'sup'};window.firebase={apps:[{}],auth:()=>({currentUser:user,onAuthStateChanged:fn=>{setTimeout(()=>fn(user),0);return ()=>{};}})};`}));
+  await page.route('**/__/firebase/init.js',r=>r.fulfill({contentType:'text/javascript',body:`window.MU_API_BASE=${JSON.stringify(origin)};const user={uid:'sup',email:'fixture@example.test',providerData:[],getIdToken:async()=>'sup'};const callbacks=[],fixtureAuthState={currentUser:user,onAuthStateChanged:fn=>{callbacks.push(fn);setTimeout(()=>fn(fixtureAuthState.currentUser),0);return ()=>{};}};window.fixtureSignOut=()=>{fixtureAuthState.currentUser=null;for(const fn of callbacks)fn(null);};window.firebase={apps:[{}],auth:()=>fixtureAuthState};`}));
   fs.mkdirSync('.verification/briefing-editing',{recursive:true});
   await page.request.post(origin+'/test-reset');await page.goto(origin+'/briefing.html');await page.locator('.roster-person').first().waitFor();
   for(const width of [1440,390]){await page.setViewportSize({width,height:1000});for(const direction of ['arrival','departure']){
@@ -47,9 +47,12 @@ async function serve(){
   await page.request.post(origin+'/test-booking',{data:{bookingF:'2',bookingJ:'56',bookingY:'249'}});await page.waitForFunction(()=>document.querySelector('[data-field="bookingF"]').value==='2');assert.equal(await page.locator('[data-field="bookingJ"]').inputValue(),'50');
   await page.reload();await page.locator('#arrival-content').waitFor({state:'visible'});await page.locator('#departure-tab').click();await page.waitForFunction(()=>document.querySelector('[data-field="bookingJ"]').value==='50');
   await page.locator('[data-field="bookingJ"]').fill('');await page.locator('h1').click();await page.waitForFunction(()=>document.querySelector('[data-field="bookingJ"]').value==='56');
-  console.log('Checking Home');await page.goto(origin+'/home.html');await page.evaluate(()=>window.dispatchEvent(new CustomEvent('workspace-profile',{detail:{user:{uid:'sup'},profile:{station:'LAX',account:'MU',canViewOperations:true}}})));
+  console.log('Checking index.html Today Team');await page.addInitScript(()=>sessionStorage.setItem('mufc-online-flight',JSON.stringify({flightNo:'MU586',flightDate:'31OCT26'})));
+  await page.route('**/search?*',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({sy:{flightNo:'MU586',flightDate:'31OCT26',gate:'132',sd:'1230',ed:'1230'},rows:[]})}));
+  await page.route('**/sy-live-stream',r=>r.fulfill({contentType:'text/event-stream',body:': heartbeat\n\n'}));
+  await page.goto(origin+'/index.html');assert.equal(new URL(page.url()).pathname,'/index.html');await page.locator('#home-today-team-toggle').waitFor({state:'visible'});
   for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await page.locator('#home-today-team-toggle').click();await page.locator('#home-today-team-list li').first().waitFor();assert.equal(await page.locator('#home-today-team-list li').count(),2);assert(await page.locator('#home-today-team').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth;}));await page.screenshot({path:'.verification/briefing-editing/home-team-'+width+'.png'});await page.keyboard.press('Escape');assert.equal(await page.locator('#home-today-team').isVisible(),false);}
-  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('workspace-profile',{detail:{user:null,profile:null}})));assert.equal(await page.locator('#home-today-team-toggle').isVisible(),false);
-  assert.deepEqual(errors,[]);console.log('PASS: desktop/mobile Arrival/Departure retain focus, caret, Chinese text and saved values across live updates; SY bookings refresh and preserve manual overrides; homepage Today Team works at desktop/mobile widths and clears on sign-out.');
+  await page.route('**/login.html*',r=>r.fulfill({contentType:'text/html',body:'Signed out'}));await page.evaluate(()=>window.fixtureSignOut());await page.waitForURL('**/login.html*');assert.equal(await page.locator('#home-today-team-toggle').count(),0);
+  assert.deepEqual(errors,[]);console.log('PASS: desktop/mobile Arrival/Departure retain focus, caret, Chinese text and saved values across live updates; SY bookings refresh and preserve manual overrides; index.html Today Team works at desktop/mobile widths and clears on sign-out.');
  }finally{await browser.close();fixture?.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
