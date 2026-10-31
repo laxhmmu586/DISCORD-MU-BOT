@@ -3,14 +3,16 @@ const positions=require('../public/employee-positions');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 function registerOrganization(app,{store,accessFor,scopedView,onChange}){
   const db=store.db;
+  db.exec('CREATE TABLE IF NOT EXISTS employee_google_link_audit(id INTEGER PRIMARY KEY,uid TEXT NOT NULL,source_employee_id TEXT NOT NULL,target_employee_id TEXT NOT NULL,actor TEXT NOT NULL,at TEXT NOT NULL)');
+  const googleAccounts=()=>db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='employee_accounts'").get()?db.prepare("SELECT uid,employee_id FROM employee_accounts WHERE provider='google.com'").all():[];
   db.exec('CREATE TABLE IF NOT EXISTS employee_reporting(employee_id TEXT PRIMARY KEY,manager_id TEXT NOT NULL)');
   db.exec('CREATE TABLE IF NOT EXISTS employee_organization_nodes(employee_id TEXT PRIMARY KEY,created INTEGER NOT NULL DEFAULT 0,inserted INTEGER NOT NULL DEFAULT 0,unassigned INTEGER NOT NULL DEFAULT 0)');
   const rows=()=>{const edges=new Map(db.prepare('SELECT employee_id,manager_id FROM employee_reporting').all().map(e=>[e.employee_id,e.manager_id])),flags=new Map(db.prepare('SELECT * FROM employee_organization_nodes').all().map(row=>[row.employee_id,row]));const all=store.get().employees.map(row=>({...row,reportsTo:edges.get(row.id)||'',isInserted:!!flags.get(row.id)?.inserted,createdForOrganization:!!flags.get(row.id)?.created,unassigned:!!flags.get(row.id)?.unassigned,isServerOwner:require('./serverOwners').isOwner(row.loginId),isAdministrator:require('./employees').ADMIN_EMAILS.has(String(row.loginId||'').toLowerCase())}));for(const row of all){const manager=all.find(r=>r.id===row.reportsTo);if(positions.normalize(row.position)==='Agent'&&manager?.position==='Supervisor'&&row.station===manager.station&&row.account===manager.account)row.reportsTo=model.supervisorGroup(row);if(positions.normalize(row.position)==='Agent'&&!row.reportsTo&&!row.unassigned&&all.some(manager=>manager.id!==row.id&&!manager.unassigned&&positions.normalize(manager.position)==='Supervisor'&&manager.station===row.station&&manager.account===row.account))row.reportsTo=model.supervisorGroup(row);}return model.applyDefaultReporting(all);};
   const view=access=>{
-    const data=store.get(),all=rows(),scoped=scopedView({...data,employees:all},access);
+    const data=store.get(),all=rows(),scoped=scopedView({...data,employees:all},access),googleIds=new Set(access.canManagePending?googleAccounts().map(link=>link.employee_id):[]);
     for(const row of [...scoped.employees]){let next=row;const seen=new Set();while(next&&!seen.has(next.id)){seen.add(next.id);const parents=model.reportingManagers(next,all);for(const parent of parents)if(!scoped.employees.some(person=>person.id===parent.id))scoped.employees.push(parent);next=parents.length===1?parents[0]:null;}}
     // Only fields needed by HR are returned; private contacts and sign-in credentials stay out of this view.
-    return {revision:data.revision,accounts:scoped.accounts.map(account=>({...account,employeeCount:all.filter(row=>require('../public/employee-account-groups').belongs(row,account)).length})),access,employees:scoped.employees.map(({id,name,nickname,position,station,account,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,permissionOverrides})=>({id,name,nickname,position,station,account,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,permissionOverrides}))};
+    return {revision:data.revision,accounts:scoped.accounts.map(account=>({...account,employeeCount:all.filter(row=>require('../public/employee-account-groups').belongs(row,account)).length})),access,employees:scoped.employees.map(({id,name,nickname,position,station,account,additionalAccounts,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,permissionOverrides})=>({id,name,nickname,position,station,account,additionalAccounts,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,permissionOverrides,...(access.canManagePending?{hasGoogleLogin:googleIds.has(id)}:{})}))};
   };
   app.get('/employee-admin-api/organization',(req,res)=>res.json(view(req.employeeAccess)));
   const save=db.transaction(req=>{
@@ -19,8 +21,9 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange}){
     if(body.revision!==current.revision)fail('Organization changed. Reload before saving.',409);
     const original=all.find(r=>r.id===body.id);
     if(!original||!model.canEdit(original,access,all))fail('You can only edit people below you in your reporting line.',403);
-    const allowed=['name','nickname','position','companyEmail','station','account','reportsTo','pbbId','pbbExpiry','pbbMscId','pbbMscExpiry'];
+    const allowed=['name','nickname','position','companyEmail','station','account','additionalAccounts','reportsTo','pbbId','pbbExpiry','pbbMscId','pbbMscExpiry'];
     if(!body.changes||Object.keys(body.changes).some(key=>!allowed.includes(key)))fail('Invalid employee changes.');
+    if(access.mode!=='admin'&&Object.hasOwn(body.changes,'additionalAccounts'))fail('Only an administrator can change additional accounts.',403);
     const next={...original,...body.changes};
     if(!model.titlesFor(original,access,all).includes(positions.normalize(next.position)))fail('Choose a permitted title below the reporting manager and above direct reports.',403);
     if(!String(next.name||'').trim())fail('Enter the employee name.');
@@ -38,6 +41,25 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange}){
     return view(accessFor(req.employeeAdmin));
   });
   app.post('/employee-admin-api/organization',(req,res)=>{try{const data=save(req);res.json(data);onChange();}catch(error){res.status(error.status||400).json({error:error.message});}});
+  const linkGoogle=db.transaction(req=>{
+    const access=accessFor(req.employeeAdmin),body=req.body||{},current=store.get();
+    if(access?.mode!=='admin'||!access.canManagePending)fail('Only the owner can link Google logins to existing employees.',403);
+    if(body.revision!==current.revision)fail('Employee data changed. Reload before linking the Google login.',409);
+    const all=rows(),source=all.find(row=>row.id===body.id),target=all.find(row=>row.id===body.employeeId);
+    if(!source||!target||source.id===target.id)fail('Choose a different existing employee.');
+    if(source.id===access.employeeId||target.id===access.employeeId||source.isAdministrator||source.isServerOwner||target.isAdministrator||target.isServerOwner||!model.canEdit(source,access,all)||!model.canEdit(target,access,all))fail('Administrator and owner logins cannot be linked through this action.',403);
+    if(!target.name.trim()||target.createdForOrganization)fail('Choose a named existing employee profile.');
+    const links=googleAccounts(),link=links.find(row=>row.employee_id===source.id);
+    if(!link)fail('This employee no longer has a Google login. Reload before linking.',409);
+    if(links.some(row=>row.employee_id===target.id))fail('The selected employee already has a Google login.',409);
+    db.prepare("UPDATE employee_accounts SET employee_id=? WHERE uid=? AND employee_id=? AND provider='google.com'").run(target.id,link.uid,source.id);
+    // Keep both employee records and all operational history intact. Only the
+    // Google sign-in changes; the destination's password login remains valid.
+    store.save({revision:current.revision,employees:current.employees},req.employeeAdmin);
+    db.prepare('INSERT INTO employee_google_link_audit(uid,source_employee_id,target_employee_id,actor,at) VALUES(?,?,?,?,?)').run(link.uid,source.id,target.id,req.employeeAdmin.uid||req.employeeAdmin.email,new Date().toISOString());
+    return {...view(accessFor(req.employeeAdmin)),selectedId:target.id};
+  });
+  app.post('/employee-admin-api/organization/link-google',(req,res)=>{try{const data=linkGoogle(req);res.json(data);onChange();}catch(error){res.status(error.status||400).json({error:error.message});}});
   const insert=db.transaction(req=>{
     const current=store.get(),access=accessFor(req.employeeAdmin);if(!access)fail('Employee administrator access required.',403);
     if(req.body.revision!==current.revision)fail('Organization changed. Reload before inserting a level.',409);
