@@ -27,3 +27,5 @@ The general recharge reason and individual row remarks are independent. General 
 The SUMMARY page ends at TOTAL and does not display the Charge sheets list. Date buttons open the daily editor, where saved charges can still be printed or deleted. A selector inside the editor exposes multiple charges on the same date. Arrow keys move to adjacent cells without changing numeric values. Tab moves right and wraps from the final remark column to the next name row; Shift+Tab reverses that movement. The fill handle is excluded from the Tab order. At the first/last table cell, Tab can leave the grid normally.
 
 Set flight numbers applies one value to every summary date and the primary flight on existing daily charge sheets in the current account/month, including new dated forms and Excel exports. Other flight groups, times and charges are preserved. Revision checks prevent overwriting concurrent edits.
+
+Print for signature uses A4 portrait with 8mm margins. The complete 71-row Daily Log / Rechargeable Hours form fits on a single vertical sheet.
