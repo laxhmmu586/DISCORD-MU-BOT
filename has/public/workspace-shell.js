@@ -13,7 +13,7 @@
   header.append(account);
   const navigation = document.createElement('nav'); navigation.className = 'top-nav'; navigation.setAttribute('aria-label', 'Main navigation');
   navigation.innerHTML = '<a href="/home">Home</a><a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1">HR</a><details class="department-nav" data-department="finance" aria-disabled="true" inert><summary aria-disabled="true" tabindex="-1">Finance</summary><div class="department-menu"><p>Finance</p><a href="/has-report">Report</a></div></details><span class="top-nav-placeholder" aria-disabled="true">QA</span>';
-  navigation.hidden = ['/profile','/profile.html','/profile/'].includes(current);
+
   header.querySelector('.topbar-date').before(navigation);
   if(!document.querySelector('script[src*="department-access.js"]')){const access=document.createElement('script');access.src='/department-access.js?v=20261030-access';document.head.append(access);}
   const admin = sidebar.querySelector('#profile-admin-nav');

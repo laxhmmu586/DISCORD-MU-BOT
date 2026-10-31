@@ -36,7 +36,7 @@
     const label=profile?.nickname||profile?.name||user?.displayName||'Account';host.querySelector('#current-user').textContent=label;host.querySelector('.flight-account-name').textContent=label;
     avatar.replaceChildren();if(profile?.avatar){const img=document.createElement('img');img.alt='';img.src=profile.avatar;avatar.append(img);}else avatar.textContent=label.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
   }
-  const headerScript=document.createElement('script');headerScript.src='/workspace-header.js?v=20261030-profile-top-links';document.head.append(headerScript);
+  const headerScript=document.createElement('script');headerScript.src='/workspace-header.js?v=20261030-mobile-navigation';document.head.append(headerScript);
   window.addEventListener('employee-profile-updated',event=>renderProfile(event.detail));
   auth?.onAuthStateChanged(async user=>{
     const generation=++profileGeneration;activeScope=null;try{if(user)activeScope=JSON.parse(sessionStorage.getItem('workspace-account:'+user.uid)||'null');}catch{}

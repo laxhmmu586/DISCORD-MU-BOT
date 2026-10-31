@@ -217,3 +217,12 @@ body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
 /* Keep North America and the departing aircraft visible in the wide hero. */
 .home-overview:before{background-position:center,center,right top}
 @media(max-width:760px){.home-overview:before{background-position:center,center,70% top}}
+
+/* Mobile operations precede Home in a horizontally scrollable row. */
+.home-topbar .top-nav>.mobile-operation{display:none}
+@media(max-width:760px){
+ .home-topbar .top-nav,.workspace-glass.profile-page .profile-topbar>.top-nav{display:flex;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;justify-content:flex-start;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+ .home-topbar .top-nav>*,.workspace-glass .profile-topbar>.top-nav>*{flex-shrink:0}
+ .home-topbar .top-nav>.mobile-operation{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+ .home-topbar .top-nav>.mobile-operation .art-icon{width:24px;height:24px;flex:none}
+}
