@@ -1,4 +1,4 @@
-@import url('/home.css?v=20261030-hr-report');
+@import url('/home.css?v=20261030-mobile-navigation');
 @import url('/approval-glass.css?v=20261030-status-icons');
 
 /* The home design system surrounds existing editors without changing their geometry or data. */
@@ -118,3 +118,12 @@ body.workspace-glass.profile-page{display:flow-root;min-width:320px;min-height:1
 
 /* Team and policy cards use the same glass treatment as workspace links. */
 .workspace-glass .briefing-roster .roster-person{border:1px solid #ffffffed!important;border-radius:14px!important;background:linear-gradient(120deg,#ffffffbb,#e6f0ff80)!important;box-shadow:inset 0 1px 1px #fff,0 4px 12px #658bc418!important;color:#3b608d!important;transition:background .18s,box-shadow .18s,border-color .18s}.workspace-glass .briefing-roster .roster-person:hover{background:linear-gradient(120deg,#fffffff2,#d8e9ffbd)!important;box-shadow:inset 0 1px #fff,0 6px 15px #5887c425!important}.workspace-glass .briefing-roster .roster-person[aria-pressed=true]{border-color:#82b7f7!important;background:linear-gradient(120deg,#ffffffed,#d3e6ffb8)!important;box-shadow:inset 0 1px white,0 0 0 2px #4c96ef14,0 5px 14px #5987c422!important;color:#176bd6!important}.workspace-glass .briefing-person-avatar{border:2px solid white;background:linear-gradient(135deg,#eef8ff,#c1ddff);box-shadow:0 3px 8px #5482bd20}.workspace-glass .roster-shift{border:1px solid #ffffffb3;border-radius:7px;box-shadow:0 2px 5px #4b77ac16;padding:3px;line-height:1.2}.workspace-glass .paf-policy-picker{border:1px solid #ffffffed;border-radius:21px;background:linear-gradient(130deg,#ffffffbd,#e5efff9c);box-shadow:inset 0 1px #fff,0 8px 24px #5780bc12;backdrop-filter:blur(14px)}.workspace-glass .paf-policy-picker .paf-policy-card{border:1px solid #ffffffeb!important;border-radius:15px!important;background:linear-gradient(120deg,#ffffffbf,#e4efff7d)!important;box-shadow:inset 0 1px #fff,0 4px 12px #5d87bf15!important;color:#3d628e!important;padding:13px 14px;margin-bottom:11px;transition:background .18s,box-shadow .18s}.workspace-glass .paf-policy-picker .paf-policy-card:hover,.workspace-glass .paf-policy-picker .paf-policy-card:focus-visible{border-color:#91bcf2!important;background:linear-gradient(120deg,#fffffff0,#d9eaffb8)!important;box-shadow:inset 0 1px #fff,0 6px 15px #5787c42b!important}.workspace-glass .paf-policy-picker .paf-policy-card strong{color:#2d7cd4}.workspace-glass .paf-policy-picker input{border:1px solid white;border-radius:11px;background:#ffffffa3;color:#4a6e9b;box-shadow:inset 0 1px white,0 3px 9px #5480b410}
+
+/* Mirror sidebar operations before Home on phones, preserving one scrollable row. */
+.home-topbar .top-nav>.mobile-operation{display:none}
+@media(max-width:760px){
+ .home-topbar .top-nav,.workspace-glass.profile-page .profile-topbar>.top-nav{display:flex;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;justify-content:flex-start;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+ .home-topbar .top-nav>*,.workspace-glass .profile-topbar>.top-nav>*{flex-shrink:0}
+ .home-topbar .top-nav>.mobile-operation{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+ .home-topbar .top-nav>.mobile-operation .art-icon{width:24px;height:24px;flex:none}
+}
