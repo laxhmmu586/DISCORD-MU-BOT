@@ -1,0 +1,7 @@
+Vacation icon generated and edited with the built-in imagegen tool.
+
+Generation prompt: Square yellow Vacation schedule-cell icon. Saturated lemon-yellow background (#FFE400), gently rounded corners, centered glossy white 3D beach umbrella and reclining lounge chair. Simple thick forms readable at 32px, subtle warm golden shadows, no text, calendar, people or scenery.
+
+Final edit prompt: Change only the umbrella canopy to alternating glossy coral-red (#FF4545) and white radial panels. Keep the white lounge chair and pole, yellow background, rounded square shape, composition and premium 3D finish.
+
+Final asset: has/public/assets/vacation-yellow-v1.png
