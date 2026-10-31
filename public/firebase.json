@@ -1340,6 +1340,22 @@
         "destination": "/has/schedule-live.js"
       },
       {
+        "source": "/attendance-embedded.css",
+        "destination": "/has/attendance-embedded.css"
+      },
+      {
+        "source": "/schedule-quick-access.js",
+        "destination": "/has/schedule-quick-access.js"
+      },
+      {
+        "source": "/schedule-quick-access.css",
+        "destination": "/has/schedule-quick-access.css"
+      },
+      {
+        "source": "/hr-permission-manager.css",
+        "destination": "/has/hr-permission-manager.css"
+      },
+      {
         "source": "/schedule-notices.js",
         "destination": "/has/schedule-notices.js"
       },
