@@ -1,0 +1,5 @@
+Generated with the built-in imagegen tool, transparent background.
+
+Prompt: Create one production-ready transparent PNG app icon for Report Timesheet, matching a polished blue 3D office dashboard icon family. A small thick frosted white clipboard with bright cyan bevels, royal-blue edge depth, a rounded luminous blue clip at top, three blue timesheet lines, and a small glossy cobalt clock badge overlapping the bottom-right corner. Slight three-quarter isometric perspective, front face nearly straight, rounded corners, white specular highlights, soft blue ambient shadow. Saturated electric blue and cyan with pale white-blue surfaces. Looks like high-end 3D calendar/document icons used in an airport operations web sidebar. No person silhouette, no letters, no text, no background tile or frame. Single centered isolated object, generously fills canvas with about 10% transparent margin; readable at 48px. Transparent background.
+
+Asset: has/public/assets/report-timesheet-blue-v2.png
