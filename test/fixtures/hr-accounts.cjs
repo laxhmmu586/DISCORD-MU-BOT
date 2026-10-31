@@ -19,11 +19,11 @@ async function createFixture(port=0){
  db.prepare('INSERT INTO staff_schedule_days VALUES(?,0,?)').run('2026-10-31',JSON.stringify({assignments:{bm:{code:'D'},existing:{code:'C'},signup:{code:'A'}}}));
  const initial=db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data,links=db.prepare('SELECT * FROM employee_accounts').all();
  app.post('/test-reset',(req,res)=>{db.transaction(()=>{db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(initial);db.exec('DELETE FROM employee_accounts;DELETE FROM employee_google_link_audit;DELETE FROM employee_profile_merges');const insert=db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)');for(const row of links)insert.run(row.uid,row.employee_id,row.provider,row.created_at);})();res.json({ok:true});});
- app.get('/profile-api',(req,res)=>res.json({state:'ready',profile:{name:'Owner',station:'LAX',account:'MU',canViewOperations:true,canViewForm:true}}));app.get('/has-report-api/context',(req,res)=>res.json({permissions:{},canAdmin:true}));
+ app.get('/profile-api',(req,res)=>{const uid=String(req.headers.authorization||'').replace(/^Bearer /,'');res.json(profiles.status({uid,email:uid==='owner'?'lake@mu.com':uid+'@example.test',provider:'password'}));});app.get('/has-report-api/context',(req,res)=>res.json({permissions:{},canAdmin:true}));
  app.use(require('../../has/static').withShared(require('node:path').join(__dirname,'../../public/public')));
  const server=app.listen(port,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
  const origin='http://127.0.0.1:'+server.address().port;
  const request=async(role,path='',body)=>{const response=await fetch(origin+'/employee-admin-api/organization'+path,{method:body?'POST':'GET',headers:{...(role?{Authorization:role}:{}),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,data:await response.json()};};
- return {db,store,profiles,origin,request,get changes(){return changes;},close(){server.closeAllConnections();server.close();db.close();}};
+ return {app,db,store,profiles,origin,request,get changes(){return changes;},close(){server.closeAllConnections();server.close();db.close();}};
 }
 module.exports={createFixture};

@@ -5,6 +5,14 @@
   const rank=title=>stationTitles.indexOf(normalize(title));
   const supervisorGroup=row=>'team:'+row.station+':'+row.account+':Supervisor';
   const isGroup=id=>typeof id==='string'&&id.startsWith('team:');
+  const sameScope=(a,b)=>String(a?.station||'').toUpperCase()===String(b?.station||'').toUpperCase()&&String(a?.account||'').toUpperCase()===String(b?.account||'').toUpperCase();
+  const membershipIndex=(row,scope)=>[row,...(row.additionalAccounts||[])].findIndex(value=>sameScope(value,scope));
+  function membershipView(row,rows,scope){
+    if(!scope)return row;const slot=membershipIndex(row,scope);if(slot<=0)return row;
+    const saved=(row.membershipReporting||[]).find(value=>sameScope(value,scope)),supervisors=rows.filter(person=>normalize(person.position)==='Supervisor'&&membershipIndex(person,scope)>=0&&!(sameScope(person,scope)?person.unassigned:(person.membershipReporting||[]).find(value=>sameScope(value,scope))?.unassigned));
+    return {...row,mainScope:{station:row.station,account:row.account},station:scope.station,account:scope.account,membershipSlot:slot,reportsTo:saved?.reportsTo??(normalize(row.position)==='Agent'&&supervisors.length?supervisorGroup(scope):''),unassigned:saved?.unassigned??false,isInserted:false};
+  }
+  const forWorkspace=(rows,scope)=>rows.map(row=>membershipView(row,rows,scope));
   function applyDefaultReporting(rows){return rows.map(row=>{
     if(row.reportsTo||row.unassigned||normalize(row.position)!=='Business Manager')return row;
     const eligible=rows.filter(manager=>manager.id!==row.id&&!manager.unassigned&&normalize(manager.position)==='General Manager'&&!descendants(row.id,rows).has(manager.id));
@@ -30,6 +38,7 @@
   }
   function validateLine(row,managerId,rows){
     if(!managerId)return '';
+    if(row.membershipSlot>0&&normalize(row.position)==='Agent'&&managerId!==supervisorGroup(row))throw Error('Choose the Supervisor team for this account.');
     if(isGroup(managerId)){
       if(managerId!==supervisorGroup(row)||!['Lead','Agent'].includes(normalize(row.position)))throw Error('Choose the Supervisor team in this employee’s account.');
       const managers=reportingManagers({...row,reportsTo:managerId},rows);if(!managers.length)throw Error('Add a Supervisor to this account first.');
@@ -45,7 +54,7 @@
   }
   function managersFor(row,access,rows){const managers=rows.filter(manager=>{if(normalize(row.position)==='Agent'&&normalize(manager.position)==='Supervisor')return false;if(access.mode!=='admin'&&manager.id!==access.employeeId&&!canEdit(manager,access,rows))return false;try{validateLine(row,manager.id,rows);return true;}catch{return false;}});
     if(['Agent','Lead'].includes(normalize(row.position))){const id=supervisorGroup(row);try{validateLine(row,id,rows);const members=reportingManagers({...row,reportsTo:id},rows);if(access.mode==='admin'||members.some(manager=>manager.id===access.employeeId||canEdit(manager,access,rows)))managers.unshift({id,name:'All Supervisors · '+members.map(member=>member.name).join(', '),position:'Supervisor team',station:row.station,account:row.account});}catch{}}
-    return managers;
+    return row.membershipSlot>0&&normalize(row.position)==='Agent'?managers.filter(manager=>manager.id===supervisorGroup(row)):managers;
   }
   function insertionPlan(targetId,position,name,access,rows){
     const targets=isGroup(targetId)?rows.filter(row=>normalize(row.position)==='Supervisor'&&supervisorGroup(row)===targetId):rows.filter(row=>row.id===targetId);
@@ -81,5 +90,5 @@
     for(const row of next)if(row.reportsTo)validateLine(row,row.reportsTo,next);
     return {employees:next};
   }
-  return {applyDefaultReporting,descendants,canEdit,titlesFor,validateLine,managersFor,rank,supervisorGroup,isGroup,reportingManagers,insertionPlan,assignmentPlan,removalPlan,assignable};
+  return {sameScope,membershipIndex,membershipView,forWorkspace,applyDefaultReporting,descendants,canEdit,titlesFor,validateLine,managersFor,rank,supervisorGroup,isGroup,reportingManagers,insertionPlan,assignmentPlan,removalPlan,assignable};
 });

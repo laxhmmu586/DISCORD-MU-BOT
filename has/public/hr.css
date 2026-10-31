@@ -44,3 +44,5 @@
 #person-merge-action{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#61779e}#person-merge-action[hidden]{display:none!important}#merge-person{padding:10px 22px;border:0;border-radius:9px;background:#626bff;color:white;font:600 13px Segoe UI,sans-serif;cursor:pointer}#merge-person:disabled{opacity:.6;cursor:wait}
 
 #person-merge-target{min-width:0;overflow-wrap:anywhere}#merge-person{flex:none}
+
+.org-membership-badge{position:absolute;left:8px;top:8px;border:1px solid #c8d6ff;border-radius:6px;padding:3px 6px;background:#e5ebff;color:#5867aa;font:600 10px Segoe UI,sans-serif;white-space:nowrap}.hr-person-heading{position:relative}
