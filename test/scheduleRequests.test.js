@@ -8,7 +8,7 @@ async function fixture(t){
  const request=async(user,path='',body)=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/staff-schedule-api'+path,{method:body?'POST':'GET',headers:{authorization:user,'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,data:await response.json()};};
  const seed=(date,assignments)=>db.prepare('INSERT OR REPLACE INTO staff_schedule_days VALUES(?,0,?)').run(date,JSON.stringify({assignments,budget:61,dateColor:'#aabbcc',labels:['Holiday']}));
  const configure=async(id,keys,secondaryHours=0)=>{const config=(await request('sup','/requests/settings?period='+DATE)).data;return request('sup','/requests/settings',{revision:config.revision,employeeId:id,period:DATE,capabilities:keys||config.shifts.map(s=>s.key),secondaryHours,shiftHours:{'K|#ffff00':8,'TK|#dddddd':8}});};
- const submit=(user,type='trade',extra={})=>request(user,'/requests',{requestId:crypto.randomUUID(),type,date:DATE,note:'Private note',...(type==='trade'?{partnerId:'two'}:{}),...extra});
+ const submit=(user,type='trade',extra={})=>request(user,'/requests',{requestId:crypto.randomUUID(),type,date:DATE,note:'Private note',...(type==='trade'?{partnerId:'two'}:{}),...(type==='off'?{days:{[extra.date||DATE]:'X'}}:{}),...extra});
  await configure('one');await configure('two');return {db,employees,request,seed,configure,submit,read:service.read,base:'http://127.0.0.1:'+server.address().port};
 }
 const C={code:'C',color:'#99ff00'},F={code:'F',color:'#9999ff'},D={code:'D',color:'#ffff00'},X={code:'X',color:'#ffffff'},redA={code:'A',color:'#ff0000'};
@@ -49,7 +49,7 @@ test('stale schedules prevent both cells from changing and preserve the request 
  const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one')).data;f.seed(DATE,{one:D,two:F});assert.equal((await f.request('two','/requests/'+r.id,{action:'confirm'})).status,409);assert.deepEqual(f.read(DATE).assignments,{one:D,two:F});assert.equal((await f.request('one','/requests/'+r.id,{action:'cancel'})).data.status,'cancelled');
 });
 test('Request Off needs approval and renders an approved red X without altering other dates or employees',async t=>{
- const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one','off')).data;assert.equal((await f.request('two','/requests/'+r.id,{action:'approve'})).status,404);assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve'})).data.status,'approved');assert.equal(f.read(DATE).assignments.one.approvedOff,true);assert.equal(f.read(DATE).assignments.one.code,'X');assert.deepEqual(f.read(DATE).assignments.two,F);
+ const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one','off')).data;assert.equal((await f.request('two','/requests/'+r.id,{action:'approve'})).status,404);assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve',days:{[DATE]:'X'}})).data.status,'approved');assert.equal(f.read(DATE).assignments.one.approvedOff,true);assert.equal(f.read(DATE).assignments.one.code,'X');assert.deepEqual(f.read(DATE).assignments.two,F);
 });
 test('I Can Work requires a qualified supervisor-selected shift; approval cannot create seven working days',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:X});const r=(await f.submit('one','work')).data;assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve'})).status,400);await f.configure('one',['F|#9999ff']);assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve',shift:'C|#99ff00'})).status,400);
@@ -71,7 +71,7 @@ test('deleting date appearance clears color, labels and Short settings while pre
 
 
 test('approve and deny create private persistent employee notifications with owner-only read receipts',async t=>{
- const f=await fixture(t);f.seed(DATE,{one:C});const off=(await f.submit('one','off')).data;await f.request('sup','/requests/'+off.id,{action:'approve'});
+ const f=await fixture(t);f.seed(DATE,{one:C});const off=(await f.submit('one','off')).data;await f.request('sup','/requests/'+off.id,{action:'approve',days:{[DATE]:'X'}});
  let inbox=(await f.request('one','/requests')).data;assert.equal(inbox.unread,1);assert.equal(inbox.notifications[0].action,'approved');assert.equal(f.read(DATE).assignments.one.color,'#ff0000');
  const notice=inbox.notifications[0];await f.request('three','/requests/notifications/read',{ids:[notice.id]});assert.equal((await f.request('one','/requests')).data.unread,1);
  await f.request('one','/requests/notifications/read',{ids:[notice.id]});assert.equal((await f.request('one','/requests')).data.unread,0);
@@ -188,4 +188,32 @@ test('timesheet options and reasons are validated, and reports coexist with sche
  const result=await f.submit('one','timesheet',{category:'request_fix_time'});assert.equal(result.status,200);
  assert.equal((await f.request('sup','/requests/'+result.data.id,{action:'decline'})).data.status,'declined');assert.deepEqual(f.read(DATE).assignments,{one:C});
  assert.equal((await f.request('one','/requests')).data.notifications[0].type,'timesheet');
+});
+
+test('Request Off ranges keep applicant choices, require a second review and atomically apply mixed X/VAC days',async t=>{
+ const f=await fixture(t),end=add(DATE,2),days={[DATE]:'X',[add(DATE,1)]:'VAC',[end]:'X'};f.seed(DATE,{one:C,two:F});f.seed(add(DATE,1),{one:D});
+ const body={requestId:crypto.randomUUID(),type:'off',date:DATE,endDate:end,note:'Family trip; CTO on Saturday',days};
+ const created=await f.request('one','/requests',body);assert.equal(created.status,200);assert.deepEqual(created.data.requestedDays,days);assert.equal(created.data.endDate,end);
+ assert.equal((await f.request('one','/requests',body)).data.id,created.data.id);
+ assert.equal((await f.request('one','/requests',{...body,days:{...days,[DATE]:'VAC'}})).status,409);
+ assert.equal((await f.request('sup','/requests/'+created.data.id,{action:'approve'})).status,400);
+ assert.equal((await f.request('sup','/requests/'+created.data.id,{action:'approve',days:{[DATE]:'X'}})).status,400);assert.deepEqual(f.read(DATE).assignments,{one:C,two:F});
+ const result=await f.request('sup','/requests/'+created.data.id,{action:'approve',days});assert.equal(result.data.status,'approved');assert.deepEqual(result.data.approvedDays,days);
+ for(const [date,code] of Object.entries(days)){assert.equal(f.read(date).assignments.one.code,code);assert.equal(f.read(date).assignments.one.approvedOff,true);}assert.deepEqual(f.read(DATE).assignments.two,F);
+ assert.equal((await f.request('one','/requests')).data.notifications[0].endDate,end);
+});
+test('Request Off validates range choices, blocks overlaps, and rolls back every day when one snapshot is stale',async t=>{
+ const f=await fixture(t),end=add(DATE,1),days={[DATE]:'X',[end]:'VAC'};f.seed(DATE,{one:C});f.seed(end,{one:D});
+ for(const extra of [{days:{}},{days:{...days,[end]:'CTO'}},{endDate:add(DATE,-1)},{endDate:add(DATE,367)}])assert.equal((await f.submit('one','off',{endDate:end,days,...extra})).status,400);
+ const r=(await f.submit('one','off',{endDate:end,days})).data;
+ assert.equal((await f.submit('one','off',{date:end})).status,409);
+ f.seed(end,{one:F});assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve',days})).status,409);assert.deepEqual(f.read(DATE).assignments,{one:C});assert.deepEqual(f.read(end).assignments,{one:F});
+ assert.equal((await f.request('one','/requests/'+r.id,{action:'cancel'})).data.status,'cancelled');assert.deepEqual(f.read(DATE).assignments,{one:C});
+});
+test('all Supervisors can review Request Off even without schedule editing; delegated Agents cannot approve it',async t=>{
+ const f=await fixture(t);const current=f.employees.get();f.db.prepare('UPDATE pbb_employees SET data=?').run(JSON.stringify({...current,employees:current.employees.map(p=>p.id==='sup'?{...p,permissionOverrides:{'schedule.edit':false}}:p.id==='three'?{...p,permissionOverrides:{'schedule.edit':true}}:p)}));
+ f.seed(DATE,{one:C});const r=(await f.submit('one','off')).data;
+ assert.equal((await f.request('sup','/requests')).data.requests.find(p=>p.id===r.id).canApprove,true);
+ assert([403,404].includes((await f.request('three','/requests/'+r.id,{action:'approve',days:{[DATE]:'X'}})).status));
+ assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve',days:{[DATE]:'VAC'}})).data.status,'approved');assert.equal(f.read(DATE).assignments.one.code,'VAC');
 });
