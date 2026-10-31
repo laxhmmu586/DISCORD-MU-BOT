@@ -49,7 +49,7 @@ function fixture(channelId='fixture-channel',nonceScope='',employees=[{name:'Ter
  let state={},failTeam=false,reads=0,body=sample(),id='m1';const sends=[],errors=[];
  const service=createAdvisoryService({
   nonceScope,onAdvisorySent,getClient:()=>({userId:'me',gmail:{users:{messages:{list:async()=>({data:{messages:[{id}]}}),get:async()=>({data:{internalDate:id==='m1'?'1791973080000':'1791973090000',payload:{mimeType:'text/plain',body:{data:Buffer.from(body).toString('base64url')}}}})}}}}),
-  readSchedule:async()=>{reads++;return [[],['','','','10/14/2026'],['','Terry','','A']];},getEmployees:()=>employees,
+  getArrivalTeam:async date=>{reads++;return arrivalTeam([[],['','','','10/14/2026'],['','Terry','','A']],date,employees);},
   channel:async()=>({id:channelId,send:async payload=>{if(payload.content&&failTeam)throw Error('network failure');sends.push(payload);return {id:'sent'+sends.length};}}),
   render:async()=>Buffer.from('image'),store:{get:()=>structuredClone(state),put:s=>{state=structuredClone(s);}},log:{error:(...a)=>errors.push(a)}
  });return {service,sends,errors,state:()=>state,seed:value=>{state=value;},reads:()=>reads,fail:()=>{failTeam=true;},recover:()=>{failTeam=false;},change:()=>{id='m2';body=sample('203');}};
