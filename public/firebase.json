@@ -1426,6 +1426,18 @@
       {
         "source": "/operations-glass.css",
         "destination": "/has/operations-glass.css"
+      },
+      {
+        "source": "/profile-terminal.css",
+        "destination": "/has/profile-terminal.css"
+      },
+      {
+        "source": "/assets/profile-terminal-evening-v1.webp",
+        "destination": "/has/assets/profile-terminal-evening-v1.webp"
+      },
+      {
+        "source": "/assets/profile-terminal-evening-mobile-v1.webp",
+        "destination": "/has/assets/profile-terminal-evening-mobile-v1.webp"
       }
     ],
     "predeploy": [
