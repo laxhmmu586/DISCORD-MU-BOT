@@ -150,3 +150,17 @@
 .schedule-ribbon-frame>.schedule-ribbon-overlay .date-badges{transform:none}.schedule-ribbon-frame>.schedule-ribbon-overlay .date-status{transform:rotate(-12deg);transform-origin:center center}
 
 @media(max-width:600px){.schedule-ribbon-frame .schedule-ribbon-overlay .date-status{font-size:10px;line-height:13px;padding:3px 8px}}
+
+/* Upper-left date decorations sit outside the scrolling border. */
+.schedule-ribbon-frame>.schedule-ribbon-overlay .date-badges{align-items:flex-start}
+.schedule-ribbon-frame>.schedule-ribbon-overlay .date-status{transform-origin:left bottom}
+.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-icon{padding:0;border:0;background:transparent;clip-path:none;box-shadow:none;transform:none;width:32px;height:32px}
+.date-status-icon img{display:block;width:32px;height:32px;object-fit:contain;filter:drop-shadow(0 2px 3px #1765a838)}
+.schedule-ribbon-overlay .date-badges:has(.date-status-icon):before{content:none}
+.date-label-presets{flex-wrap:wrap}
+.date-label-presets button{display:inline-flex;align-items:center;gap:5px;min-height:42px}
+.date-label-presets .date-preset-today{background:#7944bc;color:#fff}
+.date-label-presets .date-preset-short{background:#dc263f;color:#fff}
+.date-label-presets .date-preset-pay{background:#075985;color:#fff}
+.date-label-presets .date-preset-holiday{background:#237244;color:#fff}
+.date-label-presets button[aria-pressed=true]{outline:3px solid #3189ed;outline-offset:2px}

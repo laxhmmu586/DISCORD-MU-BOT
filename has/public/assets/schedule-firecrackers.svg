@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+ <defs>
+  <linearGradient id="red" x2="1" y2=".3"><stop stop-color="#ff8b91"/><stop offset=".35" stop-color="#ff354e"/><stop offset=".72" stop-color="#e10d32"/><stop offset="1" stop-color="#a70028"/></linearGradient>
+  <linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff3ab"/><stop offset=".5" stop-color="#ffce52"/><stop offset="1" stop-color="#dc8a19"/></linearGradient>
+  <filter id="shadow" x="-40%" y="-30%" width="180%" height="180%"><feDropShadow dy="2" stdDeviation="1.5" flood-color="#a60027" flood-opacity=".24"/></filter>
+  <g id="cracker"><rect x="0" y="0" width="12" height="22" rx="4" fill="url(#red)" stroke="#b70f33" stroke-width=".7"/><path d="M1 4h10M1 18h10" stroke="url(#gold)" stroke-width="3"/><path d="M3 7v7" stroke="#fff" stroke-opacity=".55" stroke-width="1.7" stroke-linecap="round"/></g>
+ </defs>
+ <path d="M31 12C19 2 41 2 31 12L32 52" fill="none" stroke="url(#gold)" stroke-width="2.5" stroke-linecap="round"/>
+ <g filter="url(#shadow)"><use href="#cracker" transform="translate(13 12) rotate(-22 6 11)"/><use href="#cracker" transform="translate(36 16) rotate(22 6 11)"/><use href="#cracker" transform="translate(14 34) rotate(-22 6 11)"/><use href="#cracker" transform="translate(35 37) rotate(22 6 11)"/></g>
+ <path d="m51 5 1.5 4L57 10l-4.5 1.5L51 16l-1.5-4.5L45 10l4.5-1z" fill="url(#gold)"/><path d="m9 29-4-2m49 13 4-2M30 57v4" stroke="#ffbc3c" stroke-width="2" stroke-linecap="round"/>
+</svg>
