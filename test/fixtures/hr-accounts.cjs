@@ -12,7 +12,7 @@ async function createFixture(port=0){
  for(const row of [['owner','owner','password'],['bm','bm','password'],['existing-password','existing','password'],['google-signup','signup','google.com'],['other-google-uid','other-google','google.com']])db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run(...row,'2026-10-31');
  const app=express();app.use(express.json());
  const authenticate=async req=>{const uid=String(req.headers.authorization||req.headers['x-user']||'').replace(/^Bearer /,'');if(!uid)throw Error('Sign in required');return {uid,email:uid==='owner'?'lake@mu.com':uid==='other-admin'?'tamsun10@gmail.com':uid+'@example.test'};};
- let changes=0;registerEmployees(app,{store,profiles,authenticate,firebaseDirectory:{list:async()=>[],get:async()=>null},onChange:()=>changes++});
+ let changes=0;registerEmployees(app,{store,profiles,authenticate,firebaseDirectory:{list:async()=>[],get:async()=>null,setDisabled:async()=>{}},onChange:()=>changes++});
  db.prepare('INSERT OR REPLACE INTO employee_reporting VALUES(?,?)').run('existing','bm');
  // The same store backs the homepage roster fixture; no production data is used.
  require('../../has/server/staffSchedule').registerStaffSchedule(app,{employees:{...store,db},profiles,authenticate,now:()=>new Date('2026-10-31T18:00:00Z')});

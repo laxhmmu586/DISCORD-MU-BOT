@@ -295,7 +295,11 @@
     "workspace-header.js",
     "workspace-resources.css",
     "workspace-routes.js",
-    "workspace-shell.js"
+    "workspace-shell.js",
+    "charge-form.js",
+    "charge-form-model.js",
+    "charge-form.css",
+    "assets/charge-form/china-eastern-logo.png"
   ],
   "server": [
     "briefingDefaults.js",
@@ -365,7 +369,9 @@
     "uniformRoute.js",
     "workflowEvents.js",
     "workspaceRoutes.js",
-    "workspaceScope.js"
+    "workspaceScope.js",
+    "chargeForm.js",
+    "employeeAccountStatus.js"
   ],
   "resources": [
     "data/has-checklists",

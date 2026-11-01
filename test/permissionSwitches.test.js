@@ -6,7 +6,7 @@ test('permission switches display effective permissions and save changed excepti
  const source=fs.readFileSync('has/public/hr.js','utf8'),start=source.indexOf('  function renderPermissions('),end=source.indexOf("  $('#person-form').addEventListener",start);
  const context=vm.createContext({document,employeePermissions,data,selected:'agent',saving:false,preview:false,role:()=>({mode:'admin',employeeId:'admin'}),$:selector=>document.querySelector(selector),escape:value=>String(value),api:async options=>{payload=JSON.parse(options.body);return {...data,revision:2,employees:[{...row,permissionOverrides:payload.permissions},actor]};}});
  vm.runInContext(source.slice(start,end),context);context.renderPermissions(row,true);
- const switches=[...document.querySelectorAll('[role="switch"]')];assert.equal(switches.length,employeePermissions.catalog.length);assert.equal(document.querySelectorAll('select').length,0);
+ const switches=[...document.querySelectorAll('[role="switch"]')];assert.equal(switches.length,employeePermissions.catalog.length+1);assert.equal(document.querySelectorAll('select').length,0);assert.equal(switches.at(-1).getAttribute('aria-label'),'Disable account');
  for(const input of switches)input.checked=input.hasAttribute('checked');
  const briefing=document.querySelector('[data-permission-key="briefing.edit"]'),schedule=document.querySelector('[data-permission-key="schedule.edit"]');assert(briefing.checked);assert(!schedule.checked);
  briefing.checked=false;briefing.dispatchEvent(new window.Event('change',{bubbles:true}));schedule.checked=true;schedule.dispatchEvent(new window.Event('change',{bubbles:true}));assert.equal(schedule.closest('.hr-permission-control').querySelector('b').textContent,'Allowed');

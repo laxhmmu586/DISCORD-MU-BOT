@@ -21,8 +21,13 @@
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
   const profileButton=document.createElement('button');profileButton.type='button';profileButton.hidden=true;profileButton.textContent='PROFILE';profileButton.onclick=()=>location.assign('/profile');host.querySelector('#change-password').before(profileButton);
   const avatar=document.createElement('span');avatar.className='flight-user-avatar';avatar.setAttribute('aria-hidden','true');host.querySelector('svg').replaceWith(avatar);
+  let pbbAccountLink=null,pbbAccountScope=null;
+  if(document.getElementById('has-view')){pbbAccountLink=document.createElement('a');pbbAccountLink.className='pbb-account-destination';pbbAccountLink.href='/home';pbbAccountLink.append(avatar,host.querySelector('.flight-account-name'));button.before(pbbAccountLink);button.setAttribute('aria-label','Open account menu');}
+  function pbbDestination(scope){if(pbbAccountLink){pbbAccountLink.href=scope?.station==='LAX'&&scope?.account==='MU'?'/flights.html':'/home';pbbAccountLink.setAttribute('aria-label',scope?.station==='LAX'&&scope?.account==='MU'?'Open Flights':'Open Home');}}
+  window.addEventListener('has-pbb-scope',event=>{pbbAccountScope=event.detail;pbbDestination(pbbAccountScope);});
   style.textContent+='.flight-user-avatar{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:#254965;color:#fff;font-size:13px;font-weight:700;border:1px solid #84b1d4;overflow:hidden}.flight-user-avatar img{width:100%;height:100%;object-fit:cover}';
   function renderProfile(profile,user=auth?.currentUser){
+    pbbDestination(pbbAccountScope||profile);
     const glassNavigation=document.body.classList.contains("workspace-glass")||document.body.classList.contains("home-page");
     const externalMu=/^[^@\s]+@mu\.com$/i.test(String(user?.email||'').trim())&&!['lax@mu.com','lake@mu.com'].includes(String(user?.email||'').trim().toLowerCase());document.body.classList.toggle('mu-external-services',externalMu);
     for(const nav of document.querySelectorAll('.profile-sidebar nav,.workspace-features')){
