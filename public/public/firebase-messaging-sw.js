@@ -7,7 +7,7 @@ self.addEventListener('push',event=>{
  if(!payload||!['approval_required','read_sign_required','schedule_notification','schedule_announcement'].includes(payload.type))return;
  event.waitUntil(self.registration.showNotification(payload.title||'MUFC',{
   body:payload.body||'',icon:'/has/assets/push-icon-192.png',badge:'/has/assets/push-badge.png',
-  tag:[payload.type,payload.source,payload.requestId,payload.approvalStage].join(':'),
+  tag:[payload.eventType||payload.type,payload.source,payload.requestId,payload.approvalStage].join(':'),
   data:{url:['/schedule','/has-form','/read-sign'].includes(payload.url)?payload.url:'/home'}
  }));
 });
