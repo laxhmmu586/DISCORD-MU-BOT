@@ -1,0 +1,7 @@
+Source: user-provided MUFC.png (2026-10-31).
+Processing: built-in image_gen edit; resized to opaque PNGs at 180, 192, 512 and 1024 pixels.
+Final assets: has/public/assets/mufc-app-icon-v1-{size}.png.
+Usage: Apple touch icon, browser icon and web app manifest. Existing notification images remain separate.
+
+Prompt:
+Faithful edit of attached MUFC icon for website home screen installation. Use this exact dark black/navy icon, silver-white MUFC letters, silver-blue circular swoosh with red upper-right arc and blue lower-left glow. Preserve the supplied design, letter shapes, positions, lighting and colors. Remove the entire outer checkerboard pattern (it is baked into input), outer rounded square rim and bevel, exterior shadow, and margin. Enlarge inner circular logo to nearly fill square with about 4 percent breathing room, fully preserving all letters and red/blue arcs. Extend the interior black/navy background to every edge and all four square corners. Output a square opaque full-bleed flat app icon asset, with no pre-rounded corners, no checkerboard, no exterior frame, no extra text, no new shapes. The supplied inner logo should stay visually identical.
