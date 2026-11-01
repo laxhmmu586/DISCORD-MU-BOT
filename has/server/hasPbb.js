@@ -23,7 +23,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  const problemMail=require('./hasPbbProblemMail').createProblemMailer({db,employees,now:()=>store.now(),...(sendProblemEmail?{sendEmail:sendProblemEmail}:{})});
  const same=(a,b)=>a.station===b.station&&a.account===b.account;
  const isOps=row=>employeeAccounts.same(row,{station:'LAX',account:'OPS'});
- const accounts=row=>[...new Map((row.isServerOwner||isOps(row)?employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)):[employeeAccounts.scope(row),...(row.additionalAccounts||[]).map(employeeAccounts.scope)]).map(scope=>[employeeAccounts.key(scope),scope])).values()];
+ const accounts=row=>[...new Map((isOps(row)?employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)):[employeeAccounts.scope(row),...(row.additionalAccounts||[]).slice(0,2).map(employeeAccounts.scope)]).map(scope=>[employeeAccounts.key(scope),scope])).values()];
  function employee(user,scope){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);if(scope?.station!==undefined||scope?.account!==undefined){if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));if(!selected)fail('You are not assigned to this station/account.',403);return {...row,...selected};}return row;}
  const dashboard=user=>require('./serverOwners').isOwner(user);
  const configEditor=user=>require('./serverOwners').isOwner(user)||['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
