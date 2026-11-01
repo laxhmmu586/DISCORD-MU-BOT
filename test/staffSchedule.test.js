@@ -210,3 +210,13 @@ test('old GS cells are migrated to G and contribute to coverage, while cached cl
  const before=(await request('sup')).data;assert.equal(before.roles.G,'Gate Specialist');assert.equal(before.roles.GS,undefined);assert.equal(before.colors.GS,undefined);assert.equal(before.days[0].assignments.agent.code,'G');assert.equal(before.days[0].planned,8);
  const saved=await request('sup',{date:'2026-10-26',revision:1,employeeId:'agent',code:'GS',color:'#9371c7'});assert.equal(saved.status,200);assert.equal(saved.data.assignments.agent.code,'G');assert.equal(saved.data.planned,8);
 });
+
+test('current schedule retains the full period until LA Friday, then prior dates remain accessible in History',async t=>{
+ let now=new Date('2026-11-03T20:00:00Z');const {request}=await fixture(t,{now:()=>now});
+ for(const date of ['2026-10-30','2026-11-05'])assert.equal((await request('sup',{date,revision:0,employeeId:'agent',code:'C',color:'#99ff00'})).status,200);
+ const current=()=>request('sup',undefined,'');let live=(await current()).data;assert.equal(live.start,'2026-10-30');assert.equal(live.days[0].date,'2026-10-30');assert(live.days.some(day=>day.date==='2026-11-02'));
+ now=new Date('2026-11-06T07:59:59Z');assert.equal((await current()).data.start,'2026-10-30');
+ now=new Date('2026-11-06T08:00:00Z');live=(await current()).data;assert.equal(live.start,'2026-11-06');assert(live.days.every(day=>day.date>='2026-11-06'));assert.equal((await request('agent',undefined,'')).data.start,'2026-11-06');
+ const october=(await request('sup',undefined,'2026-11-06&month=2026-10')).data,november=(await request('sup',undefined,'2026-11-06&month=2026-11')).data;
+ assert.equal(october.days.find(day=>day.date==='2026-10-30').assignments.agent.code,'C');assert.equal(november.days.find(day=>day.date==='2026-11-05').assignments.agent.code,'C');assert.equal(november.days[0].date,'2026-11-01');
+});
