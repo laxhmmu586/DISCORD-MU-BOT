@@ -54,6 +54,7 @@ async function sendUniformEmail(record,pdf){
 }
 function registerUniform(app,{employees,profiles,authenticate,send=sendUniformEmail,notify=sendApprovalEmail,buildPdf=require('./uniformPdf').buildUniformPdf,now}){
  const store=createUniformStore({employees,profiles,now}),active=new Map(),notifying=new Map();
+ require('./approvalPush').attachPush(store,{db:employees.db,source:'uniform',read:(user,id)=>store.read(user,id),name:'Uniform Request'});
  store.db.exec(`CREATE TABLE IF NOT EXISTS uniform_approval_mail(request_id TEXT NOT NULL,step INTEGER NOT NULL,employee_id TEXT NOT NULL,recipient TEXT NOT NULL,status TEXT NOT NULL,error TEXT,sent_at TEXT,PRIMARY KEY(request_id,step,employee_id));`);
  store.db.exec(`CREATE TABLE IF NOT EXISTS uniform_node_approval_mail(request_id TEXT NOT NULL,node_id TEXT NOT NULL,employee_id TEXT NOT NULL,recipient TEXT NOT NULL,status TEXT NOT NULL,error TEXT,sent_at TEXT,PRIMARY KEY(request_id,node_id,employee_id)); INSERT OR IGNORE INTO uniform_node_approval_mail SELECT request_id,'legacy-'||step,employee_id,recipient,status,error,sent_at FROM uniform_approval_mail;`);
  const nodeKey=r=> (r.history?.some(h=>h.action==='Returned for revision')?'return-'+r.history.filter(h=>h.action==='Returned for revision').length+':':'')+(r.history?.some(h=>h.action==='Withdrawn to draft')?'submission-'+r.history.filter(h=>h.action==='Withdrawn to draft').length+':':'')+(r.nodeIds?.[r.step]||'legacy-'+r.step)+(r.routeHistory?.length?':revision-'+r.routeHistory.length:'');

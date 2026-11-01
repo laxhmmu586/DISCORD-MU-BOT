@@ -122,7 +122,7 @@ function mailContent(memo, recipient) {
 }
 async function sendReadSignEmail(memo,recipient){const {gmail,userId}=require('../../googleDrive').getNextDayInfoGmailClient();const response=await gmail.users.messages.send({userId,requestBody:{raw:Buffer.from(mailContent(memo,recipient)).toString('base64url')}},{timeout:30000,retry:false});if(!response.data.id)throw Error('No Gmail delivery acknowledgement.');}
 function registerReadSign(app,{employees,profiles,authenticate,now,send=sendReadSignEmail}){
-  const store=createReadSignStore({employees,profiles,now});let running=false;
+  const store=createReadSignStore({employees,profiles,now});require('./approvalPush').attachPush(store,{db:employees.db,source:'read_sign',read:(user,id)=>store.read(user,id),methods:['publish','addRecipients'],kind:'read_sign'});let running=false;
   async function retry(){if(running)return;running=true;try{
     for(const missing of store.db.prepare("SELECT memo_id,employee_id FROM read_sign_mail WHERE status='missing-email'").all()){
       const e=employees.get().employees.find(e=>e.id===missing.employee_id),recipient=[e?.companyEmail,e?.email].find(emailOK);
