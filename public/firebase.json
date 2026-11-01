@@ -149,7 +149,7 @@
         ]
       },
       {
-        "source": "/{flights.html,flight-briefing.js,flight-account.js,workspace-header.js,workspace-header.css,briefing.html,briefing.js,briefing.css,briefing-fields.js,briefing-prices.js,briefing-reference.js,briefing-reference.css}",
+        "source": "/{flights.html,flight-briefing.js,flight-account.js,workspace-header.js,workspace-header.css,briefing.html,briefing.js,briefing.css,briefing-fields.js,briefing-defaults.js,briefing-defaults.css,briefing-prices.js,briefing-reference.js,briefing-reference.css}",
         "headers": [
           {
             "key": "Cache-Control",
@@ -194,7 +194,7 @@
         ]
       },
       {
-        "source": "/{has-form.html,has-report.html,has-report.js,has-report.css,has-report-access.js,has-report-math.js,has-report-live.js,attendance-request.html,request.html,request.css,request-light.css,request.js}",
+        "source": "/{has-form.html,has-report.html,has-report.js,has-report.css,has-report-access.js,has-report-math.js,has-report-live.js,has-report-grid.js,attendance-request.html,request.html,request.css,request-light.css,request.js}",
         "headers": [
           {
             "key": "Cache-Control",
@@ -891,6 +891,18 @@
       {
         "source": "/briefing-fields.js",
         "destination": "/has/briefing-fields.js"
+      },
+      {
+        "source": "/briefing-defaults.js",
+        "destination": "/has/briefing-defaults.js"
+      },
+      {
+        "source": "/briefing-defaults.css",
+        "destination": "/has/briefing-defaults.css"
+      },
+      {
+        "source": "/has-report-grid.js",
+        "destination": "/has/has-report-grid.js"
       },
       {
         "source": "/briefing-prices.js",
