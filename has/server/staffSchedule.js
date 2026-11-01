@@ -8,9 +8,9 @@ const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});}
 const excluded=row=>[row?.name,row?.nickname].some(value=>['DEMOHAS','HASOPSRAMP'].includes(String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));
 const allowed=row=>Boolean(row&&!row.mergedInto&&(row.isServerOwner||require('./serverOwners').isOwner(row.loginId)||!excluded(row)&&groups.belongs(row,{station:'LAX',account:'MU'})&&!groups.isHeadquarter(row)));
 const canEdit=(user,row)=>require('../public/employee-permissions').allowed(row,'schedule.edit');
-const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function date(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value)fail('Choose a valid date.');return value;}
 function registerStaffSchedule(app,{employees,profiles,authenticate=require('./pbbAuth').authenticate,sync:provided,env=process.env,now=()=>new Date()}){
+ const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(now());
  const db=employees.db;
  db.exec('CREATE TABLE IF NOT EXISTS staff_schedule_days(date TEXT PRIMARY KEY,revision INTEGER NOT NULL,data TEXT NOT NULL)');
  require('./scheduleGateCode').migrateGateCode(db);
@@ -64,7 +64,7 @@ function registerStaffSchedule(app,{employees,profiles,authenticate=require('./p
  app.get('/staff-schedule-api',handler(async req=>{
   await sync.refresh(Boolean(req.query.refresh));const access=req.query.view==='self'?{...req.scheduleAccess,canEdit:false}:req.scheduleAccess,month=req.query.month;let start,end;
   if(month!==undefined){if(typeof month!=='string'||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))fail('Choose a valid history month.');start=month+'-01';const d=new Date(start+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(0);end=d.toISOString().slice(0,10);}
-  else{start=date(req.query.start||today());end=[sync.status().horizon,summary.addDays(start,13)].filter(Boolean).sort().at(-1);}
+  else{const anchor=date(req.query.start||today());start=req.query.schema==='2'&&(!req.query.start||req.query.period==='current')?summary.periodStart(anchor):anchor;end=[sync.status().horizon,summary.addDays(anchor,13)].filter(Boolean).sort().at(-1);}
   // Older cached frontends size their table for fourteen dates; only updated clients opt into the full horizon.
   if(req.query.schema!=='2')end=[end,summary.addDays(start,13)].sort()[0];
   const length=Math.round((Date.parse(end)-Date.parse(start))/86400000)+1;if(length<1||length>3660)fail('Schedule dates are out of range.');

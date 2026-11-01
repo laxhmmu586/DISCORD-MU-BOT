@@ -159,3 +159,5 @@ body.profile-page.briefing-quick main.profile-shell.briefing-shell{margin:0!impo
 
 .briefing-embedded-flight .app-frame{display:block!important;min-height:0!important;margin:0!important;width:100%!important;max-width:none!important}.briefing-embedded-flight .home-main{padding:8px!important;margin:0!important;width:100%!important;max-width:none!important}
 body.workspace-glass.profile-page.briefing-embedded-flight .profile-sidebar,body.workspace-glass.profile-page.briefing-embedded-flight .profile-topbar{display:none!important}
+
+#briefing-report,#briefing-reports{display:none!important}#briefing-express:disabled{opacity:.65;cursor:default}
