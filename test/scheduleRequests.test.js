@@ -168,16 +168,16 @@ test('revision checks share the initial snapshot token, stay unchanged when idle
  assert.equal((await fetch(f.base+'/staff-schedule-api/revision')).status,401);
 });
 
-test('timesheet reports accept past dates, remain private, and require supervisor approval without changing duties',async t=>{
+for(const category of ['forgot_punch_meal','cross_account_call_in'])test(category+' reports accept past dates, remain private, and require supervisor approval without changing duties',async t=>{
  const f=await fixture(t);const date='2026-10-20';f.seed(date,{one:C});
- const body={requestId:crypto.randomUUID(),type:'timesheet',date,category:'forgot_punch_meal',note:'Meal ended at 13:30'};
- const first=await f.request('one','/requests',body);assert.equal(first.status,200);assert.equal(first.data.status,'awaiting_supervisor');assert.equal(first.data.category,'forgot_punch_meal');
+ const body={requestId:crypto.randomUUID(),type:'timesheet',date,category,note:category==='cross_account_call_in'?'Called in to support CZ, 09:00–13:00':'Meal ended at 13:30'};
+ const first=await f.request('one','/requests',body);assert.equal(first.status,200);assert.equal(first.data.status,'awaiting_supervisor');assert.equal(first.data.category,category);
  assert.equal((await f.request('one','/requests',body)).data.id,first.data.id);
  assert.equal((await f.request('one','/requests',{...body,category:'report_time'})).status,409);
  assert.equal((await f.request('three','/requests')).data.requests.length,0);
  assert.equal((await f.request('three','/requests/'+first.data.id,{action:'approve'})).status,404);
  assert.equal((await f.request('one','/requests/'+first.data.id,{action:'approve'})).status,403);
- const manager=(await f.request('sup','/requests')).data;assert.equal(manager.requests[0].canApprove,true);
+ const manager=(await f.request('sup','/requests')).data;assert.equal(manager.requests[0].canApprove,true);assert.equal(manager.requests[0].category,category);
  assert.equal((await f.request('sup','/requests/'+first.data.id,{action:'approve'})).data.status,'approved');assert.deepEqual(f.read(date).assignments,{one:C});
  assert.equal((await f.request('sup','/requests/'+first.data.id,{action:'approve'})).status,409);
  const inbox=(await f.request('one','/requests')).data;assert.equal(inbox.notifications[0].type,'timesheet');assert.equal(inbox.unread,1);
