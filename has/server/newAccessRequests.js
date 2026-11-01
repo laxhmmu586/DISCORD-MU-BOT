@@ -55,6 +55,7 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
 }
 function registerNewAccess(app,{employees,profiles,authenticate,now}){
  const store=createNewAccessStore({employees,profiles,now});
+ require('./approvalPush').attachPush(store,{db:employees.db,source:'new_access',read:(user,id)=>store.read(user,id),name:'New Access Request'});
  app.use('/new-access-api',require('express').json({limit:'16kb'}),async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.newAccessUser=await authenticate(req);next();}catch{res.status(401).json({error:'Sign in required.'});}});
  const handle=fn=>(req,res)=>{try{res.json(fn(req));}catch(e){res.status(e.status||400).json({error:e.message});}};
  app.get('/new-access-api',handle(req=>store.list(req.newAccessUser)));

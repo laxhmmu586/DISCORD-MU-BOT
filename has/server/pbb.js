@@ -81,6 +81,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  const drive=providedDrive||createPbbDrive();
  const employees=require('./employeeDatabase').openEmployeeDatabase(store.db,{seed:employeeSeed});
  const profiles=require('./employeeProfiles').registerProfiles(app,{employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
+ const pushService=require('./approvalPush').registerPush(app,{employees,profiles,authenticate});
  const staffScheduleService=require('./staffSchedule').registerStaffSchedule(app,{employees,profiles,authenticate});
  const briefing=require('./briefing').registerBriefing(app,{employees,profiles,authenticate,booking:require('./briefingBooking').createBriefingBooking()});
  require('./uniformRequests').registerUniform(app,{employees,profiles,authenticate});
@@ -174,6 +175,6 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  }));
  // Retry interrupted work after restart; completed delivery targets are skipped.
  for(const r of store.list())if(r.completedAt&&(r.delivery.drive.status!=='sent'||r.delivery.discord.status!=='sent'))void deliver(r.id);
- return {store,employees,profiles,briefing,deliver,startWheelchairMail:()=>hasReportService.startWheelchairMail(),close(){staffScheduleService.close();hasReportService.close();hasPbbService.close();readSignService.close();for(const sub of lobbyStreams)sub.res.end();for(const clients of streams.values())for(const res of clients)res.end();}};
+ return {store,employees,profiles,briefing,deliver,startWheelchairMail:()=>hasReportService.startWheelchairMail(),close(){pushService.close();staffScheduleService.close();hasReportService.close();hasPbbService.close();readSignService.close();for(const sub of lobbyStreams)sub.res.end();for(const clients of streams.values())for(const res of clients)res.end();}};
 }
 module.exports={createStore,registerPbb,validateInfo,discordMessage};
