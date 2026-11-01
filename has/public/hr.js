@@ -214,6 +214,7 @@
     // Keep the complete local design journey in preview mode, including Home → HR.
     document.querySelectorAll('a[href="/home"],a[href="/hr"]').forEach(link=>link.href+='?preview=1');
   }else if(window.firebase?.apps?.length){
+    const accountScript=document.createElement('script');accountScript.src='/flight-account.js?v=20261101-hr-account';document.head.append(accountScript);
     firebase.auth().onAuthStateChanged(async current=>{user=current;$('#person-dialog').close();permissionManager=false;personDirty=false;$('#person-dialog').classList.remove('hr-permission-manager');data={employees:[],accounts:[],access:null};loaded=false;render();if(!user){$('#hr-status').innerHTML='Sign in to view HR. <a href="/login.html">Sign in →</a>';return;}try{data=await api();loaded=true;populateScopes();chooseScope(scope);}catch(error){$('#hr-status').textContent=error.message;}});
   }else{$('#hr-status').innerHTML='Sign in to view HR. <a href="/login.html">Sign in →</a>';}
 })();

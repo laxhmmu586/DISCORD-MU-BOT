@@ -83,7 +83,8 @@ Browser/OS delivery timing also remains outside the application's control.
 
 1. Chrome desktop: sign in at the HTTPS site, open the avatar menu, click **Enable
    Notifications** immediately above **Logout**, and allow browser notifications.
-   The entry changes to **Notifications Enabled** after device registration.
+   The **Notifications** switch turns green after device registration. Turn it off
+   to disable only this device; the gray/off setting survives reload and sign-in.
 2. Android Chrome: repeat on the phone, optionally install the PWA. Enable both
    browser/site and operating-system notifications. A second device must create
    a separate enabled token row for the same UID.
@@ -105,7 +106,9 @@ Browser/OS delivery timing also remains outside the application's control.
    Logging out of one device must preserve the user's other devices.
 
 No permission prompt runs on page load. Granted devices resynchronize their token
-on sign-in and return to the page. Denied/unsupported browsers receive an inline
+on sign-in and return to the page unless this device has been switched off.
+The authenticated device-status endpoint and a per-user browser preference prevent
+a background refresh from undoing an explicit opt-out. Denied/unsupported browsers receive an inline
 explanation. A minimal installable manifest and icons were added; the new Service
 Worker does not intercept network requests or cache pages.
 
