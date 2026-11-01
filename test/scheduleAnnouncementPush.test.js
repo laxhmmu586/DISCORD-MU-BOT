@@ -12,7 +12,7 @@ async function fixture(t){
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
  t.after(()=>{schedule.close();push.close();server.closeAllConnections();server.close();db.close();});
  const post=async(user,body,suffix='')=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/staff-schedule-api/announcements'+suffix,{method:'POST',headers:{authorization:user,'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:response.status,data:await response.json()};};
- return {db,push,sent,post};
+ return {db,push,sent,post,request:async(path,body)=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/staff-schedule-api'+path,{headers:{authorization:'sup','Content-Type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});return {status:response.status,data:await response.json()};}};
 }
 const announcement=()=>({title:'New team announcement',body:'Please check tomorrow’s schedule.',date:'2026-10-31',durationHours:24});
 test('successful announcements push once per enabled eligible device; invalid and unauthorized writes stay quiet',async t=>{
@@ -48,4 +48,17 @@ test('service worker displays an announcement and routes its click to Schedule',
  let job;listeners.push({data:{json:()=>({data:{type:'schedule_announcement',title:'Notice',body:'Read it',url:'/schedule',source:'schedule_announcement',requestId:'one',approvalStage:'published'}})},waitUntil:value=>job=value});await job;
  assert.equal(notifications.length,1);assert.equal(notifications[0].options.data.url,'/schedule');
  listeners.notificationclick({notification:{data:notifications[0].options.data,close(){}},waitUntil:value=>job=value});await job;assert.deepEqual(opened,['https://www.mufcapp.net/schedule']);
+});
+
+test('Short date appearance pushes scoped announcements once, updates headcounts, and cancels removed shortages',async t=>{
+ const f=await fixture(t),date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(new Date());
+ const month=date.slice(0,7);let state=await f.request('?month='+month);assert.equal(state.status,200);
+ const day=state.data.days.find(day=>day.date===date);assert(day);
+ const original=f.push.flush;f.push.flush=async()=>{};
+ const appearance={date,revision:day.revision,dateColor:null,labels:['Short'],shortRoles:[{code:'C',count:1}],shortRoleMode:'and'};
+ let saved=await f.request('',appearance);assert.equal(saved.status,200);await original();
+ assert.deepEqual(f.sent.map(s=>s.token).sort(),['desktop','phone','supervisor']);assert.match(f.sent[0].payload.body,/We need 1 C .*LAX \/ MU/);assert.equal(f.sent[0].payload.title,'You have a new announcement');
+ appearance.revision=saved.data.revision;saved=await f.request('',appearance);assert.equal(saved.status,200);await original();assert.equal(f.sent.length,3);
+ appearance.revision=saved.data.revision;appearance.shortRoles=[{code:'C',count:2}];saved=await f.request('',appearance);assert.equal(saved.status,200);
+ appearance.revision=saved.data.revision;appearance.labels=[];assert.equal((await f.request('',appearance)).status,200);await original();assert.equal(f.sent.length,3);
 });

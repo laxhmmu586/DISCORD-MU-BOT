@@ -28,14 +28,14 @@ test('default sections save independently with auditing, validation and concurre
  const saved=(await request('lead','/departure-defaults?section=counter')).data;assert.equal(saved.values.counterA59Number,'A57');assert.equal(saved.revision,1);
  assert.equal(db.prepare("SELECT employee_id FROM briefing_audit WHERE field='departure-defaults'").get().employee_id,'lead');
 });
-test('new departures inherit both defaults, saved briefings retain edits and assignments, and Clear preserves their labels',async t=>{
+test('default changes update existing departures immediately, preserve assignments and times, and leave arrivals unchanged',async t=>{
  const {db,request,service,options}=await fixture(t),key={date:'2026-11-01',flight:'MU586',direction:'departure'},path='?date='+key.date+'&flight='+key.flight;
  for(const [field,value] of [['counterA59Service','Existing Counter'],['gateLeadLabel','Existing Gate Lead'],['gateLeadTime','1030']]){const before=(await request('lead',path)).data;assert.equal((await request('lead','',{...key,field,value,previous:before.fields[field]})).status,200);}
  assert.equal((await request('lead','/assign',{...key,employeeId:'agent',fromField:null,toField:'gateLead',toValue:''})).status,200);
  for(const section of ['counter','gate']){const state=(await request('lead','/departure-defaults?section='+section)).data;const values={...state.values,...(section==='counter'?{counterA59Number:'A50',counterA59Service:'New Counter'}:{gateLeadLabel:'New Gate Lead',passport1Label:'Document Check'})};assert.equal((await request('lead','/departure-defaults',{section,revision:state.revision,values})).status,200);}
- const existing=(await request('lead',path)).data;assert.equal(existing.fields.counterA59Service,'Existing Counter');assert.equal(existing.fields.gateLeadLabel,'Existing Gate Lead');assert.equal(existing.fields.gateLead,'agent employee');assert.equal(existing.fields.gateLeadTime,'1030');
+ const existing=(await request('lead',path)).data;assert.equal(existing.fields.counterA59Service,'New Counter');assert.equal(existing.fields.gateLeadLabel,'New Gate Lead');assert.equal(existing.fields.gateLead,'agent employee');assert.equal(existing.fields.gateLeadTime,'1030');
  const next=(await request('agent','?date=2026-11-02&flight=MU578')).data;assert.equal(next.fields.counterA59Number,'A50');assert.equal(next.fields.counterA59Service,'New Counter');assert.equal(next.fields.gateLeadLabel,'New Gate Lead');assert.equal(next.fields.passport1Label,'Document Check');assert.equal(next.fields.gateLead,'');assert.equal(next.fields.gateLeadTime,'');
  assert.equal((await request('agent','?date=2026-11-02&flight=MU583')).data.fields.gateLeadLabel,'Gate Lead');
- assert.equal((await request('lead','/clear',{...key,expected:existing.fields})).status,200);const cleared=(await request('lead',path)).data;assert.equal(cleared.fields.gateLeadLabel,'Existing Gate Lead');assert.equal(cleared.fields.counterA59Service,'Existing Counter');assert.equal(cleared.fields.gateLead,'');
+ assert.equal((await request('lead','/clear',{...key,expected:existing.fields})).status,200);const cleared=(await request('lead',path)).data;assert.equal(cleared.fields.gateLeadLabel,'New Gate Lead');assert.equal(cleared.fields.counterA59Service,'New Counter');assert.equal(cleared.fields.gateLead,'');
  registerBriefing(express(),options);assert.equal(service.record({date:'2026-11-03',flight:'MU586'}).fields.gateLeadLabel,'New Gate Lead');assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_departure_defaults').get().n,2);
 });
