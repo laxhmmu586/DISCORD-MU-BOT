@@ -4,7 +4,7 @@
  const glassWorkspace=document.body.classList.contains('workspace-glass')||document.body.classList.contains('home-page');
  const profileTopFeatures=false;
  if(profileTopFeatures)document.body.classList.add('profile-top-features');
- const features=document.createElement('nav');features.className='workspace-features';features.setAttribute('aria-label','Account features');features.hidden=true;if(glassWorkspace)document.querySelector('.profile-sidebar nav').before(features);else header.insertBefore(features,host);
+ const features=document.createElement('nav');features.className='workspace-features';features.setAttribute('aria-label','Account features');features.hidden=true;const sidebarNavigation=document.querySelector('.profile-sidebar nav,.home-sidebar nav');if(glassWorkspace&&sidebarNavigation)sidebarNavigation.before(features);else header.insertBefore(features,host);
  const chevron=host.querySelector('.flight-account-name')?.nextElementSibling;if(chevron){chevron.className='workspace-chevron';chevron.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>';}
  const accountHost=document.createElement('label');accountHost.className='workspace-account';accountHost.hidden=true;accountHost.innerHTML='<span class="sr-only">Current account</span><select aria-label="Current account"></select>';
  const bell=document.createElement('button');bell.type='button';bell.className='workspace-bell';bell.setAttribute('aria-label','Notifications');bell.setAttribute('aria-expanded','false');bell.setAttribute('aria-controls','workspace-notifications');bell.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zM10 21h4"/></svg><span class="workspace-notification-count" hidden></span>';

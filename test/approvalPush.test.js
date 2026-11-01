@@ -51,7 +51,13 @@ test('device API binds tokens to authenticated user, preserves other devices and
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{service.close();server.closeAllConnections();server.close();});const base='http://127.0.0.1:'+server.address().port;
  const call=(uid,body)=>fetch(base+'/notification-api/device',{method:'POST',headers:{Authorization:uid,'Content-Type':'application/json'},body:JSON.stringify(body)});
  const a={deviceId:crypto.randomUUID(),token:'a'.repeat(25)},b={deviceId:crypto.randomUUID(),token:'b'.repeat(25)};
+ const state=async(uid,deviceId)=>(await fetch(base+'/notification-api/device?deviceId='+encodeURIComponent(deviceId),{headers:{Authorization:uid}})).json();
+ assert.deepEqual(await state('e1',a.deviceId),{registered:false,enabled:false});
  assert.equal((await call('bad',a)).status,401);await call('e1',{...a,uid:'e2'});await call('e1',b);await call('e1',a);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM notification_tokens WHERE uid=?').get('e1').n,2);
+ assert.deepEqual(await state('e1',a.deviceId),{registered:true,enabled:true});
+ assert.deepEqual(await state('e2',a.deviceId),{registered:false,enabled:false});
  await call('e2',{deviceId:a.deviceId,enabled:false});assert.equal(f.db.prepare('SELECT SUM(enabled) n FROM notification_tokens').get().n,2);
  await call('e1',{deviceId:a.deviceId,enabled:false});assert.equal(f.db.prepare('SELECT SUM(enabled) n FROM notification_tokens').get().n,1);
+ assert.deepEqual(await state('e1',a.deviceId),{registered:true,enabled:false});assert.deepEqual(await state('e1',b.deviceId),{registered:true,enabled:true});
+ await call('e1',a);assert.deepEqual(await state('e1',a.deviceId),{registered:true,enabled:true});
 });

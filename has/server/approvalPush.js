@@ -33,6 +33,12 @@ function registerPush(app,{employees,profiles,authenticate,env=process.env}){
  const service=createPushService({db:employees.db,env}),db=employees.db;
  app.use('/notification-api',require('express').json({limit:'8kb'}),async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.pushUser=await authenticate(req);if(!profiles.linked(req.pushUser))return res.status(403).json({error:'Link your employee profile first.'});next();}catch{res.status(401).json({error:'Sign in required.'});}});
  app.get('/notification-api/config',(req,res)=>res.json({vapidKey:env.FCM_VAPID_PUBLIC_KEY||'',configured:service.configured()}));
+ app.get('/notification-api/device',(req,res)=>{
+  const deviceId=req.query.deviceId;
+  if(typeof deviceId!=='string'||!/^[a-f0-9-]{36}$/i.test(deviceId))return res.status(400).json({error:'Invalid notification device.'});
+  const row=db.prepare('SELECT enabled FROM notification_tokens WHERE uid=? AND device_id=?').get(req.pushUser.uid,deviceId);
+  res.json({registered:Boolean(row),enabled:row?.enabled===1});
+ });
  app.post('/notification-api/device',(req,res)=>{
   const {deviceId,token,enabled=true,platform,userAgent}=req.body||{};
   if(typeof deviceId!=='string'||!/^[a-f0-9-]{36}$/i.test(deviceId)||(enabled!==false&&(typeof token!=='string'||token.length<20||token.length>4096)))return res.status(400).json({error:'Invalid notification device.'});
