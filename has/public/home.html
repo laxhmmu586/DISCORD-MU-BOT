@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="home-auth-pending">
 <head>
   <link rel="apple-touch-icon" sizes="180x180" href="/has/assets/mufc-app-icon-v1-180.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/has/assets/mufc-app-icon-v1-192.png">
@@ -7,6 +7,7 @@
   <script src="/workspace-routes.js?v=20261030-glass"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>html.home-auth-pending body{visibility:hidden}</style>
   <meta name="theme-color" content="#dceaff">
   <title>Home · Hallmark Aviation Services</title>
   <meta name="description" content="Your Hallmark workspace. People, operations, and everything you need for a seamless day.">
@@ -14,6 +15,7 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="/__/firebase/init.js"></script>
+  <script defer src="/has/home-auth.js?v=20261031-require-login"></script>
   <script defer src="/employee-profile-api.js?v=20261026-avatar-crop"></script>
   <script defer src="/employee-sidebar-art.js?v=20261030-glass-clean-routes"></script>
   <script defer src="/info-access.js?v=20261030-resources"></script>
