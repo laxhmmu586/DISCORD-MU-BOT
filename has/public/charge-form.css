@@ -11,3 +11,5 @@
 .charge-seat>div:first-child{display:grid;grid-template-columns:7mm 35mm 20mm minmax(0,1fr);gap:0;padding:0}.charge-seat>div:first-child>input{margin-left:2mm}.charge-seat>div:first-child>strong{padding:1mm 2mm}.charge-seat>div:first-child>label{border-left:1px solid #000;padding:1mm 2mm;min-height:6mm}.charge-ticket label{border-left:1px solid #000;padding-left:2mm}
 
 .charge-editable-text[contenteditable=true]{cursor:text;outline:1px dashed transparent}.charge-editable-text[contenteditable=true]:hover{outline-color:#a8b9cc}.charge-editable-text[contenteditable=true]:focus{outline:1px solid #4489d8;background:#f3f8ff}.charge-print-document .charge-editable-text{outline:none!important;background:transparent!important}
+
+.charge-table.charge-upgrade-table td:nth-child(2){text-align:center}.charge-seat>div:first-child>.charge-print-check{margin-left:2mm}
