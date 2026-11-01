@@ -21,3 +21,9 @@ test('rich copy/paste preserves custom display text separately from the duty cod
  const copied=grid.copy(people,days,range);assert.equal(copied.text,'EK');const cells=grid.parse(copied.rich,copied.text,roles,colors),change=grid.plan(people,days,range,cells).changes[0];assert.equal(change.displayLabel,'EK');assert.equal(change.code,'C');assert.equal(change.remark,'Custom duty');
  for(const displayLabel of [null,42,'x'.repeat(21),'CI\nTI'])assert.throws(()=>grid.parse(JSON.stringify({kind:'staff-schedule',version:1,cells:[[{code:'C',color:'#00ff00',displayLabel}]]}),'',roles,colors));
 });
+
+test('legacy GS clipboard cells paste as G without losing colors or remarks',()=>{
+ assert.deepEqual(grid.parse('','GS',roles,colors),[[{code:'G',color:colors.G}]]);
+ const value={kind:'staff-schedule',version:1,cells:[[{code:'GS',displayLabel:'GS',color:'#9371c7',remark:'Gate note'}]]};
+ assert.deepEqual(grid.parse(JSON.stringify(value),'',roles,colors),[[{code:'G',displayLabel:'G',color:'#9371c7',remark:'Gate note'}]]);
+});
