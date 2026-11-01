@@ -168,26 +168,43 @@ test('revision checks share the initial snapshot token, stay unchanged when idle
  assert.equal((await fetch(f.base+'/staff-schedule-api/revision')).status,401);
 });
 
-for(const category of ['report_time','forgot_punch','forgot_punch_meal','request_fix_time','cross_account_call_in'])test(category+' reports accept past dates, remain private, and notify supervisors without approval or changing duties',async t=>{
- const f=await fixture(t);const date='2026-10-20';f.seed(date,{one:C});
- const body={requestId:crypto.randomUUID(),type:'timesheet',date,category,note:category==='cross_account_call_in'?'Called in to support CZ, 09:00–13:00':'Meal ended at 13:30'};
- const first=await f.request('one','/requests',body);assert.equal(first.status,200);assert.equal(first.data.status,'notified');assert.equal(first.data.category,category);
+
+for(const category of ['report_time','forgot_punch','forgot_punch_meal','request_fix_time','cross_account_call_in'])test(category+' requires Supervisor approval, accepts past dates and preserves schedule duties',async t=>{
+ const f=await fixture(t),date='2026-10-20';f.seed(date,{one:C});
+ const body={requestId:crypto.randomUUID(),type:'timesheet',date,category,note:'Time correction details'};
+ const first=await f.request('one','/requests',body);assert.equal(first.status,200);assert.equal(first.data.status,'awaiting_supervisor');assert.equal(first.data.category,category);assert.equal(first.data.canCancel,true);assert.equal(first.data.canApprove,false);
  assert.equal((await f.request('one','/requests',body)).data.id,first.data.id);
  assert.equal((await f.request('one','/requests',{...body,category:'invalid'})).status,409);
  assert.equal((await f.request('three','/requests')).data.requests.length,0);
  assert.equal((await f.request('three','/requests/'+first.data.id,{action:'approve'})).status,404);
- assert.equal((await f.request('one','/requests/'+first.data.id,{action:'approve'})).status,409);
- const manager=(await f.request('sup','/requests')).data;assert.equal(manager.requests[0].canApprove,false);assert.equal(manager.requests[0].category,category);
- assert.equal((await f.request('sup','/requests/'+first.data.id,{action:'approve'})).status,409);assert.deepEqual(f.read(date).assignments,{one:C});
+ assert.equal((await f.request('one','/requests/'+first.data.id,{action:'approve'})).status,403);
+ const manager=(await f.request('sup','/requests')).data;assert.equal(manager.requests[0].canApprove,true);assert.equal(manager.requests[0].canDecline,true);assert.equal(manager.pending,1);assert.equal(manager.unread,0);
+ const approved=await f.request('sup','/requests/'+first.data.id,{action:'approve'});assert.equal(approved.status,200);assert.equal(approved.data.status,'approved');assert.equal(approved.data.completedBy,'sup');assert.deepEqual(f.read(date).assignments,{one:C});assert.equal(f.read(date).revision,0);
  assert.equal((await f.request('sup','/requests/'+first.data.id,{action:'approve'})).status,409);
- const inbox=(await f.request('sup','/requests')).data;assert.equal(inbox.notifications[0].type,'timesheet');assert.equal(inbox.notifications[0].action,'notified');assert.equal(inbox.unread,1);assert.equal(inbox.pending,0);
+ const result=(await f.request('one','/requests')).data;assert.equal(result.notifications[0].action,'approved');assert.equal(result.pending,0);
 });
-test('timesheet options and reasons are validated, and reports coexist with schedule requests',async t=>{
+
+test('Report Time validation, denial and cancellation preserve unrelated schedule requests',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:C});await f.submit('one','off');
  for(const extra of [{category:'invalid'},{note:'   '},{date:'2026-02-30'}])assert.equal((await f.submit('one','timesheet',{category:'report_time',...extra})).status,400);
  const result=await f.submit('one','timesheet',{category:'request_fix_time'});assert.equal(result.status,200);
- assert.equal((await f.request('sup','/requests/'+result.data.id,{action:'decline'})).status,409);assert.deepEqual(f.read(DATE).assignments,{one:C});
- assert.equal((await f.request('sup','/requests')).data.notifications[0].type,'timesheet');
+ const denied=await f.request('sup','/requests/'+result.data.id,{action:'decline'});assert.equal(denied.status,200);assert.equal(denied.data.status,'declined');assert.deepEqual(f.read(DATE).assignments,{one:C});
+ assert.equal((await f.request('one','/requests')).data.notifications[0].action,'declined');
+ const next=await f.submit('one','timesheet',{category:'report_time'});const cancelled=await f.request('one','/requests/'+next.data.id,{action:'cancel'});assert.equal(cancelled.status,200);assert.equal(cancelled.data.status,'cancelled');assert.equal((await f.request('sup','/requests/'+next.data.id,{action:'approve'})).status,409);
+});
+
+test('Report Time approval follows Supervisor rank even when Schedule editing is granted or revoked',async t=>{
+ const f=await fixture(t),result=await f.submit('one','timesheet',{category:'report_time'});
+ f.db.prepare('INSERT OR REPLACE INTO employee_permission_overrides VALUES(?,?)').run('three',JSON.stringify({'schedule.edit':true}));
+ assert.equal((await f.request('three','/requests')).data.requests.length,0);assert.equal((await f.request('three','/requests/'+result.data.id,{action:'approve'})).status,404);
+ f.db.prepare('INSERT OR REPLACE INTO employee_permission_overrides VALUES(?,?)').run('sup',JSON.stringify({'schedule.edit':false}));
+ assert.equal((await f.request('sup','/requests')).data.requests[0].canApprove,true);assert.equal((await f.request('sup','/requests/'+result.data.id,{action:'approve'})).status,200);
+});
+
+test('historical notification-only Report Time records remain processed and read-only',async t=>{
+ const f=await fixture(t),result=await f.submit('one','timesheet',{category:'report_time'});
+ const row=f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(result.data.id),r=JSON.parse(row.data);r.status='notified';r.completedAt=r.createdAt;f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
+ const manager=(await f.request('sup','/requests')).data;assert.equal(manager.requests[0].status,'notified');assert.equal(manager.requests[0].canApprove,false);assert.equal(manager.pending,0);assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve'})).status,409);
 });
 
 test('Request Off ranges keep applicant choices, require a second review and atomically apply mixed X/VAC days',async t=>{
