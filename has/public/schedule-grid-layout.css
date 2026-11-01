@@ -184,3 +184,10 @@
 .schedule-ribbon-frame .schedule-ribbon-overlay [data-ribbon-art=holiday]:before{filter:hue-rotate(125deg) saturate(.8)}
 .schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered:after{content:none}
 @media(max-width:600px){.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered{width:64px;height:25px}.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered:before{left:-10px;top:-7px;width:84px;height:42px}.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered .date-status-face{width:64px;height:21px;padding:3px 0;font-size:10px;line-height:15px}}
+
+/* Today plus one status shares one continuous two-color ribbon. */
+.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined{width:134px}
+.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined .date-status-face{width:134px;display:grid;grid-template-columns:1fr 1fr;gap:0}
+.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined:before{width:158px;height:53px;left:-12px;top:-8px;background-image:url('/has/assets/schedule-ribbon-today-short-3d-v1.webp')}
+.schedule-ribbon-frame .schedule-ribbon-overlay [data-ribbon-art=today-holiday]:before{background-image:url('/has/assets/schedule-ribbon-today-holiday-3d-v1.webp')}
+@media(max-width:600px){.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined{width:112px}.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined .date-status-face{width:112px}.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined:before{width:132px;height:44px;left:-10px;top:-7px}}
