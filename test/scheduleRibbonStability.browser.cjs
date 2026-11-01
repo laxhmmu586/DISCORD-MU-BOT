@@ -27,8 +27,9 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{registerS
   assert.deepEqual((await api('sup')).days.find(day=>day.date==='2026-11-02').labels,['New Year','Typhoon']);
   await page.reload();await page.locator('#schedule-content').waitFor({state:'visible'});
   const icons=page.locator('.schedule-ribbon-overlay [data-ribbon-date="2026-11-02"] .date-status-icon img');await icons.first().waitFor();assert.equal(await icons.count(),4);assert(await icons.evaluateAll(images=>images.every(img=>img.complete&&img.naturalWidth>0)));
-  const todayBadge=page.locator('.schedule-ribbon-overlay [data-ribbon-date="'+date+'"] .date-status').first();assert.equal(await todayBadge.textContent(),'Today');assert.equal(await todayBadge.locator('.date-status-face').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(121, 68, 188)');
+  const todayBadge=page.locator('.schedule-ribbon-overlay [data-ribbon-date="'+date+'"] .date-status').first();assert.equal(await todayBadge.textContent(),'Today');assert.equal(await todayBadge.evaluate(el=>el.style.getPropertyValue('--ribbon-color')),'#7944bc');
   const faceStyle=await todayBadge.locator('.date-status-face').evaluate(el=>({radius:getComputedStyle(el).borderTopLeftRadius,clip:getComputedStyle(el).clipPath,images:el.querySelectorAll('img,svg').length}));assert.equal(faceStyle.radius,'12px');assert.equal(faceStyle.clip,'none');assert.equal(faceStyle.images,0);
+  const ribbonArt=await todayBadge.evaluate(el=>getComputedStyle(el,'::before').backgroundImage);assert(ribbonArt.includes('schedule-ribbon-purple-3d-v1.webp'));for(const color of ['purple','red'])assert.equal((await page.request.get(origin+'/has/assets/schedule-ribbon-'+color+'-3d-v1.webp')).status(),200);
   const typhoon=page.locator('.schedule-ribbon-overlay [data-date-icon=typhoon] img').first();
   assert.equal(await typhoon.evaluate(el=>getComputedStyle(el).animationDuration),'20s');
   const initialTurn=await typhoon.evaluate(el=>getComputedStyle(el).transform);await page.waitForTimeout(150);assert.notEqual(await typhoon.evaluate(el=>getComputedStyle(el).transform),initialTurn);
