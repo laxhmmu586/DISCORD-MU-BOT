@@ -14,12 +14,14 @@ function createPushService({db,env=process.env,send}){
  function enqueue(source,id,stage,uid,payload){db.prepare('INSERT OR IGNORE INTO approval_push_outbox(event_key,source,request_id,stage,uid,payload,created_at) VALUES(?,?,?,?,?,?,?)').run(hash(JSON.stringify([source,id,stage,uid])),source,id,stage,uid,JSON.stringify(payload),new Date().toISOString());}
  async function flush(){if(running||(!send&&!configured()))return;running=true;try{
   for(const job of db.prepare("SELECT * FROM approval_push_outbox WHERE status='pending' ORDER BY rowid LIMIT 100").all()){
+   if(require('./employeeAccountStatus').blocked(db,{uid:job.uid})){db.prepare("UPDATE approval_push_outbox SET status='suppressed' WHERE event_key=?").run(job.event_key);continue;}
    const resolve=resolvers.get(job.source);if(!resolve)continue;
    let current;try{current=resolve(job.uid,job.request_id);}catch{current=null;}
    if(!current||current.stage!==job.stage){db.prepare("UPDATE approval_push_outbox SET status='obsolete' WHERE event_key=?").run(job.event_key);continue;}
    let enabled=true;try{for(const filter of filters.values())if(!filter(job.uid,JSON.parse(job.payload)))enabled=false;}catch{enabled=false;}
    if(!enabled){db.prepare("UPDATE approval_push_outbox SET status='suppressed' WHERE event_key=?").run(job.event_key);continue;}
    for(const device of db.prepare('SELECT * FROM notification_tokens WHERE uid=? AND enabled=1').all(job.uid)){
+    if(require('./employeeAccountStatus').blocked(db,{uid:job.uid}))break;
     // Claim before sending: an ambiguous network response must never cause a duplicate.
     if(!db.prepare("INSERT OR IGNORE INTO approval_push_delivery VALUES(?,?,'sending',NULL)").run(job.event_key,device.token_id).changes)continue;
     try{await transmit(device.token,JSON.parse(job.payload));db.prepare("UPDATE approval_push_delivery SET status='sent' WHERE event_key=? AND token_id=?").run(job.event_key,device.token_id);}

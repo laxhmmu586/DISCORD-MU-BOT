@@ -1,7 +1,7 @@
 const model=require('../public/organization-model');
 const positions=require('../public/employee-positions');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
-function registerOrganization(app,{store,accessFor,scopedView,onChange}){
+function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseDirectory}){
   const db=store.db;
   db.exec('CREATE TABLE IF NOT EXISTS employee_google_link_audit(id INTEGER PRIMARY KEY,uid TEXT NOT NULL,source_employee_id TEXT NOT NULL,target_employee_id TEXT NOT NULL,actor TEXT NOT NULL,at TEXT NOT NULL)');
   const googleAccounts=()=>db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='employee_accounts'").get()?db.prepare("SELECT uid,employee_id FROM employee_accounts WHERE provider='google.com'").all():[];
@@ -14,8 +14,15 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange}){
     const data=store.get(),all=rows(),scoped=scopedView({...data,employees:all},access),googleIds=new Set(access.canManagePending?googleAccounts().map(link=>link.employee_id):[]);
     for(const row of [...scoped.employees]){const workspace=access.mode!=='admin'&&(access.scopes||[access]).find(value=>model.membershipIndex(row,value)>=0),context=workspace?model.forWorkspace(all,workspace):all;let next=context.find(value=>value.id===row.id);const seen=new Set();while(next&&!seen.has(next.id)){seen.add(next.id);const parents=model.reportingManagers(next,context);for(const parent of parents)if(!scoped.employees.some(person=>person.id===parent.id))scoped.employees.push(all.find(value=>value.id===parent.id));next=parents.length===1?parents[0]:null;}}
     // Only fields needed by HR are returned; private contacts and sign-in credentials stay out of this view.
-    return {revision:data.revision,accounts:scoped.accounts.map(account=>({...account,employeeCount:all.filter(row=>require('../public/employee-account-groups').belongs(row,account)).length})),access,employees:scoped.employees.map(({id,name,nickname,position,station,account,additionalAccounts,membershipReporting,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,permissionOverrides})=>({id,avatar:avatars.get(id)||'',name,nickname,position,station,account,additionalAccounts,membershipReporting,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,permissionOverrides,...(access.canManagePending?{hasGoogleLogin:googleIds.has(id)}:{})}))};
+    return {revision:data.revision,accounts:scoped.accounts.map(account=>({...account,employeeCount:all.filter(row=>require('../public/employee-account-groups').belongs(row,account)).length})),access,employees:scoped.employees.map(({id,name,nickname,position,station,account,additionalAccounts,membershipReporting,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,accountDisabled,accountStatusPending,permissionOverrides})=>({id,avatar:avatars.get(id)||'',name,nickname,position,station,account,additionalAccounts,membershipReporting,companyEmail,reportsTo,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,isInserted,createdForOrganization,unassigned,isAdministrator,isServerOwner,accountDisabled,accountStatusPending,permissionOverrides,...(access.canManagePending?{hasGoogleLogin:googleIds.has(id)}:{})}))};
   };
+  const accountStatus=require('./employeeAccountStatus').createAccountStatus({store,directory:firebaseDirectory||require('./firebaseDirectory').createFirebaseDirectory(),onChange});
+  app.post('/employee-admin-api/organization/account-status',async(req,res)=>{try{
+   const body=req.body||{},current=store.get(),access=accessFor(req.employeeAdmin),all=rows(),row=all.find(row=>row.id===body.id);
+   if(!access||!row||row.id===access.employeeId||row.isServerOwner||!model.canEdit(row,access,all))fail('You can only disable accounts below you in your management scope.',403);
+   if(typeof body.disabled!=='boolean')fail('Choose the account status.');if(body.revision!==current.revision)fail('Employee data changed. Reload before changing account status.',409);
+   await accountStatus.change(current.employees.find(person=>person.id===row.id),body.disabled,req.employeeAdmin.email||req.employeeAdmin.uid);res.json(view(access));
+  }catch(error){res.status(error.status||400).json({error:error.message});}});
   app.get('/employee-admin-api/organization',(req,res)=>res.json(view(req.employeeAccess)));
   const save=db.transaction(req=>{
     const current=store.get(),access=accessFor(req.employeeAdmin),all=rows(),body=req.body;

@@ -16,6 +16,6 @@
  ];
  const isOwner=row=>row?.isServerOwner===true||['lax@mu.com','nextweek1216@gmail.com','lake@mu.com'].includes(String(row?.loginId||'').trim().toLowerCase());
  function defaultAllowed(row,key){const item=catalog.find(item=>item.key===key);return !!item&&(isOwner(row)||item.roles.includes(positions.normalize(row?.position)));}
- function allowed(row,key,fallback){if(isOwner(row)&&catalog.some(item=>item.key===key))return true;const override=row?.permissionOverrides?.[key];return typeof override==='boolean'?override:(fallback===undefined?defaultAllowed(row,key):!!fallback);}
+ function allowed(row,key,fallback){if(row?.accountDisabled)return false;if(isOwner(row)&&catalog.some(item=>item.key===key))return true;const override=row?.permissionOverrides?.[key];return typeof override==='boolean'?override:(fallback===undefined?defaultAllowed(row,key):!!fallback);}
  return {catalog,allowed,defaultAllowed};
 });

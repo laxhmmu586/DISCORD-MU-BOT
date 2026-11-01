@@ -1,6 +1,9 @@
 const crypto=require('node:crypto');
 let certs,expires=0;
-let employeeAccess=()=>false;
+let employeeAccess=()=>false,accountBlocked=()=>false;
+const connections=new Map();
+function setAccountBlockedVerifier(check){accountBlocked=check;}
+function disconnectUser(uid){for(const res of connections.get(uid)||[])res.destroy();connections.delete(uid);}
 function setEmployeeAccessVerifier(check){employeeAccess=check;}
 async function authenticate(req,{allowUnlinkedGoogle=false}={}){
  const token=String(req.headers.authorization||'').replace(/^Bearer /,'');const parts=token.split('.');
@@ -10,8 +13,10 @@ async function authenticate(req,{allowUnlinkedGoogle=false}={}){
  if(header.alg!=='RS256'||payload.aud!==project||payload.iss!==`https://securetoken.google.com/${project}`||!payload.sub||payload.sub.length>128||payload.exp<=now||!Number.isFinite(payload.exp)||!Number.isFinite(payload.iat)||payload.iat>now+60)throw new Error('Invalid sign-in token');
  if(!certs||Date.now()>expires){const r=await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com',{signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error('Unable to verify sign-in');certs=await r.json();expires=Date.now()+3600000;}
  if(!certs[header.kid]||!crypto.verify('RSA-SHA256',Buffer.from(parts[0]+'.'+parts[1]),certs[header.kid],Buffer.from(parts[2],'base64url')))throw new Error('Invalid sign-in token');
- const user={uid:payload.sub,email:payload.email||'',emailVerified:payload.email_verified===true,provider:payload.firebase?.sign_in_provider||''};
+ const user={uid:payload.sub,email:payload.email||'',emailVerified:payload.email_verified===true,provider:payload.firebase?.sign_in_provider||'',authTime:payload.auth_time};
  if(user.provider==='google.com'&&(!user.emailVerified||(!/^[^@\s]+@mu\.com$/i.test(user.email)&&!allowUnlinkedGoogle&&!employeeAccess(user))))throw new Error('Employee account must be linked. Contact an administrator.');
+ if(accountBlocked(user))throw Error('This employee account is disabled or requires a new sign-in.');
+ if(req.res){let live=connections.get(user.uid);if(!live)connections.set(user.uid,live=new Set());live.add(req.res);req.res.once('close',()=>{live.delete(req.res);if(!live.size)connections.delete(user.uid);});}
  return user;
 }
-module.exports={authenticate,setEmployeeAccessVerifier};
+module.exports={authenticate,setEmployeeAccessVerifier,setAccountBlockedVerifier,disconnectUser};

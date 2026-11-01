@@ -52,7 +52,7 @@
     if(rank(manager.position)>=0&&rank(row.position)>=0&&rank(manager.position)>=rank(row.position))throw Error('The reporting manager must hold a higher title.');
     return managerId;
   }
-  function managersFor(row,access,rows){const managers=rows.filter(manager=>{if(normalize(row.position)==='Agent'&&normalize(manager.position)==='Supervisor')return false;if(access.mode!=='admin'&&manager.id!==access.employeeId&&!canEdit(manager,access,rows))return false;try{validateLine(row,manager.id,rows);return true;}catch{return false;}});
+  function managersFor(row,access,rows){const managers=rows.filter(manager=>{if(manager.accountDisabled)return false;if(normalize(row.position)==='Agent'&&normalize(manager.position)==='Supervisor')return false;if(access.mode!=='admin'&&manager.id!==access.employeeId&&!canEdit(manager,access,rows))return false;try{validateLine(row,manager.id,rows);return true;}catch{return false;}});
     if(['Agent','Lead'].includes(normalize(row.position))){const id=supervisorGroup(row);try{validateLine(row,id,rows);const members=reportingManagers({...row,reportsTo:id},rows);if(access.mode==='admin'||members.some(manager=>manager.id===access.employeeId||canEdit(manager,access,rows)))managers.unshift({id,name:'All Supervisors · '+members.map(member=>member.name).join(', '),position:'Supervisor team',station:row.station,account:row.account});}catch{}}
     return row.membershipSlot>0&&normalize(row.position)==='Agent'?managers.filter(manager=>manager.id===supervisorGroup(row)):managers;
   }

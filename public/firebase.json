@@ -309,6 +309,22 @@
     ],
     "rewrites": [
       {
+        "source": "/assets/charge-form/china-eastern-logo.png",
+        "destination": "/has/assets/charge-form/china-eastern-logo.png"
+      },
+      {
+        "source": "/charge-form.css",
+        "destination": "/has/charge-form.css"
+      },
+      {
+        "source": "/charge-form-model.js",
+        "destination": "/has/charge-form-model.js"
+      },
+      {
+        "source": "/charge-form.js",
+        "destination": "/has/charge-form.js"
+      },
+      {
         "source": "/assets/hero-globe-north-america-v1.webp",
         "destination": "/has/assets/hero-globe-north-america-v1.webp"
       },

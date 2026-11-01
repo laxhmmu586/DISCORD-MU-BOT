@@ -14,14 +14,14 @@ function createProfileStore(employees){
  const linked=user=>{const link=account(user.uid);const row=link&&employees.get().employees.find(row=>row.id===(employees.resolveId?.(link.employee_id)||link.employee_id));return row&&{...row,isServerOwner:require('./serverOwners').isOwner(user)};};
  const profile=row=>({id:row.id,canViewOperations:row.isServerOwner||(require('../public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'})&&!require('../public/employee-account-groups').isHeadquarter(row)),canViewForm:require('./staffSchedule').canEdit(null,row)||require('../public/employee-permissions').allowed(row,'request.newAccess')||require('../public/employee-positions').normalize(row.position)==='Lead',name:row.name,nickname:row.nickname||'',eid:row.eid||'',station:row.station,account:row.account,pbbId:row.pbbId||'',pbbExpiry:row.pbbExpiry||'',pbbMscId:row.pbbMscId||'',pbbMscExpiry:row.pbbMscExpiry||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
  function candidate(user,eid,allowMissing=false){
-  requireProfileAccess(user);
+  requireProfileAccess(user);if(require('./employeeAccountStatus').blocked(db,user))fail('This employee account is disabled.',403);
   if(user.provider==='google.com'&&!user.emailVerified)fail('A verified Google email is required.',403);
-  const rows=employees.get().employees;
+  const rows=(employees.getAll?.()||employees.get()).employees;
   const emailRows=rows.filter(row=>normalize(user.email)&&[normalize(row.email),normalize(row.loginId)].includes(normalize(user.email)));
   const candidates=emailRows.length?emailRows:(eid?rows.filter(row=>row.eid&&row.eid===String(eid).trim()):[]),matches=[...new Map(candidates.map(row=>{const target=rows.find(person=>person.id===(row.mergedInto||row.id));return [target.id,target];})).values()];
   if(allowMissing&&matches.length===0)return null;
   if(matches.length!==1){if(!eid&&!emailRows.length)return null;fail('Employee record not found or ambiguous. Please contact an administrator.',403);}
-  const row=matches[0];
+  const row=matches[0];if(row.accountDisabled)fail('This employee account is disabled.',403);
   if(user.provider==='google.com'){
    const owner=db.prepare("SELECT uid FROM employee_accounts WHERE employee_id=? AND provider='google.com'").get(row.id);
    if(owner&&owner.uid!==user.uid)fail('This employee already has a Google account. Please contact an administrator.',403);
@@ -29,6 +29,7 @@ function createProfileStore(employees){
   return row;
  }
  function status(user){
+  if(require('./employeeAccountStatus').blocked(db,user))fail('This employee account is disabled.',403);
   if(restricted(user))return {state:'external'};
   const row=linked(user);
   if(row)return {state:'ready',profile:profile(row),revision:employees.get().revision};
@@ -111,6 +112,7 @@ function createProfileStore(employees){
 function registerProfiles(app,{employees,authenticate,onChange=()=>{}}){
  const profiles=createProfileStore(employees);
  require('./pbbAuth').setEmployeeAccessVerifier(user=>Boolean(profiles.linked(user)));
+ require('./pbbAuth').setAccountBlockedVerifier(user=>require('./employeeAccountStatus').blocked(employees.db,user));
  app.use('/profile-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.profileUser=await authenticate(req,{allowUnlinkedGoogle:true});next();}catch{res.status(401).json({error:'Sign in required.'});}});
  const handler=fn=>async(req,res)=>{try{res.json(await fn(req));}catch(error){res.status(error.status||400).json({error:error.message});}};
  app.get('/profile-api/workspace',handler(req=>{const employee=profiles.linked(req.profileUser);if(!employee)fail('Link your employee profile first.',403);const groups=require('../public/employee-account-groups');return {accounts:groups.memberships(employee).filter((scope,i,rows)=>rows.findIndex(other=>groups.same(scope,other))===i),main:groups.scope(employee)};}));
