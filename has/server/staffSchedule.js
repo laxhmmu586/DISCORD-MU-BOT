@@ -58,7 +58,7 @@ function registerStaffSchedule(app,{employees,profiles,authenticate=require('./p
  app.post('/staff-schedule-api/requests/notifications/read',handler(req=>requests.readNotifications(req.body||{},req.scheduleAccess)));
  app.post('/staff-schedule-api/requests/:id',handler(req=>requests.act(req.params.id,req.body||{},req.scheduleAccess)));
  require('./scheduleStandingNotice').createScheduleStandingNotice({app,db,handler,requireManager});
- notices=require('./scheduleNotices').createScheduleNotices({app,db,handler,requireManager,read,roles,today,validDate:date,employees});
+ notices=require('./scheduleNotices').createScheduleNotices({app,db,handler,requireManager,read,roles,today,validDate:date,employees,profiles,canAccess:row=>allowed(row)||Boolean(row&&isTestRosterAccount(row)&&groups.same(row,{station:'LAX',account:'MU'})&&!groups.isHeadquarter(row))});
  const undo=require('./scheduleUndo').createScheduleUndo({db,read,put,notices,employees});
  app.post('/staff-schedule-api/undo',handler(req=>{requireManager(req);const restored=undo.restore(req.scheduleAccess,req.body?.token);return {days:restored.dates.map(day=>decorated(read(day))),undo:null,sync:sync.status(),message:'Last change undone.'};}));
  app.get('/staff-schedule-api',handler(async req=>{
