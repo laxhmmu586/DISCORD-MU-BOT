@@ -150,6 +150,8 @@
     "schedule-quick-access.css",
     "attendance.html",
     "briefing-fields.js",
+    "briefing-defaults.js",
+    "briefing-defaults.css",
     "briefing-prices.js",
     "briefing-live.js",
     "briefing-reference.css",
@@ -296,6 +298,7 @@
     "workspace-shell.js"
   ],
   "server": [
+    "briefingDefaults.js",
     "approvalAccountScope.js",
     "briefing.js",
     "briefingBooking.js",
