@@ -33,7 +33,7 @@
  button.onclick=async()=>{
   if(busy)return;
   if(token){busy=true;label();tell('');try{await window.mufcDisablePush();}catch(error){tell(error.message);}finally{busy=false;label();}return;}
-  if(ios&&!standalone){tell('如需在 iPhone 上接收 MUFC 通知，请先将 MUFC 添加到主屏幕。');return;}
+  if(ios&&!standalone){tell('To receive MUFC notifications on your iPhone, first add MUFC to your Home Screen.');return;}
   if(!supported()){tell('This browser does not support Web Push notifications.');return;}
   if(!auth.currentUser){tell('Please sign in first.');return;}
   if(Notification.permission==='denied'){tell('Notifications are blocked. Allow notifications in your browser’s site settings, then try again.');return;}
