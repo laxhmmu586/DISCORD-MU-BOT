@@ -191,3 +191,13 @@
 .schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined:before{width:158px;height:53px;left:-12px;top:-8px;background-image:url('/has/assets/schedule-ribbon-today-short-3d-v1.webp')}
 .schedule-ribbon-frame .schedule-ribbon-overlay [data-ribbon-art=today-holiday]:before{background-image:url('/has/assets/schedule-ribbon-today-holiday-3d-v1.webp')}
 @media(max-width:600px){.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined{width:112px}.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined .date-status-face{width:112px}.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-combined:before{width:132px;height:44px;left:-10px;top:-7px}}
+
+/* Undo sits immediately after Add/Edit, using the same blue 3D icon language. */
+.schedule-shell .schedule-toolbar .schedule-undo{display:inline-grid;place-items:center;flex:0 0 46px;width:46px;height:46px;padding:2px;border:0;border-radius:12px;background:transparent;box-shadow:none;cursor:pointer}
+.schedule-shell .schedule-toolbar .schedule-undo[hidden]{display:none}
+.schedule-undo img{display:block;width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 3px 3px #1576c930);pointer-events:none}
+.schedule-shell .schedule-toolbar .schedule-undo:hover:not(:disabled){background:#ffffff80}
+.schedule-shell .schedule-toolbar .schedule-undo:focus-visible{outline:2px solid #3287e7;outline-offset:2px}
+.schedule-shell .schedule-toolbar .schedule-undo:disabled{cursor:default;opacity:.4}
+.schedule-undo:disabled img{filter:grayscale(.8)}
+@media(max-width:600px){.schedule-shell .schedule-toolbar .schedule-undo{flex-basis:38px;width:38px;height:38px}.schedule-undo img{width:36px;height:36px}}

@@ -9,6 +9,42 @@ async function fixture(t,options={}){
  const request=async(user,body,start='2026-10-26',suffix='',schema='2')=>{const res=await fetch('http://127.0.0.1:'+server.address().port+'/staff-schedule-api'+suffix+(body?'':'?start='+start+(schema?'&schema='+schema:'')),{method:body?'POST':'GET',headers:{...(user?{authorization:user}:{}),'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:await res.json()};};return {request,employees,db};
 }
 
+test('Schedule undo restores a cleared duty exactly, survives reload, and cannot run twice',async t=>{
+ const {request}=await fixture(t),date='2026-10-26',assignment={code:'CL',color:'#123456',remark:'Keep these details',displayLabel:'Training'};
+ await request('sup',{date,revision:0,employeeId:'agent',...assignment});
+ const cleared=await request('sup',{changes:[{date,employeeId:'agent',code:null}],revisions:{[date]:1}},undefined,'/paste');assert.equal(cleared.status,200);
+ const token=cleared.data.undo.token;assert.equal((await request('sup')).data.undo.token,token);assert.equal((await request('agent')).data.undo,null);
+ for(const user of ['agent','lead'])assert.equal((await request(user,{token},undefined,'/undo')).status,403);
+ assert.equal((await request('other',{token},undefined,'/undo')).status,403);assert.equal((await request('regional',{token},undefined,'/undo')).status,409);
+ const restored=await request('sup',{token},undefined,'/undo');assert.equal(restored.status,200);assert.deepEqual(restored.data.days[0].assignments.agent,assignment);assert.equal(restored.data.days[0].revision,3);assert.equal(restored.data.undo,null);
+ assert.equal((await request('sup',{token},undefined,'/undo')).status,409);assert.equal((await request('sup')).data.undo,null);
+});
+test('undo follows actual Schedule editing permission, including grants and revocations',async t=>{
+ const {request,db}=await fixture(t);assert.equal((await request('agent')).data.canEdit,false);
+ db.prepare('INSERT OR REPLACE INTO employee_permission_overrides VALUES(?,?)').run('agent',JSON.stringify({'schedule.edit':true}));assert.equal((await request('agent')).data.canEdit,true);
+ const changed=await request('agent',{date:'2026-10-26',revision:0,budget:70});assert.equal(changed.status,200);assert(changed.data.undo.token);
+ db.prepare('INSERT OR REPLACE INTO employee_permission_overrides VALUES(?,?)').run('agent',JSON.stringify({'schedule.edit':false}));assert.equal((await request('agent')).data.undo,null);assert.equal((await request('agent',{token:changed.data.undo.token},undefined,'/undo')).status,403);
+});
+test('undo is latest-step only and batch conflict detection prevents every partial restore',async t=>{
+ const {request}=await fixture(t),a='2026-10-26',b='2026-10-27';
+ const first=await request('sup',{date:a,revision:0,employeeId:'agent',code:'C',color:'#99ff00'});
+ const batch=await request('sup',{changes:[{date:a,employeeId:'agent',code:'G',color:'#9371c7'},{date:b,employeeId:'peer',code:'F',color:'#9999ff'}],revisions:{[a]:1,[b]:0}},undefined,'/paste');assert.equal(batch.status,200);
+ assert.equal((await request('sup',{token:first.data.undo.token},undefined,'/undo')).status,409);
+ await request('regional',{date:b,revision:1,employeeId:'peer',code:'B',color:'#66b3c2'});
+ assert.equal((await request('sup',{token:batch.data.undo.token},undefined,'/undo')).status,409);const current=(await request('sup')).data;assert.equal(current.days[0].assignments.agent.code,'G');assert.equal(current.days[1].assignments.peer.code,'B');assert.equal(current.undo,null);
+ const second=await request('sup',{changes:[{date:a,employeeId:'agent',code:null},{date:b,employeeId:'peer',code:null}],revisions:{[a]:2,[b]:2}},undefined,'/paste');const restored=await request('sup',{token:second.data.undo.token},undefined,'/undo');assert.equal(restored.status,200);assert.deepEqual(restored.data.days.map(day=>Object.values(day.assignments)[0].code),['G','B']);
+});
+test('undo restores budget, date appearance and shortage requirements together',async t=>{
+ const {request}=await fixture(t),date='2026-10-26';let result=await request('sup',{date,revision:0,budget:70});result=await request('sup',{token:result.data.undo.token},undefined,'/undo');assert.equal(result.data.days[0].budget,61);
+ await request('sup',{date,revision:2,dateColor:'#abcdef',labels:['Short'],shortRoles:[{code:'G',count:2}]});
+ result=await request('sup',{date,revision:3,dateColor:null,labels:[],shortRoles:[]});result=await request('sup',{token:result.data.undo.token},undefined,'/undo');assert.equal(result.status,200);assert.equal(result.data.days[0].dateColor,'#abcdef');assert.deepEqual(result.data.days[0].labels,['Short']);assert.deepEqual(result.data.days[0].shortRoles,[{code:'G',count:2}]);
+});
+test('undo restores employee ordering and codes; adding a month clears the previous step',async t=>{
+ const {request}=await fixture(t),before=(await request('sup')).data,ids=before.employees.map(person=>person.id);
+ let changed=await request('sup',{employeeId:ids.at(-1),targetId:ids[0],placement:'before',revision:0},undefined,'/order');assert.equal(changed.status,200);assert.equal((await request('sup',{token:changed.data.undo.token},undefined,'/undo')).status,200);assert.deepEqual((await request('sup')).data.employees.map(person=>person.id),ids);
+ changed=await request('sup',{employeeId:'agent',currentCode:'',code:'New code'},undefined,'/code');assert.equal((await request('sup',{token:changed.data.undo.token},undefined,'/undo')).status,200);assert.equal((await request('sup')).data.employees.find(person=>person.id==='agent').code,'');
+ changed=await request('sup',{date:'2026-10-26',revision:0,budget:70});const current=(await request('sup')).data;const extended=await request('sup',{expectedEnd:current.horizon},undefined,'/months');assert.equal(extended.status,200);assert.equal(extended.data.undo,null);assert.equal((await request('sup',{token:changed.data.undo.token},undefined,'/undo')).status,409);
+});
 test('Schedule rules are shared, Supervisor+ editable, revision protected and independent of edit overrides',async t=>{
  const {request,db}=await fixture(t),policy=require('../has/server/scheduleRules');
  assert.equal((await request(null,null,undefined,'/rules')).status,401);
