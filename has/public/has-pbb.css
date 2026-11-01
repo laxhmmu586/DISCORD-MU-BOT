@@ -394,3 +394,5 @@ html.has-theme{background:#fff;color-scheme:light}
 @media(max-width:400px){.has-page .has-account-dropdown{grid-row:2;justify-self:start}}
 
 .has-page-intro{position:relative}.has-page-intro #has-briefing-button{position:absolute;right:0;bottom:0}.has-arrival-briefing{width:min(1100px,96vw);height:90dvh;max-height:94dvh;padding:12px;border:1px solid #cbdff0;border-radius:18px;background:#f6faff}.has-arrival-briefing::backdrop{background:#102a4888}.has-arrival-briefing header{display:flex;align-items:center;justify-content:space-between;gap:12px}.has-arrival-briefing h2{font-size:18px}.has-arrival-briefing button{font-size:24px;border:0;background:transparent;color:#174976;cursor:pointer}.has-arrival-briefing iframe{width:100%;height:calc(100% - 65px);border:0}
+
+.has-page-intro #has-briefing-button{gap:8px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:#375c8d;font-size:13px;font-weight:500}.has-page-intro #has-briefing-button img{width:40px;height:40px;object-fit:contain}
