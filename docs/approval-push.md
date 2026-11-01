@@ -58,7 +58,11 @@ notification directly; there is no approval queue, so no approval Push is invent
 Read & Sign `publish` and `addRecipients` enqueue for assigned, unsigned recipients
 using the existing scoped `read()` view. Existing email delivery remains intact.
 Each newly added recipient receives one Push; signed or out-of-scope users do not.
-Ordinary announcements, schedule edits, and approval/rejection results do not push.
+Schedule announcements push to eligible Schedule users. HR scheduled reminders use
+the same durable outbox and support company, station and account audiences with
+position filters. Scope-specific switches in HR can narrow or disable push delivery;
+the original access and responsibility checks still apply. Schedule edits and
+approval/rejection results do not create a separate push.
 
 ## Deduplication and delivery limits (K)
 

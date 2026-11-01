@@ -5,7 +5,7 @@ function createPushService({db,env=process.env,send}){
  db.exec(`CREATE TABLE IF NOT EXISTS notification_tokens(token_id TEXT PRIMARY KEY,uid TEXT NOT NULL,device_id TEXT NOT NULL,token TEXT NOT NULL,platform TEXT, user_agent TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,enabled INTEGER NOT NULL,UNIQUE(device_id));
  CREATE TABLE IF NOT EXISTS approval_push_outbox(event_key TEXT PRIMARY KEY,source TEXT NOT NULL,request_id TEXT NOT NULL,stage TEXT NOT NULL,uid TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,error TEXT);
  CREATE TABLE IF NOT EXISTS approval_push_delivery(event_key TEXT NOT NULL,token_id TEXT NOT NULL,status TEXT NOT NULL,error TEXT,PRIMARY KEY(event_key,token_id));`);
- const resolvers=new Map();let running=false,client;
+ const resolvers=new Map(),filters=new Map();let running=false,client;
  const configured=()=>Boolean(env.FCM_VAPID_PUBLIC_KEY&&env.FCM_VAPID_PUBLIC_KEY!=='PASTE_YOUR_FIREBASE_WEB_PUSH_PUBLIC_KEY_HERE');
  const transmit=send|| (async(token,data)=>{
   if(!client){const {google}=require('googleapis');client=await new google.auth.GoogleAuth({credentials:{client_email:env.GOOGLE_CLIENT_EMAIL,private_key:env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g,'\n')},scopes:['https://www.googleapis.com/auth/firebase.messaging']}).getClient();}
@@ -17,6 +17,8 @@ function createPushService({db,env=process.env,send}){
    const resolve=resolvers.get(job.source);if(!resolve)continue;
    let current;try{current=resolve(job.uid,job.request_id);}catch{current=null;}
    if(!current||current.stage!==job.stage){db.prepare("UPDATE approval_push_outbox SET status='obsolete' WHERE event_key=?").run(job.event_key);continue;}
+   let enabled=true;try{for(const filter of filters.values())if(!filter(job.uid,JSON.parse(job.payload)))enabled=false;}catch{enabled=false;}
+   if(!enabled){db.prepare("UPDATE approval_push_outbox SET status='suppressed' WHERE event_key=?").run(job.event_key);continue;}
    for(const device of db.prepare('SELECT * FROM notification_tokens WHERE uid=? AND enabled=1').all(job.uid)){
     // Claim before sending: an ambiguous network response must never cause a duplicate.
     if(!db.prepare("INSERT OR IGNORE INTO approval_push_delivery VALUES(?,?,'sending',NULL)").run(job.event_key,device.token_id).changes)continue;
@@ -26,7 +28,7 @@ function createPushService({db,env=process.env,send}){
    db.prepare("UPDATE approval_push_outbox SET status='processed' WHERE event_key=?").run(job.event_key);
   }
  }finally{running=false;}}
- const service={db,resolvers,enqueue,flush,configured,close(){clearInterval(timer);services.delete(db);}};
+ const service={db,resolvers,filters,enqueue,flush,configured,close(){clearInterval(timer);services.delete(db);}};
  const timer=setInterval(()=>flush().catch(()=>console.error('Approval push processing failed')),5000);timer.unref();services.set(db,service);return service;
 }
 function registerPush(app,{employees,profiles,authenticate,env=process.env}){
@@ -64,7 +66,7 @@ function attachPush(store,{db,source,read,methods=['create','save','decide','upd
    for(const {uid} of db.prepare('SELECT uid FROM employee_accounts').all()){
     let current;try{current=resolve(uid,result.id);}catch{continue;}if(!current)continue;
     const r=current.r,requester=r.employeeName||r.employee?.name||'An employee',requestType=({off:'Request Off',work:'I Can Work',trade:'Trade Shift',timesheet:'Report Time'})[r.type]||name;
-    service.enqueue(source,r.id,current.stage,uid,{type:r.canReceiveNotification?'schedule_notification':kind==='read_sign'?'read_sign_required':'approval_required',source:kind==='read_sign'?'read_sign':source==='schedule'?'schedule':'has_form',requestId:r.id,approvalStage:current.stage,title:r.canReceiveNotification?({report_time:'Report time',forgot_punch:'Forgot punch',forgot_punch_meal:'Forgot punch meal',request_fix_time:'Request fix time',cross_account_call_in:'Cross-Account Call-In'}[r.category]||'Report Time'):kind==='read_sign'?'Read & Sign Required':source==='schedule'?'Approval Required':'New Approval Request',body:r.canReceiveNotification?requester+' submitted a timesheet notification for '+r.date+'. No approval required.':kind==='read_sign'?r.subject:requester+' submitted a '+requestType+(r.date?' for '+r.date:'')+'.',url:kind==='read_sign'?'/read-sign':source==='schedule'?'/schedule':'/has-form'});
+    service.enqueue(source,r.id,current.stage,uid,{notificationKey:kind==='read_sign'?'read_sign':source==='schedule'?(r.type==='timesheet'?'report_time':'schedule_approval'):'has_approval',station:source==='schedule'?'LAX':r.station||r.employee?.station||'',account:source==='schedule'?'MU':r.account||r.employee?.account||'',type:r.canReceiveNotification?'schedule_notification':kind==='read_sign'?'read_sign_required':'approval_required',source:kind==='read_sign'?'read_sign':source==='schedule'?'schedule':'has_form',requestId:r.id,approvalStage:current.stage,title:r.canReceiveNotification?({report_time:'Report time',forgot_punch:'Forgot punch',forgot_punch_meal:'Forgot punch meal',request_fix_time:'Request fix time',cross_account_call_in:'Cross-Account Call-In'}[r.category]||'Report Time'):kind==='read_sign'?'Read & Sign Required':source==='schedule'?'Approval Required':'New Approval Request',body:r.canReceiveNotification?requester+' submitted a timesheet notification for '+r.date+'. No approval required.':kind==='read_sign'?r.subject:requester+' submitted a '+requestType+(r.date?' for '+r.date:'')+'.',url:kind==='read_sign'?'/read-sign':source==='schedule'?'/schedule':'/has-form'});
    }return result;})();
   setImmediate(()=>{if(db.open)service.flush().catch(()=>console.error('Approval push processing failed'));});return result;
  };}return store;

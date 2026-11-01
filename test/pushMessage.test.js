@@ -16,7 +16,7 @@ async function deliver(worker,message){
  vm.runInNewContext(worker,{self:{addEventListener:(event,handler)=>handlers[event]=handler,registration:{showNotification:async(title,options)=>shown.push({title,options})}}});
  handlers.push({data:{json:()=>message},waitUntil:promise=>done=promise});await done;return shown;
 }
-for(const type of ['schedule_notification','schedule_announcement'])test(type+' displays once on existing and updated Home Screen installations',async()=>{
+for(const type of ['schedule_notification','schedule_announcement','hr_reminder'])test(type+' displays once on existing and updated Home Screen installations',async()=>{
  const payload={type,source:'schedule',requestId:'example',approvalStage:'notified',title:'Report Time',body:'An employee submitted a notification. No approval required.',url:'/schedule'};
  assert.equal((await deliver(legacyReceive,{data:payload})).length,0,'reproduce previously dropped notification');
  const message=messageForDevice('device-token',payload);

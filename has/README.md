@@ -23,6 +23,18 @@ Additional related pages included beyond the original list: Briefing, Schedule a
 
 ## Data and future migration
 
+### HR Notification
+
+The Notification entry exists only in HR. Company administrators manage all scopes, station managers manage their own station, and Business Managers manage their Main Account. Station managers can enter this HR view without gaining personnel-editing rights. Each Account card also opens that account's notification settings.
+
+Weekly report, monthly report, timecard close and custom templates are inactive until a manager saves a reminder. Reminders support a specific date, daily, weekly and monthly schedules, an explicit time zone and position targeting. Monthly days beyond the end of a month use its last day. Spring daylight-saving gaps use the first valid minute after the requested time; autumn overlaps send once. The server checks due reminders every 30 seconds. A missed occurrence older than 24 hours is skipped rather than broadcast as a backlog.
+
+SQLite stores reminder definitions, revisions, occurrence records, private inbox messages, scope policies and audit records. An occurrence and its recipient jobs are inserted atomically; the existing push outbox handles device delivery and duplicate suppression. Push delivery rechecks the reminder's enabled state, revision, current recipient membership and positions. Scheduled messages stay in the website bell until marked read; unread items use the red animated bell. The blue bell is used when no attention is needed. System notification retention remains under the phone's control.
+
+Scope switches control Schedule approvals, Report Time, Schedule announcements, Read & Sign, HAS approvals and scheduled reminders. Company and station restrictions are inherited and cannot be overridden by an Account. Position selections narrow the original approval/access audience; they never grant permissions. A person's existing device Notifications switch remains independent. Settings default to enabled, preserving existing notifications until a manager changes them.
+
+## Data and future migration
+
 This change organizes development sources; it does not move or copy live databases.
 
 - `data/EP.DB` contains personnel, linked Firebase IDs, organization/reporting relationships, permission overrides, avatars, approvals, Schedule data/requests/rules, Briefing, Read & Sign, attachments and signatures. Its configurable path is `PBB_EMPLOYEE_DB_PATH`.

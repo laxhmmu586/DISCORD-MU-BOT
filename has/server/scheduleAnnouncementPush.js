@@ -16,7 +16,7 @@ function createAnnouncementPush({db,profiles,canAccess}) {
   for(const {uid} of db.prepare('SELECT uid FROM employee_accounts').all()){
    const current=resolve(uid,id);if(!current)continue;
    const notice=current.announcement;
-   service.enqueue(source,id,stage,uid,{type:'schedule_announcement',source,requestId:id,approvalStage:stage,title:notice.title,body:notice.body.slice(0,1000),url:'/schedule'});
+   service.enqueue(source,id,stage,uid,{notificationKey:'schedule_announcement',station:'LAX',account:'MU',type:'schedule_announcement',source,requestId:id,approvalStage:stage,title:notice.title,body:notice.body.slice(0,1000),url:'/schedule'});
   }
   setImmediate(()=>{if(db.open)service.flush().catch(()=>console.error('Schedule announcement push processing failed'));});
  };
