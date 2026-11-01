@@ -17,7 +17,7 @@ async function template(kind,month,scope,extraRows={}){
   const value=cell.value?.richText?cell.value.richText.map(t=>t.text).join(''):cell.value;
   const editable=field(kind,r,c,rows)&&!cell.formula;
   const numeric=kind==='terrific'?c===1:r>=10&&r<=11&&c===7||r>=14&&r<=21&&c>=9||r>=26&&r<=35&&c>=2||r>=40&&r<=43&&c>=4||r>=48&&r<=65&&c>=6||r===74&&c===10;
-  cells[cell.address]={value:cell.formula?'':value instanceof Date?value.toISOString().slice(0,10):value??'',...(cell.formula?{formula:cell.formula}:{}),editable,formulaAllowed:editable&&numeric,type:'text',multiline:editable&&!numeric,numFmt:cell.numFmt||'',style:{background:cell.fill?.fgColor?.argb,bold:cell.font?.bold,align:cell.alignment?.horizontal}};
+  cells[cell.address]={value:cell.formula?'':value instanceof Date?value.toISOString().slice(0,10):value??'',...(cell.formula?{formula:cell.formula}:{}),editable,formulaAllowed:editable&&numeric,type:'text',multiline:editable&&!numeric,...(kind==='terrific'&&editable&&c===4?{choices:['Compliment','Manager Direction']}:{}),...(kind==='terrific'&&editable&&c===5?{maxLength:50}:{}),numFmt:cell.numFmt||'',style:{background:cell.fill?.fgColor?.argb,bold:cell.font?.bold,align:cell.alignment?.horizontal}};
  }
  const account=[scope.station,scope.account].filter(Boolean).join('/');
  if(kind==='terrific'){for(let row=3;row<=rows;row++)if(cells['F'+row]&&!String(cells['F'+row].value||'').trim())cells['F'+row].value=account;}else if(cells.A7&&!String(cells.A7.value||'').trim())cells.A7.value=account;
