@@ -54,6 +54,7 @@ function attachPush(store,{db,source,read,methods=['create','save','decide','upd
   const account=db.prepare('SELECT * FROM employee_accounts WHERE uid=?').get(uid);if(!account)return null;
   const r=read({uid,email:'',provider:account.provider},id,account.employee_id);
   if(kind==='read_sign')return r.required&&!r.mySignedAt?{stage:'published',r}:null;
+  if(source==='schedule'&&r.canReceiveNotification)return {stage:'notified',r};
   if(!r.canReview&&!r.canApprove&&!r.canConfirm)return null;
   return {stage:JSON.stringify([r.status,r.nodeIds?.[r.step]||r.step||r.status,r.submittedAt||r.createdAt,(r.history||[]).filter(h=>['Returned for revision','Withdrawn to draft'].includes(h.action)).length]),r};
  };
@@ -63,7 +64,7 @@ function attachPush(store,{db,source,read,methods=['create','save','decide','upd
    for(const {uid} of db.prepare('SELECT uid FROM employee_accounts').all()){
     let current;try{current=resolve(uid,result.id);}catch{continue;}if(!current)continue;
     const r=current.r,requester=r.employeeName||r.employee?.name||'An employee',requestType=({off:'Request Off',work:'I Can Work',trade:'Trade Shift',timesheet:'Timesheet Request'})[r.type]||name;
-    service.enqueue(source,r.id,current.stage,uid,{type:kind==='read_sign'?'read_sign_required':'approval_required',source:kind==='read_sign'?'read_sign':source==='schedule'?'schedule':'has_form',requestId:r.id,approvalStage:current.stage,title:kind==='read_sign'?'Read & Sign Required':source==='schedule'?'Approval Required':'New Approval Request',body:kind==='read_sign'?r.subject:requester+' submitted a '+requestType+(r.date?' for '+r.date:'')+'.',url:kind==='read_sign'?'/read-sign':source==='schedule'?'/schedule':'/has-form'});
+    service.enqueue(source,r.id,current.stage,uid,{type:r.canReceiveNotification?'schedule_notification':kind==='read_sign'?'read_sign_required':'approval_required',source:kind==='read_sign'?'read_sign':source==='schedule'?'schedule':'has_form',requestId:r.id,approvalStage:current.stage,title:r.canReceiveNotification?({report_time:'Report time',forgot_punch:'Forgot punch',forgot_punch_meal:'Forgot punch meal',request_fix_time:'Request fix time',cross_account_call_in:'Cross-Account Call-In'}[r.category]||'Report Timesheet'):kind==='read_sign'?'Read & Sign Required':source==='schedule'?'Approval Required':'New Approval Request',body:r.canReceiveNotification?requester+' submitted a timesheet notification for '+r.date+'. No approval required.':kind==='read_sign'?r.subject:requester+' submitted a '+requestType+(r.date?' for '+r.date:'')+'.',url:kind==='read_sign'?'/read-sign':source==='schedule'?'/schedule':'/has-form'});
    }return result;})();
   setImmediate(()=>{if(db.open)service.flush().catch(()=>console.error('Approval push processing failed'));});return result;
  };}return store;

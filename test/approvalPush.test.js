@@ -46,6 +46,18 @@ test('Schedule HTTP submission pushes only the current actual approval queue wit
  const submit=()=>fetch(url,{method:'POST',headers:{Authorization:'e0','Content-Type':'application/json'},body:JSON.stringify(body)});
  assert.equal((await submit()).status,200);await f.service.flush();assert.deepEqual(f.sent.map(s=>s.token).sort(),['manager','supervisor']);assert.equal(f.sent[0].payload.source,'schedule');await submit();await f.service.flush();assert.equal(f.sent.length,2);
 });
+for(const category of ['report_time','forgot_punch','forgot_punch_meal','request_fix_time','cross_account_call_in'])test(category+' notifies Supervisor and above once without approval or schedule changes',async t=>{
+ const f=fixture(t),app=express();app.use(express.json());const schedule=require('../has/server/staffSchedule').registerStaffSchedule(app,{employees:f.employees,profiles:f.profiles,authenticate:async req=>f.users.find(u=>u.uid===req.headers.authorization),now:()=>new Date('2026-10-31T18:00:00Z')});
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{schedule.close();server.closeAllConnections();server.close();});
+ f.device('e0','requester');f.device('e1','supervisor');f.device('e2','manager');f.device('e3','outside');
+ f.db.prepare('INSERT INTO staff_schedule_days VALUES(?,0,?)').run('2026-11-06',JSON.stringify({assignments:{e0:{code:'C',color:'#99ff00'}}}));
+ const body={requestId:crypto.randomUUID(),type:'timesheet',category,date:'2026-11-06',note:'Supporting CZ 09:00–13:00'},url='http://127.0.0.1:'+server.address().port+'/staff-schedule-api/requests';
+ const submit=()=>fetch(url,{method:'POST',headers:{Authorization:'e0','Content-Type':'application/json'},body:JSON.stringify(body)});
+ const response=await submit();assert.equal(response.status,200);const report=await response.json();assert.equal(report.status,'notified');assert.equal(report.canApprove,false);assert.equal(report.canDecline,false);assert.equal(report.canCancel,false);await f.service.flush();assert.deepEqual(f.sent.map(s=>s.token).sort(),['manager','supervisor']);assert.equal(f.sent[0].payload.source,'schedule');assert.equal(f.sent[0].payload.type,'schedule_notification');assert.ok(f.sent[0].payload.title);assert.match(f.sent[0].payload.body,/No approval required/);
+ const manager=await (await fetch(url,{headers:{Authorization:'e1'}})).json();assert.equal(manager.pending,0);assert.equal(manager.unread,1);assert.equal(manager.notifications[0].action,'notified');assert.equal(manager.requests[0].canApprove,false);assert.equal(manager.requests[0].canDecline,false);
+ const approve=await fetch(url+'/'+report.id,{method:'POST',headers:{Authorization:'e1','Content-Type':'application/json'},body:JSON.stringify({action:'approve'})});assert.equal(approve.status,409);
+ const outside=await fetch(url,{headers:{Authorization:'e3'}});assert.equal(outside.status,403);assert.equal(f.db.prepare('SELECT revision FROM staff_schedule_days').get().revision,0);await submit();await f.service.flush();assert.equal(f.sent.length,2);
+});
 test('device API binds tokens to authenticated user, preserves other devices and scopes logout',async t=>{
  const f=fixture(t);f.service.close();const app=express(),service=registerPush(app,{employees:f.employees,profiles:f.profiles,authenticate:async req=>{const u=f.users.find(u=>req.headers.authorization===u.uid);if(!u)throw Error('auth');return u;},env:{}});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{service.close();server.closeAllConnections();server.close();});const base='http://127.0.0.1:'+server.address().port;
