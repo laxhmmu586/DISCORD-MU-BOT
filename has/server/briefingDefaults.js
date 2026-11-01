@@ -14,6 +14,11 @@ function createDepartureDefaults({db,audit,now=()=>new Date()}){
   if(!values||Array.isArray(values)||typeof values!=='object'||Object.keys(values).length!==keys.length||keys.some(key=>typeof values[key]!=='string'||values[key].length>150)||Object.keys(values).some(key=>!keys.includes(key)))fail('Provide all position labels, up to 150 characters each. Employee assignments and times cannot be saved as defaults.');
   if(body.revision!==before.revision)fail('These defaults changed. Reopen the settings to review the latest version before saving.',409);
   const at=now().toISOString();db.prepare('UPDATE briefing_departure_defaults SET revision=revision+1,data=?,updated_at=?,updated_by=? WHERE section=?').run(JSON.stringify(values),at,access.name,body.section);
+  for(const row of db.prepare('SELECT date,flight,data FROM briefing_records').all()){
+   const stored=JSON.parse(row.data);if((stored.__direction||(['MU586','MU578'].includes(row.flight)?'departure':'arrival'))!=='departure')continue;
+   for(const key of keys){audit({date:row.date,flight:row.flight},key,stored[key]??before.values[key],values[key],access.employeeId,at);stored[key]=values[key];}
+   db.prepare('UPDATE briefing_records SET data=?,updated_at=?,updated_by=? WHERE date=? AND flight=?').run(JSON.stringify(stored),at,access.employeeId,row.date,row.flight);
+  }
   audit(null,'departure-defaults',before,{section:body.section,values},access.employeeId,at);return read(body.section);
  });
  return {read,save,values:()=>({...read('counter').values,...read('gate').values})};

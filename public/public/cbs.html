@@ -2624,7 +2624,7 @@
       };
     }
     resetRushFlightRows();
-    const initialSection = new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
+    const initialSection = new URLSearchParams(window.location.search).get('section') === 'worldtracer' ? 'worldtracer' : new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
     showSection(initialSection);
     loadCases();
     loadMissingReports();
