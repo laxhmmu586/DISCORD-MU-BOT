@@ -21,7 +21,7 @@
  const canTrade=date=>{const a=state?.days.find(d=>d.date===date)?.assignments[state.employeeId];return !!a&&!['X','VAC','N','CS','CO'].includes(a.code);};
  const canWork=date=>{const a=state?.days.find(d=>d.date===date)?.assignments[state.employeeId];return !a||a.code==='X';};
  const typeIcon=type=>'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(type==='timesheet'?'<rect x="6" y="5" width="14" height="16" rx="2"/><path d="M10 3h6v4h-6zM9 12h8m-8 4h8M3 8v9"/>':type==='off'?'<circle cx="12" cy="12" r="9"/><path d="M7 12h10"/>':type==='trade'?'<path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/>':'<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16m-12 5 3 3 5-5"/>')+'</svg>';
- const labels={off:'Off Req',trade:'Trade Req',work:'Work Req'},titles={timesheet:'Report Timesheet',off:'Request Off',trade:'Trade Shift',work:'I Can Work'};
+ const labels={off:'Off Req',trade:'Trade Req',work:'Work Req'},titles={timesheet:'Report Time',off:'Request Off',trade:'Trade Shift',work:'I Can Work'};
  let decorationKey='';
  function decorate(force=false){
   const pending=(inbox?.requests||[]).filter(r=>['awaiting_partner','awaiting_supervisor'].includes(r.status)),key=JSON.stringify([state?.employeeId,inbox?.employeeId,inbox?.canManage,pending.map(r=>[r.id,r.type,r.status,r.date,r.endDate,r.employeeId,r.partnerId])]);if(!force&&key===decorationKey)return;decorationKey=key;
