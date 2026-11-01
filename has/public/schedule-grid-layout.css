@@ -178,7 +178,7 @@
 
 /* Reference-drawn 3D ribbon artwork; text stays sharp and accessible at every scale. */
 .schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered{width:78px;height:30px;filter:drop-shadow(0 3px 2px #18203c30)}
-.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered .date-status-face{width:78px;height:24px;box-sizing:border-box;padding:4px 0;background:transparent;box-shadow:none;text-align:center;font-size:12px;line-height:16px;color:white;text-shadow:0 1px 2px #0006}
+.schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered .date-status-face{width:78px;height:24px;box-sizing:border-box;padding:4px 0;background:transparent;box-shadow:none;text-align:center;font-size:12px;line-height:16px;color:white;text-shadow:0 1px 2px #0006;transform:rotate(-3deg);transform-origin:center}
 .schedule-ribbon-frame .schedule-ribbon-overlay .date-status-rendered:before{inset:auto;left:-12px;top:-8px;width:100px;height:50px;transform:none;border-radius:0;box-shadow:none;background: url('/has/assets/schedule-ribbon-purple-3d-v1.webp') center/contain no-repeat;z-index:0}
 .schedule-ribbon-frame .schedule-ribbon-overlay [data-ribbon-art=short]:before,.schedule-ribbon-frame .schedule-ribbon-overlay [data-ribbon-art=holiday]:before{background-image:url('/has/assets/schedule-ribbon-red-3d-v1.webp')}
 .schedule-ribbon-frame .schedule-ribbon-overlay [data-ribbon-art=holiday]:before{filter:hue-rotate(125deg) saturate(.8)}
