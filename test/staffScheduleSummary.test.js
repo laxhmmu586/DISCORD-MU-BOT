@@ -1,18 +1,18 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {counts,weekly,dailyTotal,periodStart,periods}=require('../has/public/schedule-summary');
 test('coverage follows operational duties: Management counts D only and combined duties remain separate',()=>{
- const codes=['K','D','D','C','CL','A','GS','BL','B','FL','F','Q','EC','X','VAC'];
+ const codes=['K','D','D','C','CL','A','G','BL','B','FL','F','Q','EC','X','VAC'];
  const employees=codes.map((_,i)=>({id:'e'+i})),assignments=Object.fromEntries(codes.map((code,i)=>['e'+i,{code}]));
  assignments.deletedEmployee={code:'D'};
  const result=counts([{assignments},{}],employees);
  assert.equal(result[0].label,'Management');assert.deepEqual(result[0].counts,[2,0]);
- for(const code of ['CL','A','GS','BL','B','FL','F','Q'])assert.deepEqual(result.find(row=>row.codes.includes(code)).counts,[1,0]);
+ for(const code of ['CL','A','G','BL','B','FL','F','Q'])assert.deepEqual(result.find(row=>row.codes.includes(code)).counts,[1,0]);
  assert.deepEqual(result.find(row=>row.label==='Check-in').counts,[2,0]);
  assert.equal(result.some(row=>row.label==='Early Checkin'),false);
  assert.equal(result.some(row=>row.codes.some(code=>['K','X','VAC'].includes(code))),false);
 });
 test('Daily Hour applies the ten duty weights without adding the period charge to any day',()=>{
- const codes=['D','C','CL','A','GS','BL','B','FL','F','Q','K','EC','X','VAC'];
+ const codes=['D','C','CL','A','G','BL','B','FL','F','Q','K','EC','X','VAC'];
  const employees=codes.map((_,i)=>({id:'e'+i})),assignments=Object.fromEntries(codes.map((code,i)=>['e'+i,{code}]));
  assignments.removedEmployee={code:'D'};
  assert.equal(dailyTotal({assignments},employees),58);
@@ -36,7 +36,7 @@ test('Friday–Thursday period adds 40 exactly once, including an empty period',
 
 test('coverage color thresholds and non-budget Arrival Card Assistant',()=>{
  const {coverageColor,formula}=require('../has/public/schedule-summary');
- const cases={C:[[4,'#ff0000'],[5,'#45818e'],[6,null]],A:[[1,'#ff0000'],[2,'#93c47d'],[3,null],[4,'#9900ff']],GS:[[0,'#ffffff'],[1,'#93c47d'],[2,'#ff0000'],[3,null]],BL:[[0,null],[1,'#46bdc6'],[2,'#ffd966']],B:[[0,'#ff0000'],[1,'#46bdc6'],[2,'#ffd966']],FL:[[0,'#ffffff'],[1,'#46bdc6'],[2,'#ff0000']],F:[[0,null],[1,'#46bdc6'],[2,null]],Q:[[0,null],[1,'#46bdc6'],[2,null]]};
+ const cases={C:[[4,'#ff0000'],[5,'#45818e'],[6,null]],A:[[1,'#ff0000'],[2,'#93c47d'],[3,null],[4,'#9900ff']],G:[[0,'#ffffff'],[1,'#93c47d'],[2,'#ff0000'],[3,null]],BL:[[0,null],[1,'#46bdc6'],[2,'#ffd966']],B:[[0,'#ff0000'],[1,'#46bdc6'],[2,'#ffd966']],FL:[[0,'#ffffff'],[1,'#46bdc6'],[2,'#ff0000']],F:[[0,null],[1,'#46bdc6'],[2,null]],Q:[[0,null],[1,'#46bdc6'],[2,null]]};
  for(const [code,values] of Object.entries(cases))for(const [count,color] of values)assert.equal(coverageColor(code,count),color,code+' '+count);
  assert.equal(dailyTotal({assignments:{q:{code:'Q'}}},[{id:'q'}]),0);
  assert(!formula.includes('Q'));
@@ -61,4 +61,11 @@ test('Clock-in times shift every endpoint on March 14, including meals and F alt
 test('custom display labels count toward neither original nor replacement coverage or daily-hour estimates',()=>{
  const employees=[{id:'one'},{id:'two'}],day={assignments:{one:{code:'C',displayLabel:'A'},two:{code:'C'}}},result=counts([day],employees);assert.equal(result.find(row=>row.codes.includes('C')).counts[0],1);assert.equal(result.find(row=>row.codes.includes('A')).counts[0],0);assert.equal(dailyTotal(day,employees),4);
  day.assignments.one.displayLabel='C';assert.equal(dailyTotal(day,employees),8);delete day.assignments.one.displayLabel;assert.equal(dailyTotal(day,employees),8);
+});
+
+test('G and historical GS count together exactly once with four hours per gate specialist',()=>{
+ const employees=['one','two','custom'].map(id=>({id})),day={assignments:{one:{code:'G'},two:{code:'GS'},custom:{code:'G',displayLabel:'Training'}}};
+ assert.equal(counts([day],employees).find(row=>row.codes.includes('G')).counts[0],2);
+ assert.equal(dailyTotal(day,employees),8);
+ const {formula,coverageColor}=require('../has/public/schedule-summary');assert(formula.includes('G × 4'));assert(!formula.includes('GS'));assert.equal(coverageColor('G',2),coverageColor('GS',2));
 });
