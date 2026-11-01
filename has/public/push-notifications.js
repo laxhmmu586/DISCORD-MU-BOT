@@ -21,7 +21,7 @@
   if(!enable){const state=await api('device?deviceId='+encodeURIComponent(device()));if(stopping||auth.currentUser?.uid!==user.uid)return;if(state.registered&&!state.enabled){savePreference(false);token='';label();return;}}
   const config=await api('config');if(!config.configured)throw Error('Notifications are awaiting Firebase Web Push configuration.');
   await loadSDK();if(!await firebase.messaging.isSupported())throw Error('This browser does not support Web Push.');
-  messaging||=firebase.messaging();const registration=await navigator.serviceWorker.register('/firebase-messaging-sw.js',{scope:'/'});await navigator.serviceWorker.ready;
+  messaging||=firebase.messaging();const registration=await navigator.serviceWorker.register('/firebase-messaging-sw.js',{scope:'/',updateViaCache:'none'});await registration.update();await navigator.serviceWorker.ready;
   const next=await messaging.getToken({vapidKey:config.vapidKey,serviceWorkerRegistration:registration});if(!next)throw Error('Unable to register this device. Please retry.');
   if(stopping||auth.currentUser?.uid!==user.uid)return;
   await api('device',{deviceId:device(),token:next,platform:ios?'ios-pwa':navigator.platform,userAgent:navigator.userAgent},user);

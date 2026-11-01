@@ -9,7 +9,7 @@ function createPushService({db,env=process.env,send}){
  const configured=()=>Boolean(env.FCM_VAPID_PUBLIC_KEY&&env.FCM_VAPID_PUBLIC_KEY!=='PASTE_YOUR_FIREBASE_WEB_PUSH_PUBLIC_KEY_HERE');
  const transmit=send|| (async(token,data)=>{
   if(!client){const {google}=require('googleapis');client=await new google.auth.GoogleAuth({credentials:{client_email:env.GOOGLE_CLIENT_EMAIL,private_key:env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g,'\n')},scopes:['https://www.googleapis.com/auth/firebase.messaging']}).getClient();}
-  return client.request({url:'https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(env.FIREBASE_PROJECT_ID||'china-eastern')+'/messages:send',method:'POST',data:{message:{token,data,webpush:{headers:{TTL:'86400',Urgency:'high'}}}},timeout:15000,retry:false});
+  return client.request({url:'https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(env.FIREBASE_PROJECT_ID||'china-eastern')+'/messages:send',method:'POST',data:{message:require('./pushMessage').messageForDevice(token,data)},timeout:15000,retry:false});
  });
  function enqueue(source,id,stage,uid,payload){db.prepare('INSERT OR IGNORE INTO approval_push_outbox(event_key,source,request_id,stage,uid,payload,created_at) VALUES(?,?,?,?,?,?,?)').run(hash(JSON.stringify([source,id,stage,uid])),source,id,stage,uid,JSON.stringify(payload),new Date().toISOString());}
  async function flush(){if(running||(!send&&!configured()))return;running=true;try{
