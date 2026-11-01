@@ -18,3 +18,9 @@
 /* Keep the bell centered independently of form-button padding and SVG defaults. */
 .profile-topbar .flight-account>.workspace-bell{display:flex;align-items:center;justify-content:center;flex:none;padding:0;line-height:1;transform:none}
 .profile-topbar .flight-account>.workspace-bell>svg{display:block;flex:none;width:21px;height:21px;margin:0;padding:0;transform:none}
+
+.workspace-bell .workspace-bell-art{display:block;width:26px;height:29px;object-fit:contain;filter:drop-shadow(0 2px 3px #3a71aa24)}.workspace-bell .workspace-notification-count{z-index:1;top:0;right:-2px}
+
+.workspace-reminder{display:grid;grid-template-columns:1fr auto;align-items:start;gap:12px;padding:12px 3px;border-top:1px solid #dbe8f7;font-size:12px;line-height:1.6}.workspace-reminder button{background:#e5f0ff;color:#246ad1;border:1px solid white;border-radius:8px;padding:5px 8px;font-size:10px;cursor:pointer}.workspace-reminder span{overflow-wrap:anywhere}
+
+.workspace-bell.has-unread .workspace-bell-art{transform-origin:50% 12%;animation:notification-bell-sway 1.2s ease-in-out infinite}@keyframes notification-bell-sway{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}@media(prefers-reduced-motion:reduce){.workspace-bell.has-unread .workspace-bell-art{animation:none}}

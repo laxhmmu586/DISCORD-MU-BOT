@@ -1,0 +1,13 @@
+Generated with the built-in image_gen tool. All outputs retain transparency and are resized to WebP for the website.
+
+HR navigation asset: has/public/assets/hr-notification-v1.webp
+Reference: has/public/assets/home-icon-calendar-v2.webp
+Prompt: Create one notification bell icon matching this reference icon set exactly: polished rounded three-dimensional toy-like blue glass and white ceramic office UI icon, vivid electric-blue edges, icy white face, soft cool-blue specular highlights. A single blue-white bell with a small blue circular clock badge at lower right, clean readable silhouette, slight front-right isometric perspective like supplied calendar. Fill most of canvas with modest padding, no text, no letters, no square tile background. Truly transparent background. This is for an HR Notifications navigation button alongside this existing calendar icon.
+
+Header blue asset: has/public/assets/notification-bell-blue-v1.webp
+Reference: the generated HR navigation bell.
+Prompt: Edit the supplied blue 3D bell icon: REMOVE the entire round clock badge at lower right, including its outer circle and hands. Reconstruct the previously hidden part of the bell body naturally. The result must be ONLY one simple blue-white glossy glass bell with its hanging clapper, no clock, no badge, no small circles, no cross marks or drawing marks, no text. Preserve the supplied metallic blue rims, icy white glass body, camera angle, soft highlights and toy-like polished 3D style. Center the entire bell on a square truly transparent background with modest even padding; maximize bell size. A notification bell icon for a website header.
+
+Header red asset: has/public/assets/notification-bell-red-v1.webp
+Reference: the generated HR navigation bell.
+Prompt: Edit the supplied 3D bell icon into a red unread-notification header icon. REMOVE the entire round clock badge at lower right, including its circle and hands. Reconstruct the hidden part of the bell naturally. The result is ONLY one bell body with its hanging clapper, NO clock, NO badge, NO circles, no cross marks, no text. Change all blue edges and clapper to ruby-red/scarlet glossy glass and metal; keep the large glass face pale white with soft rose tint. Preserve the reference geometry, camera angle, specular highlights and polished toy-like 3D style. Center bell on a square truly transparent background with modest even padding, maximize bell size. It should match a blue version of the same plain bell.
