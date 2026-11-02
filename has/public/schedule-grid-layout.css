@@ -207,9 +207,12 @@
 @media(max-width:600px){
  .schedule-mobile-ribbon-frame.schedule-native-ribbons{--ribbon-extra-headroom:0px;margin-top:12px}
  .schedule-native-ribbons>.schedule-ribbon-overlay{display:none}
+ /* Freeze the header as one layer so a ribbon spanning two dates paints
+    above both backgrounds instead of behind the next sticky cell. */
+ .schedule-native-ribbons .team-week-table thead{position:sticky;top:0;z-index:45}
  .schedule-native-ribbons .team-week-table thead th,
- .schedule-native-ribbons .team-week-table thead th.multiple-week-ribbons{height:calc(52px + var(--native-ribbon-space,54px));padding:calc(8px + var(--native-ribbon-space,54px)) 2px 8px;top:0}
- .schedule-native-ribbons .team-week-table thead th:first-child{z-index:60}
+ .schedule-native-ribbons .team-week-table thead th.multiple-week-ribbons{position:relative;z-index:auto;height:calc(52px + var(--native-ribbon-space,54px));padding:calc(8px + var(--native-ribbon-space,54px)) 2px 8px;top:0}
+ .schedule-native-ribbons .team-week-table thead th:first-child{position:sticky;left:0;z-index:60}
  .schedule-native-ribbons .schedule-native-ribbon-host{display:block;position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}
  .schedule-native-ribbons .schedule-native-ribbon-host .team-week-badges{visibility:visible;position:absolute;left:3px;top:24px;bottom:auto;transform:none;align-items:flex-start}
  .schedule-native-ribbon-host .date-status{transform:rotate(-12deg);transform-origin:left bottom}

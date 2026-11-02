@@ -4,17 +4,21 @@ const {clockIn,intervalMs,parseAdvisory,theme,arrivalTeam,createAdvisoryService,
 const sample=(gate='134',extra='')=>`//////////////// ETAB ADVISORY //////////////\nMU583/14OCT. B-7343. ETA 0922L. GATE ${gate}. PAX 279/0. CREW 04/17.\nTOW IN GATE ONLY\nMU586/14OCT. ${extra} STD 1230L.\nRegards/LAXOPS/RA.`;
 test('supplied emails, gate words and departure priority',()=>{
  const a=parseAdvisory(sample('134','ETD 1300L.'),new Date('2026-10-14T10:18:00Z'));
- assert.deepEqual(a,{date:'2026-10-14',arrival:{flight:'MU583',gate:'134',eta:'0922L',clockIn:'0830L',reg:'B-7343',pax:'279/0',crew:'04/17'},departure:{flight:'MU586',time:'1230L',timeType:'STD'}});
+ assert.deepEqual(a,{date:'2026-10-14',arrival:{flight:'MU583',gate:'134',eta:'0922L',clockIn:'0845L',reg:'B-7343',pax:'279/0',crew:'04/17'},departure:{flight:'MU586',time:'1230L',timeType:'STD'}});
  assert.equal(parseAdvisory(sample().replaceAll('14OCT','13OCT').replace('0922','0932')).arrival.clockIn,'0845L');
  assert.equal(parseAdvisory('unrelated'),null);
  assert.equal(parseAdvisory(sample().replace('0922','2560')),null);
  assert.equal(parseAdvisory(sample().replaceAll('14OCT','32OCT')),null);
 });
-test('clock-in agrees with original Apps Script for all 1440 minutes',()=>{
- for(let h=0;h<24;h++)for(let m=0;m<60;m++){
-  const hh=m<=39?(h+23)%24:h,mm=m<=9?15:m<=24?30:m<=39?45:0;
-  assert.equal(clockIn(String(h).padStart(2,'0')+String(m).padStart(2,'0')),String(hh).padStart(2,'0')+String(mm).padStart(2,'0')+'L');
+test('clock-in is a quarter hour 35 to 49 minutes before every ETA, including midnight',()=>{
+ for(let eta=0;eta<1440;eta++){
+  const result=clockIn(String(Math.floor(eta/60)).padStart(2,'0')+String(eta%60).padStart(2,'0'));
+  const minutes=Number(result.slice(0,2))*60+Number(result.slice(2,4));
+  const lead=(eta-minutes+1440)%1440;
+  assert.equal(minutes%15,0);
+  assert.ok(lead>=35&&lead<50,`${result} must precede ETA by 35–49 minutes`);
  }
+ for(const [eta,expected] of [['0900','0815L'],['0904','0815L'],['0905','0830L'],['0914','0830L'],['0919','0830L'],['0920','0845L'],['0922','0845L'],['0932','0845L'],['0934','0845L'],['0935','0900L'],['0949','0900L'],['0950','0915L'],['0000','2315L'],['0022','2345L']])assert.equal(clockIn(eta),expected);
 });
 test('gate theme boundaries and LA polling across daylight savings',()=>{
  for(const g of ['201','203','225','225A'])assert.equal(theme(g),'msc');
@@ -73,7 +77,7 @@ test('pending legacy image delivery resumes as one text message',async()=>{
 });
 test('one text advisory includes database mentions and unchanged mail does not resend',async()=>{
  const f=fixture();await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.sends[0].files,undefined);
- assert.equal(f.sends[0].content,'## ✈️ ETAB · 14 OCT - GATE:134\n### Arrival - MU583\n🔸 REG: B-7343\n🔸 ETA: 0922L\n🔸 PAX: 279/0\n🔸 CREW: 04/17\n### 🕒 Clock-in: 0830L\n👥 Arrival Team:\n<@123456789012345678>\n### Departure - MU586\n🔹 STD: 1230L\n');
+ assert.equal(f.sends[0].content,'## ✈️ ETAB · 14 OCT - GATE:134\n### Arrival - MU583\n🔸 REG: B-7343\n🔸 ETA: 0922L\n🔸 PAX: 279/0\n🔸 CREW: 04/17\n### 🕒 Clock-in: 0845L\n👥 Arrival Team:\n<@123456789012345678>\n### Departure - MU586\n🔹 STD: 1230L\n');
  assert.deepEqual(f.sends[0].allowedMentions,{parse:[],users:['123456789012345678']});
  await f.service.tick();assert.equal(f.sends.length,1);assert.equal(f.reads(),1);
  f.change();await f.service.tick();assert.equal(f.sends.length,2);assert.match(f.sends[1].content,/\n# 🚨 MSC GATE OPERATION$/);

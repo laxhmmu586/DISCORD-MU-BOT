@@ -5,7 +5,9 @@ const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV
 
 function clockIn(eta) {
   const t = String(eta).padStart(4, '0'), h = Number(t.slice(0,2)), m = Number(t.slice(2));
-  return String((h + (m <= 39 ? 23 : 24)) % 24).padStart(2,'0') + String(m <= 9 ? 15 : m <= 24 ? 30 : m <= 39 ? 45 : 0).padStart(2,'0') + 'L';
+  // Arrive at least 35 minutes before ETA, on a quarter-hour boundary.
+  const minutes = Math.floor(((h * 60 + m - 35 + 1440) % 1440) / 15) * 15;
+  return String(Math.floor(minutes / 60)).padStart(2,'0') + String(minutes % 60).padStart(2,'0') + 'L';
 }
 function localDate(time) {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(time).map(x=>[x.type,x.value]));

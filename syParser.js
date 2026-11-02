@@ -2023,7 +2023,9 @@ function findBoardingBoxInfo(log, flightNo, flightDate) {
   if (!bnd) return null;
   const triple = match.info.checkedIn?.slice(1, 4);
   const expectedPassengers = triple?.length === 3 ? triple.reduce((sum, value) => sum + Number(value), 0) : null;
-  const expectedInfants = match.info.inf == null ? null : Number(match.info.inf);
+  // SY omits I00 when there are no infants. Only infer zero when its
+  // checked-in passenger counts are present; an incomplete SY stays unknown.
+  const expectedInfants = match.info.inf == null ? (expectedPassengers == null ? null : 0) : Number(match.info.inf);
   const maxBn = bnd.end;
   const bns = Array.from({ length: bnd.end - bnd.start + 1 }, (_, i) => bnd.start + i).filter(bn => !bnd.removed.includes(bn));
   const passengers = bns.length;
