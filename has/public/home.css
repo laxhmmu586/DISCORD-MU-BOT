@@ -226,3 +226,7 @@ body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
  .home-topbar .top-nav>.mobile-operation{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
  .home-topbar .top-nav>.mobile-operation .art-icon{width:24px;height:24px;flex:none}
 }
+
+.home-task-row .icon-pending-approval{background-image:url('/assets/home-icon-status-pending-v1.webp');animation:home-approval-shake 1.8s ease-in-out infinite;transform-origin:50% 75%}
+@keyframes home-approval-shake{0%,65%,100%{transform:rotate(0)}72%{transform:rotate(-9deg)}80%{transform:rotate(9deg)}88%{transform:rotate(-6deg)}95%{transform:rotate(4deg)}}
+@media(prefers-reduced-motion:reduce){.home-task-row .icon-pending-approval{animation:none}}
