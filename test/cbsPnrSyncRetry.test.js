@@ -62,7 +62,7 @@ test('unchanged passenger rows still trigger an archive sync on refresh', async 
   const rows = [{ rowNumber:2, bagTag:'MU000001' }];
   const context = vm.createContext({
     window:{ _silentCbsRefresh:true, _cbsRowsSignature:JSON.stringify(rows), _forceCbsRefresh:true },
-    casesOutput:{}, apiBase:'https://example.invalid',
+    casesOutput:{}, apiBase:'https://example.invalid',activeCbsSection:'open',activeCbsGroup:'passenger',activeCbsScope:()=>'',cbsListParams:()=>'?view=open',
     fetch:async () => ({ ok:true }), parseJson:async () => ({ rows }),
     syncCbsPnrRecords:() => { syncs++; },
     renderCases:() => { throw new Error('Unchanged rows should not render'); }, console
