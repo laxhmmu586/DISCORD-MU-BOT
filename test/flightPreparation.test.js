@@ -47,7 +47,7 @@ test('online search route passes unfiltered preparation evidence into the parser
  const body=server.slice(start,end)+'return syInfo; }';
  const log=syLog('MU586')+commands;
  const result=vm.runInNewContext('(function(){'+body+'})()',{
- log,scopedLog,selectedFlight:'MU586',selectedDate:'08OCT26',date:'08OCT26',
+ log,scopedLog,normalizeBoardingFlight:()=>null,flightModules:{get:()=>({})},require:()=>require('../flightModuleState'),selectedFlight:'MU586',selectedDate:'08OCT26',date:'08OCT26',
  syRawMatch:['SY MU586/08OCT26','','MU586','08OCT26'],parseIncrementalLog(){},parsePDLog(){},findSYInfo
  });
  assert.deepEqual(steps(result).map(s=>[s.complete,s.time]),[[true,'12:30:21'],[true,'12:30:26']]);

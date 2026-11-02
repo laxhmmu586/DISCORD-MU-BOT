@@ -8,7 +8,8 @@ const ADMIN_EMAILS=new Set([...LOGIN_ID_ADMIN_EMAILS,'tamsun10@gmail.com']);
 const normalizeLoginId=value=>String(value??'').trim().toLowerCase();
 const hasPbbLicense=(row,date=new Date().toISOString().slice(0,10))=>Boolean(row?.pbbId&&row?.pbbExpiry&&row.pbbExpiry>=date);
 function loginIdForbidden(){throw Object.assign(new Error('Only authorized Lake administrators can change Original Login IDs.'),{status:403});}
-function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
+function createEmployeeStore(db,{seed,importCatalog=seed===undefined}={}){
+ seed=seed??require('./employeeSeed')();
  db.exec('CREATE TABLE IF NOT EXISTS pbb_employees (singleton INTEGER PRIMARY KEY CHECK(singleton=1), data TEXT NOT NULL)');
  db.prepare('INSERT OR IGNORE INTO pbb_employees(singleton,data) VALUES (1,?)').run(JSON.stringify({revision:1,employees:seed.map(row=>({...row,station:row.station??'LAX',account:row.account??'MU'}))}));
  const initial=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);
@@ -19,6 +20,15 @@ function createEmployeeStore(db,{seed=require('./employeeSeed')()}={}){
  db.exec('CREATE TABLE IF NOT EXISTS employee_account_groups(station TEXT NOT NULL,account TEXT NOT NULL,PRIMARY KEY(station,account))');
  const syncAccounts=rows=>{for(const row of rows){for(const scope of employeeAccounts.memberships(row))db.prepare('INSERT OR IGNORE INTO employee_account_groups VALUES(?,?)').run(scope.station,scope.account);}};
  syncAccounts(initial.employees);
+ // One-time account-only import; deleted empty accounts stay deleted after restart.
+ if(importCatalog)db.transaction(()=>{
+  db.exec('CREATE TABLE IF NOT EXISTS employee_catalog_migrations(id TEXT PRIMARY KEY)');
+  const id='profit-centers-2026-sep-v1';if(db.prepare('SELECT 1 FROM employee_catalog_migrations WHERE id=?').get(id))return;
+  const insert=db.prepare('INSERT OR IGNORE INTO employee_account_groups VALUES(?,?)');let added=0;
+  for(const row of employeeAccounts.catalog)added+=insert.run(row.station,row.account).changes;
+  if(added){const current=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);current.revision++;db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(current));}
+  db.prepare('INSERT INTO employee_catalog_migrations VALUES(?)').run(id);
+ })();
  const accounts=()=>db.prepare('SELECT station,account FROM employee_account_groups ORDER BY station,account').all();
  const permissions=row=>({attach:row.attach===undefined?row.driver:row.attach,detach:row.detach===undefined?row.driver:row.detach});
  db.exec('CREATE TABLE IF NOT EXISTS employee_permission_overrides(employee_id TEXT PRIMARY KEY,data TEXT NOT NULL)');

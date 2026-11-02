@@ -4862,7 +4862,7 @@
       const AUTH_INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
       const SY_COMPLETED_NODE_CACHE_KEY = "mufc_sy_completed_nodes_v1";
       const MISSING_BAG_STATUS_STORAGE_KEY = "mufc_missing_bag_status_v1";
-      const PERSISTENT_GREEN_NODE_KEYS = ["GD_CHECK", "FSC", "NEXTDAY_INFO"];
+      const PERSISTENT_GREEN_NODE_KEYS = ["CREW_APIS", "GD_CHECK", "FSC", "NEXTDAY_INFO", "NET", "CCL", "CC", "INITIAL_FLIGHT", "BDT_CHG"];
       let inactivityTimer = null;
       let syAutoRefreshTimer = null;
       let syBackupIdleCallback = null;
@@ -6502,7 +6502,7 @@
             issueCount = 0;
             time = persistedGreenNode.time || time || "DONE";
           }
-          const locked = !complete && !previousStarted && !["GD_CHECK", "FSC", "NEXTDAY_INFO", "CHD", "GOV", "WEBEDI", "NBRD"].includes(key);
+          const locked = !complete && !previousStarted && !PERSISTENT_GREEN_NODE_KEYS.includes(key) && !["GD_CHECK", "FSC", "NEXTDAY_INFO", "CHD", "GOV", "WEBEDI", "NBRD"].includes(key);
           node.dataset.status = key === "FSC" ? (complete ? "done" : "pending") : normalizeStatus(Boolean(complete), issueCount || (started && !complete ? 1 : 0), locked);
           node.dataset.time = String(key === "CHD" ? (sy.chdList || []).length : key === "GOV" ? govCount : key === "WEBEDI" ? webediCount : key === "NBRD" ? nbrdCount : time);
           if (complete && PERSISTENT_GREEN_NODE_KEYS.includes(key)) rememberCompletedSyNode(sy, key, time);

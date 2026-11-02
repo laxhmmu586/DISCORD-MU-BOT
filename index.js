@@ -121,18 +121,20 @@ const {
 
 const nbrdConfirmations = createNbrdConfirmationStore();
 let boardingBoxCache;
+const flightListCache=new (require('./flightListCache').FlightListCache)({db:require('./db'),loadLog:()=>getLatestFlightLog()});
 const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => {
   if (scope) nbrdConfirmations.clearScope(scope.flight, scope.date);
   else { nbrdConfirmations.clear(); boardingBoxCache?.invalidate(); }
 } });
 boardingLive.startCleanup();
 boardingBoxCache = new (require('./boardingBoxCache').BoardingBoxCache)({ db:require('./db'),
-  loadLog:downloadLatestFlightLog, beforeAccess:() => boardingLive.cleanupIfDue() });
+  loadLog:async()=>{const log=await downloadLatestFlightLog();flightListCache.update(log);return log;}, beforeAccess:() => boardingLive.cleanupIfDue() });
 boardingBoxCache.start();
 async function getLatestFlightLog() {
   const ticket = boardingBoxCache.beginUpdate();
   const log = await downloadLatestFlightLog();
   if (log) {
+    flightListCache.update(log);
     try { boardingBoxCache.updateFromLog(log, ticket); }
     catch (error) { console.error('BOX cache update:', error.message); }
   }
@@ -422,13 +424,10 @@ const syBookingSheetSyncCache = new Map();
 const salesDetailsSheetSyncCache = new Map();
 const SALES_DETAILS_SYNC_RETRY_MS = 5 * 60 * 1000;
 const preflightStepCache = new Map();
+const flightModules=new (require('./flightModuleState').FlightModuleState)(require('./db'));
 
 function preflightCacheKey(syInfo, isoDate, stepKey) {
   const parts = [syInfo?.flightNo || 'SY', isoDate || todayIsoUtc(), stepKey];
-  if (stepKey === 'gdCheck') {
-    const query = syInfo?.crewApis?.gdCheckQuery;
-    parts.push('pdf-v1', JSON.stringify(query?.expectedFlight || {}), JSON.stringify(query?.crew || []));
-  }
   return parts.join('|');
 }
 
@@ -437,12 +436,14 @@ function findCrewApiStep(syInfo, stepKey) {
 }
 
 function rememberCompletedPreflightSteps(syInfo, isoDate) {
+  flightModules.remember(syInfo,isoDate);
   (syInfo?.crewApis?.steps || []).forEach((step) => {
     if (step?.key && step.complete) preflightStepCache.set(preflightCacheKey(syInfo, isoDate, step.key), { ...step });
   });
 }
 
 function applyCachedCompletedPreflightSteps(syInfo, isoDate) {
+  flightModules.apply(syInfo,isoDate);
   (syInfo?.crewApis?.steps || []).forEach((step) => {
     if (step?.key) applyCachedPreflightStep(syInfo, isoDate, step.key);
   });
@@ -450,6 +451,8 @@ function applyCachedCompletedPreflightSteps(syInfo, isoDate) {
 
 function applyCachedPreflightStep(syInfo, isoDate, stepKey) {
   const step = findCrewApiStep(syInfo, stepKey);
+  const completed=flightModules.get(syInfo?.flightNo,isoDate)[stepKey];
+  if(step&&completed?.complete){Object.assign(step,completed,{cached:true});return true;}
   const cached = preflightStepCache.get(preflightCacheKey(syInfo, isoDate, stepKey));
   if (!step || !cached?.complete) return false;
   Object.assign(step, { ...cached, cached: true });
@@ -458,7 +461,7 @@ function applyCachedPreflightStep(syInfo, isoDate, stepKey) {
 
 function cacheCompletedPreflightStep(syInfo, isoDate, stepKey) {
   const step = findCrewApiStep(syInfo, stepKey);
-  if (step?.complete) preflightStepCache.set(preflightCacheKey(syInfo, isoDate, stepKey), { ...step });
+  if (step?.complete) {preflightStepCache.set(preflightCacheKey(syInfo, isoDate, stepKey), { ...step });flightModules.remember(syInfo,isoDate);}
 }
 
 async function syncFscRateFromTodaySyLog(log, isoDate) {
@@ -732,7 +735,9 @@ async function refreshDeferredSyData(syInfo, log, isoDate) {
 
   const work = (async () => {
     try {
-      syInfo.fscRateSheetSync = await syncFscRateFromTodaySyLog(log, isoDate);
+      const completedFsc=flightModules.get(syInfo.flightNo,isoDate).fsc;
+      syInfo.fscRateSheetSync = completedFsc?.complete?{...completedFsc.sync,cached:true}:await syncFscRateFromTodaySyLog(log, isoDate);
+      flightModules.remember(syInfo,isoDate);
     } catch (err) {
       console.warn('FSC exchange rate sheet sync skipped:', err?.message || err);
       syInfo.fscRateSheetSync = { skipped: true, error: err?.message || 'Sheet sync failed' };
@@ -3220,10 +3225,7 @@ app.use(['/cbs-scan', '/cbs-scan2'], (req, res, next) => {
   return runWithBoardingFlight(flight, next);
 });
 
-app.get('/flights', async (_req, res) => {
-  try { return res.json({ flights: discoverFlights(await getLatestFlightLog(), { date: operationalDate() }) }); }
-  catch (err) { return res.status(503).json({ error: 'Unable to read flight logs.' }); }
-});
+require('./flightListCache').register(app,flightListCache);
 
 app.get('/boarding-box', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -3442,6 +3444,8 @@ app.get('/cbs-damage-images/:ref', async (req, res) => {
     return res.status(503).json({error:'Marked image temporarily unavailable'});
   }
 });
+
+require('./cbsBagTagEdit').register(app,require('./googleDrive').correctCbsBagTag);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
@@ -4751,6 +4755,7 @@ app.get(
         const syInfo = findSYInfo(log, syDate, {
           preferNextDay,
           preparationLog,
+          completedSteps:flightModules.get(requestedFlightNo,require('./flightModuleState').shiftedDate(syDate?(syDate.length===5?syDate+selectedDate.slice(-2):syDate):selectedDate,preferNextDay?1:0)),
           preferredFlightNo: requestedFlightNo,
           strictPreferredFlight: true
         });
@@ -4769,7 +4774,7 @@ app.get(
         const isoDate = m ? `${yearFromFlight}-${months[m[2]] || '01'}-${m[1]}` : '';
         rememberCompletedPreflightSteps(syInfo, isoDate);
         applyCachedCompletedPreflightSteps(syInfo, isoDate);
-        syInfo.fscRateSheetSync = fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
+        syInfo.fscRateSheetSync = flightModules.get(syInfo.flightNo,isoDate).fsc?.sync || fscRateSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.bookingSheetSync = syBookingSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         syInfo.salesDetailsSheetSync = salesDetailsSheetSyncCache.get(isoDate) || { skipped: true, reason: 'sync pending' };
         if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck')) {
@@ -4949,6 +4954,7 @@ app.post('/nextday-info/send', async (req, res) => {
         ? `NEXTDAY INFO sent to ${to.join(', ')}; CC ${cc.join(', ')}: ${subject}`
         : `NEXTDAY INFO delivery failed. ${reason}`
     };
+    if(delivered)flightModules.remember({flightNo,crewApis:{steps:[step]}},todayIsoUtc());
     return res.json({ ok: delivered, sentAt, subject, to, cc, messageId: email?.id || '', emailError, discordPost, discordError, details, detailText: step?.detailText || buildNextDayInfoDetailLines(details), step });
   } catch (err) {
     console.error('NEXTDAY INFO send failed:', err);

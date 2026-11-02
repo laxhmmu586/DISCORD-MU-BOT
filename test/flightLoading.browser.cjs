@@ -40,7 +40,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    await page.locator('#flight-reload').click();await loading();
    while(!pending.length)await page.waitForTimeout(20);
    await pending.shift().fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Fixture unavailable'})});
-   await page.getByRole('heading',{name:'Flights unavailable'}).waitFor();
+   await page.locator('#flight-status').filter({hasText:'Fixture unavailable'}).waitFor();assert.equal(await page.locator('.flight-card').count(),1);
    assert(await page.locator('.flight-topbar').isVisible());
    assert.equal(await page.locator('.flight-loading').isVisible(),false);
    await page.close();

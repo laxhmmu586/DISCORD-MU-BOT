@@ -381,6 +381,12 @@
     }
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   .unload-flight{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:850;border:1px solid currentColor;white-space:nowrap}.unload-flight-blue{background:#e4efff;color:#174fa3}.unload-flight-purple{background:#f1e8ff;color:#6b299c}.unload-flight-teal{background:#dff5f5;color:#07636b}.unload-flight-green{background:#e4f5e9;color:#246b36}.unload-flight-orange{background:#fff0df;color:#90490b}.unload-flight-unknown{background:#eff1f4;color:#526071;font-size:11px;padding:4px 8px}
+
+    [data-edit-bag-tag]{cursor:text!important}
+    [data-edit-bag-tag]:focus-visible{outline:2px solid #1675e8;outline-offset:3px}
+    .bag-tag-edit-form{display:grid;gap:4px;min-width:130px;margin:0}
+    .bag-tag-edit-form input{width:130px;padding:5px;border:1px solid #aac8ef;border-radius:5px;font:inherit;box-sizing:border-box}
+    .bag-tag-edit-form small{font-size:11px;white-space:normal;color:#bd2440;max-width:220px}
 </style>
 <link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><script src="/cbs-data.js?v=20261101-case-counts"></script></head>
 <body>
@@ -491,7 +497,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
+  <script src="/cbs-bag-tag-edit.js?v=20261102-autosave"></script><script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
   <script>
     const baggageEditor=document.querySelector('#baggage-editor'),baggageEditForm=document.querySelector('#baggage-edit-form');
     document.querySelector('#baggage-edit-close').addEventListener('click',()=>baggageEditor.close());
@@ -834,7 +840,7 @@
       worldTracerOutput.innerHTML = `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:170px"><col><col style="width:110px"></colgroup><thead><tr><th>WorldTracer #</th><th>Original Tag</th><th>RUSH Tag</th><th>RUSH Itinerary</th><th></th></tr></thead><tbody>${pagination.rows.map((row, caseIndex) => {
         const routes = (row.flightRows || []).map((flight) => `<span>${escapeHtml(flight.flightDate || '-')} &nbsp; ${escapeHtml(flight.flightNumber || '-')} &nbsp; ${escapeHtml(flight.from || '-')} – ${escapeHtml(flight.to || '-')}</span>`).join('');
         const editFlights = (row.flightRows || []).map((flight) => rushFlightRowHtml(flight)).join('');
-        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td><span class="bag-tag-value">${escapeHtml(row.originalTagNumber || '-')}</span></td><td><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span></td><td><div class="worldtracer-route">${routes}</div></td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="5"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" ${rushBagTagInputAttributes} required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" ${rushBagTagInputAttributes} required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
+        return `<tr><td class="case-key">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td>${editableBagTagHtml(row.originalTagNumber||'-',{rowNumber:row.rowNumbers.join(',')},'rush','originalTagNumber')}</td><td>${editableBagTagHtml(row.rushTagNumber||'-',{rowNumber:row.rowNumbers.join(',')},'rush','rushTagNumber')}</td><td><div class="worldtracer-route">${routes}</div></td><td><button type="button" data-toggle-onhand-update="${caseIndex}">Update</button></td></tr><tr data-onhand-update-row="${caseIndex}" hidden><td colspan="5"><form class="worldtracer-form onhand-update-form" data-row-numbers="${escapeHtml((row.rowNumbers || []).join(','))}" data-created-at="${escapeHtml(row.createdAt)}"><label><span>WorldTracer File Number (Optional)</span><input name="worldTracerFileNumber" value="${escapeHtml(row.worldTracerFileNumber)}" placeholder="Can be added later" /></label><label><span>Original Tag Number</span><input name="originalTagNumber" value="${escapeHtml(row.originalTagNumber)}" ${rushBagTagInputAttributes} required /></label><label><span>RUSH Tag Number</span><input name="rushTagNumber" value="${escapeHtml(row.rushTagNumber)}" ${rushBagTagInputAttributes} required /></label><div class="rush-itinerary wide"><div class="rush-itinerary-head"><h2>RUSH Itinerary</h2><button class="secondary" type="button" data-add-onhand-flight>+ Add Flight</button></div><div data-onhand-flight-rows>${editFlights}</div></div><div class="actions"><button type="submit">Save Update</button></div></form></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml('rush-bags', pagination)}`;
     }
     function updateRushBagAttention(rows = []) {
@@ -1010,8 +1016,8 @@
             : '';
         const progressRow = active || row;
         const lastExchange = (row.exchangeHistory || []).at(-1);
-        const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${escapeHtml(lastExchange.newTag)}</span></span>` : `<span class="bag-tag-value">${escapeHtml(row.bagTag)}</span>`;
-        const rushTagCell = showRushTag ? `<td class="sheet-meta"><span class="bag-tag-value">${escapeHtml(row.rushTagNumber || '-')}</span>${linkButton}</td>` : '';
+        const tagDisplay = lastExchange ? `<span class="exchange-tag-flow"><span class="exchange-tag-old">${escapeHtml(lastExchange.oldTag)}</span><span class="exchange-tag-arrow" aria-hidden="true">→<span class="exchange-tag-arrow-label">Exchange</span></span><span class="exchange-tag-new">${editableBagTagHtml(row.bagTag,active||row)}</span></span>` : editableBagTagHtml(row.bagTag,active||row);
+        const rushTagCell = showRushTag ? `<td class="sheet-meta">${row.rushTagNumber?editableBagTagHtml(row.rushTagNumber,active||row,'unresolved','rushTagNumber'):'-'}${linkButton}</td>` : '';
         const bagTagAction = showRushTag ? '' : linkButton;
         const bagRoomStatus = row.resolvedAt ? 'Closed' : (String(row.rushTagNumber || '').trim() ? 'Rush' : 'Open');
         const pvgFields = new Map(allUpdateEvents.filter((event) => event.key === 'pvg').at(-1)?.fields || []);
@@ -1527,7 +1533,7 @@
           ? fullPassengerFileHtml(row)
           : (details.length ? `<div class="sheet-detail-grid">${details.map(([key, value]) => `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(renderValue(value))}</p>`).join('')}</div>` : `<p class="muted">${label('No extra details.', '没有更多详情。')}</p>`);
         const progress = trackingControlHtml(row, 'progress');
-        return `<tr class="case-summary-row" data-toggle-shipment="${escapeHtml(detailKey)}" role="button" tabindex="0" aria-expanded="${expanded}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}</td><td class="sheet-meta">${escapeHtml(time.date || '-')} ${escapeHtml(time.time || '')}</td><td class="sheet-meta">${escapeHtml(shipment.method)}</td><td>${hasValue(bdo) ? `<span class="sheet-event"><b>BDO</b>${escapeHtml(renderValue(bdo))}</span>` : '<span class="sheet-empty">-</span>'}</td></tr><tr class="case-detail-row" data-shipment-detail="${escapeHtml(detailKey)}" ${expanded ? '' : 'hidden'}><td colspan="5"><div class="case-detail-layout"><div class="case-progress-column">${progress}</div><div class="case-detail-right"><div class="case-detail-content">${caseDetails}</div>${caseCommentsHtml(row)}</div></div></td></tr>`;
+        return `<tr class="case-summary-row" data-toggle-shipment="${escapeHtml(detailKey)}" role="button" tabindex="0" aria-expanded="${expanded}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row),row)}</td><td class="sheet-meta">${escapeHtml(time.date || '-')} ${escapeHtml(time.time || '')}</td><td class="sheet-meta">${escapeHtml(shipment.method)}</td><td>${hasValue(bdo) ? `<span class="sheet-event"><b>BDO</b>${escapeHtml(renderValue(bdo))}</span>` : '<span class="sheet-empty">-</span>'}</td></tr><tr class="case-detail-row" data-shipment-detail="${escapeHtml(detailKey)}" ${expanded ? '' : 'hidden'}><td colspan="5"><div class="case-detail-layout"><div class="case-progress-column">${progress}</div><div class="case-detail-right"><div class="case-detail-content">${caseDetails}</div>${caseCommentsHtml(row)}</div></div></td></tr>`;
       }).join('');
       const list = rows.length ? `<div class="sheet-shell"><table class="cbs-sheet"><colgroup><col style="width:210px"><col style="width:170px"><col style="width:190px"><col style="width:180px"><col></colgroup><thead><tr><th>WorldTracer #</th><th>${label('Bag Tag', '行李牌')}</th><th>${label('Shipment Date', '寄送日期')}</th><th>${label('Method', '方式')}</th><th>${label('Shipment Details', '寄送详情')}</th></tr></thead><tbody>${body}</tbody></table></div>` : '<p class="muted">No matching shipped cases for this courier in the selected month.</p>';
       shipmentOutput.innerHTML = `${list}${listPaginationHtml('shipments', pagination)}`;
@@ -1605,10 +1611,14 @@
       return { event, rushFlight:fields.get('Rush Flight') || '', rushDate:fields.get('Rush Date') || '', rushTag:fields.get('Rush Tag') || fields.get('Rush Tag Number') || '' };
     }
     function normalizedRushTag(value) { return String(value || '').trim().toUpperCase().replace(/[\s-]+/g, ''); }
-    function bagTagSummaryHtml(value) {
+    function editableBagTagHtml(tag,row,source='unresolved',field='bagTag') {
+      if(!tag||tag==='-')return '<span class="bag-tag-value">-</span>';
+      return `<span class="bag-tag-value" data-edit-bag-tag data-tag-row="${escapeHtml(row.rowNumber)}" data-tag-source="${escapeHtml(source)}" data-tag-field="${field}" tabindex="0" role="button" title="Double-click to edit · Enter to edit" aria-label="Edit bag tag ${escapeHtml(tag)}">${escapeHtml(tag)}</span>`;
+    }
+    function bagTagSummaryHtml(value,row) {
       const tags = String(value || '').split(/\s*\/\s*/).map((tag) => tag.trim()).filter(Boolean);
       if (!tags.length) tags.push('-');
-      return `<span class="bag-tag-list">${tags.map((tag) => `<span class="bag-tag-value">${escapeHtml(tag)}</span>`).join('')}</span>`;
+      return `<span class="bag-tag-list">${tags.map((tag) => row?editableBagTagHtml(tag,row,row.source==='wrongBaggage'?'wrongBaggage':'pir'):`<span class="bag-tag-value">${escapeHtml(tag)}</span>`).join('')}</span>`;
     }
     function matchingOnHandForCase(row) {
       const tag = normalizedRushTag(upcomingRushDetails(row).rushTag);
@@ -1792,7 +1802,7 @@
         const rushCells = showUpcomingRush ? `<td class="sheet-meta">${rushFlightDateHtml}</td><td class="sheet-meta"><span class="rush-tag-summary">${escapeHtml(rushTag)}${matchBadge}</span></td>` : '';
         const passengerRecords = recordTabsHtml(row.updateEvents || [], `passenger-${row.rowNumber}`);
         const passengerRecordPanel = passengerRecords ? `<section class="record-panel-card"><h3>Records</h3>${passengerRecords}</section>` : '';
-        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row))}${!row.bagTag&&row.tagPhotoCount?`<small class="photo-case-summary">${escapeHtml(row.passengerName)} · ${escapeHtml(label('Tag photos','行李牌照片'))} × ${escapeHtml(row.tagPhotoCount)}</small>`:''}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}${passengerRecordPanel}</div></div></td></tr>`;
+        return `<tr class="case-summary-row${closedClass}" data-toggle-case="${escapeHtml(detailKey)}" aria-expanded="${isExpanded ? 'true' : 'false'}"><td class="sheet-meta">${escapeHtml(displayWorldTracerFile(row) || '-')}</td><td class="sheet-meta">${escapeHtml(caseType || '-')}</td><td class="sheet-meta">${bagTagSummaryHtml(displayBagTag(row),row)}${!row.bagTag&&row.tagPhotoCount?`<small class="photo-case-summary">${escapeHtml(row.passengerName)} · ${escapeHtml(label('Tag photos','行李牌照片'))} × ${escapeHtml(row.tagPhotoCount)}</small>`:''}</td>${rushCells}</tr><tr class="case-detail-row${closedClass}" data-detail-case="${escapeHtml(detailKey)}" ${isExpanded ? '' : 'hidden'}><td colspan="${showUpcomingRush ? 5 : 3}"><div class="case-detail-layout"><div class="case-progress-column">${trackingControlHtml(row, 'progress')}</div><div class="case-detail-right">${trackingControlHtml(row, 'current')}${caseCommentsHtml(row)}<div class="case-detail-content">${detailHtml}</div>${passengerNotificationHtml(row)}${passengerRecordPanel}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(`${showClosed ? 'closed' : 'open'}-passenger`, pagination)}${baggageHtml}`;
       requestAnimationFrame(syncCaseProgressHeights);
     }
@@ -2596,11 +2606,15 @@
     let cbsRefreshInProgress = false;
     let cbsRefreshTimer = null;
     let cbsLiveConnected = false;
+    window.CbsBagTagEdit.install({
+      save:async({rowNumber,...payload})=>requestCaseUpdate(`cbs-bag-tags/${encodeURIComponent(rowNumber)}`,{...payload,updatedBy:await currentUpdater()}),
+      refresh:async()=>{window._forceCbsRefresh=true;await refreshCbsData();}
+    });
     let cbsLastReconciliation = 0;
     let cbsRefreshQueued = false;
     async function refreshCbsData() {
       // Do not replace controls while an agent is entering or submitting data.
-      if (document.activeElement?.closest('form') || casesOutput.querySelector('.case-update[data-submitting="true"]') || cbsRefreshInProgress) {
+      if (window.cbsBagTagEditing || document.activeElement?.closest('form') || casesOutput.querySelector('.case-update[data-submitting="true"]') || cbsRefreshInProgress) {
         cbsRefreshQueued = true;
         clearTimeout(cbsRefreshTimer);
         cbsRefreshTimer = setTimeout(refreshCbsData, 1000);
