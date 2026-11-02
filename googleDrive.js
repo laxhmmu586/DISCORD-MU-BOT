@@ -1278,26 +1278,7 @@ function sheetValuesFromReportRow(type, row) {
   return config.fields.map((field) => normalized[field] || '');
 }
 
-async function getStoredReportRows(type, isoDate) {
-  const config = getReportSheetConfig(type);
-  if (!config) return { rows: [], scanned: false };
-  const rows = await getReportSheetRows(type);
-  if (!config.readOnly) await ensureReportSheetHeaders(type, rows);
-  let scanned = false;
-  const dataRows = [];
-  const startIndex = rows.length && isReportHeaderRow(type, rows[0]) ? 1 : 0;
-  for (let i = startIndex; i < rows.length; i += 1) {
-    if (isReportHeaderRow(type, rows[i])) continue;
-    const parsed = reportRowFromSheet(type, rows[i]);
-    if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') {
-      if (!isoDate || parsed.key === scanMarkerKey(type, isoDate)) scanned = true;
-      continue;
-    }
-    if (isoDate && parsed.date !== isoDate) continue;
-    dataRows.push(parsed);
-  }
-  return { rows: dataRows, scanned: config.readOnly ? true : scanned };
-}
+async function getStoredReportRows(type,date) { return ({rows:reportDb.local().query(reportType(type),{from:date||'',to:date||''}),scanned:true}); }
 
 function reportRetentionCutoffIso() {
   const date = new Date();
@@ -1305,89 +1286,17 @@ function reportRetentionCutoffIso() {
   return date.toISOString().slice(0, 10);
 }
 
-async function pruneStoredReportRows(type) {
-  if (reportSheetAccessBlocked) return { deleted: 0 };
-  const config = getReportSheetConfig(type);
-  if (!config) return { deleted: 0 };
-  const title = await getReportSheetTitle(type);
-  if (!title) return { deleted: 0 };
-  const rows = await getReportSheetRows(type);
-  if (rows.length <= 1) return { deleted: 0 };
-  const cutoff = reportRetentionCutoffIso();
-  const deleteIndexes = [];
-  for (let i = 1; i < rows.length; i += 1) {
-    const parsed = reportRowFromSheet(type, rows[i]);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(parsed.date) && parsed.date < cutoff) deleteIndexes.push(i);
-  }
-  if (!deleteIndexes.length) return { deleted: 0 };
-  const requests = deleteIndexes.reverse().map((rowIndex) => ({
-    deleteDimension: {
-      range: {
-        sheetId: config.gid,
-        dimension: 'ROWS',
-        startIndex: rowIndex,
-        endIndex: rowIndex + 1
-      }
-    }
-  }));
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: REPORT_SHEET_ID,
-    requestBody: { requests }
-  });
-  return { deleted: deleteIndexes.length };
-}
+async function pruneStoredReportRows() { return ({deleted:0}); }
 
 
 
-async function getVipReportRows(isoDate = '') {
-  const { rows:dataRows } = await getStoredReportRows('vip', isoDate);
-  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0) || String(a.passenger || '').localeCompare(String(b.passenger || '')));
-}
+async function getVipReportRows(date) { return reportDb.local().query('vip',{from:date||'',to:date||''}); }
 
-async function getPsmMsgReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
-  const from = String(fromIsoDate || '').trim();
-  const to = String(toIsoDate || from).trim();
-  const { rows } = await getStoredReportRows('psmMsg', '');
-  const dataRows = [];
-  for (const parsed of rows) {
-    if (from && parsed.date < from) continue;
-    if (to && parsed.date > to) continue;
-    dataRows.push(parsed);
-  }
-  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
-}
+async function getPsmMsgReportRows(from,to=from) { return reportDb.local().query('psmMsg',{from,to}); }
 
-async function updatePsmMsgReportRemark(key, remark) {
-  if (reportSheetAccessBlocked) return { updated: false };
-  const normalizedKey = String(key || '').trim().toUpperCase();
-  if (!normalizedKey) throw new Error('Missing report row key');
-  const config = getReportSheetConfig('psmMsg');
-  const title = await getReportSheetTitle('psmMsg');
-  if (!config || !title) throw new Error('Authorization Report sheet not found');
-  const sheetRows = await getReportSheetRows('psmMsg');
-  await ensureReportSheetHeaders('psmMsg', sheetRows);
-  const rowIndex = sheetRows.findIndex((values, index) => index > 0 && String(reportPsmMsgRowFromSheet(values).key || '').trim().toUpperCase() === normalizedKey);
-  if (rowIndex < 0) return { updated: false, notFound: true };
-  const remarkColumn = String.fromCharCode(65 + config.fields.indexOf('remark'));
-  const cleanRemark = sanitizeSheetText(remark, 1000);
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: REPORT_SHEET_ID,
-    range: `${title}!${remarkColumn}${rowIndex + 1}`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [[cleanRemark]] }
-  });
-  return { updated: true, remark: cleanRemark };
-}
+async function updatePsmMsgReportRemark(key,remark) { return reportDb.local().remark(key,sanitizeSheetText(remark,1000)); }
 
-async function getInadReportRows() {
-  const { rows } = await getStoredReportRows('inad', '');
-  const dataRows = [];
-  for (const parsed of rows) {
-    if (String(parsed.key || '').startsWith('__SCAN__') || parsed.passenger === '__SCAN_COMPLETE__') continue;
-    dataRows.push(parsed);
-  }
-  return dataRows.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.flightNo || '').localeCompare(String(b.flightNo || '')) || Number(a.bn || 0) - Number(b.bn || 0));
-}
+async function getInadReportRows() { return reportDb.local().query('inad'); }
 
 async function getWheelchairReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   const from = String(fromIsoDate || '').trim();
@@ -1410,65 +1319,10 @@ async function getSpmlReportRows(fromIsoDate, toIsoDate = fromIsoDate) {
   return rows.filter((row) => (!from || row.date >= from) && (!to || row.date <= to));
 }
 
-async function appendSpmlReportRows(rows) {
-  const date = String(rows?.[0]?.date || '').trim();
-  if (!date) return { appended:0, stored:0, source:'googleSheet' };
-  return appendStoredReportRows('spml', date, rows);
-}
+async function appendSpmlReportRows() { return ({appended:0,disabled:true}); }
 
-async function appendVipReportRowsToSheet(rows) {
-  if (reportSheetAccessBlocked) return { appended: 0 };
-  const config = getReportSheetConfig('vip');
-  const title = await getReportSheetTitle('vip');
-  if (!config || !title) return { appended: 0 };
-  const sheetRows = await getReportSheetRows('vip');
-  await ensureReportSheetHeaders('vip', sheetRows);
-  const existingKeys = new Set();
-  const startIndex = sheetRows.length && isReportHeaderRow('vip', sheetRows[0]) ? 1 : 0;
-  for (let i = startIndex; i < sheetRows.length; i += 1) {
-    if (isReportHeaderRow('vip', sheetRows[i])) continue;
-    const parsed = reportRowFromSheet('vip', sheetRows[i]);
-    existingKeys.add([
-      parsed.flightDate,
-      parsed.flightNo,
-      parsed.passenger
-    ].map((value) => String(value || '').trim().toUpperCase()).join('|'));
-  }
 
-  const values = [];
-  const newestRows = [...(rows || [])].sort((a, b) => Number(b?.timestampMs || 0) - Number(a?.timestampMs || 0));
-  for (const row of newestRows) {
-    const normalized = {
-      flightDate: String(row.flightDate || '').trim().toUpperCase(),
-      flightNo: String(row.flightNo || '').trim().toUpperCase(),
-      passenger: String(row.passenger || '').trim().toUpperCase(),
-      bn: String(row.bn || '').trim().replace(/^0+(?=\d)/, ''),
-      seat: String(row.seat || '').trim().toUpperCase(),
-      bags: String(row.bags || '').trim().toUpperCase()
-    };
-    if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger) continue;
-    if (normalized.flightNo === 'MU586' && (!normalized.bn || !normalized.seat)) continue;
-    const key = [normalized.flightDate, normalized.flightNo, normalized.passenger].join('|').toUpperCase();
-    if (existingKeys.has(key)) continue;
-    existingKeys.add(key);
-    values.push(config.fields.map((field) => normalized[field] || ''));
-  }
-
-  if (!values.length) return { appended: 0 };
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: REPORT_SHEET_ID,
-    range: `${title}!A1`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values }
-  });
-  return { appended: values.length };
-}
-
-async function appendVipReportRows(rows) {
-  const result = await appendVipReportRowsToSheet(rows);
-  return { ...result, stored:result.appended, source:'googleSheet' };
-}
+async function appendVipReportRows(rows) { return appendStoredReportRows('vip',rows[0]?.date||rows[0]?.flightDate||'',rows); }
 
 function buildPsmMsgKey(row) {
   return [
@@ -1503,90 +1357,14 @@ function reportPsmMsgRowFromSheet(values) {
   return row;
 }
 
-async function appendPsmMsgReportRowsToSheet(rows) {
-  if (reportSheetAccessBlocked) return { appended: 0 };
-  const config = getReportSheetConfig('psmMsg');
-  const title = await getReportSheetTitle('psmMsg');
-  if (!config || !title) return { appended: 0 };
-  const sheetRows = await getReportSheetRows('psmMsg');
-  await ensureReportSheetHeaders('psmMsg', sheetRows);
-  const existingKeys = new Set();
-  const startIndex = sheetRows.length && isReportHeaderRow('psmMsg', sheetRows[0]) ? 1 : 0;
-  for (let i = startIndex; i < sheetRows.length; i += 1) {
-    if (isReportHeaderRow('psmMsg', sheetRows[i])) continue;
-    const parsed = reportPsmMsgRowFromSheet(sheetRows[i]);
-    existingKeys.add(String(parsed.key || buildPsmMsgKey(parsed)).trim().toUpperCase());
-  }
 
-  const values = [];
-  for (const row of rows || []) {
-    const normalized = {
-      recordedAt: row.recordedAt || new Date().toISOString(),
-      flightDate: String(row.flightDate || '').trim().toUpperCase(),
-      flightNo: String(row.flightNo || '').trim().toUpperCase(),
-      passenger: String(row.passenger || '').trim().toUpperCase(),
-      bn: String(row.bn || '').trim().padStart(3, '0'),
-      seat: String(row.seat || '').trim().toUpperCase(),
-      bags: String(row.bags || '').trim().toUpperCase(),
-      type: String(row.type || '').trim().toUpperCase(),
-      detail: String(row.detail || '').trim().toUpperCase()
-    };
-    if (!normalized.flightDate || !normalized.flightNo || !normalized.passenger || !normalized.detail) continue;
-    normalized.key = row.key || buildPsmMsgKey(normalized);
-    const key = String(normalized.key || '').trim().toUpperCase();
-    if (existingKeys.has(key)) continue;
-    existingKeys.add(key);
-    values.push(config.fields.map((field) => normalized[field] || ''));
-  }
+async function appendPsmMsgReportRows(rows) { return appendStoredReportRows('psmMsg',rows[0]?.flightDate||'',rows); }
 
-  if (!values.length) return { appended: 0 };
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: REPORT_SHEET_ID,
-    range: `${title}!A1`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values }
-  });
-  return { appended: values.length };
-}
 
-async function appendPsmMsgReportRows(rows) {
-  const result = await appendPsmMsgReportRowsToSheet(rows);
-  return { ...result, stored:result.appended, source:'googleSheet' };
-}
-
-async function appendStoredReportRowsToSheet(type, isoDate, rows) {
-  if (reportSheetAccessBlocked) return { appended: 0 };
-  const config = getReportSheetConfig(type);
-  if (!config || config.readOnly) return { appended: 0 };
-  const title = await getReportSheetTitle(type);
-  if (!title) return { appended: 0 };
-  const sheetRows = await getReportSheetRows(type);
-  await ensureReportSheetHeaders(type, sheetRows);
-  const existingKeys = new Set(sheetRows.slice(1).map((row) => reportRowFromSheet(type, row).key).filter(Boolean));
-  const values = [];
-  for (const row of rows || []) {
-    const key = buildStoredReportKey(type, row);
-    if (existingKeys.has(key)) continue;
-    existingKeys.add(key);
-    values.push(sheetValuesFromReportRow(type, { ...row, key }));
-  }
-  if (!values.length) return { appended: 0 };
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: REPORT_SHEET_ID,
-    range: `${title}!A1`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values }
-  });
-  return { appended: values.length };
-}
-
-async function appendStoredReportRows(type, isoDate, rows) {
-  const marker = { recordedAt:new Date().toISOString(), date:isoDate, passenger:'__SCAN_COMPLETE__', key:scanMarkerKey(type, isoDate) };
-  const storedRows = [...(rows || []).map((row) => ({ ...row, key:buildStoredReportKey(type, row) })), marker];
-  const result = await appendStoredReportRowsToSheet(type, isoDate, storedRows);
-  return { ...result, stored:result.appended, source:'googleSheet' };
+async function appendStoredReportRows(type,date,rows) {
+  type=reportType(type); if(!reportDb.types.includes(type))return {appended:0,disabled:true};
+  const db=reportDb.local();db.ready();
+  return db.sync(type+'|'+date,rows,()=>db.put(type,rows.map(row=>normalizeLocalReport(type,row))));
 }
 
 function normalizeFlightCode(flightNo) {
@@ -1666,43 +1444,18 @@ function salesDetailRowsFromSourceValues(rows = []) {
   return parsed;
 }
 
-async function syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate) {
-  const sourceRows = await readSalesReportSourceValues();
-  const sheetRows = await getReportSheetRows('salesDetails');
-  await ensureReportSheetHeaders('salesDetails', sheetRows);
-  const existing = new Set(sheetRows.slice(1).map((row) => String(row[7] || '').trim()).filter(Boolean));
-  const values = [];
-  for (const row of salesDetailRowsFromSourceValues(sourceRows)) {
-    if (!row || row.date < fromIsoDate || row.date > toIsoDate || existing.has(row.key)) continue;
-    existing.add(row.key);
-    values.push(sheetValuesFromReportRow('salesDetails', row));
-  }
-  if (values.length) {
-    const title = await getReportSheetTitle('salesDetails');
-    await sheets.spreadsheets.values.append({ spreadsheetId:REPORT_SHEET_ID, range:`${title}!A:H`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values } });
-  }
-  return { source:'googleSheet', appended:values.length };
+async function syncSalesDetailsFromSourceSheet(from,to) {
+  if(salesSyncPending)return salesSyncPending;
+  salesSyncPending=(async()=>{
+    const rows=salesDetailRowsFromSourceValues(await readSalesReportSourceValues());
+    const db=reportDb.local();return db.sync('sales-source',rows,()=>db.put('salesDetails',rows));
+  })().finally(()=>{salesSyncPending=null;});return salesSyncPending;
 }
 
-async function getSalesDetailsReportRows(fromIsoDate, toIsoDate, options = {}) {
-  let sync = { source: 'dailySheet', appended: 0, errors: [] };
-  if (options.sync !== false) {
-    try {
-      sync = await syncSalesDetailsFromSourceSheet(fromIsoDate, toIsoDate);
-    } catch (err) {
-      sync = { source: 'dailySheet', appended: 0, errors: [err?.message || 'Sales details sync failed'] };
-    }
-  }
-  const stored = await getStoredReportRows('salesDetails', '');
-  const dataRows = stored.rows.filter((row) => row.date >= fromIsoDate && row.date <= toIsoDate);
-  const totals = {};
-  for (const row of dataRows) {
-    const type = row.type || 'UNKNOWN';
-    if (!totals[type]) totals[type] = { amount: 0, count: 0 };
-    totals[type].amount += Number(row.value) || 0;
-    totals[type].count += 1;
-  }
-  return { rows: dataRows, totals: Object.entries(totals).sort(([a], [b]) => a.localeCompare(b)).map(([type, total]) => ({ type, amount: Math.round(total.amount * 100) / 100, count: total.count })), sync };
+async function getSalesDetailsReportRows(from,to,options={}) {
+  const rows=reportDb.local().query('salesDetails',{from,to,flight:options.flight||''}),groups=new Map();
+  for(const row of rows){const key=row.type||'UNKNOWN',total=groups.get(key)||{type:key,amount:0,count:0};total.amount+=Number(row.value)||0;total.count++;groups.set(key,total);}
+  return {rows,totals:[...groups.values()].map(t=>({...t,amount:Math.round(t.amount*100)/100})),revision:reportDb.local().revision()};
 }
 
 async function findSalesReportFile(flightNo, flightDate) {
@@ -5560,4 +5313,51 @@ module.exports.sendExpressConnectionEmail=async({subject,text,pdfBuffer,filename
  const raw=buildRawCbsEmail({to:require('./has/server/expressModel').RECIPIENT,subject,text,html,pdfBuffer,filename});
  try{const result=await gmail.users.messages.send({userId,requestBody:{raw:base64UrlEncode(raw)}},{timeout:30000});return {id:result.data.id||''};}
  catch(error){const status=Number(error.response?.status||error.code);if(status>=400&&status<500)error.definitelyNotSent=true;throw error;}
+};
+
+// Report Center owns its local records; Google remains an import/source only.
+const reportDb = require('./reportSqlite');
+const reportType = type => ({psmmsg:'psmMsg',salesdetails:'salesDetails'}[String(type).toLowerCase()] || String(type).toLowerCase());
+const normalizeLocalReport = (type,row) => {
+  const values=sheetValuesFromReportRow(type,row);
+  const parsed=reportRowFromSheet(type,values);
+  parsed.key=type==='psmMsg' ? (row.key||buildPsmMsgKey(parsed)) : buildStoredReportKey(type,row);
+  return parsed;
+};
+
+
+
+
+
+
+
+
+
+
+let salesSyncPending=null;
+
+
+module.exports.importReportDatabase = async filename => {
+  const db=new reportDb.ReportStore(filename);let counts={};
+  try {
+    if(db.db.prepare("SELECT 1 FROM report_meta WHERE key='imported'").get())throw Error('Refusing to overwrite imported report database');
+    const snapshots=[];
+    for(const type of reportDb.types){const values=await getReportSheetRows(type);if(!values.length)throw Error('Source report is empty or inaccessible: '+type);
+      const rows=values.filter(v=>!isReportHeaderRow(type,v)).map(v=>reportRowFromSheet(type,v));snapshots.push({type,rows,values});counts[type]={sourceRows:rows.length};}
+    db.db.transaction(()=>{
+      db.db.exec('CREATE TABLE report_import_sheets(type TEXT PRIMARY KEY,data TEXT NOT NULL)');
+      db.db.exec('CREATE TABLE report_import_rows(type TEXT NOT NULL,row_no INTEGER NOT NULL,data TEXT NOT NULL,PRIMARY KEY(type,row_no))');
+      for(const snapshot of snapshots){const {type,rows,values}=snapshot;db.db.prepare('INSERT INTO report_import_sheets VALUES(?,?)').run(type,JSON.stringify(values));if(db.db.prepare('SELECT data FROM report_import_sheets WHERE type=?').get(type).data!==JSON.stringify(values))throw Error('Raw source verification failed: '+type);const seen=new Set();snapshot.rows=rows.map((original,index)=>{
+        db.db.prepare('INSERT INTO report_import_rows VALUES(?,?,?)').run(type,index+1,JSON.stringify(original));
+        const row={...original};let key=String(row.key||[row.flightDate||row.date,row.flightNo,row.passenger].join('|')).trim().toUpperCase();
+        if(seen.has(key))key+='|IMPORT-ROW-'+(index+1);seen.add(key);row.key=key;return row;
+      });db.put(type,snapshot.rows,{importing:true});counts[type].storedRows=db.db.prepare('SELECT COUNT(*) n FROM report_records WHERE type=?').get(type).n;
+        const restored=db.db.prepare('SELECT data FROM report_import_rows WHERE type=? ORDER BY row_no').all(type).map(r=>JSON.parse(r.data));
+        if(JSON.stringify(restored)!==JSON.stringify(rows))throw Error('Import snapshot verification failed: '+type);
+      }
+      db.db.prepare("INSERT INTO report_meta VALUES('imported',?)").run(new Date().toISOString());
+      for(const {type,rows} of snapshots){const actual=new Map(db.query(type).map(r=>[String(r.key||[r.flightDate||r.date,r.flightNo,r.passenger].join('|')).trim().toUpperCase(),r]));for(const row of rows){if(String(row.key||'').startsWith('__SCAN__')||row.passenger==='__SCAN_COMPLETE__')continue;if(JSON.stringify(actual.get(String(row.key).trim().toUpperCase()))!==JSON.stringify(row))throw Error('Report verification failed: '+type);}}
+    })();
+    db.db.pragma('wal_checkpoint(TRUNCATE)');return {verified:true,counts};
+  }finally{db.db.close();}
 };

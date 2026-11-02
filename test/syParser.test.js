@@ -205,7 +205,7 @@ test('counts unique active BNs by latest API agent and excludes AGT9 records', (
   });
 });
 
-test('keeps WCHR codes on unstarred GOV/FCL passenger continuation lines', () => {
+test('does not aggregate wheelchair lists from passenger continuation lines', () => {
   const log = [
     '2026 September 14, Monday, 14:00:00',
     '> sy',
@@ -228,10 +228,7 @@ test('keeps WCHR codes on unstarred GOV/FCL passenger continuation lines', () =>
 
   const info = require('../syParser').findSYInfo(log, '14SEP26', { preferredFlightNo: 'MU586' });
 
-  assert.deepEqual(info.wchList, [
-    { bn: '203', name: 'XU/HUITONG', seat: '11D', codes: ['WCHR'] },
-    { bn: '238', name: 'LAM/CHINGYEE', seat: '9D', codes: ['WCHR'] }
-  ]);
+  assert.deepEqual(info.wchList, []);
 });
 
 test('audits infant tickets from PD and PR displays', () => {
@@ -265,7 +262,7 @@ test('audits infant tickets from PD and PR displays', () => {
   ]);
 });
 
-test('latest passenger display clears an earlier false WCHC advisory match', () => {
+test('wheelchair advisories and services do not create a wheelchair count', () => {
   const log = [
     '2026 September 22, Tuesday, 12:50:00',
     '> sy',
@@ -293,9 +290,7 @@ test('latest passenger display clears an earlier false WCHC advisory match', () 
 
   const info = require('../syParser').findSYInfo(log, '22SEP26', { preferredFlightNo: 'MU586' });
 
-  assert.deepEqual(info.wchList, [
-    { bn: '293', name: 'TEST/WHEELCHAIR', seat: '35A', codes: ['WCHC'] }
-  ]);
+  assert.deepEqual(info.wchList, []);
 });
 
 test('supplied October 8 IF and BDT commands complete MU586 October 10 preparation',()=>{

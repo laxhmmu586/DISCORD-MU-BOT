@@ -5,7 +5,7 @@
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script defer src="/__/firebase/init.js"></script><script defer src="/flight-account.js?v=20261030-glass-clean-routes"></script>
 <script defer src="/service-common.js"></script><script defer src="/report.js"></script><link rel="stylesheet" href="/assets/report-admin.css?v=20261026-airport-mask"><link rel="stylesheet" href="/assets/airport-scene.css?v=20261026-mobile-wide"><link rel="stylesheet" href="/assets/griffith-scene.css?v=20261027-griffith" /></head>
-<body class="airport-scene service-page report-admin-page"><header class="service-topbar"><a class="brand" href="/flights.html">MUFC</a><nav><a href="/report.html">Report</a><a href="/baggage.html">Baggage</a></nav><a class="flight-switch" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a><div class="flight-account" id="flight-account"></div></header><main class="report-shell"><div class="report-intro"><a class="back-home" href="/flights.html">← Flight services</a><span class="eyebrow">REPORTS</span><h1>Report Center</h1><p>Choose a report below to view saved rows, search by flight date, or download the current results. Misconnection displays passenger assistance submissions.</p></div><section class="report-page" id="report-page" aria-label="Report center">
+<body class="airport-scene service-page report-admin-page"><header class="service-topbar"><a class="brand" href="/flights.html">MUFC</a><nav><a href="/report.html">Report</a><a href="/baggage.html">Baggage</a></nav><a class="flight-switch" href="/flights.html" aria-label="Switch flight" title="Switch flight"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m-4-4 4 4 4-4M17 21V4m-4 4 4-4 4 4"/></svg></a><div class="flight-account" id="flight-account"></div></header><main class="report-shell"><div class="report-intro"><a class="back-home" href="/flights.html">← Flight services</a><span class="eyebrow">REPORTS</span><h1>Report Center</h1><p>Choose a report below to view saved rows, search by flight date, or download the current results.</p></div><section class="report-page" id="report-page" aria-label="Report center">
           <div class="report-hero">
             <div>
               <h2>01 · Report Selection</h2>
@@ -17,12 +17,8 @@
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
-            <button class="detail-action" id="report-spml-mode" type="button" data-report-mode="spml">SPML Report</button>
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">Authorization Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
-            <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
-            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
-            <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
 <label class="report-field"><span>Flight</span><select id="report-flight"><option value="MU586">MU586</option><option value="MU9586">MU9586</option><option value="MU578">MU578</option><option value="MU583">MU583</option><option value="MU577">MU577</option><option value="">All flights</option></select></label>
