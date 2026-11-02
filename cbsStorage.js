@@ -35,8 +35,9 @@ function revisions(){
  const hash=rows=>require('node:crypto').createHash('sha256').update(JSON.stringify(rows)).digest('hex').slice(0,24),gid=(name,fallback)=>Number(process.env[name]||fallback);
  const rows=ids=>ids.flatMap(id=>db.db.prepare('SELECT gid,row_no,data FROM cbs_rows WHERE book=? AND gid=? ORDER BY row_no').all(book,id)).filter(r=>r.row_no>1);
  const passenger=rows([gid('CBS_SHEET_GID',0),gid('WRONG_BAGGAGE_SHEET_GID',1615438730)]),onhand=rows([gid('CBS_UNRESOLVED_BAGGAGE_SHEET_GID',523026916)]),modules={};
+ const passengerStatus=entry=>{const v=JSON.parse(entry.data);if(entry.gid!==gid('CBS_SHEET_GID',0))return v[1];try{const events=JSON.parse(v[31]||'[]');return Array.isArray(events)?events.at(-1)?.status||v[1]:v[1];}catch{return v[1];}};
  for(const view of ['open','closed']){
-  modules['passenger:'+view]=hash(passenger.filter(r=>/close|forward\s+to\s+mu/i.test(String(JSON.parse(r.data)[1]||''))===(view==='closed')));
+  modules['passenger:'+view]=hash(passenger.filter(r=>/close|forward\s+to\s+mu/i.test(String(passengerStatus(r)||''))===(view==='closed')));
   for(const group of ['on-hand','bag-room'])modules[group+':'+view]=hash(onhand.filter(r=>{const values=JSON.parse(r.data),archived=Boolean(values[10])&&['on-hand-rush','shipped','passenger-collected','case-close','linked-passenger-file','change-type','expired'].includes(String(values[8]||'').toLowerCase()),bagRoom=[values[4],values[5]].some(v=>String(v||'').trim().toLowerCase()==='not load bags');return archived===(view==='closed')&&bagRoom===(group==='bag-room');}));
  }
  modules.rush=hash(rows([gid('CBS_WORLDTRACER_SHEET_GID',944289437)]));modules.missing=hash(rows([gid('CBS_MISSING_BAG_SHEET_GID',1145829442)]));modules.shipment=hash([...passenger,...onhand].filter(r=>/shipping|shipped/i.test(r.data)));

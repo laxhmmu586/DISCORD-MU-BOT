@@ -382,7 +382,7 @@
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   .unload-flight{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:850;border:1px solid currentColor;white-space:nowrap}.unload-flight-blue{background:#e4efff;color:#174fa3}.unload-flight-purple{background:#f1e8ff;color:#6b299c}.unload-flight-teal{background:#dff5f5;color:#07636b}.unload-flight-green{background:#e4f5e9;color:#246b36}.unload-flight-orange{background:#fff0df;color:#90490b}.unload-flight-unknown{background:#eff1f4;color:#526071;font-size:11px;padding:4px 8px}
 </style>
-<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><script src="/cbs-data.js?v=20261101-sqlite"></script></head>
+<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><script src="/cbs-data.js?v=20261101-case-counts"></script></head>
 <body>
   <header>
     <a class="brand" href="/flights.html">MUBC</a>
@@ -663,6 +663,7 @@
       return `<nav class="list-pagination" aria-label="List pages"><span>${escapeHtml(summary)}</span><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="-1" ${pagination.page === 1 ? 'disabled' : ''}>${label('Previous', '上一页')}</button><button class="secondary" type="button" data-list-page="${escapeHtml(key)}" data-page-delta="1" ${pagination.page === pagination.pageCount ? 'disabled' : ''}>${label('Next', '下一页')}</button></nav>`;
     }
     function setCaseCount(group, count) {
+      const summary=window._cbsSummary?.caseCounts;if(summary){const selected=window._caseView==='closed'?summary.closed[window._closedMonth||Object.keys(summary.closed).sort().at(-1)]:summary.open;count=selected?.[group]||0;}
       document.querySelector(`[data-case-count="${group}"]`).textContent = String(count);
       const titleCount = document.querySelector(`[data-case-title-count="${group}"]`);
       if (titleCount) titleCount.textContent = `(${count})`;
@@ -735,7 +736,7 @@
       addRushFlightRow(defaultRushFlight());
     }
     function showSection(section) {
-      const previous=activeCbsSection;activeCbsSection=section;if(previous!==section&&['open','closed'].includes(section)){window._unresolvedBaggageLoaded=false;window._cbsRows=[];window._unresolvedBaggageSourceRows=[];for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,'—');}
+      const previous=activeCbsSection;activeCbsSection=section;if(previous!==section&&['open','closed'].includes(section)){window._unresolvedBaggageLoaded=false;window._cbsRows=[];window._unresolvedBaggageSourceRows=[];for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);}
       const isCaseSection = section === 'open' || section === 'closed';
       openCasesCard.hidden = !isCaseSection;
       worldTracerCard.hidden = section !== 'worldtracer';
@@ -753,7 +754,7 @@
       emailTab.classList.toggle('is-active', section === 'email');
       shipmentTab.classList.toggle('is-active', section === 'shipment');
       if (isCaseSection) {
-        window._caseView = section;
+        window._caseView = section;for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);
         closedMonth.hidden = section !== 'closed';
         casePageTitle.innerHTML = section === 'closed' ? '<span class="en">Closed Case</span><span class="zh">已结案件</span>' : '<span class="en">Open Case</span><span class="zh">未结案件</span>';
         onHandGroup.hidden = false;
@@ -1073,7 +1074,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage${cbsListParams(activeCbsSection==='shipment'?null:activeCbsGroup)}`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;closedMonth.value=data.month;}window._passengerMatches=data.passengerMatches||{};
+        if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;window._closedMonthChosen=true;closedMonth.value=data.month;}for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);window._passengerMatches=data.passengerMatches||{};
         const nextRows = data.rows || [];
         const signature = JSON.stringify([nextRows, Boolean(data.bagRoomUnloadNoticeSent)]);
         if (!window._silentCbsRefresh || window._unresolvedBaggageSignature !== signature) {
@@ -1814,7 +1815,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-cases${cbsListParams()}`);
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Case loading failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;closedMonth.value=data.month;}window._onHandMatches=data.onHandMatches||{};
+        if (!res.ok) throw new Error(data.error || 'Case loading failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;window._closedMonthChosen=true;closedMonth.value=data.month;}for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);window._onHandMatches=data.onHandMatches||{};
         const nextRows = data.rows || [];
         const signature = JSON.stringify(nextRows);
         // Drive uploads can change while the case rows stay identical.
@@ -2172,7 +2173,7 @@
     shipmentMonth?.addEventListener('change', () => { window._shipmentMonth = shipmentMonth.value; renderShipments(); });
     shipmentMethodButtons.forEach((button) => button.addEventListener('click', () => { window._shipmentMethod = button.dataset.shipmentMethod; renderShipments(); }));
     closedMonth?.addEventListener('change', () => {
-      window._closedMonthChosen=true;window._closedMonth = closedMonth.value;
+      window._closedMonthChosen=true;window._closedMonth = closedMonth.value;for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);
       window._cbsListPages ||= {};
       ['closed-passenger', 'closed-on-hand', 'closed-bag-room'].forEach((key) => { window._cbsListPages[key] = 1; });
       renderCases();
@@ -2625,7 +2626,7 @@
       clearTimeout(cbsRefreshTimer);cbsRefreshTimer=setTimeout(refreshCbsData,250);
     }
     window.addEventListener('cbs-data-changed',event=>scheduleCbsLiveRefresh({type:'module-change',modules:event.modules||[cbsModuleName()]}));
-    window.addEventListener('cbs-data-current',event=>{if(event.summary){updateRushBagAttention(event.summary.rushMissingWorldTracer?[{worldTracerFileNumber:''}]:[]);missingAlert.dataset.hasOpenReports=String(event.summary.missingOpenCount>0);try{localStorage.setItem(MISSING_BAG_STATUS_STORAGE_KEY,JSON.stringify({openCount:event.summary.missingOpenCount,updatedAt:Date.now()}));}catch{}}cbsLiveStatus.textContent=cbsLiveConnected?'Live · changes only':'Updated · change checks';cbsLiveStatus.className='cbs-live-status connected';});
+    window.addEventListener('cbs-data-current',event=>{if(event.summary){window._cbsSummary=event.summary;for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);updateRushBagAttention(event.summary.rushMissingWorldTracer?[{worldTracerFileNumber:''}]:[]);missingAlert.dataset.hasOpenReports=String(event.summary.missingOpenCount>0);try{localStorage.setItem(MISSING_BAG_STATUS_STORAGE_KEY,JSON.stringify({openCount:event.summary.missingOpenCount,updatedAt:Date.now()}));}catch{}}cbsLiveStatus.textContent=cbsLiveConnected?'Live · changes only':'Updated · change checks';cbsLiveStatus.className='cbs-live-status connected';});
     window.addEventListener('cbs-data-offline',()=>{cbsLiveStatus.textContent='Offline · showing cached data';cbsLiveStatus.className='cbs-live-status reconnecting';});
     document.addEventListener('focusout', () => { if (cbsRefreshQueued) scheduleCbsLiveRefresh({ type:'queued' }); });
     function connectCbsLiveSync() {
@@ -2645,7 +2646,8 @@
     }
     resetRushFlightRows();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'worldtracer' ? 'worldtracer' : new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
-    for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,'—');
+    window._cbsSummary=window.cbsDataCache?.summary;
+    for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);
     showSection(initialSection);
     connectCbsLiveSync();
 

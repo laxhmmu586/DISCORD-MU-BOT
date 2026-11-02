@@ -28,13 +28,19 @@
  let rowDrag=null;
  function clearRowDrop(){for(const row of $('schedule-table').querySelectorAll('.employee-drop-before,.employee-drop-after'))row.classList.remove('employee-drop-before','employee-drop-after');}
  let profileFrame=null;window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===profileFrame?.querySelector('iframe').contentWindow&&event.data?.type==='schedule-close-person')profileFrame.close();});
+ function bindProfileDismiss(dialog){
+  let outsidePress=false;
+  const outside=event=>{const bounds=dialog.getBoundingClientRect();return event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom;};
+  dialog.addEventListener('pointerdown',event=>{outsidePress=event.target===dialog&&outside(event);});
+  dialog.addEventListener('click',event=>{if(outsidePress&&event.target===dialog&&outside(event))dialog.close();outsidePress=false;});
+ }
  async function openEmployeeProfile(employee){
   if(!data.canManageProfiles){
-   const dialog=node('dialog',undefined,'schedule-readonly-profile'),close=node('button','×'),heading=node('small','EMPLOYEE PROFILE');close.type='button';close.setAttribute('aria-label','Close employee profile');dialog.append(close,heading);close.onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();
+   const dialog=node('dialog',undefined,'schedule-readonly-profile'),close=node('button','×'),heading=node('small','EMPLOYEE PROFILE');close.type='button';close.setAttribute('aria-label','Close employee profile');dialog.append(close,heading);close.onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);bindProfileDismiss(dialog);dialog.showModal();
    try{const person=await api('/people/'+encodeURIComponent(employee.id));if(person.avatar){const photo=node('img');photo.src=person.avatar;photo.alt='';dialog.append(photo);}dialog.append(node('h2',person.name),node('p',person.position+' · '+person.station+' / '+person.account),node('p','Profile & reporting','schedule-profile-tab'));for(const [label,value] of [['Full name',person.name],['Preferred name',person.nickname],['Title',person.position],['HAS email',person.companyEmail],['Main account',person.station+' / '+person.account]]){const field=node('label',label),input=node('input');input.value=value||'—';input.readOnly=true;field.append(input);dialog.append(field);}dialog.append(node('p','View only · Profile changes are managed by your manager.'));}catch(error){dialog.append(node('p',error.message));}return;
   }
 
-  if(!profileFrame){profileFrame=node('dialog',undefined,'schedule-person-frame');const close=node('button','×','schedule-person-close');close.type='button';close.setAttribute('aria-label','Close employee profile');close.onclick=()=>profileFrame.close();const frame=node('iframe');frame.title='Employee profile';profileFrame.append(close,frame);document.body.append(profileFrame);profileFrame.addEventListener('close',()=>{frame.src='about:blank';});}
+  if(!profileFrame){profileFrame=node('dialog',undefined,'schedule-person-frame');const close=node('button','×','schedule-person-close');close.type='button';close.setAttribute('aria-label','Close employee profile');close.onclick=()=>profileFrame.close();const frame=node('iframe');frame.title='Employee profile';profileFrame.append(close,frame);document.body.append(profileFrame);bindProfileDismiss(profileFrame);profileFrame.addEventListener('close',()=>{frame.src='about:blank';});}
   profileFrame.querySelector('iframe').src='/hr?person='+encodeURIComponent(employee.id)+'&embedded=1';profileFrame.showModal();
  }
  function bindEmployeeProfile(target,employee){target.tabIndex=0;target.setAttribute('role','button');target.setAttribute('aria-label','Employee profile: '+displayName(employee));target.style.cursor='pointer';target.onclick=()=>{if(!rowDrag)openEmployeeProfile(employee);};target.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openEmployeeProfile(employee);}};}

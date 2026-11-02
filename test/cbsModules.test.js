@@ -15,3 +15,9 @@ test('module navigation loads only the selected module and no data for compose/t
  for(const [section,group,expected] of [['open','passenger',['passenger']],['closed','on-hand',['onhand']],['open','bag-room',['onhand']],['worldtracer','passenger',['rush']],['missing','passenger',['missing']],['email','passenger',[]]]){context.activeCbsSection=section;context.activeCbsGroup=group;calls.length=0;await context.loadActiveCbsModule();assert.deepEqual(calls,expected);}
  const initial=page.slice(page.indexOf('    const initialSection ='));assert.doesNotMatch(initial,/\n    (?:loadCases|loadMissingReports|loadWorldTracerCases|loadUnresolvedBaggage|syncMissingReports)\(\)/);
 });
+
+test('small summaries include all three module counts, deduplicate bags, and separate closed months',()=>{
+ const bag=(rowNumber,bagTag,bagRoom=false,resolution='',resolvedAt='')=>({rowNumber,bagTag,bagType:bagRoom?'Not Load Bags':'Bag',location:'Office',resolution,resolvedAt});
+ const result=require('../cbsModules').counts([{status:'Open'},{status:'Closed',updatedAt:'2026-10-15T18:00:00Z'}],[bag(2,'MU111111'),bag(3,'MU111111'),bag(4,'MU222222',true),bag(5,'MU333333',false,'case-close','2026-10-15T18:00:00Z')]);
+ assert.deepEqual(result.open,{passenger:1,'on-hand':1,'bag-room':1});assert.deepEqual(result.closed['2026-10'],{passenger:1,'on-hand':1,'bag-room':0});assert(!JSON.stringify(result).includes('MU111111'));
+});

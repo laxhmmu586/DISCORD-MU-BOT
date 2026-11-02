@@ -17,7 +17,7 @@
   if(show&&!overlay){overlay=document.createElement('dialog');overlay.className='cbs-saving-dialog';overlay.setAttribute('aria-label','Submitting');overlay.innerHTML='<div class="cbs-saving-spinner" aria-hidden="true"></div><h2>Submitting</h2><p role="status">Please wait. Do not submit again.</p>';overlay.addEventListener('cancel',event=>event.preventDefault());const style=document.createElement('style');style.textContent='.cbs-saving-dialog{border:1px solid #dce8f8;border-radius:24px;padding:32px;width:min(340px,calc(100vw - 48px));text-align:center;background:#f4f8ff;color:#214773;box-shadow:0 20px 80px #17375a33}.cbs-saving-dialog::backdrop{background:#36577955;backdrop-filter:blur(5px)}.cbs-saving-dialog h2{font:600 20px Arial}.cbs-saving-dialog p{font:14px/1.6 Arial}.cbs-saving-spinner{margin:auto;width:36px;height:36px;border:3px solid #d7e6fa;border-top-color:#4386d1;border-radius:50%;animation:cbs-spin .9s linear infinite}@keyframes cbs-spin{to{transform:rotate(360deg)}}';document.head.append(style);document.body.append(overlay);}
   if(show&&!overlay.open)overlay.showModal();else if(!show&&overlay?.open)overlay.close();
  }
- window.cbsDataCache={has:path=>Boolean(saved.rows[resource(new URL(path,base))]),invalidate,check};
+ window.cbsDataCache={get summary(){return saved.summary;},has:path=>Boolean(saved.rows[resource(new URL(path,base))]),invalidate,check};
  window.fetch=async(input,options={})=>{
   const url=new URL(typeof input==='string'?input:input.url,location.href),method=(options.method||input.method||'GET').toUpperCase();
   if(url.origin!==new URL(base).origin)return original(input,options);

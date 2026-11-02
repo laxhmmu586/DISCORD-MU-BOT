@@ -47,3 +47,8 @@
 .schedule-readonly-profile{box-sizing:border-box;width:min(400px,calc(100vw - 24px));max-height:92dvh;overflow:auto;border:0;border-radius:24px;background:#eef5ff;color:#284d78;padding:26px}.schedule-readonly-profile::backdrop{background:#28466966;backdrop-filter:blur(5px)}.schedule-readonly-profile>button{float:right;border:0;border-radius:50%;background:#e0edff;color:#6285ae;font-size:22px}.schedule-readonly-profile>small{display:block;font-size:11px;letter-spacing:2px;color:#819fc5}.schedule-readonly-profile>img{display:block;width:76px;height:76px;border-radius:50%;object-fit:cover;margin:25px auto}.schedule-readonly-profile h2,.schedule-readonly-profile>p{text-align:center}.schedule-readonly-profile label{display:block;font-size:12px;margin:16px 0;color:#7491b7}.schedule-readonly-profile input{display:block;box-sizing:border-box;width:100%;border:0;border-radius:11px;padding:13px;margin-top:7px;background:#ffffffb3;color:#315c8c}.schedule-profile-tab{color:#2781e5;border-bottom:2px solid #438eee;padding:15px}.schedule-readonly-profile>p:last-child{font-size:12px;color:#7892b5}
 
 .schedule-person-close{right:20px;top:20px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;padding:0;font-size:24px;line-height:1}
+
+/* Keep scrolling inside the employee card; hide scrollbar chrome only. */
+html:has(.schedule-person-frame[open]),html:has(.schedule-readonly-profile[open]),body:has(.schedule-person-frame[open]),body:has(.schedule-readonly-profile[open]){overflow:hidden}
+.schedule-person-frame,.schedule-readonly-profile{scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
+.schedule-person-frame::-webkit-scrollbar,.schedule-readonly-profile::-webkit-scrollbar{display:none;width:0;height:0}
