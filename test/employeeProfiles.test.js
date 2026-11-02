@@ -5,6 +5,15 @@ const google={uid:'google-one',email:'Employee@Gmail.com',provider:'google.com',
 function fixture(t){const legacy=new Database(':memory:'),employees=openEmployeeDatabase(legacy,{seed}),profiles=createProfileStore(employees);t.after(()=>{employees.close();legacy.close();});return {employees,profiles};}
 function confirm(profiles,user=google){const preview=profiles.status(user);return profiles.link(user,{revision:preview.revision,eid:preview.profile.eid});}
 
+test('Flights logo eligibility includes additional LAX/MU memberships and clears when membership is removed',t=>{
+ const {profiles,employees}=fixture(t);assert.equal(confirm(profiles).profile.canOpenFlights,true);
+ const change=(station,account,additionalAccounts=[])=>{const data=employees.get();for(const scope of [{station,account},...additionalAccounts])if(!data.accounts.some(a=>a.station===scope.station&&a.account===scope.account))data.accounts.push(scope);Object.assign(data.employees[0],{station,account,additionalAccounts});employees.save(data,{email:'lake@mu.com'});return profiles.status(google).profile;};
+ assert.equal(change('SFO','MU').canOpenFlights,false);
+ assert.equal(change('LAX','CZ').canOpenFlights,false);
+ assert.equal(change('LAX','CZ',[{station:'LAX',account:'MU'}]).canOpenFlights,true);
+ assert.equal(change('LAX','CZ').canOpenFlights,false);
+});
+
 test('profile displays affiliation and PBB credentials but cannot self-grant or change them',async t=>{
  const {profiles,employees}=fixture(t),ready=confirm(profiles);assert.equal(ready.profile.station,'LAX');assert.equal(ready.profile.account,'MU');
  for(const [key,value] of Object.entries({station:'SFO',account:'XX',pbbId:'PBB-123',pbbExpiry:'2099-12-31'}))await assert.rejects(profiles.update(google,{revision:ready.revision,[key]:value}),/Only nickname/);
