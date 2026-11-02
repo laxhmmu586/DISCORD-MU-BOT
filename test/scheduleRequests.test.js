@@ -12,6 +12,24 @@ async function fixture(t){
  await configure('one');await configure('two');return {db,employees,request,seed,configure,submit,read:service.read,base:'http://127.0.0.1:'+server.address().port};
 }
 const C={code:'C',color:'#99ff00'},F={code:'F',color:'#9999ff'},D={code:'D',color:'#ffff00'},X={code:'X',color:'#ffffff'},redA={code:'A',color:'#ff0000'};
+
+test('completed requests expose the approving name to authorized viewers and retain the name snapshot',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C});const request=(await f.submit('one','off')).data;
+ const approved=(await f.request('sup','/requests/'+request.id,{action:'approve',days:{[DATE]:'X'}})).data;
+ assert.equal(approved.completedByName,'Sue');assert.equal(approved.automaticApproval,false);
+ const saved=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(request.id).data);assert.equal(saved.completedByName,'Sue');
+ assert.equal((await f.request('one','/requests')).data.requests[0].completedByName,'Sue');assert.equal((await f.request('three','/requests')).data.requests.length,0);
+});
+test('historical approvals and denials resolve their reviewer from employee IDs and audit records',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C});const approved=(await f.submit('one','timesheet',{category:'report_time'})).data;await f.request('sup','/requests/'+approved.id,{action:'approve'});
+ const denied=(await f.submit('one','timesheet',{category:'request_fix_time'})).data;await f.request('sup','/requests/'+denied.id,{action:'decline'});
+ for(const id of [approved.id,denied.id]){const r=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(id).data);delete r.completedByName;delete r.approvalMode;if(id===denied.id){delete r.completedBy;delete r.completedAt;}f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(r),id);}
+ const requests=(await f.request('one','/requests')).data.requests;for(const r of requests){assert.equal(r.completedBy,'sup');assert.equal(r.completedByName,'Sue');assert(r.completedAt);}
+});
+test('automatic trade approval identifies the confirming colleague rather than inventing a supervisor approval',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C,two:F});const request=(await f.submit('one')).data;const approved=(await f.request('two','/requests/'+request.id,{action:'confirm'})).data;
+ assert.equal(approved.completedByName,'Bob');assert.equal(approved.automaticApproval,true);assert.equal(approved.approvalMode,'automatic');
+});
 test('peer confirmation atomically exchanges same-day shifts, increments revision once, and cannot run twice',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=await f.submit('one');assert.equal(r.status,200);assert.equal(r.data.status,'awaiting_partner');assert.equal(f.read(DATE).assignments.one.code,'C');
  assert.equal((await f.request('sup','/requests/'+r.data.id,{action:'approve'})).status,403);
@@ -115,7 +133,7 @@ test('legacy color-specific skills merge into per-duty skills without changing w
 
 test('request inbox retains three days of resolved results while preserving pending requests and audit data',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one','off')).data;await f.request('sup','/requests/'+r.id,{action:'decline'});
- const old=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(r.id).data);old.updatedAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(old),r.id);f.db.prepare('UPDATE schedule_request_notifications SET at=? WHERE request_id=?').run('2026-10-20T00:00:00Z',r.id);
+ const old=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(r.id).data);old.updatedAt='2026-10-20T00:00:00Z';old.completedAt=old.updatedAt;f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(old),r.id);f.db.prepare('UPDATE schedule_request_notifications SET at=? WHERE request_id=?').run('2026-10-20T00:00:00Z',r.id);
  const pending=(await f.submit('one','trade')).data;const data=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(pending.id).data);data.createdAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(data),pending.id);
  const list=(await f.request('one','/requests')).data;assert(!list.requests.some(row=>row.id===r.id));assert(list.requests.some(row=>row.id===pending.id));assert.equal(list.unread,0);assert(f.db.prepare('SELECT 1 FROM schedule_requests WHERE id=?').get(r.id));
 });

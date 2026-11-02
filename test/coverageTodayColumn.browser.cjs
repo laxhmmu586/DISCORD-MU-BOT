@@ -21,12 +21,12 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{registerS
   const page=await pageFor('sup'),table=page.locator('#coverage-table');await table.locator('tbody td.current-day').first().waitFor();
   const before=await table.locator('tbody td.current-day').evaluateAll(cells=>cells.map(cell=>({text:cell.textContent,value:cell.querySelector('input')?.value})));
   const fill=await page.locator('#schedule-table tbody td.current-day').first().evaluate(el=>getComputedStyle(el).backgroundImage);
-  const styles=await table.locator('thead th.current-day,tbody td.current-day').evaluateAll(cells=>cells.map(cell=>({fill:getComputedStyle(cell).backgroundImage,color:getComputedStyle(cell).color,shadow:getComputedStyle(cell).boxShadow})));
-  assert(styles.length>10);for(const style of styles){assert.equal(style.fill,fill);assert.equal(style.color,'rgb(255, 255, 255)');assert(style.shadow.includes('inset'));}
-  const budget=table.locator('.daily-budget td.current-day input');assert.equal(await budget.evaluate(el=>getComputedStyle(el).color),'rgb(48, 32, 82)');assert.equal(await budget.isEditable(),true);
+  const styles=await table.locator('tbody td.current-day').evaluateAll(cells=>cells.map(cell=>({fill:getComputedStyle(cell).backgroundImage,color:getComputedStyle(cell).color,inlineColor:cell.style.color,background:getComputedStyle(cell).backgroundColor,inlineBackground:cell.style.backgroundColor})));
+  assert(styles.length>10);assert(fill.includes('124, 74, 196'));for(const style of styles){assert.equal(style.fill,'none','Coverage must retain its original row/status colors');if(style.inlineColor)assert.equal(style.color,style.inlineColor);if(style.inlineBackground)assert.equal(style.background,style.inlineBackground);}
+  const budget=table.locator('.daily-budget td.current-day input');assert.equal(await budget.evaluate(el=>getComputedStyle(el).backgroundImage),'none');assert.equal(await budget.isEditable(),true);
   assert.equal(await table.locator('tfoot .current-day').count(),0,'Period totals are not individual dates');
   fs.mkdirSync('.verification/coverage-today',{recursive:true});await page.locator('#coverage-panel').scrollIntoViewIfNeeded();await page.screenshot({path:'.verification/coverage-today/desktop.png'});
   await page.locator('.coverage-grid').evaluate(el=>el.scrollLeft=25);assert.deepEqual(await table.locator('tbody td.current-day').evaluateAll(cells=>cells.map(cell=>({text:cell.textContent,value:cell.querySelector('input')?.value}))),before);
-  assert.deepEqual(errors,[]);console.log('PASS: Coverage Today matches the purple 3D assignment strip across header, counts, Daily Hour and budget; values and editable budget preserved.');
+  assert.deepEqual(errors,[]);console.log('PASS: Coverage keeps original status colors, values and editable budget; upper assignment strip uses softer purple.');
  }finally{await browser.close();schedule.close();server.closeAllConnections();server.close();db.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
