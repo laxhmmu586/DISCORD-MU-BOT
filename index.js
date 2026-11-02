@@ -121,6 +121,9 @@ const {
 
 const nbrdConfirmations = createNbrdConfirmationStore();
 let boardingBoxCache;
+const dashboardSySnapshot=new (require('./dashboardSySnapshot').DashboardSySnapshot)({db:require('./db'),completed:(flight,date)=>flightModules.get(flight,date)});
+let pendingDashboardLog=null,dashboardSnapshotScheduled=false;
+function warmDashboardSnapshot(log){if(!log)return;pendingDashboardLog=log;if(dashboardSnapshotScheduled)return;dashboardSnapshotScheduled=true;setImmediate(()=>{const current=pendingDashboardLog;pendingDashboardLog=null;dashboardSnapshotScheduled=false;try{dashboardSySnapshot.updateFromLog(current);}catch(error){console.warn('Dashboard snapshot:',error.message);}});}
 const flightListCache=new (require('./flightListCache').FlightListCache)({db:require('./db'),loadLog:()=>getLatestFlightLog()});
 const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => {
   if (scope) nbrdConfirmations.clearScope(scope.flight, scope.date);
@@ -128,13 +131,14 @@ const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scop
 } });
 boardingLive.startCleanup();
 boardingBoxCache = new (require('./boardingBoxCache').BoardingBoxCache)({ db:require('./db'),
-  loadLog:async()=>{const log=await downloadLatestFlightLog();flightListCache.update(log);return log;}, beforeAccess:() => boardingLive.cleanupIfDue() });
+  loadLog:async()=>{const log=await downloadLatestFlightLog();flightListCache.update(log);warmDashboardSnapshot(log);return log;}, beforeAccess:() => boardingLive.cleanupIfDue() });
 boardingBoxCache.start();
 async function getLatestFlightLog() {
   const ticket = boardingBoxCache.beginUpdate();
   const log = await downloadLatestFlightLog();
   if (log) {
     flightListCache.update(log);
+    warmDashboardSnapshot(log);
     try { boardingBoxCache.updateFromLog(log, ticket); }
     catch (error) { console.error('BOX cache update:', error.message); }
   }
@@ -4618,6 +4622,19 @@ app.get('/sales-details-report', async (req, res) => {
   }
 });
 
+// Entry snapshots never read logs, email or report sources.
+app.get('/dashboard-snapshot',async(req,res)=>{
+  res.set('Cache-Control','no-store');
+  const flight=normalizeSupportedFlight(req.query.flightNo),date=String(req.query.flightDate||operationalDate()).toUpperCase();
+  if(!flight||date!==operationalDate())return res.status(400).json({error:'Choose today’s flight.'});
+  try{
+    const modules=flightModules.get(flight,date),complete=require('./flightModuleState').KEYS.every(key=>modules[key]?.complete);
+    const sy=dashboardSySnapshot.get(flight,date)||(complete?{flightNo:flight,flightDate:date,crewApis:{steps:Object.values(modules).filter(step=>step.key!=='fsc')}}:null);
+    if(sy){flightModules.apply(sy,require('./flightModuleState').isoDate(date));const authContext=await resolveAuthContextFromRequest(req);sy.permissions=authContext.permissions;}
+    return res.json({sy,allModulesComplete:complete});
+  }catch(error){res.status(503).json({error:'Saved flight data is unavailable.'});}
+});
+
 app.get(
 
   '/search',
@@ -4693,6 +4710,14 @@ app.get(
       }
 
 
+      const selectedFlight = normalizeSupportedFlight(req.query.flightNo || syRawMatch?.[2] || 'MU586');
+      if (!selectedFlight || (syRawMatch?.[2] && syRawMatch[2] !== selectedFlight)) return res.status(400).json({ error: 'Flight does not match selection.' });
+      const selectedDate = date ? date + yearSuffix : String(req.query.flightDate || operationalDate()).toUpperCase();
+      if(req.query.core==='1'&&!date&&!syRawMatch?.[1]){
+        const cached=dashboardSySnapshot.get(selectedFlight,selectedDate);
+        if(cached){const authContext=await resolveAuthContextFromRequest(req);flightModules.apply(cached,require('./flightModuleState').isoDate(cached.flightDate));return res.json({sy:{...cached,permissions:authContext.permissions},core:true,cached:true});}
+      }
+
       // =========================
       // Load Log
       // =========================
@@ -4733,9 +4758,6 @@ app.get(
       // =========================
       // Parse
       // =========================
-      const selectedFlight = normalizeSupportedFlight(req.query.flightNo || syRawMatch?.[2] || 'MU586');
-      if (!selectedFlight || (syRawMatch?.[2] && syRawMatch[2] !== selectedFlight)) return res.status(400).json({ error: 'Flight does not match selection.' });
-      const selectedDate = date ? date + yearSuffix : String(req.query.flightDate || operationalDate()).toUpperCase();
       const preparationLog = log;
       log = scopedLog(log, selectedFlight, selectedDate);
       parseIncrementalLog(log);
@@ -4792,6 +4814,11 @@ app.get(
           }
         }
         const spml = parseSpmlLog(log, { flightNo:syInfo.flightNo, flightDate:syInfo.flightDate });
+        if(req.query.core==='1'){
+          const authContext=await resolveAuthContextFromRequest(req);
+          const syPayload={...syInfo,spml,boardingNbrdVersion,permissions:authContext.permissions};dashboardSySnapshot.put(syPayload);
+          return res.json({sy:syPayload,core:true});
+        }
         const bagInfoPromise = isoDate ? getSyBagInfoByDate(isoDate, syInfo.flightDate) : Promise.resolve(null);
         const mealEmailPromise = getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
         const authContextPromise = resolveAuthContextFromRequest(req);
@@ -4826,6 +4853,7 @@ app.get(
         setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
           .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
         const syPayload = { ...syInfo, boardingNbrdVersion, bagSheet: syBagInfo, permissions: authContext.permissions };
+        dashboardSySnapshot.put(syPayload);
         // Exclude per-user permissions from the shared change signature.  The
         // event contains no flight data and merely asks clients to reconcile.
         publishSyRefresh(rawQuery, { ...syPayload, permissions: undefined });
