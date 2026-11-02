@@ -1074,7 +1074,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-unresolved-baggage${cbsListParams(activeCbsSection==='shipment'?null:activeCbsGroup)}`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;closedMonth.value=data.month;}for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);window._passengerMatches=data.passengerMatches||{};
+        if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;window._closedMonthChosen=true;closedMonth.value=data.month;}for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);window._passengerMatches=data.passengerMatches||{};
         const nextRows = data.rows || [];
         const signature = JSON.stringify([nextRows, Boolean(data.bagRoomUnloadNoticeSent)]);
         if (!window._silentCbsRefresh || window._unresolvedBaggageSignature !== signature) {
@@ -1815,7 +1815,7 @@
       try {
         const res = await fetch(`${apiBase}/cbs-cases${cbsListParams()}`);
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Case loading failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;closedMonth.value=data.month;}for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);window._onHandMatches=data.onHandMatches||{};
+        if (!res.ok) throw new Error(data.error || 'Case loading failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;window._closedMonthChosen=true;closedMonth.value=data.month;}for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,0);window._onHandMatches=data.onHandMatches||{};
         const nextRows = data.rows || [];
         const signature = JSON.stringify(nextRows);
         // Drive uploads can change while the case rows stay identical.
