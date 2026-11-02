@@ -382,7 +382,7 @@
     @media (max-width:520px){ .rush-itinerary{padding:12px;overflow:hidden}.rush-itinerary-head{align-items:stretch}.rush-itinerary-head button{width:100%}.rush-flight-row{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}.rush-flight-row label{width:100%;min-width:0;overflow:hidden}.rush-flight-row input[type="date"]{width:100%;height:52px;min-height:52px;padding:12px;line-height:24px;justify-self:stretch}.rush-flight-row input[type="date"]::-webkit-date-and-time-value{min-height:24px}.rush-flight-row button{grid-column:1}.worldtracer-form{width:100%;min-width:0} }
   .unload-flight{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:850;border:1px solid currentColor;white-space:nowrap}.unload-flight-blue{background:#e4efff;color:#174fa3}.unload-flight-purple{background:#f1e8ff;color:#6b299c}.unload-flight-teal{background:#dff5f5;color:#07636b}.unload-flight-green{background:#e4f5e9;color:#246b36}.unload-flight-orange{background:#fff0df;color:#90490b}.unload-flight-unknown{background:#eff1f4;color:#526071;font-size:11px;padding:4px 8px}
 </style>
-<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"></head>
+<link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><script src="/cbs-data.js?v=20261101-sqlite"></script></head>
 <body>
   <header>
     <a class="brand" href="/flights.html">MUBC</a>
@@ -624,6 +624,12 @@
     const sidebarLogout = document.querySelector('#sidebar-logout');
     const MISSING_BAG_STATUS_STORAGE_KEY = 'mufc_missing_bag_status_v1';
     const LIST_PAGE_SIZE = 20;
+    let activeCbsSection='open',activeCbsGroup='passenger';
+    function cbsModuleName(){return activeCbsSection==='worldtracer'?'rush':activeCbsSection==='missing'?'missing':activeCbsSection==='shipment'?'shipment':activeCbsGroup+':'+(window._caseView||'open');}
+    function cbsListParams(group){const params=new URLSearchParams({view:activeCbsSection==='shipment'?'shipment':window._caseView||'open'});if(group)params.set('group',group);if(params.get('view')==='closed'&&window._closedMonthChosen&&window._closedMonth)params.set('month',window._closedMonth);if(window._forceCbsRefresh)params.set('refresh','1');return '?'+params;}
+    function activeCbsScope(){return activeCbsSection+'|'+activeCbsGroup+'|'+(window._closedMonth||'');}
+    function loadActiveCbsModule(){if(activeCbsSection==='worldtracer')return loadWorldTracerCases();if(activeCbsSection==='missing')return loadMissingReports();if(activeCbsSection==='shipment')return Promise.all([loadCases(),loadUnresolvedBaggage()]).then(renderShipments);if(['open','closed'].includes(activeCbsSection))return activeCbsGroup==='passenger'?loadCases():loadUnresolvedBaggage();return Promise.resolve();}
+
     function paginateRows(rows, key) {
       window._cbsListPages ||= {};
       const pageCount = Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE));
@@ -662,12 +668,14 @@
       if (titleCount) titleCount.textContent = `(${count})`;
     }
     function selectCaseGroup(group) {
+      activeCbsGroup=group;
       caseCategoryButtons.forEach((button) => {
         const active = button.dataset.caseGroup === group;
         button.classList.toggle('is-active', active);
         button.setAttribute('aria-selected', String(active));
       });
       document.querySelectorAll('[data-case-panel]').forEach((panel) => panel.classList.toggle('is-active', panel.dataset.casePanel === group));
+      void loadActiveCbsModule();
     }
     caseCategoryButtons.forEach((button) => button.addEventListener('click', () => selectCaseGroup(button.dataset.caseGroup)));
     document.querySelectorAll('.case-view-all').forEach((button) => button.addEventListener('click', () => button.closest('[data-case-panel]')?.querySelector('.sheet-shell')?.scrollIntoView({ behavior:'smooth', block:'nearest' })));
@@ -727,6 +735,7 @@
       addRushFlightRow(defaultRushFlight());
     }
     function showSection(section) {
+      const previous=activeCbsSection;activeCbsSection=section;if(previous!==section&&['open','closed'].includes(section)){window._unresolvedBaggageLoaded=false;window._cbsRows=[];window._unresolvedBaggageSourceRows=[];for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,'—');}
       const isCaseSection = section === 'open' || section === 'closed';
       openCasesCard.hidden = !isCaseSection;
       worldTracerCard.hidden = section !== 'worldtracer';
@@ -751,9 +760,11 @@
         onHandTitle.textContent = section === 'closed' ? 'Closed On-hand' : 'On-hand';
         bagRoomUnloadTitle.textContent = section === 'closed' ? 'Closed Bag Room Unload Bag' : 'Bag Room Unload Bag';
         if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
-        renderCases();
+        if(activeCbsGroup==='passenger')renderCases();
       }
       if (section === 'shipment') renderShipments();
+      void loadActiveCbsModule();
+      if(section==='missing'&&!window._missingSyncStarted){window._missingSyncStarted=true;void syncMissingReports();}
     }
     function setSidebarCollapsed(collapsed) {
       document.body.classList.toggle('sidebar-collapsed', collapsed);
@@ -771,8 +782,7 @@
       try {
         // Refresh only the data used by this screen. Reloading the document also
         // restarted the Google/Gmail synchronization and needlessly used quota.
-        await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage()]);
-        await loadWorldTracerCases();
+        window._forceCbsRefresh=true;try{await loadActiveCbsModule();}finally{window._forceCbsRefresh=false;}
       } finally {
         sidebarRefresh.disabled = false;
         sidebarRefresh.classList.remove('is-loading');
@@ -834,7 +844,8 @@
       worldTracerTab.setAttribute('aria-label', hasMissingWorldTracer ? `Rush Bag. ${attentionText}` : 'Rush Bag');
     }
     async function loadWorldTracerCases() {
-      if (!window._silentCbsRefresh) worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
+      if(activeCbsSection!=='worldtracer')return;
+      if (!window._silentCbsRefresh && !window.cbsDataCache?.has('/cbs-worldtracer-cases')) worldTracerOutput.innerHTML = `<p class="muted">${label('Loading cases...', '正在加载案件……')}</p>`;
       try {
         const res = await fetch(`${apiBase}/cbs-worldtracer-cases${window._forceCbsRefresh?'?refresh=1':''}`);
         const data = await parseJson(res);
@@ -1025,8 +1036,8 @@
       if (query) rows = rows.filter((row) => rowSearchText(row).includes(query));
       const notLoadRows = rows.filter(isNotLoadBag);
       const regularRows = rows.filter((row) => !isNotLoadBag(row));
-      renderUnresolvedBaggageGroup(regularRows, unresolvedBaggageOutput, 'On-hand');
-      renderUnresolvedBaggageGroup(notLoadRows, bagRoomUnloadOutput, 'Bag Room Unload Bag');
+      if(activeCbsGroup==='on-hand')renderUnresolvedBaggageGroup(regularRows, unresolvedBaggageOutput, 'On-hand');
+      if(activeCbsGroup==='bag-room')renderUnresolvedBaggageGroup(notLoadRows, bagRoomUnloadOutput, 'Bag Room Unload Bag');
       window._unresolvedBaggageRows = [...regularRows, ...notLoadRows];
       window._unresolvedBaggageLoaded = true;
       if (window._cbsRows) requestAnimationFrame(renderCases);
@@ -1052,16 +1063,17 @@
       } finally { bagRoomNoticeButton.disabled = false; }
     });
     async function loadUnresolvedBaggage() {
-      if (!window._silentCbsRefresh) {
+      if(!(['open','closed'].includes(activeCbsSection)&&activeCbsGroup!=='passenger')&&activeCbsSection!=='shipment')return;const scope=activeCbsScope();
+      if (!window._silentCbsRefresh && !window.cbsDataCache?.has('/cbs-unresolved-baggage'+cbsListParams(activeCbsSection==='shipment'?null:activeCbsGroup))) {
         unresolvedBaggageOutput.innerHTML = '<p class="muted">Loading cases...</p>';
         bagRoomUnloadOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       }
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45000);
       try {
-        const res = await fetch(`${apiBase}/cbs-unresolved-baggage${window._forceCbsRefresh?'?refresh=1':''}`, { signal:controller.signal, cache:'no-store' });
+        const res = await fetch(`${apiBase}/cbs-unresolved-baggage${cbsListParams(activeCbsSection==='shipment'?null:activeCbsGroup)}`, { signal:controller.signal, cache:'no-store' });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');
+        if (!res.ok) throw new Error(data.error || 'On-hand baggage lookup failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;closedMonth.value=data.month;}window._passengerMatches=data.passengerMatches||{};
         const nextRows = data.rows || [];
         const signature = JSON.stringify([nextRows, Boolean(data.bagRoomUnloadNoticeSent)]);
         if (!window._silentCbsRefresh || window._unresolvedBaggageSignature !== signature) {
@@ -1600,9 +1612,11 @@
     function matchingOnHandForCase(row) {
       const tag = normalizedRushTag(upcomingRushDetails(row).rushTag);
       if (!tag) return null;
+      if(window._onHandMatches?.[row.rowNumber])return window._onHandMatches[row.rowNumber];
       return (window._unresolvedBaggageSourceRows || []).find((item) => !item.resolvedAt && normalizedRushTag(item.bagTag) === tag) || null;
     }
     function matchingPassengerCaseForOnHand(row) {
+      if(window._passengerMatches?.[row.rowNumber])return window._passengerMatches[row.rowNumber];
       const tag = normalizedRushTag(row?.bagTag);
       if (!tag) return null;
       return (window._cbsRows || []).find((item) => normalizedRushTag(upcomingRushDetails(item).rushTag) === tag) || null;
@@ -1795,11 +1809,12 @@
     }
     window.addEventListener('resize', syncCaseProgressHeights);
     async function loadCases() {
-      if (!window._silentCbsRefresh) casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
+      if(!(['open','closed'].includes(activeCbsSection)&&activeCbsGroup==='passenger')&&activeCbsSection!=='shipment')return;const scope=activeCbsScope();
+      if (!window._silentCbsRefresh && !window.cbsDataCache?.has('/cbs-cases'+cbsListParams())) casesOutput.innerHTML = '<p class="muted">Loading cases...</p>';
       try {
-        const res = await fetch(`${apiBase}/cbs-cases${window._forceCbsRefresh?'?refresh=1':''}`);
+        const res = await fetch(`${apiBase}/cbs-cases${cbsListParams()}`);
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Case loading failed');
+        if (!res.ok) throw new Error(data.error || 'Case loading failed');if(scope!==activeCbsScope())return;if(data.month){window._closedMonth=data.month;closedMonth.value=data.month;}window._onHandMatches=data.onHandMatches||{};
         const nextRows = data.rows || [];
         const signature = JSON.stringify(nextRows);
         // Drive uploads can change while the case rows stay identical.
@@ -1866,6 +1881,7 @@
       }).join('')}</div>${listPaginationHtml('missing-reports', pagination)}`;
     }
     async function loadMissingReports() {
+      if(activeCbsSection!=='missing')return;
       try {
         const res = await fetch(`${apiBase}/cbs-missing-bags${window._forceCbsRefresh?'?refresh=1':''}`);
         const data = await parseJson(res);
@@ -2156,13 +2172,14 @@
     shipmentMonth?.addEventListener('change', () => { window._shipmentMonth = shipmentMonth.value; renderShipments(); });
     shipmentMethodButtons.forEach((button) => button.addEventListener('click', () => { window._shipmentMethod = button.dataset.shipmentMethod; renderShipments(); }));
     closedMonth?.addEventListener('change', () => {
-      window._closedMonth = closedMonth.value;
+      window._closedMonthChosen=true;window._closedMonth = closedMonth.value;
       window._cbsListPages ||= {};
       ['closed-passenger', 'closed-on-hand', 'closed-bag-room'].forEach((key) => { window._cbsListPages[key] = 1; });
       renderCases();
       if (window._unresolvedBaggageLoaded) renderUnresolvedBaggage(window._unresolvedBaggageSourceRows || []);
+      void loadActiveCbsModule();
     });
-    worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); await loadWorldTracerCases(); });
+    worldTracerTab?.addEventListener('click', async () => { delete worldTracerForm.dataset.missingRow; showSection('worldtracer'); });
     missingAlert?.addEventListener('click', () => {
       showSection('missing');
       if (window._missingReportLoaded) renderMissingReports(window._missingBagRows || []);
@@ -2593,7 +2610,7 @@
       window._forceCbsRefresh = true;
       window._silentCbsRefresh = true;
       try {
-        await Promise.all([loadCases(), loadMissingReports(), loadUnresolvedBaggage(), loadWorldTracerCases()]);
+        await loadActiveCbsModule();
       } finally {
         window._forceCbsRefresh = false;
         window._silentCbsRefresh = false;
@@ -2602,18 +2619,21 @@
       }
     }
     function scheduleCbsLiveRefresh(event) {
-      const isLiveInvalidation = event?.type === 'refresh';
-      if (!isLiveInvalidation && cbsLiveConnected && Date.now() - cbsLastReconciliation < 90 * 1000) return;
-      clearTimeout(cbsRefreshTimer);
-      cbsRefreshTimer = setTimeout(refreshCbsData, 250);
+      if(document.hidden)return;
+      if(event?.type==='refresh'&&!event.modules)return void window.cbsDataCache?.check();
+      if(event?.modules&&!event.modules.includes(cbsModuleName()))return;
+      clearTimeout(cbsRefreshTimer);cbsRefreshTimer=setTimeout(refreshCbsData,250);
     }
-    document.addEventListener('focusout', () => { if (cbsRefreshQueued) scheduleCbsLiveRefresh({ type:'refresh' }); });
+    window.addEventListener('cbs-data-changed',event=>scheduleCbsLiveRefresh({type:'module-change',modules:event.modules||[cbsModuleName()]}));
+    window.addEventListener('cbs-data-current',event=>{if(event.summary){updateRushBagAttention(event.summary.rushMissingWorldTracer?[{worldTracerFileNumber:''}]:[]);missingAlert.dataset.hasOpenReports=String(event.summary.missingOpenCount>0);try{localStorage.setItem(MISSING_BAG_STATUS_STORAGE_KEY,JSON.stringify({openCount:event.summary.missingOpenCount,updatedAt:Date.now()}));}catch{}}cbsLiveStatus.textContent=cbsLiveConnected?'Live · changes only':'Updated · change checks';cbsLiveStatus.className='cbs-live-status connected';});
+    window.addEventListener('cbs-data-offline',()=>{cbsLiveStatus.textContent='Offline · showing cached data';cbsLiveStatus.className='cbs-live-status reconnecting';});
+    document.addEventListener('focusout', () => { if (cbsRefreshQueued) scheduleCbsLiveRefresh({ type:'queued' }); });
     function connectCbsLiveSync() {
       if (!window.EventSource) return;
       const stream = new EventSource(`${apiBase}/cbs-live-stream`);
       stream.addEventListener('connected', () => {
         cbsLiveConnected = true;
-        cbsLiveStatus.textContent = 'Live · 1 min 30 sec backup';
+        cbsLiveStatus.textContent = 'Live · changes only';
         cbsLiveStatus.className = 'cbs-live-status connected';
       });
       stream.addEventListener('refresh', scheduleCbsLiveRefresh);
@@ -2625,14 +2645,10 @@
     }
     resetRushFlightRows();
     const initialSection = new URLSearchParams(window.location.search).get('section') === 'worldtracer' ? 'worldtracer' : new URLSearchParams(window.location.search).get('section') === 'missing' ? 'missing' : 'open';
+    for(const group of ['passenger','on-hand','bag-room'])setCaseCount(group,'—');
     showSection(initialSection);
-    loadCases();
-    loadMissingReports();
-    loadWorldTracerCases();
-    syncMissingReports();
-    loadUnresolvedBaggage();
     connectCbsLiveSync();
-    setInterval(scheduleCbsLiveRefresh, 30000);
+
   </script>
   <script src="/attachment-drop.js"></script>
 </body>

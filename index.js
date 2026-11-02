@@ -49,7 +49,6 @@ const {
   getLatestFlightLog: downloadLatestFlightLog,
 
   getFlightLogByDate,
-  get240InfoByBnAndFlightDate,
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
@@ -113,7 +112,6 @@ const {
   getCbsBaggageChartImage,
   getCbsOpenBagAuthorizationPdf,
   findCbsPnrRecordsByBagTag,
-  appendTransit240Record,
   appendRecordScanRecord,
   readNotesDriveStore,
   writeNotesDriveStore
@@ -1051,6 +1049,11 @@ app.use((req, res, next) => {
     res.on('finish', () => { if (res.statusCode >= 200 && res.statusCode < 300) broadcastCbsRefresh(req.path); });
   }
   next();
+});
+app.get('/cbs-revision', (req,res) => {
+  res.set('Cache-Control','no-store');
+  try {const storage=require('./cbsStorage');if(!storage.enabled())return res.status(503).json({error:'CBS SQLite migration is pending.'});storage.local().assertReady(storage.book);return res.json({revision:String(storage.local().revision()),modules:storage.revisions(),summary:storage.summary()});}
+  catch(error){return res.status(503).json({error:error.message});}
 });
 app.get('/cbs-live-stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -2290,7 +2293,7 @@ async function sendCbsAttachmentsToDiscord(record, attachments = [], pdfBuffer =
     ? CBS_DAMAGED_DISCORD_CHANNEL_ID
     : CBS_DELAYED_LOST_DISCORD_CHANNEL_ID;
   const channel = await client.channels.fetch(channelId);
-  if (!channel) return { sent: false, reason: 'Discord channel not found.' };
+  if (!channel) throw new Error('Discord channel not found. Please retry.');
   const attachmentCounts = attachments.reduce((counts, attachment) => {
     const type = sanitizeCbsText(attachment?.attachmentType, 40) || 'document';
     counts[type] = (counts[type] || 0) + 1;
@@ -3223,16 +3226,8 @@ app.post('/transit-240', async (req, res) => {
       return res.status(400).json({ error: 'Missing required 240 transit fields.' });
     }
     record.submittedAt = new Date().toISOString();
-    const saved = await appendTransit240Record(record);
-    let discord = null;
-    let discordError = '';
-    try {
-      discord = await sendTransit240ToDiscord(record);
-    } catch (err) {
-      discordError = err?.message || 'Discord post failed.';
-      console.error('240 Transit Discord post failed:', err);
-    }
-    return res.json({ ok: true, ...saved, discord, discordError });
+    const discord = await sendTransit240ToDiscord(record);
+    return res.json({ ok:true, submittedAt:record.submittedAt, discord });
   } catch (err) {
     console.error('240 Transit submit failed:', err);
     return res.status(500).json({ error: err?.message || '240 transit submit failed.' });
@@ -3472,10 +3467,10 @@ app.get('/cbs-cases', async (req, res) => {
   try {
     const options = { forceRefresh:req.query.refresh === '1' };
     const [pirRows, wrongBaggageRows] = await Promise.all([getCbsCases(options), getWrongBaggageSubmissions(options)]);
-    return res.json({ rows: [...pirRows, ...wrongBaggageRows] });
+    const rows=[...pirRows,...wrongBaggageRows],modules=require('./cbsModules');const result=modules.select(rows,req.query);if(req.query.view)Object.assign(result,modules.matchMaps(rows,await getCbsUnresolvedBaggageCases({includeResolved:true})));return res.json(result);
   } catch (err) {
     console.error('CBS case list error:', err);
-    return res.status(500).json({ error: err?.message || 'CBS case lookup failed' });
+    return res.status(err.status||500).json({ error: err?.message || 'CBS case lookup failed' });
   }
 });
 
@@ -3778,12 +3773,12 @@ app.get('/cbs-unresolved-baggage', async (req, res) => {
     let bagRoomUnloadNoticeSent = false;
     try { bagRoomUnloadNoticeSent = await bagRoomUnloadNoticeWasSent(); }
     catch (err) { console.error('Bag Room Unload notice status error:', err); }
-    res.json({ rows, bagRoomUnloadNoticeSent });
+    const modules=require('./cbsModules'),result=modules.select(rows,req.query,'onhand');if(req.query.view)Object.assign(result,modules.matchMaps(await getCbsCases(),rows));res.json({...result,bagRoomUnloadNoticeSent});
     setImmediate(() => { startCbsUnresolvedBackgroundMaintenance(rows); });
     return;
   } catch (err) {
     console.error('CBS On-hand baggage list error:', err);
-    return res.status(500).json({ error: err?.message || 'On-hand baggage lookup failed' });
+    return res.status(err.status||500).json({ error: err?.message || 'On-hand baggage lookup failed' });
   }
 });
 

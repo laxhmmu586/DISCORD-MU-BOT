@@ -173,11 +173,8 @@ async function findCbsPnrRecordsByBagTag(bagTag, flightDate, flightNumbers = [])
   return { bagTagSerial:serial, date:flightDate, searchedFolders:uniqueSources.map((source) => source.label), records:deduped };
 }
 
-const sheets =
-  google.sheets({
-    version: 'v4',
-    auth
-  });
+const cbsStorage = require('./cbsStorage');
+const sheets = cbsStorage.client(google.sheets({version:'v4',auth}));
 
 
 const FULL_SHEET_ID =
@@ -196,8 +193,6 @@ const SY_BOOKING_SHEET_GID =
 const SY_BOOKING_RANGE =
   process.env.SY_BOOKING_RANGE || 'F7:F9';
 
-const ENABLE_240_SHEET =
-  String(process.env.ENABLE_240_SHEET || 'true').toLowerCase() !== 'false';
 
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
 const cbsDamageImages = new (require('./cbsDamageImages').CbsDamageImages)(sheets, CBS_SHEET_ID);
@@ -274,10 +269,6 @@ const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
 const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
 const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
 const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History', 'Case Workflow', 'TKT Record', 'Hotel Name', 'Room Number'];
-const TRANSIT_240_SHEET_ID = process.env.TRANSIT_240_SHEET_ID || '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
-const TRANSIT_240_SHEET_GID = Number(process.env.TRANSIT_240_SHEET_GID || 527537258);
-const TRANSIT_240_HEADERS = ['Submit Date', 'Passenger Name', 'Seat Number', 'BN Number', 'Passport Nationality Code', 'Passport Expiration Date', 'Itinerary', 'Flight'];
-let transit240SheetTitle = '';
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let emergencyBoardSheetTitle = '';
@@ -293,10 +284,6 @@ let recordCaseCache = { expiresAt:0, rows:[], pending:null };
 let cbsMissingBagSheetTitle = '';
 let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
-let fullSheetCache = {
-  loadedAt: 0,
-  rows: []
-};
 
 let syBagSheetCache = {
   loadedAt: 0,
@@ -486,78 +473,6 @@ async function updateSyBookingCounts(counts) {
   };
 }
 
-async function getFullSheetRows() {
-  if (!ENABLE_240_SHEET || sheetAccessBlocked) {
-    return [];
-  }
-
-  const ttlMs = 5 * 60 * 1000;
-  if (Date.now() - fullSheetCache.loadedAt < ttlMs && fullSheetCache.rows.length) {
-    return fullSheetCache.rows;
-  }
-
-  try {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: FULL_SHEET_ID,
-      range: 'FULL!A:N'
-    });
-
-    const rows = res.data.values || [];
-    fullSheetCache = {
-      loadedAt: Date.now(),
-      rows
-    };
-    return rows;
-  } catch (err) {
-    const reason =
-      err?.errors?.[0]?.reason ||
-      err?.response?.data?.error?.errors?.[0]?.reason ||
-      '';
-
-    if (reason === 'accessNotConfigured' || err?.code === 403) {
-      sheetAccessBlocked = true;
-      console.warn(
-        '240 info lookup disabled: Google Sheets API unavailable/disabled for current project.'
-      );
-      return [];
-    }
-
-    throw err;
-  }
-}
-
-async function get240InfoByBnAndFlightDate({ bn, flightDate }) {
-  try {
-    const rows = await getFullSheetRows();
-    if (!rows.length) return null;
-
-    const targetBn = normalizeBn(bn);
-    const targetDate = String(flightDate || '').toUpperCase();
-
-    for (let i = rows.length - 1; i >= 1; i--) {
-      const row = rows[i];
-      const rowDate = normalizeFlightDate(row[0]);
-      const rowBn = normalizeBn(row[7]);
-
-      if (rowDate !== targetDate || rowBn !== targetBn) continue;
-
-      return {
-        passportCountry: row[9] || '',
-        passportExpiry: row[10] || '',
-        leaveChinaAt: row[11] || '',
-        destination: row[12] || '',
-        agentSubmitter: row[13] || ''
-      };
-    }
-
-    return null;
-  } catch (err) {
-    console.error('240 info lookup error:', err?.message || err);
-    return null;
-  }
-}
-
-
 function normalizeTimestampToIsoDate(value) {
   const raw = String(value || '').trim();
   const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
@@ -568,6 +483,7 @@ function normalizeTimestampToIsoDate(value) {
 }
 
 async function resolveSheetTitleByGid(spreadsheetId, gid) {
+  const localTitle=cbsStorage.localTitle(spreadsheetId,gid);if(localTitle!==null)return localTitle;
   const meta = await sheets.spreadsheets.get({
     spreadsheetId,
     fields: 'sheets(properties(sheetId,title))'
@@ -4020,60 +3936,6 @@ async function updateRecordCase(rowNumber, update = {}) {
   return { ...existing, status:values[0], pnrRecord, tktRecord, newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, hotelName, roomNumber, passengerWantsRefund, caseWorkflow, caseHistory:history };
 }
 
-async function getTransit240SheetTitle() {
-  if (!transit240SheetTitle) transit240SheetTitle = await resolveSheetTitleByGid(TRANSIT_240_SHEET_ID, TRANSIT_240_SHEET_GID);
-  return transit240SheetTitle || 'Sheet1';
-}
-
-async function ensureTransit240Headers(title) {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A1:H1`
-  }).catch(() => ({ data: { values: [] } }));
-  const firstRow = res.data.values?.[0] || [];
-  const hasHeaders = TRANSIT_240_HEADERS.every((header, index) => String(firstRow[index] || '').trim() === header);
-  if (!hasHeaders) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: TRANSIT_240_SHEET_ID,
-      range: `${escapeSheetTitle(title)}!A1:H1`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [TRANSIT_240_HEADERS] }
-    });
-  }
-}
-
-
-async function appendTransit240Record(record = {}) {
-  const title = await getTransit240SheetTitle();
-  await ensureTransit240Headers(title);
-  const submittedAt = record.submittedAt || new Date().toISOString();
-  const itineraryDates = Array.isArray(record.itineraryDates) ? record.itineraryDates : [];
-  const itinerary = Array.isArray(record.itinerary)
-    ? record.itinerary.map((stop, index) => {
-      const date = itineraryDates[index - 1];
-      return date ? `${stop} (${date})` : stop;
-    }).join(' → ')
-    : String(record.itinerary || '').trim();
-  const values = [[
-    submittedAt,
-    String(record.passengerName || '').trim(),
-    String(record.seatNumber || '').trim().toUpperCase(),
-    String(record.bnNumber || '').trim(),
-    String(record.nationalityCode || '').trim().toUpperCase(),
-    String(record.passportExpiry || '').trim(),
-    itinerary,
-    String(record.flightNo || '').trim().toUpperCase()
-  ]];
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: TRANSIT_240_SHEET_ID,
-    range: `${escapeSheetTitle(title)}!A:H`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values }
-  });
-  return { submittedAt, itinerary };
-}
-
 async function getCbsSheetTitle() {
   if (!cbsSheetTitle) cbsSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_SHEET_GID);
   return cbsSheetTitle || 'Sheet1';
@@ -4350,7 +4212,7 @@ async function getWrongBaggageSubmissions(options = {}) {
   wrongBaggageCache.pending = (async () => {
     const title = await getWrongBaggageSheetTitle();
     const response = await sheets.spreadsheets.values.get({ spreadsheetId:CBS_SHEET_ID, range:`${escapeSheetTitle(title)}!A:L` });
-    const rows = (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2));
+    const rows = (response.data.values || []).slice(1).map((values, index) => wrongBaggageRecordFromValues(values, index + 2)).filter(row=>row.submittedAt||row.passengerName||row.bagTag);
     wrongBaggageCache.loadedAt = Date.now();
     wrongBaggageCache.rows = rows;
     wrongBaggageCache.hasLoaded = true;
@@ -4833,7 +4695,7 @@ async function pruneExpiredCbsRows({ title, sheetId, range, dateIndexes, rowOffs
     });
   }
   const expired = new Set(expiredIndexes);
-  return values.filter((_, index) => !expired.has(index));
+  return cbsStorage.enabled()?values.map((row,index)=>expired.has(index)?[]:row):values.filter((_, index) => !expired.has(index));
 }
 
 async function getCbsRetainedSheetRows(config) {
@@ -5577,7 +5439,6 @@ module.exports = {
   getLatestFlightLog,
 
   getFlightLogByDate,
-  get240InfoByBnAndFlightDate,
   getSyBagInfoByDate,
   getSalesReportMeta,
   downloadSalesReportByFlight,
@@ -5644,7 +5505,6 @@ module.exports = {
   getCbsBaggageChartImage,
   getCbsOpenBagAuthorizationPdf,
   findCbsPnrRecordsByBagTag,
-  appendTransit240Record,
   appendCbsScanRecord,
   appendEmergencyBoardRecord,
   appendRecordScanRecord,
@@ -5667,3 +5527,19 @@ module.exports = {
   readNotesDriveStore,
   writeNotesDriveStore
 };
+
+// Serialize CBS read-modify-write operations across concurrent API requests.
+// Internal helper calls stay inside the same operation and never re-enter this queue.
+let cbsWriteQueue=Promise.resolve();
+const cbsReadMethods=new Set(['getCbsCases','getWrongBaggageSubmissions','getContactFormSubmissions','getCbsWorldTracerCases','getCbsUnresolvedBaggageCases','getTestBaggageReportRows','findTestBaggageByTag','getCbsDamageImage']);
+for(const name of ['appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
+ const original=module.exports[name];if(!original)continue;
+ module.exports[name]=(...args)=>{
+  const pending=cbsWriteQueue.then(async()=>{
+   if(!cbsStorage.enabled()||cbsReadMethods.has(name))return original(...args);
+   const db=cbsStorage.local().db;db.exec('BEGIN IMMEDIATE');
+   try{const result=await original(...args);db.exec('COMMIT');return result;}
+   catch(error){db.exec('ROLLBACK');cbsSheetCache.loadedAt=0;wrongBaggageCache.loadedAt=0;testBaggageSheetCache.loadedAt=0;cbsMissingBagSheetCache={loadedAt:0,rows:[]};invalidateCbsUnresolvedBaggageCache();invalidateCbsWorldTracerCaseCache();throw error;}
+  });cbsWriteQueue=pending.catch(()=>{});return pending;
+ };
+}

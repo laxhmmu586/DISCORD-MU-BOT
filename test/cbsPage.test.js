@@ -64,22 +64,25 @@ test('CBS sidebar uses the MUBC brand', () => {
   assert.doesNotMatch(page, /<a class="brand" href="index\.html">MUFC<\/a>/);
 });
 
-test('CBS dashboards use SSE updates with a 90-second reconciliation fallback', () => {
+test('CBS dashboards use SSE invalidations and a small revision fallback', () => {
   assert.match(server, /app\.get\('\/cbs-live-stream'/);
   assert.match(server, /const cbsStreamClients = new Set\(\)/);
   assert.match(server, /broadcastCbsRefresh\(req\.path\)/);
   assert.match(page, /new EventSource\(`\$\{apiBase\}\/cbs-live-stream`\)/);
   assert.match(page, /stream\.addEventListener\('refresh', scheduleCbsLiveRefresh\)/);
   assert.match(page, /document\.activeElement\?\.closest\('form'\)/);
-  assert.match(page, /setInterval\(scheduleCbsLiveRefresh, 30000\)/);
+  assert.doesNotMatch(page, /setInterval\(scheduleCbsLiveRefresh, 30000\)/);
+  const client=fs.readFileSync(path.join(__dirname,'../public/public/cbs-data.js'),'utf8');
+  assert.match(client,/setInterval\(\(\)=>void check\(\),60000\)/);
+  assert.match(server,/app\.get\('\/cbs-revision'/);
   assert.match(page, /id="cbs-live-status"/);
   assert.match(page, /cbsRefreshQueued = true[\s\S]*setTimeout\(refreshCbsData, 1000\)/);
   assert.match(page, /_forceCbsRefresh[\s\S]*\?refresh=1/);
   assert.match(page, /window\._silentCbsRefresh = true/);
-  assert.match(page, /if \(!window\._silentCbsRefresh\) casesOutput\.innerHTML/);
+  assert.match(page,/cbsDataCache\?\.has\('\/cbs-cases'\+cbsListParams\(\)\)/);
   assert.match(page, /window\._silentCbsRefresh && window\._cbsRowsSignature === signature/);
   assert.match(page, /!window\._silentCbsRefresh \|\| window\._unresolvedBaggageSignature !== signature/);
-  assert.match(page, /cbsLiveConnected[\s\S]*90 \* 1000/);
+  assert.match(page,/cbs-data-changed/);
   assert.match(server, /req\.path !== '\/cbs-record-sync'/);
   assert.match(server, /cbsPnrSyncRecent[\s\S]*reason:'recently synced'/);
 });
@@ -135,7 +138,7 @@ test('Rush Bag navigation turns yellow when any case is missing a WorldTracer nu
   assert.match(page, /\.page-tab:is\(\[data-has-open-reports="true"\],\[data-has-missing-worldtracer="true"\]\) \.page-tab-icon \{ color:#3d3100 !important; \}/);
   assert.match(page, /const hasMissingWorldTracer = rows\.some\(\(row\) => !String\(row\.worldTracerFileNumber \|\| ''\)\.trim\(\)\)/);
   assert.match(page, /worldTracerTab\.dataset\.hasMissingWorldtracer = String\(hasMissingWorldTracer\)/);
-  assert.match(page, /loadMissingReports\(\);\s*loadWorldTracerCases\(\);\s*syncMissingReports\(\)/);
+  assert.match(page,/function loadActiveCbsModule/);assert.match(page,/section==='missing'&&!window\._missingSyncStarted/);
 });
 
 test('CBS sheets automatically remove data older than two years', () => {
@@ -357,14 +360,13 @@ test('Shipment sits above Closed Case and groups shipped cases by courier and mo
   assert.match(page, /closedMonth\?\.addEventListener\('change'/);
 });
 
-test('CBS case refresh reads Google Sheets and does not restart the page', () => {
+test('CBS refresh reloads only the active module without restarting the page', () => {
   assert.match(drive, /async function getCbsCases\(\) \{[\s\S]*getCbsSheetRows/);
-  assert.match(page, /await Promise\.all\(\[loadCases\(\), loadMissingReports\(\), loadUnresolvedBaggage\(\)\]\)/);
+  assert.match(page, /await loadActiveCbsModule\(\)/);
   assert.doesNotMatch(page, /sidebarRefresh\.addEventListener\('click', \(\) => window\.location\.reload\(\)\)/);
 });
-test('CBS cases no longer rely on stale browser storage', () => {
-  assert.doesNotMatch(page, /CASE_CACHE_KEY|readCaseCache|writeCaseCache/);
-  assert.match(page, /async function loadCases\(\) \{\s*casesOutput\.innerHTML = '<p class="muted">Loading cases/);
+test('CBS cached lists are revision-validated rather than trusted indefinitely',()=>{
+ const client=fs.readFileSync(path.join(__dirname,'../public/public/cbs-data.js'),'utf8');assert.match(client,/cbs-revision/);assert.match(client,/data.modules\[name\]!==saved.modules\[name\]/);assert.match(client,/cbs-data-offline/);
 });
 
 test('Add Baggage records are added to and displayed in Open Case', () => {

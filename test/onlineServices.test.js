@@ -35,7 +35,7 @@ test('baggage direction defaults, options, and collected batch flight are preser
   }
 });
 
-test('240 API validates flight and passes the same value to storage and Discord', async () => {
+test('240 API validates flight and sends directly to Discord without storage', async () => {
   let handler;const saved=[],sent=[];
   const source=server.slice(server.indexOf("app.post('/transit-240'"),server.indexOf("\n});",server.indexOf("app.post('/transit-240'"))+4);
   vm.runInNewContext(source,{app:{post:(_,fn)=>handler=fn},appendTransit240Record:async r=>{saved.push(r);return{}},sendTransit240ToDiscord:async r=>{sent.push(r);return{}},console,Date});
@@ -43,9 +43,9 @@ test('240 API validates flight and passes the same value to storage and Discord'
     let status=200,result;
     await handler({body:{flightNo,passengerName:'TEST',seatNumber:'10A',bnNumber:'001',nationalityCode:'CAN',passportExpiry:'2032-01-23',itinerary:['LAX','PVG','HKG']}},{status(n){status=n;return this},json(v){result=v;return this}});
     assert.equal(status,flightNo==='INVALID'?400:200);
-    if(status===200){assert.equal(saved.at(-1).flightNo,flightNo);assert.equal(sent.at(-1).flightNo,flightNo);assert.equal(result.ok,true);}
+    if(status===200){assert.equal(sent.at(-1).flightNo,flightNo);assert.equal(result.ok,true);}
   }
-  assert.equal(saved.length,2);
+  assert.equal(saved.length,0);
 });
 
 test('240 Discord embed includes the selected flight without sending real messages',async()=>{
@@ -57,12 +57,18 @@ test('240 Discord embed includes the selected flight without sending real messag
   assert.equal(payload.embeds[0].fields.find(f=>f.name==='BN').value,'102');
 });
 
-test('240 appends flight after existing sheet columns',async()=>{
-  let call;
-  const ctx=vm.createContext({getTransit240SheetTitle:async()=>'240',ensureTransit240Headers:async()=>{},TRANSIT_240_SHEET_ID:'fixture',escapeSheetTitle:s=>s,sheets:{spreadsheets:{values:{append:async p=>{call=p}}}}});
-  vm.runInContext(func(drive,'appendTransit240Record'),ctx);
-  await ctx.appendTransit240Record({submittedAt:'time',flightNo:'MU578',passengerName:'TEST',seatNumber:'10A',bnNumber:'001',itinerary:['LAX','PVG','HKG']});
-  assert.equal(call.range,'240!A:H');assert.equal(call.requestBody.values[0][1],'TEST');assert.equal(call.requestBody.values[0][6],'LAX → PVG → HKG');assert.equal(call.requestBody.values[0][7],'MU578');
+test('240 has no Google Sheets write function or API dependency',()=>{
+ assert.doesNotMatch(drive,/async function appendTransit240Record/);
+ const route=server.slice(server.indexOf("app.post('/transit-240'"),server.indexOf("\n});",server.indexOf("app.post('/transit-240'"))+4);
+ assert.doesNotMatch(route,/appendTransit240Record|sheets/);
+});
+
+test('240 Discord failures remain failures and cannot show submit success',async()=>{
+ let handler,status=200,result;
+ const route=server.slice(server.indexOf("app.post('/transit-240'"),server.indexOf("\n});",server.indexOf("app.post('/transit-240'"))+4);
+ vm.runInNewContext(route,{app:{post:(_,fn)=>handler=fn},sendTransit240ToDiscord:async()=>{throw Error('Discord unavailable')},console:{error(){}},Date});
+ await handler({body:{flightNo:'MU586',passengerName:'TEST',seatNumber:'10A',bnNumber:'001',nationalityCode:'CAN',passportExpiry:'2032-01-23',itinerary:['LAX','PVG','HKG']}},{status(n){status=n;return this},json(v){result=v;return this}});
+ assert.equal(status,500);assert.equal(result.ok,undefined);assert.match(result.error,/Discord unavailable/);
 });
 
 test('Misconnection storage reads the new flight column and leaves historical flights unknown',async()=>{
