@@ -301,7 +301,10 @@
     "charge-form.css",
     "assets/charge-form/china-eastern-logo.png",
     "arrival-express.css",
-    "arrival-express.js"
+    "arrival-express.js",
+    "departure-checklist-model.js",
+    "departure-checklists.js",
+    "departure-checklists.css"
   ],
   "server": [
     "briefingDefaults.js",
@@ -376,7 +379,8 @@
     "employeeAccountStatus.js",
     "expressConnections.js",
     "expressModel.js",
-    "expressPdf.js"
+    "expressPdf.js",
+    "departureChecklists.js"
   ],
   "resources": [
     "data/has-checklists",
