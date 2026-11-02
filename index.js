@@ -1018,6 +1018,7 @@ const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
 app.use('/has-pbb-api', express.json({limit:'2mb'}));
 app.use('/profile-api', express.json({limit:'3mb'}));
 app.use('/staff-schedule-api', express.json({limit:'1mb'}));
+app.use('/briefing-api/express', express.json({limit:'512kb'}));
 app.use('/briefing-api', express.json({limit:'64kb'}));
 require('./workspaceRoutes').registerWorkspaceRoutes(app);
 app.get(['/briefing.html','/briefing.css','/briefing.js'],(req,res)=>{res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'public','public',path.basename(req.path)));});

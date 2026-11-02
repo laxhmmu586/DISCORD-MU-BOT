@@ -1,0 +1,20 @@
+{
+  "sourceSha256": "bc3e7593ad3f903ce25230bf113992144a08c875fdd79077133d709700939bb2",
+  "blankPdfSha256": "9bab4248b33984494fecea48f74d014ae12eb4ee31394d269486fea86c0fa415",
+  "logoSha256": "0f61770fd107835df047b42781f0736ed0c526fab156e289aaaff68b2d179a71",
+  "page": [
+    612,
+    792
+  ],
+  "eta": {
+    "x": 239.04,
+    "y": 429.791,
+    "size": 12
+  },
+  "total": {
+    "x": 356.159,
+    "y": 413.35,
+    "size": 12
+  },
+  "verification": "Native Word export; reference/blank renders are pixel-identical outside the two value slots. All original DOCX package parts except the two value text nodes were preserved."
+}

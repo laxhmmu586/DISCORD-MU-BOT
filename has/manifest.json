@@ -299,7 +299,9 @@
     "charge-form.js",
     "charge-form-model.js",
     "charge-form.css",
-    "assets/charge-form/china-eastern-logo.png"
+    "assets/charge-form/china-eastern-logo.png",
+    "arrival-express.css",
+    "arrival-express.js"
   ],
   "server": [
     "briefingDefaults.js",
@@ -371,12 +373,18 @@
     "workspaceRoutes.js",
     "workspaceScope.js",
     "chargeForm.js",
-    "employeeAccountStatus.js"
+    "employeeAccountStatus.js",
+    "expressConnections.js",
+    "expressModel.js",
+    "expressPdf.js"
   ],
   "resources": [
     "data/has-checklists",
     "data/has-report-templates",
-    "data/has-word-templates"
+    "data/has-word-templates",
+    "express/express-connect-source.docx",
+    "express/express-connect-blank.pdf",
+    "express/template.json"
   ],
   "sharedServerDependencies": [
     "boardingContext.js",
