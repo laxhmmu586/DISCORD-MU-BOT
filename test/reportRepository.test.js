@@ -19,3 +19,9 @@ test('Sales Details reads existing SQLite records without a source sync',async()
  const result=await drive.getSalesDetailsReportRows('2026-11-01','2026-11-01',{flight:'MU586'});
  assert.equal(result.rows.length,1);assert.equal(result.totals[0].amount,30);
 });
+test('VIP source refresh reuses imported identity and updates seat without duplicate rows',async()=>{
+ const row={date:'2026-11-01',flightDate:'01NOV26',flightNo:'MU586',passenger:'VIP/TEST',bn:'002',seat:'1A',bags:'MU123456'};
+ store.put('vip',[{...row,key:'01NOV26|MU586|VIP/TEST'}],{importing:true});
+ const before=store.query('vip').length;await drive.appendVipReportRows([{...row,seat:'2A',source:'log',timestampMs:123}]);
+ const rows=store.query('vip');assert.equal(rows.length,before);assert.equal(rows.find(r=>r.passenger==='VIP/TEST').seat,'2A');
+});
