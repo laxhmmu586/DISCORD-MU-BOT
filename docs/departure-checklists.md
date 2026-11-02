@@ -1,10 +1,10 @@
-# Departure checklists
+# Departure checklist templates
 
-The Departure action order is Charge Form, Checklist, Default, Clear. Checklist is available to linked LAX/MU Lead and higher roles in manager view. Its API uses the same Lead-level boundary as Departure Defaults; granting an Agent a general Briefing editing override does not grant checklist access.
+Departure actions are Charge Form, Checklist, Default, Clear. Checklist is limited to linked LAX/MU Lead and higher roles in manager view, enforced on the template API as well as the button. AVIH uses a pet-dog icon and SERVICE DOG uses a harnessed service-dog icon.
 
-AVIH and SERVICE DOG are shared, editable templates. Leads can change the Chinese and English titles and item text, add/remove items, and reorder them. Templates use optimistic revisions and audit records. Template edits apply to new forms; each saved form embeds its original template so previously completed checks never move to different requirements.
+The dialog is a read-only paper preview with Edit template and Print actions. Flight, date, passenger, signatures, notes and checkboxes remain blank for completion on paper. There are no online answers, passenger inputs, completion tracking or saved checklist records. Printing does not write any form data.
 
-Each form is stored in the employee database with its own ID, flight, date, checklist type, answers, passenger details, notes, agent/supervisor names, revision and template snapshot. Multiple passenger forms may be saved for one flight. Save, switching templates/forms and closing preserve changed forms; save conflicts leave the current draft visible and offer Reload saved version or Discard draft and close. Print saves first, then opens the browser print dialog for A4 or Letter, including checked/unchecked boxes and filled values. Browser “Save as PDF” is supported.
+Lead and higher roles may edit the shared Chinese/English titles and items, add/remove items and reorder them. Only templates are stored, with optimistic revisions and audit records. A4/Letter printing and browser Save as PDF are supported; the default AVIH template fits one sheet and SERVICE DOG uses two. Longer edited templates may expand pagination. Legacy passenger-record tables from the earlier version are left untouched, but their endpoints and UI are removed.
 
 ## Sources
 
@@ -15,4 +15,4 @@ These are transcriptions of the supplied operational materials, not an independe
 
 ## Verification
 
-Run `node --test test/departureChecklists.test.js` for role boundaries, form isolation, validation, concurrency, template snapshots, audit records and print markup. Run `node test/departureChecklists.browser.cjs` for the integrated Departure flow, template editing, saved forms, printing, mobile layout and permission revocation. The browser fixture uses fictional staff and passengers and writes screenshots/PDFs into `.verification/departure-checklists/`.
+Run `node --test test/departureChecklists.test.js` for authorization, template updates, validation, revisions, audit records, retired form endpoints and blank print markup. Run `node test/departureChecklists.browser.cjs` for read-only previews, dog icons, shared editing, actual print frames, no form writes, mobile layout and permission revocation. Test outputs are under `.verification/departure-checklists/`.
