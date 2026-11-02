@@ -119,7 +119,7 @@
     function rows(host, items, empty, incomplete, href) {
       for (const item of items.slice(0, 4)) {
         const link = document.createElement('a'); link.className = 'home-task-row'; link.href = item.href;
-        const icon = document.createElement('span'); icon.className = 'art-icon ' + (host === signPanel ? 'icon-sign' : 'icon-request'); icon.setAttribute('aria-hidden', 'true');
+        const icon = document.createElement('span'); icon.className = 'art-icon ' + (host === signPanel ? 'icon-sign' : 'icon-pending-approval'); icon.setAttribute('aria-hidden', 'true');
         const copy = document.createElement('span'), title = document.createElement('strong'), detail = document.createElement('small'); title.textContent = item.label; detail.textContent = item.detail; detail.classList.toggle('is-overdue', Boolean(item.overdue)); copy.append(title, detail); link.append(icon, copy); host.append(link);
       }
       if (!items.length) note(host, incomplete ? 'Some items could not be loaded. Open the list to retry.' : empty);
