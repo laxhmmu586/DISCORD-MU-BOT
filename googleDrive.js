@@ -5321,7 +5321,7 @@ const reportType = type => ({psmmsg:'psmMsg',salesdetails:'salesDetails'}[String
 const normalizeLocalReport = (type,row) => {
   const values=sheetValuesFromReportRow(type,row);
   const parsed=reportRowFromSheet(type,values);
-  parsed.key=type==='psmMsg' ? (row.key||buildPsmMsgKey(parsed)) : buildStoredReportKey(type,row);
+  parsed.key=type==='vip' ? [parsed.flightDate,parsed.flightNo,parsed.passenger].map(v=>String(v||'').trim().toUpperCase()).join('|') : type==='psmMsg' ? (row.key||buildPsmMsgKey(parsed)) : buildStoredReportKey(type,row);
   return parsed;
 };
 
