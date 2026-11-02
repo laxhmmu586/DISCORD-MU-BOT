@@ -217,3 +217,28 @@
  .schedule-native-ribbons .schedule-native-ribbon-host .team-week-badges{visibility:visible;position:absolute;left:3px;top:24px;bottom:auto;transform:none;align-items:flex-start}
  .schedule-native-ribbon-host .date-status{transform:rotate(-12deg);transform-origin:left bottom}
 }
+
+/* A raised purple strip continues behind Today's duty buttons and group gaps. */
+.schedule-shell{--today-column-fill:linear-gradient(90deg,#6630b7 0%,#ac72f4 9%,#9850eb 30%,#8d42e0 70%,#572099 100%);--today-column-depth:inset 2px 0 2px #ead5ff88,inset -3px 0 4px #30085a77}
+.schedule-shell .schedule-grid #schedule-table .current-day,
+.workspace-glass .schedule-shell .team-week-table thead th.team-week-today,
+.workspace-glass .schedule-shell .team-week-table tbody td.team-week-current-day,
+.schedule-shell .team-week-table thead th.team-week-today,
+.schedule-shell .team-week-table tbody td.team-week-current-day{background:var(--today-column-fill);box-shadow:var(--today-column-depth);border-bottom-color:#9953e4;border-right-color:#642aa8}
+.schedule-shell .schedule-grid #schedule-table th.current-day .date-number,
+.schedule-shell .schedule-grid #schedule-table th.current-day small,
+.schedule-shell .team-week-table thead th.team-week-today,
+.schedule-shell .team-week-table thead th.team-week-today small{color:#fff!important;text-shadow:0 1px 2px #38126966}
+.schedule-shell .schedule-grid #schedule-table .current-day .duty,
+.schedule-shell .team-week-table td.team-week-current-day>.duty{outline:none;box-shadow:0 2px 4px #30104b77,inset 0 1px 0 #ffffff77}
+.schedule-shell #schedule-table.has-today-column .team-heading th:after,
+.schedule-shell .team-week-table.has-today-column .team-week-group td:after{content:'';position:absolute;left:var(--today-column-left);width:var(--today-column-width);top:-1px;bottom:-1px;background:var(--today-column-fill);box-shadow:var(--today-column-depth);pointer-events:none;z-index:0}
+.schedule-shell .team-week-table .team-week-group td{position:relative}
+.schedule-shell #schedule-table .team-heading span,
+.schedule-shell .team-week-table .team-week-group span{z-index:1}
+
+/* Group names stay opaque over the band when dates scroll under them. */
+.schedule-shell #schedule-table.has-today-column.today-column-has-label .team-heading th{padding-left:0}
+.schedule-shell #schedule-table.has-today-column.today-column-has-label .team-heading span{display:inline-block;position:sticky;left:0;width:var(--today-column-name-width);box-sizing:border-box;padding-left:14px;background:inherit}
+.schedule-shell .team-week-table.has-today-column.today-column-has-label .team-week-group td{padding-left:0}
+.schedule-shell .team-week-table.has-today-column.today-column-has-label .team-week-group span{display:inline-block;position:sticky;left:0;width:var(--today-column-name-width);box-sizing:border-box;padding-left:5px;background:inherit}

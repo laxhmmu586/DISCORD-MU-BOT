@@ -161,3 +161,7 @@ body.profile-page.briefing-quick main.profile-shell.briefing-shell{margin:0!impo
 body.workspace-glass.profile-page.briefing-embedded-flight .profile-sidebar,body.workspace-glass.profile-page.briefing-embedded-flight .profile-topbar{display:none!important}
 
 #briefing-report,#briefing-reports{display:none!important}#briefing-express:disabled{opacity:.65;cursor:default}
+
+/* Keep wheel/touch scrolling without a visible roster scrollbar. */
+.briefing-roster{scrollbar-width:none;-ms-overflow-style:none}
+.briefing-roster::-webkit-scrollbar{display:none;width:0;height:0}
