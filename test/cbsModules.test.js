@@ -15,3 +15,10 @@ test('module navigation loads only the selected module and no data for compose/t
  for(const [section,group,expected] of [['open','passenger',['passenger']],['closed','on-hand',['onhand']],['open','bag-room',['onhand']],['worldtracer','passenger',['rush']],['missing','passenger',['missing']],['email','passenger',[]]]){context.activeCbsSection=section;context.activeCbsGroup=group;calls.length=0;await context.loadActiveCbsModule();assert.deepEqual(calls,expected);}
  const initial=page.slice(page.indexOf('    const initialSection ='));assert.doesNotMatch(initial,/\n    (?:loadCases|loadMissingReports|loadWorldTracerCases|loadUnresolvedBaggage|syncMissingReports)\(\)/);
 });
+
+test('small summaries include all three module counts, deduplicate bags, and separate closed months',()=>{
+ const raw=(gid,row_no,values)=>({gid,row_no,data:JSON.stringify(values)}),p1=['AHL','Open'],p2=['AHL','Closed'];p2[27]='2026-10-15T18:00:00Z';
+ const bag=(tag,notLoad=false,resolution='',date='')=>{const v=[];v[0]=tag;v[4]=notLoad?'Not Load Bags':'Bag';v[6]='Office';v[8]=resolution;v[10]=date;return v;};
+ const result=require('../cbsModules').counts([raw(0,2,p1),raw(0,3,p2)],[raw(1,2,bag('MU111111')),raw(1,3,bag('MU111111')),raw(1,4,bag('MU222222',true)),raw(1,5,bag('MU333333',false,'case-close','2026-10-15T18:00:00Z'))],0);
+ assert.deepEqual(result.open,{passenger:1,'on-hand':1,'bag-room':1});assert.deepEqual(result.closed['2026-10'],{passenger:1,'on-hand':1,'bag-room':0});assert(!JSON.stringify(result).includes('MU111111'));
+});

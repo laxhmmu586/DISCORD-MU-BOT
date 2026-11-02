@@ -2,6 +2,14 @@
 
 Scope: CBS cases, Wrong Baggage, On-hand/Not Load, Rush, Missing Bag, damage images, and shared Baggage/Misconnection records. CBS retention remains **two calendar years**, following the final user correction. Report Center's other datasets remain on their existing storage. 240 is Discord-only; its obsolete Sheet writer and unused FULL-sheet lookup are removed.
 
+## Production recovery and count cards — 2026-11-01 (Los Angeles)
+
+After PR #1826 was deployed without the final import, the live CBS database had zero imported workbooks and zero rows. The service was briefly stopped to prevent writes, the empty database was backed up privately, and the final source import verified 2 workbooks, 10 tables and 1,449 rows. The service was restarted; public Open, Closed, Bag Room and Rush API reads returned HTTP 200 with data. No Google source rows were modified by the importer.
+
+All three case-count cards remain visible without downloading unopened modules. The existing small revision response now includes Open totals and Closed totals by month for Passenger Filed, On-hand and Bag Room. Counts are recomputed with the content-version cache only after data changes. Bag counts use the same archive rules, Office/type exclusions, tag deduplication and independent No Tag rows as the lists. Selecting a closed month updates all three counts, while list bodies still load only for the selected module.
+
+Schedule profile dialogs hide scrollbar chrome while retaining native wheel/touch scrolling. The embedded document no longer creates a second scroll surface; the background page is locked while a profile is open. Both manager and read-only cards close on an outside click while clicks inside remain open. Desktop and mobile browser fixtures verified these behaviors and the three count cards without requests for unopened lists.
+
 ## Findings and measurements
 
 Production was running `acf6a754`. A read-only source snapshot was imported into an isolated Oracle test database: **2 workbooks, 10 tables, 1,449 source rows**, verified against SHA-256 digests of the imported values. No production database, active writer, Hosting deployment, or PM2 service was switched. The test database was about **1.61 MiB**; the server had about **39 GiB** free at inspection. Row counts include headers and image chunks, not just cases.
