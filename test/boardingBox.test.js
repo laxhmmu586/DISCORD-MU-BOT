@@ -99,7 +99,22 @@ test('latest SY counts win and incomplete SY totals cannot claim a match', () =>
   const data = parse([sy(2,0),bnd(3,[]),sy(3,0).replace('14:00:00','14:05:00')].join('\n'));
   assert.equal(data.matched,true);
   assert.equal(parse([sy(0,0).replace('C000/000/000',''),bnd(3,[])].join('\n')).matched,false);
-  assert.equal(parse([sy(0,0).replace('I00',''),bnd(3,[])].join('\n')).expectedInfants,null);
+  const incomplete = parse([sy(0,0).replace('C000/000/000','').replace('I00',''),bnd(3,[])].join('\n'));
+  assert.equal(incomplete.expectedInfants,null);
+  assert.equal(incomplete.expectedTotal,null);
+  assert.equal(incomplete.matched,false);
+});
+
+test('SY omitting zero infants still supplies BOX totals and reconciles BND', () => {
+  for (const infantField of ['', 'I00']) {
+    const data = parse([sy(297,0).replace('I00',infantField),bnd(299,[50,74])].join('\n'));
+    assert.equal(data.expectedPassengers,297);
+    assert.equal(data.expectedInfants,0);
+    assert.equal(data.infants,0);
+    assert.equal(data.expectedTotal,297);
+    assert.equal(data.total,297);
+    assert.equal(data.matched,true);
+  }
 });
 
 test('twenty BN ranges flag 19 or fewer, including last partial box; 301 starts a new range', () => {
