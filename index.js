@@ -609,16 +609,8 @@ async function syncPsmMsgRowsFromSyInfo(syInfo) {
 }
 
 async function syncServiceReportRowsFromSyInfo(syInfo, isoDate) {
-  const wchRows = extractWheelchairRowsFromSy(syInfo, isoDate);
-  const inadRows = extractInadRowsFromSy(syInfo, isoDate);
-  const [wheelchair, inad] = await Promise.all([
-    appendStoredReportRows('wheelchair', isoDate, wchRows),
-    appendStoredReportRows('inad', isoDate, inadRows)
-  ]);
-  return {
-    wheelchair: { ...wheelchair, found: wchRows.length },
-    inad: { ...inad, found: inadRows.length }
-  };
+  const rows = extractInadRowsFromSy(syInfo, isoDate);
+  return {inad:await appendStoredReportRows('inad', isoDate, rows)};
 }
 
 
@@ -669,8 +661,8 @@ async function scanSyServiceReportRows(type, isoDate) {
 async function loadStoredReportRows(type, isoDate, options = {}) {
   const normalizedType = String(type || '').toLowerCase();
   const stored = await getStoredReportRows(normalizedType, isoDate);
-  if (normalizedType === 'vip') return { rows: stored.rows, source: 'googleSheet', scanned: true };
-  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'googleSheet', scanned: true };
+  if (normalizedType === 'vip') return { rows: stored.rows, source: 'sqlite', scanned: true };
+  if (stored.scanned && !options.forceRefresh) return { rows: stored.rows, source: 'sqlite', scanned: true };
   const rows = await scanSyServiceReportRows(normalizedType, isoDate);
   await appendStoredReportRows(normalizedType, isoDate, rows);
   const refreshed = await getStoredReportRows(normalizedType, isoDate);
@@ -784,7 +776,8 @@ async function refreshDeferredSyData(syInfo, log, isoDate) {
 }
 
 async function syncTodayReportSheets() {
-  for (const type of ['wheelchair', 'inad']) {
+  try {await syncSalesDetailsFromTodaySy(todayIsoUtc());}catch(err){console.warn('Sales source sync failed:',err.message);}
+  for (const type of ['inad']) {
     try {
       await loadStoredReportRows(type, todayIsoUtc(), { forceRefresh: true });
       await pruneStoredReportRows(type);
@@ -1502,11 +1495,12 @@ app.post('/warning-acknowledgements', async (req, res) => {
 // Search API
 // ===============================
 
+app.use(['/spml-report','/wch-report','/miss-connection-report','/test-baggage-report'], (req,res)=>res.status(410).json({error:'This report has been removed.'}));
 app.get('/stored-report', async (req, res) => {
   try {
     const type = String(req.query.type || '').trim().toLowerCase();
     const isoDate = String(req.query.date || '').trim();
-    if (!['vip', 'wheelchair', 'inad', 'spml'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
+    if (!['vip', 'inad'].includes(type)) return res.status(400).json({ error: 'Invalid report type' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Missing or invalid date' });
     const result = await loadStoredReportRows(type, isoDate);
     return res.json(result);
@@ -2718,24 +2712,8 @@ app.post('/contact-form-submissions', async (req, res) => {
       submittedAt: new Date().toISOString(), date, name, flightNo, seatNumber, ticketNumber, email, phone, language,
       attachmentNames: attachments.map((attachment) => attachment.filename).join(', ')
     };
-    await appendContactFormSubmission(record);
-    let emailResult = null;
-    let emailError = '';
-    try {
-      emailResult = await sendMisconnectionAssistanceEmail({ passengerEmail: record.email, language: record.language });
-    } catch (mailErr) {
-      emailError = cbsEmailErrorMessage(mailErr);
-      console.error('Misconnection passenger email error:', mailErr);
-    }
-    let discord = null;
-    let discordError = '';
-    try {
-      discord = await sendContactFormToDiscord(record, attachments);
-    } catch (discordErr) {
-      discordError = discordErr?.message || 'Discord notification failed.';
-      console.error('Contact form Discord notification error:', discordErr);
-    }
-    return res.status(201).json({ created: true, record, email: emailResult, emailError, discord, discordError });
+    const discord = await sendContactFormToDiscord(record, attachments);
+    return res.status(201).json({created:true, discord});
   } catch (err) {
     console.error('Contact form submission error:', err);
     return res.status(500).json({ error: 'The form could not be submitted. Please try again or contact a staff member.' });
@@ -4496,12 +4474,14 @@ app.post('/test-baggage/:bagTag/update', async (req, res) => {
   }
 });
 
+app.get('/reports/version', (req,res)=>{try{const db=require('./reportSqlite').local();db.ready();res.set('Cache-Control','no-store');res.json({revision:db.revision(),modules:Object.fromEntries(require('./reportSqlite').types.map(type=>[type,db.revision(type)]))});}catch(err){res.status(503).json({error:err.message});}});
+
 app.get('/vip-report', async (req, res) => {
   try {
     const isoDate = String(req.query.date || '').trim();
     if (isoDate && !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return res.status(400).json({ error: 'Invalid date' });
-    const rows = await getVipReportRows(isoDate || '');
-    return res.json({ rows, source: 'googleSheet', scanned: true });
+    const rows = require('./reportSqlite').local().query('vip',{from:req.query.from||isoDate,to:req.query.to||isoDate,flight:req.query.flight||''});
+    return res.json({ rows, source: 'sqlite', scanned: true });
   } catch (err) {
     console.error('VIP report error:', err);
     return res.status(500).json({ error: err?.message || 'VIP report lookup failed' });
@@ -4520,8 +4500,8 @@ app.get('/psm-report', async (req, res) => {
     if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
       return res.status(400).json({ error: 'Invalid date range' });
     }
-    const rows = await getPsmMsgReportRows(from, to);
-    return res.json({ rows, source: 'googleSheet' });
+    const rows = require('./reportSqlite').local().query('psmMsg',{from,to,flight:req.query.flight||''});
+    return res.json({ rows, source: 'sqlite' });
   } catch (err) {
     console.error('PSM report error:', err);
     return res.status(500).json({ error: err?.message || 'PSM report lookup failed' });
@@ -4550,8 +4530,8 @@ app.post('/psm-report/remark', async (req, res) => {
 
 app.get('/inad-report', async (req, res) => {
   try {
-    const rows = await getInadReportRows();
-    return res.json({ rows, source: 'googleSheet' });
+    const rows = require('./reportSqlite').local().query('inad',{from:req.query.from||'',to:req.query.to||'',flight:req.query.flight||''});
+    return res.json({ rows, source: 'sqlite' });
   } catch (err) {
     console.error('INAD report error:', err);
     return res.status(500).json({ error: err?.message || 'INAD report lookup failed' });
@@ -4570,7 +4550,7 @@ app.get('/wch-report', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range' });
     }
     const rows = await getWheelchairReportRows(from, to);
-    return res.json({ rows, source: 'googleSheet' });
+    return res.json({ rows, source: 'sqlite' });
   } catch (err) {
     console.error('WCH report error:', err);
     return res.status(500).json({ error: err?.message || 'WCH report lookup failed' });
@@ -4626,8 +4606,8 @@ app.get('/sales-details-report', async (req, res) => {
     if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
       return res.status(400).json({ error: 'Invalid date range' });
     }
-    const result = await getSalesDetailsReportRows(from, to, { sync: String(req.query.sync || 'true').toLowerCase() !== 'false' });
-    return res.json({ ...result, source: 'googleSheet' });
+    const result = await getSalesDetailsReportRows(from, to, {flight:req.query.flight||''});
+    return res.json({ ...result, source: 'sqlite' });
   } catch (err) {
     console.error('Sales details report error:', err);
     return res.status(500).json({ error: err?.message || 'Sales details report lookup failed' });
@@ -4837,10 +4817,6 @@ app.get(
           console.error('Bag Room Unload CC email error:', err);
         }
         spml.email = mealEmail;
-        if (spml.report.length) {
-          setImmediate(() => appendSpmlReportRows(spml.report.map((row) => ({ ...row, key:`SPML|${row.date}|${row.flightNo}|${row.passenger}|${row.bn}|${row.meal}`.toUpperCase() })))
-            .catch((err) => console.warn('SPML report sync skipped:', err?.message || err)));
-        }
         syInfo.spml = spml;
         setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
           .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));

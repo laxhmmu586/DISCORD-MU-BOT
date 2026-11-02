@@ -4578,7 +4578,7 @@
           <div class="report-hero">
             <div>
               <h2>Report Center</h2>
-              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results. Misconnection displays passenger assistance submissions.</p>
+              <p class="panel-muted">Choose a report below to view saved rows, search by flight date, or download the current results.</p>
             </div>
             <button class="report-close" id="report-close" type="button">Close</button>
           </div>
@@ -4586,12 +4586,8 @@
             <button class="detail-action" id="report-sales-mode" type="button" data-report-mode="sales">Sales Report</button>
             <button class="detail-action" id="report-sales-details-mode" type="button" data-report-mode="salesDetails">Sales Details</button>
             <button class="detail-action" id="report-vip-mode" type="button" data-report-mode="vip">VIP Report</button>
-            <button class="detail-action" id="report-spml-mode" type="button" data-report-mode="spml">SPML Report</button>
             <button class="detail-action" id="report-psm-mode" type="button" data-report-mode="psm">Authorization Report</button>
             <button class="detail-action" id="report-inad-mode" type="button" data-report-mode="inad">INAD Report</button>
-            <button class="detail-action" id="report-wch-mode" type="button" data-report-mode="wch">WCH Report</button>
-            <button class="detail-action" id="report-miss-connection-mode" type="button" data-report-mode="missConnection">Misconnection</button>
-            <button class="detail-action" id="report-baggage-mode" type="button" data-report-mode="baggage">Baggage Report</button>
           </div>
           <form class="report-form" id="report-form">
             <label class="report-field report-from-field"><span id="report-from-label">From</span><input id="report-from" type="date" required /></label>
@@ -4670,8 +4666,8 @@
                 <button class="detail-action" type="button" data-panel="nbrd" id="nbrd-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 9h20v14H6z"/><circle cx="12" cy="15" r="2.5"/><path d="M9 21c.8-2.2 2-3.3 3-3.3s2.2 1.1 3 3.3"/><path d="M18 14h5"/><path d="M18 19h5"/></svg></span><span class="detail-action-label">CKIN/NBRD</span> <span class="detail-action-badge" id="nbrd-count"></span></button>
                 <button class="detail-action" type="button" data-panel="duplicate-bags" id="duplicate-bags-action" hidden><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M10 11V8h12v3"/><path d="M6 11h20v15H6z"/><path d="M10 11v15"/><path d="M22 11v15"/></svg></span><span class="detail-action-label">DUP BAG</span> <span class="detail-action-badge" id="duplicate-bags-count"></span></button>
                 <button class="detail-action" type="button" data-panel="duplicate-names" id="duplicate-names-action" hidden><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M12 23c-1.5-1.8-2.2-4.2-2.2-7.1 0-5.6 3-9.4 7.4-9.4 4 0 6.8 2.8 6.8 6.8 0 2.7-1.4 4.9-3.9 6.1"/><path d="M16.9 11.3c1.6 0 2.7 1.1 2.7 2.8 0 1.9-1.1 3-3.4 3.8-1.4.5-2.1 1.4-2.1 2.7 0 2.8 2.1 4.9 5.8 4.9"/><path d="M7.5 25.5c1.9-1 3.5-1.5 5-1.5 1.8 0 3.3.5 4.6 1.5"/></svg></span><span class="detail-action-label">DUP NAME</span> <span class="detail-action-badge" id="duplicate-names-count"></span></button>
-                <button class="detail-action" type="button" data-panel="wch"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="10" r="3.5"/><circle cx="9" cy="14" r="2.8"/><circle cx="23" cy="14" r="2.8"/><path d="M10 25v-4.5c0-3 2.3-5.5 6-5.5s6 2.5 6 5.5V25"/><path d="M4.8 24v-3.4c0-2.5 1.6-4.2 4.2-4.2"/><path d="M27.2 24v-3.4c0-2.5-1.6-4.2-4.2-4.2"/></svg></span><span class="detail-action-label">WCH</span> <span class="detail-action-badge" id="wch-count"></span></button>
-                <button class="detail-action" type="button" data-panel="psm" id="psm-action"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 9h22v15H5z"/><path d="m6 10 10 8 10-8"/></svg></span><span class="detail-action-label">PSM/MSG</span> <span class="detail-action-badge" id="psm-count"></span></button>
+
+
                 <button class="detail-action" type="button" data-report-shortcut="sales">Sales Report</button>
               <button class="detail-action" type="button" data-report-shortcut="vip">VIP Report</button>
             </div>
@@ -4724,9 +4720,9 @@
               <button class="node" type="button" data-index="11" data-key="WEBEDI" data-label="WEB/EDI/RS" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h16v14H4z M2 21h20l-2-4H4z"/></svg></span><span class="node-label">WEB/EDI/RS</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="12" data-key="NBRD" data-label="NBRD" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z M10 7h7 M10 12h7 M10 17h7 M6 7h1 M6 12h1 M6 17h1"/></svg></span><span class="node-label">NBRD</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="13" data-key="DUP_BAG" data-label="DUP BAG" data-status="pending" data-time="0" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7V4h8v3 M4 7h16v14H4z M8 7v14 M16 7v14"/></svg></span><span class="node-label">DUP BAG</span><span class="node-value" aria-hidden="true"></span></button>
-              <button class="node" type="button" data-index="14" data-key="WCH" data-label="WCH" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="3.5" r="1.8"/><path d="m11 7 1 6h6l3 7h2 M11 8H8 M12 10h5 M8 11a5 5 0 1 0 7 7"/></svg></span><span class="node-label">WCH</span><span class="node-value" aria-hidden="true"></span></button>
+
               <button class="node" type="button" data-index="15" data-key="DUP_NAME" data-label="DUP NAME" data-status="pending" data-time="0" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 17c-1.1-1.4-1.6-3.1-1.6-5.3 0-4.1 2.2-6.8 5.4-6.8 2.9 0 5 2.1 5 5 0 2-1 3.6-2.9 4.5"/><path d="M12.6 8.4c1.2 0 2 .8 2 2.1 0 1.4-.8 2.2-2.5 2.8-1 .4-1.5 1-1.5 2 0 2.1 1.5 3.7 4.3 3.7"/><path d="M5.7 19c1.4-.8 2.6-1.1 3.7-1.1 1.3 0 2.4.4 3.4 1.1"/></svg></span><span class="node-label">DUP NAME</span><span class="node-value" aria-hidden="true"></span></button>
-              <button class="node" type="button" data-index="16" data-key="PSM" data-label="PSM/MSG" data-status="pending" data-time="----" hidden><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3h18v14H9l-6 4z M7 7h10 M7 11h7"/></svg></span><span class="node-label">PSM/MSG</span><span class="node-value" aria-hidden="true"></span></button>
+
               <button class="node" type="button" data-index="17" data-key="CCL" data-label="CCL" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h11v16H3z M7 8h3 M7 12h3 M7 16h3 M16 10h5 M18 7l3 3-3 3 M16 17l2 2 4-4"/></svg></span><span class="node-label">CCL</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="18" data-key="CC" data-label="CC" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h12v18H4z M12 3v18 M8 12h.01 M16 12h6 M19 9l-3 3 3 3"/></svg></span><span class="node-label">CC</span><span class="node-value" aria-hidden="true"></span></button>
               <button class="node" type="button" data-index="19" data-key="INITIAL_FLIGHT" hidden data-label="INITIAL FLIGHT" data-status="pending" data-time="----"><span class="node-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h12v4 M4 3v18h12v-4 M4 3l8 3v12l-8 3 M9 12h.01 M15 12h7 M19 9l3 3-3 3"/></svg></span><span class="node-label">INITIAL FLIGHT</span><span class="node-value" aria-hidden="true"></span></button>
@@ -4946,7 +4942,6 @@
         setActionIssueState("#gov-action", false);
         setActionIssueState("#webedi-action", false);
         setActionIssueState("#nbrd-action", false);
-        setBadgeText("#wch-count", 0);
         setText("#warning-count", "0");
         const warningAction = document.querySelector("#warning-action");
         const detailsManifest = document.querySelector(".details-manifest");
@@ -6415,7 +6410,6 @@
         setActionIssueState("#gov-action", govCount > 0);
         setActionIssueState("#webedi-action", webediCount > 0);
         setActionIssueState("#nbrd-action", unackedNbrdCount > 0);
-        setBadgeText("#wch-count", (sy.wchList || []).length);
         updateWarningActionState(buildWarningRows(sy));
         loadWarningAcknowledgements(sy);
         const psmCount = (sy.psmList || []).length;
@@ -6447,13 +6441,7 @@
           // Missing Bag is driven by its own report endpoint. Do not let the
           // recurring SY refresh replace its last result with a locked node.
           if (key === "MISSING_BAG") return;
-          if (key === "WCH" || key === "PSM") {
-            const count = (key === "WCH" ? sy.wchList || [] : sy.psmList || []).length;
-            node.hidden = count === 0;
-            node.dataset.status = "done";
-            node.dataset.time = String(count);
-            return;
-          }
+
           if (key === "DUP_NAME") {
             node.hidden = duplicateNameCount === 0;
             node.dataset.status = "done";
@@ -7274,7 +7262,7 @@
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "spml", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {

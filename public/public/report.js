@@ -1,3 +1,24 @@
+const reportReadCache = new Map();
+const reportReadsPending = new Map();
+let reportVersionPending;
+async function reportRead(endpoint) {
+  if(reportReadsPending.has(endpoint))return reportReadsPending.get(endpoint);
+  const work=(async()=>{
+    reportVersionPending ||= apiJson('/reports/version').finally(()=>{reportVersionPending=null;});
+    const version=await reportVersionPending;
+    const type=endpoint.startsWith('/psm-report')?'psmMsg':endpoint.startsWith('/sales-details-report')?'salesDetails':endpoint.startsWith('/inad-report')?'inad':'vip';
+    const revision=version.modules?.[type]||version.revision;
+    const cached=reportReadCache.get(endpoint);
+    if(cached?.revision===revision)return structuredClone(cached.data);
+    const data=await apiJson(endpoint);
+    reportReadCache.set(endpoint,{revision,data:structuredClone(data)});
+    return data;
+  })().finally(()=>reportReadsPending.delete(endpoint));
+  reportReadsPending.set(endpoint,work);return work;
+}
+function reportFilters() {
+  return `from=${encodeURIComponent(reportFromInput.value)}&to=${encodeURIComponent(reportToInput.value)}&flight=${encodeURIComponent(reportFlight.value)}`;
+}
       const reportForm = document.querySelector("#report-form");
       const reportSalesModeButton = document.querySelector("#report-sales-mode");
       const reportSalesDetailsModeButton = document.querySelector("#report-sales-details-mode");
@@ -99,7 +120,7 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
       }
 
       function setReportMode(mode, options = {}) {
-        activeReportMode = ["vip", "spml", "psm", "inad", "wch", "missConnection", "baggage", "salesDetails"].includes(mode) ? mode : "sales";
+        activeReportMode = ["vip", "psm", "inad", "salesDetails"].includes(mode) ? mode : "sales";
         if (activeReportMode === "baggage") {
           if (options.forceToday) setReportDefaults(true);
         } else {
@@ -425,8 +446,8 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
 
       async function storedReportRows(type, isoDate, keyword) {
         const endpoint = type === "vip" ? "/vip-report" : "/stored-report";
-        const query = type === "vip" ? "" : `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`;
-        const data = await apiJson(`${endpoint}${query}`);
+        const query = type === "vip" ? `?${reportFilters()}` : `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(isoDate)}`;
+        const data = await reportRead(`${endpoint}${query}`);
         const needle = String(keyword || "").trim().toUpperCase();
         const rows = data?.rows || [];
         if (!needle) return rows;
@@ -438,7 +459,7 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
       }
 
       async function psmReportRows(from, to) {
-        const data = await apiJson(`/psm-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const data = await reportRead(`/psm-report?${reportFilters()}`);
         return data?.rows || [];
       }
 
@@ -448,7 +469,7 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
       }
 
       async function inadReportRows() {
-        const data = await apiJson("/inad-report");
+        const data = await reportRead(`/inad-report?${reportFilters()}`);
         return data?.rows || [];
       }
 
@@ -463,7 +484,7 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
       }
 
       async function salesDetailsReport(from, to) {
-        return apiJson(`/sales-details-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        return reportRead(`/sales-details-report?${reportFilters()}`);
       }
 
       function normalizeTimelineText(value) {
@@ -812,30 +833,29 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
       });
 
       const authorizationRemarkTimers = new WeakMap();
-      reportOutput?.addEventListener("input", (event) => {
-        const input = event.target.closest("[data-authorization-remark]");
-        if (!input) return;
+      const authorizationRemarkQueues = new WeakMap();
+      function saveAuthorizationRemark(input) {
         clearTimeout(authorizationRemarkTimers.get(input));
-        input.classList.remove("is-save-error");
-        input.classList.add("is-saving");
-        authorizationRemarkTimers.set(input, setTimeout(async () => {
+        const value=input.value;
+        const prior=authorizationRemarkQueues.get(input)||Promise.resolve();
+        const work=prior.catch(()=>{}).then(async()=>{
+          if(input.dataset.savedRemark===value)return;
           try {
-            await apiJson("/psm-report/remark", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                key: decodeURIComponent(input.dataset.authorizationRemark || ""),
-                remark: input.value,
-              }),
-            });
-            input.classList.remove("is-saving", "is-save-error");
-            input.title = "Saved";
-          } catch (error) {
-            input.classList.remove("is-saving");
-            input.classList.add("is-save-error");
-            input.title = error?.message || "Remark save failed";
-          }
-        }, 600));
+            await apiJson('/psm-report/remark', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:decodeURIComponent(input.dataset.authorizationRemark||''),remark:value})});
+            input.dataset.savedRemark=value;
+            reportReadCache.clear();
+            if(input.value===value){input.classList.remove('is-saving','is-save-error');input.title='Saved';}
+          }catch(error){input.classList.remove('is-saving');input.classList.add('is-save-error');input.title=error.message||'Remark save failed';}
+        });
+        authorizationRemarkQueues.set(input,work);return work;
+      }
+      reportOutput?.addEventListener('input',event=>{
+        const input=event.target.closest('[data-authorization-remark]');if(!input)return;
+        clearTimeout(authorizationRemarkTimers.get(input));input.classList.remove('is-save-error');input.classList.add('is-saving');
+        authorizationRemarkTimers.set(input,setTimeout(()=>saveAuthorizationRemark(input),600));
+      });
+      reportOutput?.addEventListener('focusout',event=>{
+        const input=event.target.closest('[data-authorization-remark]');if(input?.classList.contains('is-saving'))saveAuthorizationRemark(input);
       });
 
       reportSalesModeButton?.addEventListener("click", () => setReportMode("sales", { forceToday: true, resetOutput: true }));

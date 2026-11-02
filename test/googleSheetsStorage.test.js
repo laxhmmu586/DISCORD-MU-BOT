@@ -16,12 +16,11 @@ test('backend has no Cloud Firestore adapter or calls', () => {
   assert.equal(firebaseConfig.firestore, undefined);
 });
 
-test('Report Center persists and reads rows through Google Sheets', () => {
-  assert.match(drive, /async function getStoredReportRows[\s\S]*getReportSheetRows/);
-  assert.match(drive, /async function appendVipReportRows[\s\S]*appendVipReportRowsToSheet/);
-  assert.match(drive, /async function appendPsmMsgReportRows[\s\S]*appendPsmMsgReportRowsToSheet/);
-  assert.match(drive, /async function appendStoredReportRows[\s\S]*appendStoredReportRowsToSheet/);
-  assert.match(drive, /async function syncSalesDetailsFromSourceSheet[\s\S]*sheets\.spreadsheets\.values\.append/);
+test('Report Center uses local storage and source synchronization is separate from reads', () => {
+  assert.match(drive, /async function getStoredReportRows[^\n]*reportDb\.local\(\)\.query/);
+  const reader=drive.match(/async function getSalesDetailsReportRows[\s\S]*?\n}/)[0];
+  assert.doesNotMatch(reader,/syncSalesDetailsFromSourceSheet|spreadsheets/);
+  assert.match(drive,/async function updatePsmMsgReportRemark[^\n]*reportDb\.local\(\)\.remark/);
 });
 
 test('Baggage tag searches reuse the short-lived Google Sheets cache', () => {
@@ -38,10 +37,10 @@ test('Baggage creation does not reread Sheets after the pre-submit lookup', () =
   assert.doesNotMatch(append, /record: await findTestBaggageByTag/);
 });
 
-test('Authorization Report remarks are stored in their Google Sheet row', () => {
+test('Authorization Report preserves its remark key and POST contract', () => {
   const page = fs.readFileSync(path.join(root, 'public', 'public', 'index.html'), 'utf8');
   assert.match(drive, /headers: \[[^\]]*'Detail', 'Key', 'Remark'\]/);
-  assert.match(drive, /async function updatePsmMsgReportRemark[\s\S]*sheets\.spreadsheets\.values\.update/);
+  assert.match(drive, /async function updatePsmMsgReportRemark[^\n]*reportDb\.local\(\)\.remark/);
   assert.match(drive, /row\.key = String\(row\.key \|\| ''\)\.trim\(\) \|\| buildPsmMsgKey\(row\)/);
   assert.match(server, /app\.post\('\/psm-report\/remark'/);
   assert.doesNotMatch(server.match(/app\.post\('\/psm-report\/remark'[\s\S]*?\n}\);/)?.[0] || '', /cleanBodyText\(req\.body\?\.key/);

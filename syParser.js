@@ -755,7 +755,6 @@ function parseSYSection(sectionObj) {
   const bags = section.match(/\bB(\d{4})\/(\d{6})\b/i);
 
   const chd = section.match(/\bCHD(\d{3})\b/i)?.[1] || null;
-  const wch = section.match(/\bWCH(\d{3})\b/i)?.[1] || null;
   const inf = section.match(/\bI(\d{2})\b/i)?.[1] || null;
   const statusMatch = section.match(/\b(OP|CI\d{4}|CCL\d{4}|CC\d{4})\/NAM\b/i);
   const statusRaw = statusMatch?.[1]?.toUpperCase() || null;
@@ -781,7 +780,6 @@ function parseSYSection(sectionObj) {
     checkedIn,
     checkedInTicketed,
     bags,
-    wch,
     inf,
     chd,
     statusCode,
@@ -2059,7 +2057,7 @@ function findSYInfo(log, queryDate, options = {}) {
       const targetYmd = getYmdFromTimestamp(matched[0].section.timestamp);
       info.chdList = enrichCHDListFromLog(log, info, targetYmd);
       info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
-      info.wchList = enrichWchListFromLog(log, info, targetYmd);
+      info.wchList = [];
       info.badSeatList = enrichBadSeatListFromLog(log, info, targetYmd);
       info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
       info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
@@ -2113,7 +2111,7 @@ function findSYInfo(log, queryDate, options = {}) {
     const targetYmd = getYmdFromTimestamp(todayMatches[0].section.timestamp);
     info.chdList = enrichCHDListFromLog(log, info, targetYmd);
     info.govAqq = enrichGovAqqFromLog(log, info, targetYmd);
-    info.wchList = enrichWchListFromLog(log, info, targetYmd);
+    info.wchList = [];
     info.badSeatList = enrichBadSeatListFromLog(log, info, targetYmd);
     info.membershipList = enrichMembershipListFromLog(log, info, targetYmd);
     info.seatMapRecords = enrichSeatMapRecordsFromLog(log, info, targetYmd);
