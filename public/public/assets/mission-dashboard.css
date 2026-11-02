@@ -233,3 +233,11 @@ body.is-report-view #warning-action { display:none; }
 
 /* Keep opaque node dots above the rail with a glow matching their status. */
 .timeline .node::before { box-shadow:0 0 4px 1px var(--node-color),0 0 12px 3px color-mix(in srgb,var(--node-color) 65%,transparent),0 0 22px 5px color-mix(in srgb,var(--node-color) 30%,transparent); }
+
+
+/* The first masked rail card needs a separate static glass surface: native
+   backdrop capture plus reflected copies can flash dark bands on this layer. */
+.timeline .node[data-key="CREW_APIS"]{backdrop-filter:none;-webkit-backdrop-filter:none;-webkit-box-reflect:unset;isolation:isolate}
+.timeline .node[data-key="CREW_APIS"] .node-glass{z-index:0}
+.timeline .node[data-key="CREW_APIS"] :is(.node-icon,.node-label,.node-value){position:relative;z-index:1}
+.timeline .node[data-key="CREW_APIS"] .node-glass::before{content:"";position:absolute;top:calc(100% + 12px);left:2px;right:2px;height:28px;border-radius:10px;background:linear-gradient(180deg,color-mix(in srgb,var(--node-color) 18%,transparent),transparent);pointer-events:none}
