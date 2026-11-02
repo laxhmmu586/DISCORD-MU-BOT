@@ -242,3 +242,9 @@
 .schedule-shell #schedule-table.has-today-column.today-column-has-label .team-heading span{display:inline-block;position:sticky;left:0;width:var(--today-column-name-width);box-sizing:border-box;padding-left:14px;background:inherit}
 .schedule-shell .team-week-table.has-today-column.today-column-has-label .team-week-group td{padding-left:0}
 .schedule-shell .team-week-table.has-today-column.today-column-has-label .team-week-group span{display:inline-block;position:sticky;left:0;width:var(--today-column-name-width);box-sizing:border-box;padding-left:5px;background:inherit}
+
+/* Match the assignment strip in Duty / Coverage, through Daily budget. */
+.schedule-shell .schedule-grid #coverage-table .current-day{background-image:var(--today-column-fill);box-shadow:var(--today-column-depth);border-bottom-color:#9953e4;border-right-color:#642aa8;color:#fff!important}
+.schedule-shell .schedule-grid #coverage-table th.current-day .date-number,
+.schedule-shell .schedule-grid #coverage-table th.current-day small{color:#fff;text-shadow:0 1px 2px #38126966}
+.schedule-shell .schedule-grid #coverage-table .daily-budget .current-day input{background:#fff;color:#302052;border-color:#e8d4ff;box-shadow:0 2px 4px #30104b55}
