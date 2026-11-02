@@ -1519,6 +1519,18 @@
       {
         "source": "/assets/profile-terminal-evening-mobile-v1.webp",
         "destination": "/has/assets/profile-terminal-evening-mobile-v1.webp"
+      },
+      {
+        "source": "/departure-checklist-model.js",
+        "destination": "/has/departure-checklist-model.js"
+      },
+      {
+        "source": "/departure-checklists.js",
+        "destination": "/has/departure-checklists.js"
+      },
+      {
+        "source": "/departure-checklists.css",
+        "destination": "/has/departure-checklists.css"
       }
     ],
     "predeploy": [
