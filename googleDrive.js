@@ -4611,6 +4611,54 @@ async function getCbsCases() {
   return attachCbsUpdateHistory(cases);
 }
 
+// Correct the entered identifier without creating an exchange or changing case status.
+async function correctCbsBagTag(rowNumber, {source='unresolved',field='bagTag',oldTag,bagTag,updatedBy=''}={}) {
+  const normalize=value=>String(value||'').trim().toUpperCase().replace(/[\s-]+/g,'');
+  bagTag=normalize(bagTag);oldTag=normalize(oldTag);
+  const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
+  if(!/^[A-Z0-9]{2}\d{6}$/.test(bagTag))fail('Enter a bag tag such as MU123456.');
+  if(source==='rush'){
+    if(!['originalTagNumber','rushTagNumber'].includes(field))fail('Invalid baggage field.');
+    const ids=String(rowNumber).split(',').map(Number);if(!ids.length||ids.some(id=>!Number.isInteger(id)||id<2))fail('Invalid case.');
+    const records=await getCbsWorldTracerCases({forceRefresh:true});
+    const current=records.find(row=>row.rowNumbers?.length===ids.length&&row.rowNumbers.every(id=>ids.includes(Number(id))));
+    if(!current)fail('Case not found.',404);if(normalize(current[field])!==oldTag)fail('This tag changed. Reload before editing.',409);
+    if(oldTag===bagTag)return {updated:false,record:current};
+    const title=await getCbsWorldTracerSheetTitle(),column=field==='originalTagNumber'?'B':'C';
+    await sheets.spreadsheets.values.batchUpdate({spreadsheetId:CBS_SHEET_ID,requestBody:{valueInputOption:'RAW',data:ids.map(id=>({range:`${escapeSheetTitle(title)}!${column}${id}`,values:[[bagTag]]}))}});
+    if(cbsStorage.enabled()){const db=cbsStorage.local().db;db.exec('CREATE TABLE IF NOT EXISTS cbs_tag_corrections(id INTEGER PRIMARY KEY,source TEXT,row_ids TEXT,field TEXT,old_tag TEXT,new_tag TEXT,actor TEXT,at TEXT)');db.prepare('INSERT INTO cbs_tag_corrections(source,row_ids,field,old_tag,new_tag,actor,at) VALUES(?,?,?,?,?,?,?)').run(source,String(rowNumber),field,oldTag,bagTag,sanitizeSheetText(updatedBy,160),new Date().toISOString());}
+    invalidateCbsWorldTracerCaseCache();return {updated:true,record:{...current,[field]:bagTag}};
+  }
+  if(!['unresolved','pir','wrongBaggage'].includes(source)||!['bagTag','rushTagNumber'].includes(field)||field!=='bagTag'&&source!=='unresolved')fail('Invalid baggage field.');
+  const rows=source==='unresolved'?await getCbsUnresolvedBaggageCases({includeResolved:true,forceRefresh:true}):source==='pir'?await getCbsCases({forceRefresh:true}):await getWrongBaggageSubmissions({forceRefresh:true});
+  const current=rows.find(row=>cbsRecordMatchesId(row,rowNumber));if(!current)fail('Case not found.',404);
+  const tags=String(current[field]||'').split(/\s*\/\s*/).map(normalize);
+  if(!tags.includes(oldTag))fail('This tag changed. Reload the list before editing.',409);
+  if(oldTag===bagTag)return {updated:false,record:current};
+  if(tags.some(tag=>tag===bagTag))fail('This case already contains that tag.',409);
+  if(source==='unresolved'&&field==='bagTag'&&rows.some(row=>String(row.rowNumber)!==String(current.rowNumber)&&!row.resolvedAt&&normalize(row.bagTag)===bagTag))fail('An open On-hand case already uses this tag.',409);
+  const event={key:'bag-tag-correction',title:'Bag tag corrected',at:new Date().toISOString(),by:sanitizeSheetText(updatedBy,160)||'System',fields:[['Field',field],['Previous Tag',oldTag],['Corrected Tag',bagTag]]};
+  if(source==='pir'){
+    const nextTags=tags.map(tag=>tag===oldTag?bagTag:tag).join('/');
+    const bags=(current.bagIdentifications||[]).map(bag=>({...bag,...(normalize(bag.tag)===oldTag?{tag:bagTag}:{})}));
+    const damagedBags=(current.damagedBags||[]).map(bag=>({...bag,...(normalize(bag.tag)===oldTag?{tag:bagTag}:{})}));
+    return updateCbsCase(rowNumber,{baggagePatch:{bagTag:nextTags,bagIdentifications:bags,damagedBags},updateEvent:event});
+  }
+  if(source==='wrongBaggage'){
+    const title=await getWrongBaggageSheetTitle(),range=`${escapeSheetTitle(title)}!A${current.rowNumber}:L${current.rowNumber}`;
+    const response=await sheets.spreadsheets.values.get({spreadsheetId:CBS_SHEET_ID,range}),values=[...(response.data.values?.[0]||[])];
+    values[4]=tags.map(tag=>tag===oldTag?bagTag:tag).join("/");values[8]=event.at;let history=[];try{history=JSON.parse(values[10]||'[]');}catch{}values[10]=JSON.stringify([...history,event]);
+    await sheets.spreadsheets.values.update({spreadsheetId:CBS_SHEET_ID,range,valueInputOption:'RAW',requestBody:{values:[values]}});wrongBaggageCache.loadedAt=0;return {updated:true,record:wrongBaggageRecordFromValues(values,current.rowNumber)};
+  }
+  const title=await getCbsUnresolvedBaggageSheetTitle();let events=current.updateEvents||[];
+  if(field==='rushTagNumber')events=events.map(item=>item.key==='on-hand-rush'?{...item,fields:(item.fields||[]).map(([key,value])=>[key,key==='Rush Tag'&&normalize(value)===oldTag?bagTag:value])}:item);
+  const updateEvents=[...events,event];
+  const data=[{range:`${escapeSheetTitle(title)}!R${current.rowNumber}`,values:[[JSON.stringify(updateEvents)]]}];
+  if(field==='bagTag')data.push({range:`${escapeSheetTitle(title)}!A${current.rowNumber}`,values:[[bagTag]]});
+  await sheets.spreadsheets.values.batchUpdate({spreadsheetId:CBS_SHEET_ID,requestBody:{valueInputOption:'RAW',data}});
+  invalidateCbsUnresolvedBaggageCache();return {updated:true,record:{...current,[field]:bagTag,updateEvents}};
+}
+
 async function updateCbsCase(rowNumber, update = {}) {
   const current = (await getCbsCases()).find((row) => cbsRecordMatchesId(row, rowNumber));
   if (!current) return { notFound: true };
@@ -5285,7 +5333,8 @@ module.exports = {
 // Internal helper calls stay inside the same operation and never re-enter this queue.
 let cbsWriteQueue=Promise.resolve();
 const cbsReadMethods=new Set(['getCbsCases','getWrongBaggageSubmissions','getContactFormSubmissions','getCbsWorldTracerCases','getCbsUnresolvedBaggageCases','getTestBaggageReportRows','findTestBaggageByTag','getCbsDamageImage']);
-for(const name of ['appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
+module.exports.correctCbsBagTag=correctCbsBagTag;
+for(const name of ['correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
  const original=module.exports[name];if(!original)continue;
  module.exports[name]=(...args)=>{
   const pending=cbsWriteQueue.then(async()=>{

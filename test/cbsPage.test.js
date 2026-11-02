@@ -443,7 +443,7 @@ test('On-hand and Bag Room rows only show Rush Tag when at least one row has one
   assert.match(page, /const rushTagCell = showRushTag \?/);
   assert.match(page, /const columnCount = \(showRushTag \? 6 : 5\) \+ \(isBagRoomGroup \? 2 : 0\)/);
   assert.doesNotMatch(page, /<th>Type \/ Status<\/th><th>Location<\/th>/);
-  assert.match(page, /escapeHtml\(row\.rushTagNumber \|\| '-'\)/);
+  assert.match(page, /editableBagTagHtml\(row\.rushTagNumber/);
   assert.match(server, /async function matchBagRoomUnloadCasesForRush/);
   assert.match(server, /normalizedCbsLinkTag\(row\.bagTag\) === originalTag/);
   assert.match(server, /updateCbsUnresolvedBaggageRush\(row\.rowNumber, \{/);
@@ -753,7 +753,7 @@ test('On-hand exchange is saved to Google Sheets and shows old and new tags', ()
   assert.match(page, /grid-template-columns:max-content 74px max-content/);
   assert.match(page, /exchange-tag-flow"><span class="exchange-tag-old">\$\{escapeHtml\(lastExchange\.oldTag\)\}<\/span><span class="exchange-tag-arrow"[^>]*>→/);
   assert.match(page, /exchange-tag-arrow-label">Exchange<\/span>/);
-  assert.match(page, /<span class="exchange-tag-new">\$\{escapeHtml\(lastExchange\.newTag\)\}<\/span>/);
+  assert.match(page, /<span class="exchange-tag-new">\$\{editableBagTagHtml\(row\.bagTag,active\|\|row\)\}<\/span>/);
   assert.match(page, /\.exchange-tag-arrow::before,\.exchange-tag-arrow::after/);
   assert.match(page, /detail:`\$\{exchange\.oldTag\} → \$\{exchange\.newTag\}`/);
   assert.match(page, /<col style="width:\$\{isBagRoomGroup \? 200 : 310\}px">\$\{rushTagColumn\}/);
@@ -1111,10 +1111,10 @@ test('baggage tag fields accept alphanumeric airline designators including B6 an
 });
 
 test('Passenger Filed displays multiple bag tags on separate lines', () => {
-  assert.match(page, /function bagTagSummaryHtml\(value\)/);
+  assert.match(page, /function bagTagSummaryHtml\(value,row\)/);
   assert.match(page, /split\(\/\\s\*\\\/\\s\*\/\)/);
-  assert.match(page, /class="bag-tag-list">\$\{tags\.map\(\(tag\) => `<span class="bag-tag-value">/);
-  assert.match(page, /<td class="sheet-meta">\$\{bagTagSummaryHtml\(displayBagTag\(row\)\)\}<\/td>/);
+  assert.match(page, /class="bag-tag-list">\$\{tags\.map\(\(tag\) => row\?editableBagTagHtml/);
+  assert.match(page, /<td class="sheet-meta">\$\{bagTagSummaryHtml\(displayBagTag\(row\),row\)\}<\/td>/);
   assert.match(page, /\.bag-tag-list \{ display:inline-grid; gap:5px/);
 });
 

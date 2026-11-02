@@ -1,0 +1,21 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+process.env.CBS_SQLITE_PATH=':memory:';process.env.CBS_STORAGE='sqlite';
+const storage=require('../cbsStorage'),drive=require('../googleDrive');
+test('bag tag corrections persist identifiers and snapshots without changing case status, and reject stale/duplicate edits',async()=>{
+ const s=storage.local(),source=fs.readFileSync(require.resolve('../googleDrive'),'utf8'),headers=vm.runInNewContext(source.match(/const CBS_HEADERS = (\[[\s\S]*?\]);/)[1]),now=new Date().toISOString();
+ s.importBook(storage.book,[{gid:1615438730,title:'Wrong',rows:[['Date','Status'],[now,'Open','TEST','12A','MU123456']]},{gid:523026916,title:'Onhand',rows:[['Bag Tag'],['MU111111','inbound','MU583',now.slice(0,10),'Passenger bag','Open','Office',now],['MU222222','inbound','MU583',now.slice(0,10),'Passenger bag','Open','Office',now]]},{gid:0,title:'Cases',rows:[headers]},{gid:944289437,title:'Rush',rows:[['File'],['FILE','MU101010','MU202020','MU586',now.slice(0,10),'LAX','PVG',now],['FILE','MU101010','MU202020','MU583',now.slice(0,10),'PVG','LAX',now]]}]);
+ const pir=await drive.appendCbsCase({caseType:'AHL',status:'Open',passengerName:'TEST',bagTag:'MU123456/MU654321',bagIdentifications:[{tag:'MU123456',color:'BK',type:'22'},{tag:'MU654321',color:'BU',type:'22'}],submittedAt:now});
+ await drive.correctCbsBagTag(pir.rowNumber,{source:'pir',oldTag:'MU123456',bagTag:'mu999999',updatedBy:'TEST'});
+ let row=(await drive.getCbsCases({forceRefresh:true})).find(x=>x.rowNumber===pir.rowNumber);assert.equal(row.bagTag,'MU999999/MU654321');assert.equal(row.status,'Open');assert.equal(row.bagIdentifications[0].tag,'MU999999');assert.equal(JSON.parse(row.originalFormData).bagTag,row.bagTag);assert.equal(row.updateEvents.at(-1).key,'bag-tag-correction');
+ await assert.rejects(drive.correctCbsBagTag(pir.rowNumber,{source:'pir',oldTag:'MU123456',bagTag:'MU333333'}),e=>e.status===409);
+ await assert.rejects(drive.correctCbsBagTag(2,{oldTag:'MU111111',bagTag:'MU222222'}),e=>e.status===409);
+ await assert.rejects(drive.correctCbsBagTag(2,{oldTag:'MU111111',bagTag:'bad'}),e=>e.status===400);
+ await drive.correctCbsBagTag(2,{oldTag:'MU111111',bagTag:'MU333333',updatedBy:'TEST'});row=(await drive.getCbsUnresolvedBaggageCases({includeResolved:true,forceRefresh:true})).find(x=>x.rowNumber===2);assert.equal(row.bagTag,'MU333333');assert.equal(row.location,'Office');assert.equal(row.resolvedAt,'');assert.equal(row.updateEvents.at(-1).by,'TEST');
+ await drive.correctCbsBagTag(2,{source:'wrongBaggage',oldTag:'MU123456',bagTag:'MU888888'});const wrong=s.get(storage.book,'Wrong!A2:L2').data.values[0];assert.equal(wrong[3],'12A');assert.equal(wrong[4],'MU888888');assert.equal(wrong[1],'Open');
+ await drive.updateCbsUnresolvedBaggageRush(2,{originalTagNumber:'MU333333',rushTagNumber:'MU444444'},'TEST');
+ await drive.correctCbsBagTag(2,{field:'rushTagNumber',oldTag:'MU444444',bagTag:'MU555555'});row=(await drive.getCbsUnresolvedBaggageCases({includeResolved:true,forceRefresh:true})).find(x=>x.rowNumber===2);assert.equal(row.rushTagNumber,'MU555555');assert.equal(row.bagTag,'MU333333');
+ await drive.correctCbsBagTag('2,3',{source:'rush',field:'originalTagNumber',oldTag:'MU101010',bagTag:'MU303030',updatedBy:'TEST'});let rush=s.get(storage.book,'Rush!A2:H3').data.values;assert(rush.every(x=>x[1]==='MU303030'));assert.equal(rush[0][3],'MU586');assert.equal(rush[1][3],'MU583');assert.equal(s.db.prepare('SELECT new_tag FROM cbs_tag_corrections').get().new_tag,'MU303030');
+ const original=s.update.bind(s),before=s.get(storage.book,'Rush!A2:H3').data.values;let writes=0;s.update=(...args)=>{if(args[1].startsWith("'Rush'!")&&++writes===2)throw Error('disk failure');return original(...args);};
+ await assert.rejects(drive.correctCbsBagTag('2,3',{source:'rush',field:'rushTagNumber',oldTag:'MU202020',bagTag:'MU404040'}),/disk failure/);s.update=original;assert.deepEqual(s.get(storage.book,'Rush!A2:H3').data.values,before);
+ const revision=s.revision();await assert.rejects(drive.correctCbsBagTag(2,{oldTag:'MU111111',bagTag:'MU444444'}),e=>e.status===409);assert.equal(s.revision(),revision);s.db.close();
+});
