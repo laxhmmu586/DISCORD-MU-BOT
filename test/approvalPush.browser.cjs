@@ -13,7 +13,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const origin='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
-  const page=await browser.newPage();await page.goto(origin);await page.waitForFunction(()=>typeof window.mufcDisablePush==='function');
+  const page=await browser.newPage();await page.addInitScript(()=>{Object.defineProperty(navigator,'userAgent',{value:'Mozilla iPhone'});Object.defineProperty(navigator,'standalone',{value:true});});await page.goto(origin);await page.waitForFunction(()=>typeof window.mufcDisablePush==='function');
   assert.equal(await page.evaluate(()=>permissionCalls),0);await page.locator('.login-button').click();
   const order=await page.locator('.login-menu button').evaluateAll(els=>els.filter(e=>!e.hidden).map(e=>e.id));assert.equal(order.indexOf('enable-notifications')+1,order.indexOf('logout'));
   const toggle=page.getByRole('switch',{name:'Notifications',exact:true});assert.equal(await toggle.getAttribute('aria-checked'),'false');

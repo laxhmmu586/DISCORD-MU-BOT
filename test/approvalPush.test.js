@@ -6,19 +6,19 @@ function fixture(t){
  const seed=['Agent','Supervisor','Manager','Supervisor'].map((position,i)=>({id:'e'+i,name:'Person '+i,position,eid:'00'+i,phone:'6268891216',attach:false,detach:false,spotter:false,station:'LAX',account:i===3?'CZ':'MU',email:'person'+i+'@example.test',companyEmail:'person'+i+'@example.test',loginId:'person'+i+'@example.test'}));
  const employees={...createEmployeeStore(db,{seed}),db},profiles=createProfileStore(employees),users=seed.map(e=>({uid:e.id,email:e.loginId,provider:'password'}));users.forEach(u=>profiles.status(u));
  const sent=[],service=createPushService({db,env:{},send:async(token,payload)=>sent.push({token,payload})});
- const device=(uid,token)=>db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,1)').run(token,uid,crypto.randomUUID(),token,'web','','now','now');
+ const device=(uid,token,platform='ios-pwa')=>db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,1)').run(token,uid,crypto.randomUUID(),token,platform,'','now','now');
  t.after(()=>{service.close();db.close();});return {db,employees,profiles,users,sent,service,device};
 }
 const uniformBody=()=>({workflowRevision:3,route:[{id:'template-3-0',position:'Supervisor',employeeId:'e1'},{id:'template-3-1',position:'Manager',employeeId:'e2'}],requestId:crypto.randomUUID(),reason:'annual',items:Array.from({length:6},(_,i)=>({size:i===0?'38':'',pieces:i===0?2:'',order:'',reusable:'',nonReusable:''}))});
 test('real approval permissions, multi-device, stage progression, retries and restarts do not broadcast or duplicate',async t=>{
  const f=fixture(t),store=require('../has/server/uniformRequests').createUniformStore(f);
  attachPush(store,{db:f.db,source:'uniform',read:(u,id)=>store.read(u,id)});
- f.device('e1','supervisor-phone');f.device('e1','supervisor-desktop');f.device('e2','manager');f.device('e3','other-account');
+ f.device('e1','supervisor-phone');f.device('e1','supervisor-desktop','Win32');f.device('e2','manager');f.device('e3','other-account');
  const body=uniformBody(),r=store.create(f.users[0],body);await f.service.flush();
- assert.deepEqual(f.sent.map(s=>s.token).sort(),['supervisor-desktop','supervisor-phone']);
- store.create(f.users[0],body);store.list(f.users[1]);await f.service.flush();assert.equal(f.sent.length,2);
+ assert.deepEqual(f.sent.map(s=>s.token).sort(),['supervisor-phone']);
+ store.create(f.users[0],body);store.list(f.users[1]);await f.service.flush();assert.equal(f.sent.length,1);
  assert.throws(()=>store.decide(f.users[2],r.id,{revision:1,action:'approve'}));assert.equal(f.db.prepare('SELECT COUNT(*) n FROM approval_push_outbox').get().n,1);
- store.decide(f.users[1],r.id,{revision:1,action:'approve'});await f.service.flush();assert.equal(f.sent[2].token,'manager');
+ store.decide(f.users[1],r.id,{revision:1,action:'approve'});await f.service.flush();assert.equal(f.sent[1].token,'manager');
  f.service.close();const restarted=createPushService({db:f.db,env:{},send:async()=>assert.fail('restart duplicated delivery')});attachPush(store,{db:f.db,source:'uniform',read:(u,id)=>store.read(u,id)});await restarted.flush();restarted.close();
 });
 test('outbox rolls back with failed writes; withdrawn/completed tasks are rechecked before sending',async t=>{
@@ -66,7 +66,7 @@ test('device API binds tokens to authenticated user, preserves other devices and
  const f=fixture(t);f.service.close();const app=express(),service=registerPush(app,{employees:f.employees,profiles:f.profiles,authenticate:async req=>{const u=f.users.find(u=>req.headers.authorization===u.uid);if(!u)throw Error('auth');return u;},env:{}});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{service.close();server.closeAllConnections();server.close();});const base='http://127.0.0.1:'+server.address().port;
  const call=(uid,body)=>fetch(base+'/notification-api/device',{method:'POST',headers:{Authorization:uid,'Content-Type':'application/json'},body:JSON.stringify(body)});
- const a={deviceId:crypto.randomUUID(),token:'a'.repeat(25)},b={deviceId:crypto.randomUUID(),token:'b'.repeat(25)};
+ const a={deviceId:crypto.randomUUID(),token:'a'.repeat(25),platform:'ios-pwa'},b={deviceId:crypto.randomUUID(),token:'b'.repeat(25),platform:'ios-pwa'};
  const state=async(uid,deviceId)=>(await fetch(base+'/notification-api/device?deviceId='+encodeURIComponent(deviceId),{headers:{Authorization:uid}})).json();
  assert.deepEqual(await state('e1',a.deviceId),{registered:false,enabled:false});
  assert.equal((await call('bad',a)).status,401);await call('e1',{...a,uid:'e2'});await call('e1',b);await call('e1',a);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM notification_tokens WHERE uid=?').get('e1').n,2);
@@ -76,4 +76,15 @@ test('device API binds tokens to authenticated user, preserves other devices and
  await call('e1',{deviceId:a.deviceId,enabled:false});assert.equal(f.db.prepare('SELECT SUM(enabled) n FROM notification_tokens').get().n,1);
  assert.deepEqual(await state('e1',a.deviceId),{registered:true,enabled:false});assert.deepEqual(await state('e1',b.deviceId),{registered:true,enabled:true});
  await call('e1',a);assert.deepEqual(await state('e1',a.deviceId),{registered:true,enabled:true});
+});
+test('desktop login registration cannot disable or consume delivery for the phone',async t=>{
+ const f=fixture(t);f.service.close();const app=express(),service=registerPush(app,{employees:f.employees,profiles:f.profiles,authenticate:async()=>f.users[1],env:{}});
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{service.close();server.closeAllConnections();server.close();});
+ const mobile={deviceId:crypto.randomUUID(),token:'phone'.repeat(8),platform:'ios-pwa',userAgent:'iPhone'};
+ const post=body=>fetch('http://127.0.0.1:'+server.address().port+'/notification-api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ await post(mobile);const desktop=await post({deviceId:crypto.randomUUID(),token:'desktop'.repeat(5),platform:'Win32',userAgent:'Windows NT'});assert.equal((await desktop.json()).mobileOnly,true);
+ assert.equal(f.db.prepare('SELECT COUNT(*) n FROM notification_tokens WHERE enabled=1').get().n,1);
+ service.resolvers.set('test',()=>({stage:'one'}));service.enqueue('test','request','one','e1',{type:'approval_required'});
+ // Use a deterministic transport while keeping the registered device records.
+ service.close();const sent=[],delivery=createPushService({db:f.db,env:{},send:async token=>sent.push(token)});delivery.resolvers.set('test',()=>({stage:'one'}));await delivery.flush();assert.deepEqual(sent,[mobile.token]);delivery.close();
 });

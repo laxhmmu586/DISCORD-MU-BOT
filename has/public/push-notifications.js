@@ -9,14 +9,16 @@
  const savePreference=value=>{try{localStorage.setItem(preferenceKey(),String(value));}catch{}};
  const base=(window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'');
  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const mobile=ios||/Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
- const supported=()=>window.isSecureContext&&'Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window;
+ const supported=()=>mobile&&window.isSecureContext&&'Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window;
  const device=()=>{let id=localStorage.getItem('mufc-push-device');if(!id){id=crypto.randomUUID();localStorage.setItem('mufc-push-device',id);}return id;};
  async function api(path,body,user=auth.currentUser){if(!user)throw Error('Please sign in first.');const response=await fetch(base+'/notification-api/'+path,{method:body?'POST':'GET',cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken(),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const result=await response.json();if(!response.ok)throw Error(result.error||'Unable to save notification settings.');return result;}
- function label(){button.setAttribute('aria-checked',String(Boolean(token&&supported()&&Notification.permission==='granted'&&!optedOut())));button.disabled=busy;}
+ function label(){button.setAttribute('aria-checked',String(Boolean(token&&supported()&&Notification.permission==='granted'&&!optedOut())));button.disabled=busy||!mobile;button.title=mobile?'':'Push notifications are delivered to your phone only.';}
  function loadSDK(){if(firebase.messaging)return Promise.resolve();return new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js';script.onload=resolve;script.onerror=()=>reject(Error('Unable to load notifications. Please retry.'));document.head.append(script);});}
  function sync(enable=false){if(stopping||!enable&&optedOut())return Promise.resolve();if(syncJob)return syncJob;syncJob=register(enable).finally(()=>{syncJob=null;});return syncJob;}
  async function register(enable){
+  if(!mobile){const id=localStorage.getItem('mufc-push-device');if(id&&auth.currentUser)await api('device',{deviceId:id,enabled:false});return;}
   const user=auth.currentUser;if(!user||!supported()||ios&&!standalone||Notification.permission!=='granted')return;
   if(!enable){const state=await api('device?deviceId='+encodeURIComponent(device()));if(stopping||auth.currentUser?.uid!==user.uid)return;if(state.registered&&!state.enabled){savePreference(false);token='';label();return;}}
   const config=await api('config');if(!config.configured)throw Error('Notifications are awaiting Firebase Web Push configuration.');
@@ -24,14 +26,14 @@
   messaging||=firebase.messaging();const registration=await navigator.serviceWorker.register('/firebase-messaging-sw.js',{scope:'/',updateViaCache:'none'});await registration.update();await navigator.serviceWorker.ready;
   const next=await messaging.getToken({vapidKey:config.vapidKey,serviceWorkerRegistration:registration});if(!next)throw Error('Unable to register this device. Please retry.');
   if(stopping||auth.currentUser?.uid!==user.uid)return;
-  await api('device',{deviceId:device(),token:next,platform:ios?'ios-pwa':navigator.platform,userAgent:navigator.userAgent},user);
+  await api('device',{deviceId:device(),token:next,platform:ios?'ios-pwa':'android-web',userAgent:navigator.userAgent},user);
   if(stopping||auth.currentUser?.uid!==user.uid){await api('device',{deviceId:device(),enabled:false},user);return;}
   token=next;savePreference(true);label();
  }
  const status=document.createElement('p');status.setAttribute('role','status');status.style.cssText='padding:0 18px;font-size:12px;line-height:1.5;max-width:270px';status.hidden=true;button.after(status);
  function tell(message){status.textContent=message;status.hidden=!message;}
  button.onclick=async()=>{
-  if(busy)return;
+  if(busy||!mobile)return;
   if(token){busy=true;label();tell('');try{await window.mufcDisablePush();}catch(error){tell(error.message);}finally{busy=false;label();}return;}
   if(ios&&!standalone){tell('To receive MUFC notifications on your iPhone, first add MUFC to your Home Screen.');return;}
   if(!supported()){tell('This browser does not support Web Push notifications.');return;}
@@ -49,5 +51,6 @@
  auth.onAuthStateChanged(user=>{stopping=false;token='';label();if(user)sync().catch(()=>{});});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync().catch(()=>{});});
  window.addEventListener('storage',event=>{if(event.key!==preferenceKey())return;if(event.newValue==='false'){stopping=true;token='';label();}else{stopping=false;sync().catch(()=>{});}});
+ if(!mobile)tell('Push notifications are delivered to your phone only.');
  label();
 })();
