@@ -23,12 +23,13 @@ function matchMaps(cases,onhand){
  for(const item of cases){const tag=rushTag(item);if(!tag)continue;const bag=onhand.find(row=>!row.resolvedAt&&String(row.bagTag||'').replace(/[^A-Z0-9]/gi,'').toUpperCase()===tag);if(bag){onHandMatches[item.rowNumber]={rowNumber:bag.rowNumber,bagTag:bag.bagTag};passengerMatches[bag.rowNumber]={rowNumber:item.rowNumber,bagTag:item.bagTag};}}
  return {onHandMatches,passengerMatches};
 }
-function counts(passenger,onhand,mainGid){
+function counts(passenger,onhand){
  const result={open:{passenger:0,'on-hand':0,'bag-room':0},closed:{}},bags=new Map();
- const bucket=(view,key)=>view==='open'?result.open:(result.closed[key]||=( {passenger:0,'on-hand':0,'bag-room':0}));
- for(const entry of passenger){const v=JSON.parse(entry.data),wrong=entry.gid!==mainGid;if(!v.some(Boolean))continue;const isClosed=closed({status:v[1]});let events=[];try{const parsed=JSON.parse(v[wrong?10:31]||'[]');if(Array.isArray(parsed))events=parsed;}catch{}const date=events.filter(e=>e.key==='closed').at(-1)?.at||v[wrong?8:27]||v[wrong?0:26]||'',key=isClosed?month(date):'';bucket(isClosed?'closed':'open',key).passenger++;}
- for(const entry of onhand){const v=JSON.parse(entry.data),tag=String(v[0]||'').trim().toUpperCase();if(!tag)continue;const row={bagType:v[4],status:v[5],resolution:v[8],resolvedAt:v[10]},bagRoom=notLoad(row);if(!bagRoom&&(String(v[6]||'').trim().toLowerCase()!=='office'||[v[4],v[5]].some(value=>['gate bag','co-mail'].includes(String(value||'').trim().toLowerCase()))))continue;const isClosed=closedOnHand(row),key=isClosed?month(v[10]):'',group=bagRoom?'bag-room':'on-hand',id=JSON.stringify([isClosed,key,group]);if(!bags.has(id))bags.set(id,{view:isClosed?'closed':'open',key,group,tags:new Set()});bags.get(id).tags.add(tag==='NO TAG'?'row:'+entry.row_no:tag);}
+ const bucket=(view,key)=>view==='open'?result.open:(result.closed[key]||={passenger:0,'on-hand':0,'bag-room':0});
+ for(const row of passenger){const isClosed=closed(row),key=isClosed?month(closedDate(row)):'';bucket(isClosed?'closed':'open',key).passenger++;}
+ for(const row of onhand){const tag=String(row.bagTag||'').trim().toUpperCase();if(!tag)continue;const bagRoom=notLoad(row);if(!bagRoom&&(String(row.location||'').trim().toLowerCase()!=='office'||[row.bagType,row.status].some(value=>['gate bag','co-mail'].includes(String(value||'').trim().toLowerCase()))))continue;const isClosed=closedOnHand(row),key=isClosed?month(row.resolvedAt):'',group=bagRoom?'bag-room':'on-hand',id=JSON.stringify([isClosed,key,group]);if(!bags.has(id))bags.set(id,{view:isClosed?'closed':'open',key,group,tags:new Set()});bags.get(id).tags.add(tag==='NO TAG'?'row:'+row.rowNumber:tag);}
  for(const bag of bags.values())bucket(bag.view,bag.key)[bag.group]=bag.tags.size;
  return result;
 }
+
 module.exports={select,closed,closedOnHand,notLoad,matchMaps,counts};

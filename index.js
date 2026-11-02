@@ -97,6 +97,7 @@ const {
   resolveCbsUnresolvedBaggageCase,
   reopenCbsUnresolvedBaggageCase,
   getCbsCases,
+  getCbsCaseCounts,
   updateCbsCase,
   deleteCbsCaseComment,
   getCbsMissingBagReports,
@@ -1050,9 +1051,9 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.get('/cbs-revision', (req,res) => {
+app.get('/cbs-revision', async (req,res) => {
   res.set('Cache-Control','no-store');
-  try {const storage=require('./cbsStorage');if(!storage.enabled())return res.status(503).json({error:'CBS SQLite migration is pending.'});storage.local().assertReady(storage.book);return res.json({revision:String(storage.local().revision()),modules:storage.revisions(),summary:storage.summary()});}
+  try {const storage=require('./cbsStorage');if(!storage.enabled())return res.status(503).json({error:'CBS SQLite migration is pending.'});storage.local().assertReady(storage.book);const caseCounts=await getCbsCaseCounts();return res.json({revision:String(storage.local().revision()),modules:storage.revisions(),summary:{...storage.summary(),caseCounts}});}
   catch(error){return res.status(503).json({error:error.message});}
 });
 app.get('/cbs-live-stream', (req, res) => {

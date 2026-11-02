@@ -5543,3 +5543,12 @@ for(const name of ['appendCbsCase','updateCbsCase','deleteCbsCaseComment','appen
   });cbsWriteQueue=pending.catch(()=>{});return pending;
  };
 }
+
+// Derive card counts from the same normalized records as the lists, including
+// historical event timestamps/statuses. Recompute once per database revision.
+let cbsCaseCountsCache=null,cbsCaseCountsPending=null;
+module.exports.getCbsCaseCounts=async()=>{
+ const revision=cbsStorage.local().revision();if(cbsCaseCountsCache?.revision===revision)return cbsCaseCountsCache.counts;
+ if(cbsCaseCountsPending)return cbsCaseCountsPending;
+ cbsCaseCountsPending=(async()=>{const [passenger,wrong,onhand]=await Promise.all([getCbsCases({forceRefresh:true}),getWrongBaggageSubmissions({forceRefresh:true}),getCbsUnresolvedBaggageCases({includeResolved:true,forceRefresh:true})]);const counts=require('./cbsModules').counts([...passenger,...wrong],onhand);if(cbsStorage.local().revision()===revision)cbsCaseCountsCache={revision,counts};return counts;})().finally(()=>{cbsCaseCountsPending=null;});return cbsCaseCountsPending;
+};
