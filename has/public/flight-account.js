@@ -5,6 +5,21 @@
   let profileGeneration=0;
   let activeScope=null;
   window.workspaceHeaders=()=>activeScope?{'X-Workspace-Account':JSON.stringify(activeScope)}:{};
+  const brandSelector='header a.home-brand,header a.profile-brand,header a.has-brand,header a.flight-brand,header a.brand';
+  const brandDefaults=new WeakMap();
+  function rememberBrand(link){if(!brandDefaults.has(link))brandDefaults.set(link,{href:link.getAttribute('href'),label:link.getAttribute('aria-label'),hidden:link.hidden});return brandDefaults.get(link);}
+  document.querySelectorAll(brandSelector).forEach(rememberBrand);
+  function updateBrandDestination(profile,user){
+    const normalize=value=>String(value||'').trim().toUpperCase();
+    const member=Boolean(user&&profile)&&(profile.canOpenFlights??[profile,...(Array.isArray(profile.additionalAccounts)?profile.additionalAccounts:[])].some(scope=>normalize(scope.station)==='LAX'&&normalize(scope.account)==='MU'));
+    const profileAllowed=Boolean(user)&&(!/^[^@\s]+@mu\.com$/i.test(user.email||'')||['lax@mu.com','lake@mu.com'].includes(String(user.email||'').trim().toLowerCase()));
+    for(const link of document.querySelectorAll(brandSelector)){
+      const original=rememberBrand(link);
+      if(member){link.setAttribute('href','/flights.html');link.setAttribute('aria-label','Open Flights');link.hidden=false;}
+      else{if(original.href===null)link.removeAttribute('href');else link.setAttribute('href',original.href);if(original.label===null)link.removeAttribute('aria-label');else link.setAttribute('aria-label',original.label);link.hidden=original.href==='/profile'?!profileAllowed:original.hidden;}
+    }
+  }
+  window.addEventListener('workspace-profile',event=>updateBrandDestination(event.detail.profile,event.detail.user));
 
   const loginOriginKey='mufc_login_origin';
   const readLoginOrigin=()=>{for(const storageName of ['localStorage','sessionStorage']){try{const value=window[storageName].getItem(loginOriginKey);if(value)return value;}catch{}}return '';};
