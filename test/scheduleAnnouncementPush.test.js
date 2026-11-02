@@ -6,7 +6,7 @@ async function fixture(t){
  const seed=[['agent','Agent','LAX','MU'],['sup','Supervisor','LAX','MU'],['outside','Agent','LAX','CZ'],['station','Agent','SFO','MU'],['blocked','Agent','LAX','MU']].map(([id,position,station,account])=>({id,name:id==='blocked'?'DEMO HAS':id,eid:id,position,station,account,loginId:id+'@example.test',attach:false,detach:false,spotter:false}));
  const employees={...createEmployeeStore(db,{seed}),db},profiles=createProfileStore(employees),users=seed.map(row=>({uid:row.id,email:row.loginId,provider:'password'}));users.forEach(user=>profiles.status(user));
  const sent=[],push=createPushService({db,env:{},send:async(token,payload)=>sent.push({token,payload})});
- const device=(uid,token,enabled=1)=>db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,?)').run(token,uid,crypto.randomUUID(),token,'web','','now','now',enabled);
+ const device=(uid,token,enabled=1)=>db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,?)').run(token,uid,crypto.randomUUID(),token,token==='desktop'?'Win32':'ios-pwa','','now','now',enabled);
  device('agent','phone');device('agent','desktop');device('sup','supervisor');device('outside','outside');device('station','station');device('blocked','blocked');device('agent','disabled',0);
  const app=express();app.use(express.json());const schedule=registerStaffSchedule(app,{employees,profiles,authenticate:async req=>{const user=users.find(u=>u.uid===req.headers.authorization);if(!user)throw Error('No user');return user;}});
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
@@ -22,7 +22,7 @@ test('successful announcements push once per enabled eligible device; invalid an
  assert.equal(f.db.prepare('SELECT COUNT(*) n FROM approval_push_outbox').get().n,0);
  const created=await f.post('sup',announcement());assert.equal(created.status,200);
  await f.push.flush();await f.push.flush();
- assert.deepEqual(f.sent.map(s=>s.token).sort(),['desktop','phone','supervisor']);
+ assert.deepEqual(f.sent.map(s=>s.token).sort(),['phone','supervisor']);
  for(const {payload} of f.sent){assert.equal(payload.type,'schedule_announcement');assert.equal(payload.requestId,created.data.id);assert.equal(payload.url,'/schedule');assert.equal(payload.title,announcement().title);assert.equal(payload.body,announcement().body);}
 });
 test('delivery rechecks expiry, deletion and current Schedule eligibility',async t=>{
@@ -57,8 +57,8 @@ test('Short date appearance pushes scoped announcements once, updates headcounts
  const original=f.push.flush;f.push.flush=async()=>{};
  const appearance={date,revision:day.revision,dateColor:null,labels:['Short'],shortRoles:[{code:'C',count:1}],shortRoleMode:'and'};
  let saved=await f.request('',appearance);assert.equal(saved.status,200);await original();
- assert.deepEqual(f.sent.map(s=>s.token).sort(),['desktop','phone','supervisor']);assert.match(f.sent[0].payload.body,/We need 1 C .*LAX \/ MU/);assert.equal(f.sent[0].payload.title,'You have a new announcement');
- appearance.revision=saved.data.revision;saved=await f.request('',appearance);assert.equal(saved.status,200);await original();assert.equal(f.sent.length,3);
+ assert.deepEqual(f.sent.map(s=>s.token).sort(),['phone','supervisor']);assert.match(f.sent[0].payload.body,/We need 1 C .*LAX \/ MU/);assert.equal(f.sent[0].payload.title,'You have a new announcement');
+ appearance.revision=saved.data.revision;saved=await f.request('',appearance);assert.equal(saved.status,200);await original();assert.equal(f.sent.length,2);
  appearance.revision=saved.data.revision;appearance.shortRoles=[{code:'C',count:2}];saved=await f.request('',appearance);assert.equal(saved.status,200);
- appearance.revision=saved.data.revision;appearance.labels=[];assert.equal((await f.request('',appearance)).status,200);await original();assert.equal(f.sent.length,3);
+ appearance.revision=saved.data.revision;appearance.labels=[];assert.equal((await f.request('',appearance)).status,200);await original();assert.equal(f.sent.length,2);
 });

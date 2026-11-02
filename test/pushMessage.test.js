@@ -32,3 +32,4 @@ test('approval and Read & Sign payloads keep their original envelope and click t
   const message=messageForDevice('device-token',data);assert.deepEqual(message.data,data);assert.equal(message.token,'device-token');assert.equal(message.webpush.headers.Urgency,'high');
  }
 });
+test('visible web clients never suppress the phone service-worker notification',async()=>{const worker=fs.readFileSync(require.resolve('../public/public/firebase-messaging-sw.js'),'utf8'),handlers={},shown=[];let done;vm.runInNewContext(worker,{self:{addEventListener:(name,handler)=>handlers[name]=handler,clients:{matchAll:async()=>[{visibilityState:'visible'}]},registration:{showNotification:async(title)=>shown.push(title)}}});handlers.push({data:{json:()=>({data:{type:'approval_required',title:'Phone notification'}})},waitUntil:promise=>done=promise});await done;assert.deepEqual(shown,['Phone notification']);});

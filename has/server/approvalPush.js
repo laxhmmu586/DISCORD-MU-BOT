@@ -1,3 +1,4 @@
+const {isMobileDevice}=require('./pushDevice');
 const crypto=require('node:crypto');
 const services=new WeakMap();
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
@@ -5,6 +6,7 @@ function createPushService({db,env=process.env,send}){
  db.exec(`CREATE TABLE IF NOT EXISTS notification_tokens(token_id TEXT PRIMARY KEY,uid TEXT NOT NULL,device_id TEXT NOT NULL,token TEXT NOT NULL,platform TEXT, user_agent TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,enabled INTEGER NOT NULL,UNIQUE(device_id));
  CREATE TABLE IF NOT EXISTS approval_push_outbox(event_key TEXT PRIMARY KEY,source TEXT NOT NULL,request_id TEXT NOT NULL,stage TEXT NOT NULL,uid TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,error TEXT);
  CREATE TABLE IF NOT EXISTS approval_push_delivery(event_key TEXT NOT NULL,token_id TEXT NOT NULL,status TEXT NOT NULL,error TEXT,PRIMARY KEY(event_key,token_id));`);
+ for(const device of db.prepare('SELECT token_id,platform,user_agent FROM notification_tokens WHERE enabled=1').all())if(!isMobileDevice(device))db.prepare('UPDATE notification_tokens SET enabled=0 WHERE token_id=?').run(device.token_id);
  const resolvers=new Map(),filters=new Map();let running=false,client;
  const configured=()=>Boolean(env.FCM_VAPID_PUBLIC_KEY&&env.FCM_VAPID_PUBLIC_KEY!=='PASTE_YOUR_FIREBASE_WEB_PUSH_PUBLIC_KEY_HERE');
  const transmit=send|| (async(token,data)=>{
@@ -20,7 +22,7 @@ function createPushService({db,env=process.env,send}){
    if(!current||current.stage!==job.stage){db.prepare("UPDATE approval_push_outbox SET status='obsolete' WHERE event_key=?").run(job.event_key);continue;}
    let enabled=true;try{for(const filter of filters.values())if(!filter(job.uid,JSON.parse(job.payload)))enabled=false;}catch{enabled=false;}
    if(!enabled){db.prepare("UPDATE approval_push_outbox SET status='suppressed' WHERE event_key=?").run(job.event_key);continue;}
-   for(const device of db.prepare('SELECT * FROM notification_tokens WHERE uid=? AND enabled=1').all(job.uid)){
+   for(const device of db.prepare('SELECT * FROM notification_tokens WHERE uid=? AND enabled=1').all(job.uid).filter(isMobileDevice)){
     if(require('./employeeAccountStatus').blocked(db,{uid:job.uid}))break;
     // Claim before sending: an ambiguous network response must never cause a duplicate.
     if(!db.prepare("INSERT OR IGNORE INTO approval_push_delivery VALUES(?,?,'sending',NULL)").run(job.event_key,device.token_id).changes)continue;
@@ -44,10 +46,11 @@ function registerPush(app,{employees,profiles,authenticate,env=process.env}){
   res.json({registered:Boolean(row),enabled:row?.enabled===1});
  });
  app.post('/notification-api/device',(req,res)=>{
-  const {deviceId,token,enabled=true,platform,userAgent}=req.body||{};
+  const {deviceId,token,enabled=true,platform,userAgent}=req.body||{};const agent=String(req.get('user-agent')||userAgent||'').slice(0,500);
   if(typeof deviceId!=='string'||!/^[a-f0-9-]{36}$/i.test(deviceId)||(enabled!==false&&(typeof token!=='string'||token.length<20||token.length>4096)))return res.status(400).json({error:'Invalid notification device.'});
   if(enabled===false){db.prepare('UPDATE notification_tokens SET enabled=0,updated_at=? WHERE uid=? AND device_id=?').run(new Date().toISOString(),req.pushUser.uid,deviceId);return res.json({ok:true});}
-  const at=new Date().toISOString();db.transaction(()=>{db.prepare('DELETE FROM notification_tokens WHERE device_id=? AND token_id<>?').run(deviceId,hash(token));db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,1) ON CONFLICT(token_id) DO UPDATE SET uid=excluded.uid,device_id=excluded.device_id,platform=excluded.platform,user_agent=excluded.user_agent,updated_at=excluded.updated_at,enabled=1').run(hash(token),req.pushUser.uid,deviceId,token,String(platform||'web').slice(0,100),String(userAgent||'').slice(0,500),at,at);})();res.json({ok:true});
+  if(!isMobileDevice({platform,userAgent:agent})){db.prepare('UPDATE notification_tokens SET enabled=0,updated_at=? WHERE uid=? AND device_id=?').run(new Date().toISOString(),req.pushUser.uid,deviceId);return res.json({ok:true,enabled:false,mobileOnly:true});}
+  const at=new Date().toISOString();db.transaction(()=>{db.prepare('DELETE FROM notification_tokens WHERE device_id=? AND token_id<>?').run(deviceId,hash(token));db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,1) ON CONFLICT(token_id) DO UPDATE SET uid=excluded.uid,device_id=excluded.device_id,platform=excluded.platform,user_agent=excluded.user_agent,updated_at=excluded.updated_at,enabled=1').run(hash(token),req.pushUser.uid,deviceId,token,String(platform||'web').slice(0,100),agent,at,at);})();res.json({ok:true});
  });return service;
 }
 // Wrap only successful mutations, with the outbox insert in the same outer transaction.

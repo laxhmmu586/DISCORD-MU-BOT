@@ -7,7 +7,7 @@ function fixture(t){
  rows.push({id:'extra',name:'Second account person',position:'Agent',station:'SFO',account:'CZ',additionalAccounts:[{station:'LAX',account:'MU'}],eid:'extra',loginId:'extra@example.test'});
  const employees={...createEmployeeStore(db,{seed:rows}),db},profiles=createProfileStore(employees),users=Object.fromEntries(rows.map(row=>[row.id,{uid:row.id,email:row.loginId,provider:'password'}]));Object.values(users).forEach(user=>profiles.status(user));
  let at=new Date('2026-11-01T17:00:00Z');const sent=[],push=createPushService({db,env:{},send:async(token,payload)=>sent.push({token,payload})});
- for(const user of Object.values(users))db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,1)').run(user.uid,user.uid,crypto.randomUUID(),user.uid,'web','','now','now');
+ for(const user of Object.values(users))db.prepare('INSERT INTO notification_tokens VALUES(?,?,?,?,?,?,?,?,1)').run(user.uid,user.uid,crypto.randomUUID(),user.uid,'ios-pwa','','now','now');
  const store=createNotificationCenter({db,employees,profiles,push,now:()=>at});t.after(()=>{push.close();db.close();});return {db,employees,profiles,users,push,store,sent,now:()=>at,setTime:value=>at=new Date(value)};
 }
 const MU={type:'account',station:'LAX',account:'MU'},CZ={type:'account',station:'LAX',account:'CZ'},LAX={type:'station',station:'LAX'},COMPANY={type:'company'};
