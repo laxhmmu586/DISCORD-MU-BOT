@@ -5552,3 +5552,12 @@ module.exports.getCbsCaseCounts=async()=>{
  if(cbsCaseCountsPending)return cbsCaseCountsPending;
  cbsCaseCountsPending=(async()=>{const [passenger,wrong,onhand]=await Promise.all([getCbsCases({forceRefresh:true}),getWrongBaggageSubmissions({forceRefresh:true}),getCbsUnresolvedBaggageCases({includeResolved:true,forceRefresh:true})]);const counts=require('./cbsModules').counts([...passenger,...wrong],onhand);if(cbsStorage.local().revision()===revision)cbsCaseCountsCache={revision,counts};return counts;})().finally(()=>{cbsCaseCountsPending=null;});return cbsCaseCountsPending;
 };
+
+module.exports.sendExpressConnectionEmail=async({subject,text,pdfBuffer,filename})=>{
+ let gmail,userId;try{({gmail,userId}=getNextDayInfoGmailClient());}catch{throw Object.assign(Error('Email configuration is unavailable.'),{definitelyNotSent:true});}
+ const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const html=text.split('\n').map(line=>line?'<p><strong>'+escape(line)+'</strong></p>':'').join('');
+ const raw=buildRawCbsEmail({to:require('./has/server/expressModel').RECIPIENT,subject,text,html,pdfBuffer,filename});
+ try{const result=await gmail.users.messages.send({userId,requestBody:{raw:base64UrlEncode(raw)}},{timeout:30000});return {id:result.data.id||''};}
+ catch(error){const status=Number(error.response?.status||error.code);if(status>=400&&status<500)error.definitelyNotSent=true;throw error;}
+};
