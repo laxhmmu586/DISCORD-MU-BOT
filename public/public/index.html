@@ -5303,7 +5303,7 @@
       async function fetchSearch(query, options = {}) {
         const apiBase = resolveApiBase();
         const cacheBust = options.realtime ? `&_=${Date.now()}` : "";
-        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}${cacheBust}`;
+        const endpoint = `${apiBase}/search?q=${encodeURIComponent(query)}${options.core ? "&core=1" : ""}${cacheBust}`;
         const res = await fetch(endpoint, { cache: "no-store", headers: await authHeaders(), signal: options.signal });
         const type = res.headers.get("content-type") || "";
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -6635,11 +6635,18 @@
         return ["CC", "INITIAL_FLIGHT", "BDT_CHG"].every((key) => document.querySelector(`.node[data-key="${key}"]`)?.dataset.status === "done");
       }
 
+      function allOperationModulesComplete() {
+        const sy=currentSy||window.mufcFlight;if(!sy?.flightNo||!sy?.flightDate)return false;
+        const saved=completedSyNodeState(sy),steps=sy.crewApis?.steps||[];
+        return PERSISTENT_GREEN_NODE_KEYS.every(key=>saved[key]?.complete||(key==='FSC'?isFscRateSheetFilled(sy.fscRateSheetSync||{}):steps.some(step=>step.key===(nodeKeyMap[key]||key)&&step.complete)));
+      }
+
       function stopSyAutoRefreshWhenFinalNodesComplete() {
-        // Keep the home dashboard refreshing every 30 seconds even after final timeline nodes complete.
+        if(allOperationModulesComplete())stopSyAutoRefresh();
       }
 
       async function refreshSy({ silent = true, background = false } = {}) {
+        if(allOperationModulesComplete()){stopSyAutoRefresh();return;}
         if (document.hidden) return;
         if (!isTodaySyQuery(activeSyQuery)) {
           stopSyAutoRefresh();
@@ -6656,7 +6663,8 @@
         if (showLoading) setLoadingState(true);
         const refreshQuery = activeSyQuery || "SY";
         try {
-          const data = await fetchSearch(refreshQuery, { signal: refreshAbortController.signal, realtime: true });
+          const initialCore = !currentSy;
+          const data = await fetchSearch(refreshQuery, { signal: refreshAbortController.signal, realtime: true, core:initialCore });
           if (refreshQuery !== activeSyQuery || !isTodaySyQuery(activeSyQuery)) return;
           if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
           if (isSyRefreshProtectedView()) {
@@ -6665,6 +6673,7 @@
           }
           pendingSyRefresh = null;
           updateFlightFromSy(data.sy, { skipUnchanged: true });
+          if(initialCore)setTimeout(()=>{if(currentSy&&activeSyQuery===refreshQuery)void refreshSy({background:true});},0);
         } catch (error) {
           if (error?.name === "AbortError") return;
           if (!silent) console.warn("Unable to load today's SY data.", error);
@@ -6679,6 +6688,7 @@
       function startSyAutoRefresh(query = activeSyQuery, { immediate = true } = {}) {
         activeSyQuery = normalizeSyQuery(query || "SY");
         stopSyAutoRefresh();
+        if(allOperationModulesComplete())return;
         if (!isTodaySyQuery(activeSyQuery)) return;
         if (immediate) refreshSy({ background: true });
         if (!document.hidden) {
@@ -9073,7 +9083,13 @@
             window.location.replace(loginUrl());
             return;
           }
+          const selected=window.mufcFlight;
+          const initialSnapshot=selected?apiJson(`/dashboard-snapshot?flightNo=${encodeURIComponent(selected.flightNo)}&flightDate=${encodeURIComponent(selected.flightDate)}`).catch(()=>null):Promise.resolve(null);
           if(!await window.loadDashboardProfile(user))return;
+          if(allOperationModulesComplete()){updateFlightFromSy({flightNo:selected.flightNo,flightDate:selected.flightDate,crewApis:{steps:[]}});setLoadingState(false);}
+          const first=await initialSnapshot;
+          if(first?.sy){updateFlightFromSy(first.sy);setLoadingState(false);}
+          else if(allOperationModulesComplete()){updateFlightFromSy({flightNo:selected.flightNo,flightDate:selected.flightDate,crewApis:{steps:[]}});setLoadingState(false);}
           startInactivityWatch();
           refreshMissingBagNode();
           queryInput.value = "SY";

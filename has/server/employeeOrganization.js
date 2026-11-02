@@ -1,5 +1,6 @@
 const model=require('../public/organization-model');
 const positions=require('../public/employee-positions');
+const accountGroups=require('../public/employee-account-groups');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseDirectory}){
   const db=store.db;
@@ -34,6 +35,11 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseD
     if(!body.changes||Object.keys(body.changes).some(key=>!allowed.includes(key)))fail('Invalid employee changes.');
     if(access.mode!=='admin'&&Object.hasOwn(body.changes,'additionalAccounts'))fail('Only an administrator can change additional accounts.',403);
     const next={...original,...body.changes};
+    if(accountGroups.normalize(next.station)!==accountGroups.normalize(original.station))fail('Main account must remain in this employee’s station.',403);
+    if(Object.hasOwn(body.changes,'additionalAccounts')){
+      if(!Array.isArray(next.additionalAccounts))fail('Choose valid additional accounts.');
+      if(next.additionalAccounts.some(scope=>accountGroups.normalize(scope?.station)!==accountGroups.normalize(original.station)&&!(original.additionalAccounts||[]).some(previous=>accountGroups.same(previous,scope))))fail('Additional accounts must belong to this employee’s station.',403);
+    }
     if(!model.titlesFor(original,access,all).includes(positions.normalize(next.position)))fail('Choose a permitted title below the reporting manager and above direct reports.',403);
     if(!String(next.name||'').trim())fail('Enter the employee name.');
     if(access.mode!=='admin'&&(next.station!==original.station||next.account!==original.account))fail('Only an administrator can change main accounts.',403);

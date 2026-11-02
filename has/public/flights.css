@@ -36,20 +36,20 @@ body.mu-external-services .flight-services a{display:flex;order:0;flex:0 0 112px
 
 
 /* Flight card only: dark glass, a fine luminous rim and a quiet lower-right wave. */
-.flight-card,.flight-card.is-active,.flight-card:focus-within,.flight-card:hover{width:360px;max-width:calc(100vw - 32px);min-height:306px;padding:28px 27px 23px;border:1px solid #66b7eb8c;border-radius:23px;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at 0 0,#25558724,transparent 65%),linear-gradient(145deg,#07172de8,#020b1eeb 70%,#061731e8);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:inset 0 1px 8px #a5dcff17,0 0 4px #2d9fff55,0 8px 26px #0008;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,background-color .2s ease}
-.flight-card::before{content:"";position:absolute;z-index:-1;pointer-events:none;width:145%;height:290px;left:-38%;bottom:-8px;border-radius:50%;border-bottom:2px solid #32b7ff;transform:rotate(-10deg);box-shadow:0 7px 16px 1px #146bff50;filter:blur(1.3px);opacity:.28}
-.flight-card::after{content:"";position:absolute;z-index:-1;pointer-events:none;inset:50% -10% -25% 25%;background:radial-gradient(ellipse at 65% 85%,#176cff50,transparent 65%);filter:blur(12px);opacity:.5}
-.flight-card.is-active,.flight-card:focus-within{border-color:#b7eaff;box-shadow:inset 0 0 10px #229fff35,0 0 5px #48c1ffb0,0 0 18px #138bff60,0 10px 28px #0008}
-.flight-card.is-active::before,.flight-card:focus-within::before{opacity:.48}
-.flight-card.is-active::after,.flight-card:focus-within::after{opacity:.75}
-.flight-card:hover{transform:translateY(-3px);border-color:#a4dfff;background-color:#0b2443;box-shadow:inset 0 0 10px #229fff30,0 0 7px #48c1ff99,0 0 24px #138bff55,0 12px 30px #0009}
-.flight-card h2{font-size:64px;line-height:1.12;font-weight:800;letter-spacing:-1.8px;margin:18px 0 7px;color:#f8fbff;text-align:left;text-shadow:0 2px 12px #5d90cc16}
-.flight-card .flight-date{font-size:17px;line-height:1.4;letter-spacing:4.5px;color:#9dbbdf;margin:0;text-align:left}
-.flight-card-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin-top:29px}
-.flight-card .flight-card-actions .flight-enter{position:relative;display:block;width:100%;min-height:44px;margin:0;padding:11px 8px;border:1px solid #9ed5ff;border-radius:10px;background:linear-gradient(#247fef,#0861d7);color:#fff;box-shadow:inset 0 1px 4px #c5eaff50,0 0 10px #087fff40;font-size:11px;line-height:1.4;font-weight:700;white-space:nowrap;text-align:center}
-.flight-card .flight-card-actions .flight-enter-boarding{background:linear-gradient(#153251,#0b1c37);border-color:#6390b9;box-shadow:inset 0 1px 3px #c5eaff20}
+.flight-card,.flight-card.is-active,.flight-card:focus-within,.flight-card:hover{width:360px;max-width:calc(100vw - 32px);min-height:290px;padding:25px 27px 23px;border:1px solid #b7edff;border-radius:23px;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at 0 0,#2366b869 0%,#17437d2e 32%,transparent 65%),linear-gradient(145deg,#061b3af5,#03112af9 40%,#020d23fb 75%,#041743f7);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:inset 0 0 12px #008cff55,0 0 4px #45d1ff,0 0 13px #087fff99,0 0 26px #0066ff55,0 8px 26px #0008;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,background-color .2s ease}
+.flight-card::before{content:"";position:absolute;z-index:-1;pointer-events:none;width:145%;height:160px;left:-38%;bottom:-8px;border-radius:50%;border-bottom:2px solid #a2efff;transform:rotate(-5deg);box-shadow:0 2px 5px #13b9ff,0 7px 17px 2px #086bffb0;filter:blur(.45px);clip-path:inset(50% -20% -20% -20%);opacity:.64}
+.flight-card::after{content:"";position:absolute;z-index:-1;pointer-events:none;inset:50% -10% -25% 25%;background:radial-gradient(ellipse at 65% 85%,#096bffb0,transparent 68%);filter:blur(12px);opacity:.72}
+.flight-card.is-active,.flight-card:focus-within{border-color:#edfcff;box-shadow:inset 0 0 14px #008cff85,0 0 4px #76e5ff,0 0 11px #009fff,0 0 27px #006bff99,0 10px 28px #0008}
+.flight-card.is-active::before,.flight-card:focus-within::before{opacity:.95}
+.flight-card.is-active::after,.flight-card:focus-within::after{opacity:1}
+.flight-card:hover{transform:translateY(-3px);border-color:#e9fcff;background-color:#0b2443;box-shadow:inset 0 0 15px #009cff88,0 0 5px #6bdfff,0 0 14px #008cff,0 0 32px #006bff99,0 12px 30px #0009}
+.flight-card h2{font-size:64px;line-height:1.05;font-weight:800;letter-spacing:-1.8px;margin:14px 0 5px;color:#f8fbff;text-align:left;text-shadow:0 2px 12px #5d90cc16}
+.flight-card .flight-date{font-size:17px;line-height:1.4;letter-spacing:4.5px;color:#8dbdff;margin:0;text-align:left}
+.flight-card-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:25px}
+.flight-card .flight-card-actions .flight-enter{position:relative;display:block;width:100%;min-height:44px;margin:0;padding:11px 8px;border:1px solid #d5faff;border-radius:10px;background:linear-gradient(#37b4ff 0%,#117cff 24%,#0059e9 75%,#0977ff);color:#fff;box-shadow:inset 0 1px 6px #d5faffbf,inset 0 -2px 8px #00adff80,0 0 5px #18bfff,0 0 16px #087fff80;font-size:13px;line-height:1.4;font-weight:700;white-space:nowrap;text-align:center}
+.flight-card .flight-card-actions .flight-enter-boarding{background:linear-gradient(#1e4d83,#071a38 65%,#0b2d5d);border-color:#78c9ff;box-shadow:inset 0 1px 5px #92d8ff45,inset 0 -3px 9px #097fff45,0 0 7px #097fff30}
 .flight-card .flight-pbb-link{position:absolute;right:18px;top:16px;display:grid;place-items:center;width:42px;height:42px;padding:1px;border:0;border-radius:10px;background:transparent;transform:none}
-.flight-card .flight-pbb-link img{display:block;width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 5px #3c9cff50)}
+.flight-card .flight-pbb-link img{display:block;width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 0 3px #b7edff90) drop-shadow(0 0 7px #008cff90)}
 .flight-card-actions>:focus-visible,.flight-card .flight-pbb-link:focus-visible{outline:2px solid #c7eeff;outline-offset:3px}
 .flight-card-actions>:hover,.flight-card .flight-pbb-link:hover{filter:brightness(1.12)}
 @media(max-width:760px){.flight-card,.flight-card.is-active,.flight-card:focus-within,.flight-card:hover{width:360px;min-height:240px;padding:25px 22px 22px}.flight-card h2{font-size:56px}.flight-card .flight-date{font-size:15px;letter-spacing:4px}.flight-card-actions{margin-top:29px}.flight-card .flight-card-actions .flight-enter:not(.flight-enter-boarding){display:none}}

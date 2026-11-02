@@ -2,7 +2,7 @@
   const cards = document.querySelector('.flight-cards'), status = document.querySelector('#flight-status'), reload = document.querySelector('#flight-reload');
   const escape = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const enter = flight => { if(renderedDate!==today()){void refresh(true);return;}window.setMufcFlight({...flight, source:'current'}); location.assign('/index.html'); };
-  let running = false, signature = '',revision='',userId='',queuedRevision='';
+  let running = false, signature = '',revision='',userId='';
   const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const cacheKey=()=>`mufc.flight-list.v1:${userId}:${today()}`;
   function restore(){try{const saved=JSON.parse(localStorage.getItem(cacheKey()));if(saved?.date===today()&&Array.isArray(saved.flights)){paint(saved.flights);revision=saved.revision||'';finishLoading();return true;}}catch{}return false;}
@@ -26,13 +26,7 @@
       status.textContent = flights.length ? `${flights.length} flight${flights.length === 1 ? '' : 's'} departing LAX today` : 'No LAX departure SY record found for today. Refresh after today’s logs are available.';
       if (!flights.length) cards.innerHTML = `<div class="flight-empty"><h2>No flights detected</h2><p>MU586 · MU9586 · MU578 · MU9578<br>Only today's LAX departures found in today’s SY logs appear here.</p></div>`;
   }
-  let stream=null,renderedDate='';
-  const closeStream=()=>{stream?.close();stream=null;};
-  function connect(){
-    closeStream();if(document.hidden||!window.EventSource)return;
-    stream=new EventSource((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/flights/live-stream');
-    stream.addEventListener('flights',event=>{try{const update=JSON.parse(event.data);if(update.revision!==revision){if(running)queuedRevision=update.revision;else void refresh();}}catch{}});
-  }
+  let renderedDate='';
   const loader = document.querySelector('.flight-loading');
   const finishLoading = () => { loader.hidden = true; document.body.classList.remove('is-loading'); cards.setAttribute('aria-busy','false'); };
   async function refresh(showLoading = false) {
@@ -46,18 +40,14 @@
       paint(data.flights);revision=data.revision||'';
       try{localStorage.setItem(cacheKey(),JSON.stringify({date:today(),flights:data.flights,revision}));}catch{}
     } catch (error) { status.hidden = false; if(!signature)cards.innerHTML = '<div class="flight-empty"><h2>Flights unavailable</h2><p>Please refresh to try again.</p></div>'; status.textContent = error.message; }
-    finally { running = false; reload.disabled = false; finishLoading();if(queuedRevision){const nextRevision=queuedRevision;queuedRevision='';if(nextRevision!==revision)void refresh();} }
+    finally { running = false; reload.disabled = false; finishLoading(); }
   }
   reload.onclick = () => refresh(true);
   if (!window.firebase?.apps?.length) { status.textContent = 'Unable to initialize sign-in. Please reload.'; finishLoading(); return; }
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)closeStream();else if(firebase.auth().currentUser){if(renderedDate!==today()){signature='';cards.replaceChildren();void refresh();}connect();}});
-  window.addEventListener('pagehide',closeStream);
   firebase.auth().onAuthStateChanged(user => {
-    closeStream();
     if (!user) { location.replace('/login.html?next='+encodeURIComponent(location.pathname+location.search)); return; }
 
     userId=user.uid||user.email||'';
     if(!restore())void refresh();
-    connect();
   }, error => { status.textContent = error.message || 'Unable to check sign-in. Please reload.'; finishLoading(); });
 })();
