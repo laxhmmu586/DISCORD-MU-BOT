@@ -9,7 +9,12 @@
   document.body.append(button);
  }
  const auth=window.firebase?.apps?.length&&firebase.auth();
- if(!button||!auth){document.body.removeAttribute('data-permission-pending');return;}
+ if(!button||!auth){
+  const notice=document.querySelector('.workspace-permission-notice');
+  if(notice)notice.textContent='Unable to initialize sign-in. Please reload.';
+  else document.body.removeAttribute('data-permission-pending');
+  return;
+ }
  const path=button.dataset.pagePermissions;
  async function request(body,endpoint=path){
   const user=auth.currentUser;if(!user)throw Error('Sign in required.');
@@ -19,7 +24,7 @@
   return response.json();
  }
  if(workspace){
-  const notice=document.createElement('p');
+  const notice=document.querySelector('.workspace-permission-notice')||document.createElement('p');
   notice.className='workspace-permission-notice';notice.setAttribute('role','status');
   notice.textContent='Checking page access...';document.body.append(notice);
   auth.onAuthStateChanged(async user=>{
