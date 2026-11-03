@@ -98,13 +98,28 @@
     const stations=[...priority.filter(station=>accountsByStation.has(station)),
       ...[...accountsByStation.keys()].filter(station=>!priority.includes(station)).sort((a,b)=>a.localeCompare(b))];
     const accountList=$('#org-accounts');
-    const expanded=new Set([...accountList.querySelectorAll('details[open]')].map(section=>section.dataset.station));
-    accountList.innerHTML=stations.map(station=>{
-      const accounts=accountsByStation.get(station);
-      return `<details class="hr-account-region" data-station="${escape(station)}" ${expanded.has(station)?'open':''}><summary class="hr-account-open"><strong>${escape(station==='HQ'?'Headquarter':station)}</strong><span>${accounts.length} ${accounts.length===1?'account':'accounts'}</span></summary><div>${accounts.map(account=>{
+    const selected=accountList.dataset.station;
+    if(!accountsByStation.has(selected)){
+      accountList.innerHTML=`<section class="hr-account-region"><div>${stations.map((station,index)=>{
+        const count=accountsByStation.get(station).length;
+        return `<button type="button" class="hr-account-card" data-station-index="${index}"><small>STATION</small><strong>${escape(station==='HQ'?'Headquarter':station)}</strong><span>${count} ${count===1?'account':'accounts'}</span><em>View accounts →</em></button>`;
+      }).join('')}</div></section>`;
+      accountList.querySelectorAll('[data-station-index]').forEach(button=>button.onclick=()=>{
+        accountList.dataset.station=stations[Number(button.dataset.stationIndex)];
+        render();
+        accountList.querySelector('[data-back-stations]').focus();
+      });
+    }else{
+      const accounts=accountsByStation.get(selected);
+      accountList.innerHTML=`<section class="hr-account-region"><button type="button" class="hr-pending-link" data-back-stations>← All stations</button><h3>${escape(selected==='HQ'?'Headquarter':selected)}</h3><div>${accounts.map(account=>{
         const count=account.employeeCount??data.employees.filter(r=>key(r)===key(account)||(r.additionalAccounts||[]).some(other=>key(other)===key(account))).length;return `<article class="hr-account-card"><button type="button" class="hr-account-open" data-scope="${escape(key(account))}"><small>${account.station==='HQ'?'HEADQUARTERS':'STATION / ACCOUNT'}</small><strong>${escape(label(key(account)))}</strong><span>${count} ${count===1?'person':'people'}</span><em>Explore team →</em></button>${role()?.mode==='admin'&&account.station!=='HQ'?`<button type="button" class="hr-account-delete" data-delete-scope="${escape(key(account))}" ${count?'disabled title="Move all employees and account memberships before deleting"':''}>Delete account</button>`:''}</article>`;
-      }).join('')}</div></details>`;
-    }).join('');
+      }).join('')}</div></section>`;
+      accountList.querySelector('[data-back-stations]').onclick=()=>{
+        delete accountList.dataset.station;
+        render();
+        accountList.querySelectorAll('[data-station-index]')[stations.indexOf(selected)]?.focus();
+      };
+    }
     applyZoom();
   }
   function populateScopes(){
