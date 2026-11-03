@@ -75,7 +75,9 @@
  $('[data-send]').onclick=async()=>{if(!preview||busy||sent)return;const prepared=preview,key={...context},run=generation;busy=true;controls();status('Sending email. Please wait…');try{const result=await request('/send',{...key,previewId:prepared.id,confirm:true});if(run!==generation||!dialog.open)return;sent=true;status(result.alreadySent?'This application email has already been sent.':'Email sent to '+prepared.recipient+'.');}catch(error){if(run===generation)status(error.message,true);}finally{if(run===generation){busy=false;controls();}}};
  $('[data-posters]').onclick=async()=>{if(!await save())return;const run=generation,key={...context};busy=true;controls();status('Preparing all passenger posters…');try{const blob=await request('/posters',{...key,revision:state.revision},true);if(run!==generation||!dialog.open)return;showPdf(blob,'posters');status('Print preview ready.');}catch(error){if(run===generation)status(error.message,true);}finally{if(run===generation){busy=false;controls();}}};
  $('[data-print]').onclick=()=>{try{const frame=$('.express-pdf-preview');frame.contentWindow.focus();frame.contentWindow.print();}catch{window.open(blobUrl,'_blank','noopener');}};
- window.addEventListener('briefing-direction',event=>{ready=Boolean(event.detail.ready)&&event.detail.direction==='arrival';button.disabled=!ready;if(dialog.open&&(!ready||cacheKey(selected())!==cacheKey(context)))dialog.close();});
+ const updateDirection=event=>{ready=Boolean(event.detail.ready)&&event.detail.direction==='arrival';button.disabled=!ready;if(dialog.open&&(!ready||cacheKey(selected())!==cacheKey(context)))dialog.close();};
+ window.addEventListener('briefing-direction',updateDirection);
+ updateDirection({detail:window.briefingToolContext});
  setInterval(()=>{if(dialog.open&&!document.hidden&&!busy&&!dirty&&view==='list')void refresh();},60000);
  ready=!button.hidden;button.disabled=!ready;
  if(window.firebase?.auth)firebase.auth().onAuthStateChanged(()=>{cache.clear();if(dialog.open)dialog.close();state=null;rows=[];dirty=false;});

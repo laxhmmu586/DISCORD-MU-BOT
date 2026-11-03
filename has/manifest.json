@@ -298,6 +298,7 @@
     "workspace-resources.css",
     "workspace-routes.js",
     "workspace-shell.js",
+    "briefing-tools.js",
     "charge-form.js",
     "charge-form-model.js",
     "charge-form.css",
