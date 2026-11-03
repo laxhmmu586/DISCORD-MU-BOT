@@ -49,7 +49,17 @@ function registerBriefing(app,{employees,profiles,authenticate=require('./pbbAut
  const quickPermissions=access=>{const date=localDate(now());return {arrival:access.canEditBriefing||roster(date).some(p=>p.id===access.employeeId&&p.shift==='A'),gate:canEditGateControl({date,flight:'MU586',direction:'departure'},access)};};
  const expressConnections=require('./expressConnections').registerExpress(app,{db,etab,now,identity,audit,canEdit:(req,key)=>req.briefingAccess.canEditBriefing||key.date===localDate(now())&&quickPermissions(req.briefingAccess).arrival,sendEmail:expressSendEmail||(message=>require('../../googleDrive').sendExpressConnectionEmail(message))});
  app.get('/briefing-api/quick-tasks',wrap(req=>{const date=localDate(now()),permissions=quickPermissions(req.briefingAccess),tasks=[];for(const [id,label,flight,direction] of [['arrival','Arrival Time Record','MU583','arrival'],['gate','Gate Lead Control Sheet','MU586','departure']]){const key={date,flight,direction};if(permissions[id]&&!['pending','processing','completed'].includes(finish.view(key).state))tasks.push({id,label,...key});}return {date,tasks};}));
- const snapshot=async req=>{const key=identity(req.query),item=record(key);return {...item,quickPermissions:quickPermissions(req.briefingAccess),defaultDirection:defaultDirection(req.briefingAccess),finish:finish.view(key),canEditGateControl:canEditGateControl(key,req.briefingAccess),assignedPeople:assignedPeople(item.fields),etab:await etabSource(key,item),booking:item.direction==='departure'?await booking.read(key.date,key.flight):null,contacts:contacts(),canEditContacts:req.briefingAccess.canEditContacts,canClear:req.briefingAccess.canEditContacts,canEditBriefing:req.briefingAccess.canEditBriefing,canEditDepartureDefaults:req.briefingAccess.canEditDepartureDefaults,canEditConfig:req.briefingAccess.canEditConfig,canPreviewEmployee:req.briefingAccess.canPreviewEmployee,reportsRevision:db.prepare('SELECT id,deleted_at FROM briefing_reports WHERE date=? AND flight=?').all(key.date,key.flight)};};
+ const snapshot=async req=>{
+  const direction=defaultDirection(req.briefingAccess);
+  const query=req.query.useDefaultDirection==='1'&&req.query.direction!==direction
+   ? {...req.query,direction,flight:direction==='departure'?'MU586':'MU583'}
+   : req.query;
+  const key=identity(query),item=record(key);
+  const [flightSource,bookingSource]=await Promise.all([
+   etabSource(key,item),
+   item.direction==='departure'?booking.read(key.date,key.flight):null
+  ]);
+  return {...item,quickPermissions:quickPermissions(req.briefingAccess),defaultDirection:direction,finish:finish.view(key),canEditGateControl:canEditGateControl(key,req.briefingAccess),assignedPeople:assignedPeople(item.fields),etab:flightSource,booking:bookingSource,contacts:contacts(),canEditContacts:req.briefingAccess.canEditContacts,canClear:req.briefingAccess.canEditContacts,canEditBriefing:req.briefingAccess.canEditBriefing,canEditDepartureDefaults:req.briefingAccess.canEditDepartureDefaults,canEditConfig:req.briefingAccess.canEditConfig,canPreviewEmployee:req.briefingAccess.canPreviewEmployee,reportsRevision:db.prepare('SELECT id,deleted_at FROM briefing_reports WHERE date=? AND flight=?').all(key.date,key.flight)};};
  db.exec('CREATE TABLE IF NOT EXISTS briefing_reference(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,data TEXT NOT NULL)');
  db.prepare('INSERT OR IGNORE INTO briefing_reference(id,revision,data) VALUES(1,0,?)').run('{}');
  if(!db.prepare('PRAGMA table_info(briefing_reference)').all().some(c=>c.name==='boxes'))db.exec("ALTER TABLE briefing_reference ADD COLUMN boxes TEXT NOT NULL DEFAULT '{}'");

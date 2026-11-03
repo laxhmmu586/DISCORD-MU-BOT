@@ -22,6 +22,7 @@
           card.addEventListener('pointerenter', activate); card.addEventListener('focusin', activate); cards.append(card);
         }
       }
+      cards.dispatchEvent(new Event('flight-cards-rendered'));
       status.hidden = flights.length > 0;
       status.textContent = flights.length ? `${flights.length} flight${flights.length === 1 ? '' : 's'} departing LAX today` : 'No LAX departure SY record found for today. Refresh after today’s logs are available.';
       if (!flights.length) cards.innerHTML = `<div class="flight-empty"><h2>No flights detected</h2><p>MU586 · MU9586 · MU578 · MU9578<br>Only today's LAX departures found in today’s SY logs appear here.</p></div>`;

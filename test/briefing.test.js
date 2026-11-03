@@ -259,6 +259,14 @@ test('initial direction follows the linked employee today duty, independent of r
  const f=await fixture(t),query='?date='+DATE+'&flight=MU583';
  for(const [code,expected] of [['A','arrival'],['C','departure'],['F','departure'],['B','departure'],['BL','departure'],['CL','departure'],['FL','departure'],['GS','departure'],['Q','departure'],['D','departure'],['K','departure'],['X','arrival'],['VAC','arrival'],['N','arrival'],['CS','arrival'],['CO','arrival'],[null,'arrival']]){f.db.prepare('UPDATE staff_schedule_days SET data=? WHERE date=?').run(JSON.stringify({assignments:code?{agent:{code,color:'#ff0000'}}:{}}),DATE);const response=await f.request('agent',query);assert.equal(response.status,200);assert.equal(response.data.defaultDirection,expected,code);assert.equal(response.data.direction,'arrival');}
  f.db.prepare('UPDATE staff_schedule_days SET data=? WHERE date=?').run(JSON.stringify({assignments:{agent:{code:'A'},peer:{code:'C'}}}),DATE);assert.equal((await f.request('peer','?date=2026-10-27&flight=MU583')).data.defaultDirection,'departure');assert.equal((await f.request('agent','?date='+DATE+'&flight=MU586')).data.defaultDirection,'arrival');assert.equal((await f.request('sup',query)).data.defaultDirection,'arrival');
+ const departure=await f.request('peer',query+'&direction=arrival&useDefaultDirection=1');
+ assert.equal(departure.status,200);
+ assert.equal(departure.data.direction,'departure');
+ assert.equal(departure.data.flight,'MU586');
+ const arrival=await f.request('agent','?date='+DATE+'&flight=MU586&direction=departure&useDefaultDirection=1');
+ assert.equal(arrival.status,200);
+ assert.equal(arrival.data.direction,'arrival');
+ assert.equal(arrival.data.flight,'MU583');
 });
 
 test('flight-page quick tasks are today-scoped, assignment-gated and hidden after Finish until cancellation',async t=>{

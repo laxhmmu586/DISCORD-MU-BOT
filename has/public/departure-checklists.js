@@ -49,10 +49,12 @@
   try{await loaded;await doc.fonts.ready;if(run!==generation){frame.remove();return;}frame.contentWindow.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),1000),{once:true});frame.contentWindow.focus();frame.contentWindow.print();}
   catch{frame.remove();status.textContent='Print preview could not load. Please retry.';}
  };
- window.addEventListener('briefing-direction',event=>{
+ const updateDirection=event=>{
   const d=event.detail,ready=d.ready&&d.direction==='departure'&&d.canUseChecklists&&!query.has('quick')&&!query.has('embed');button.hidden=!ready;const next=ready?{date:d.date,flight:d.flight}:null;
   if(!ready||activeKey(context)!==activeKey(next)){generation++;if(editor.open)editor.close();if(dialog.open)dialog.close();templateDraft=null;templates.clear();content.replaceChildren();editorBody.replaceChildren();for(const frame of document.querySelectorAll('.cl-print-frame'))frame.remove();for(const el of editor.querySelectorAll('button,input,textarea'))el.disabled=false;templateDirty=false;busy=false;}
   context=next;
- });
+ };
+ window.addEventListener('briefing-direction',updateDirection);
+ updateDirection({detail:window.briefingToolContext});
  window.addEventListener('beforeunload',event=>{if(templateDirty||busy){event.preventDefault();event.returnValue='';}});
 })();
