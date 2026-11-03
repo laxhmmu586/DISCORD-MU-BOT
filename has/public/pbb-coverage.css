@@ -88,3 +88,26 @@
   .coverage-overview-grid { grid-template-columns: minmax(0,1fr); }
   .has-coverage-main .has-totals { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+/* Match the Home glass panels while retaining the audit layout. */
+.has-coverage-main {
+  --coverage-glass: linear-gradient(130deg,#ffffffb3,#f4f8ff5e);
+  --coverage-edge: #ffffffda;
+  --coverage-shadow: 0 10px 24px #4776bb10,inset 0 1px white;
+}
+.has-coverage-main :is(.has-page-intro,#dashboard-form,.has-totals div),
+.has-coverage-main #dashboard-results :is(.has-panel,.has-chart-card) {
+  background: var(--coverage-glass); border-color: var(--coverage-edge);
+  border-radius: 23px; box-shadow: var(--coverage-shadow);
+}
+.has-coverage-main .has-totals .coverage-kpi { background: linear-gradient(130deg,#eff7ff,#d7eaff8a); }
+.has-coverage-main .has-table-wrap th { background: #dceaff99; }
+.has-coverage-main .has-table-wrap tbody tr:nth-child(even) { background: #f5f9ff63; }
+.has-coverage-main [data-download-pdf] {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 34px;
+  padding: 6px 15px; border: 1px solid #66caff; border-radius: 999px;
+  background: linear-gradient(#29baf4,#0874cf); color: white;
+  box-shadow: inset 0 2px 2px #ffffff80,0 3px 8px #167dc735;
+  font: inherit; font-weight: 700; white-space: nowrap;
+}
+.has-coverage-main [data-download-pdf]:hover:not(:disabled) { background: linear-gradient(#149cdd,#075da9); }
+.has-coverage-main [data-download-pdf]:disabled { opacity: .55; cursor: wait; }
