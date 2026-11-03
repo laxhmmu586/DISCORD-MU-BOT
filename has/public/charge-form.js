@@ -12,23 +12,65 @@
  function baggageTable(){
   const international=new Map(model.groups.international.map(item=>[item.label,item]));
   const price=(item,route)=>item?'<label class="charge-baggage-choice">'+check(route+' · '+item.label,item.id)+'<span data-charge-usd="'+item.id+'"></span></label>':'<span aria-label="Unavailable">—</span>';
-  return '<table class="charge-table charge-baggage" data-charge-block><caption>Excess baggage</caption><thead><tr><th scope="col">Item</th><th scope="col">Domestic</th><th scope="col">International</th><th scope="col">RMK</th></tr></thead><tbody>'+model.groups.china.map(item=>'<tr><th scope="row">'+esc(item.label)+'</th><td>'+price(item,'Domestic')+'</td><td>'+price(international.get(item.label),'International')+'</td><td>'+input(item.label+' RMK','class="charge-rmk" maxlength="60"')+'</td></tr>').join('')+'</tbody></table>';
+  return '<table class="charge-table charge-baggage"><caption>Excess baggage</caption><thead><tr><th scope="col">Item</th><th scope="col">Domestic</th><th scope="col">International</th><th scope="col">RMK</th></tr></thead><tbody>'+model.groups.china.map(item=>'<tr><th scope="row">'+esc(item.label)+'</th><td>'+price(item,'Domestic')+'</td><td>'+price(international.get(item.label),'International')+'</td><td>'+input(item.label+' RMK','class="charge-rmk" maxlength="60"')+'</td></tr>').join('')+'</tbody></table>';
  }
- function sheet(){return '<article class="charge-paper"><header class="charge-brand"><img src="/has/assets/charge-form/china-eastern-logo.png" alt="中国东方航空 CHINA EASTERN"><div><h1>付费项目旅客告知书</h1><h2>Passenger Notice for Paid Services</h2></div></header><section class="charge-passenger"><label>Passenger Name: '+input('Passenger Name','maxlength="100"')+'</label><label>BN: '+input('BN','maxlength="20"')+'</label><label>Flight No.: '+input('Flight No.','value="MU586" maxlength="10"')+'</label><label>Flight Date: '+input('Flight Date','type="date" value="'+today()+'"')+'</label><label class="charge-rate">Today Exchange Rate <small>USD / CNY</small>'+input('Exchange rate','data-charge-rate inputmode="decimal" type="number" min="0.00000001" step="any" value="'+esc(state.exchange.rate)+'"')+'</label></section><div class="charge-baggage-section">'+baggageTable()+'<section data-charge-block>'+table('Fee For Special Baggage',model.groups.special,true)+'<label class="charge-special-name">Special Item Name: '+input('Special Item Name','maxlength="100"')+'</label></section></div><div class="charge-columns charge-bottom"><section data-charge-block>'+table('Upgrade: Economy to Business (I)',model.groups.business)+table('Upgrade: Business to First (F)',model.groups.first,false,false)+'</section><section data-charge-block><table class="charge-table charge-seat charge-seat-table"><caption>First Row</caption><thead><tr><th>Item</th><th>USD</th><th>RMK</th></tr></thead><tbody><tr><td><label>'+check('FIRST ROW','seat0')+' First Row</label></td><td data-charge-usd="seat0"></td><td>'+input('FIRST ROW RMK','class="charge-rmk" maxlength="60"')+'</td></tr><tr><th scope="row">Seat preference</th><td colspan="2"><div class="charge-seat-options"><label>'+check('Window 靠窗','window')+' Window 靠窗</label><label>'+check('Middle 中间','middle')+' Middle 中间</label><label>'+check('Aisle 走道','aisle')+' Aisle 走道</label></div></td></tr></tbody></table><div class="charge-ticket">'+check('Purchase Ticket','ticket')+'<strong>Purchase Ticket</strong><label>'+input('Purchase Ticket RMK','maxlength="80"')+'</label></div></section></div><section class="charge-notice"><h3>旅客须知（Information for Passengers）</h3>'+model.notices.map(([zh,en],i)=>'<div class="charge-notice-row"><span>'+(i+1)+'.</span><p>'+esc(zh)+'<br>'+esc(en)+'</p></div>').join('')+'</section><section class="charge-acknowledgment"><p>'+esc(model.acknowledgment[0])+'</p><p>'+esc(model.acknowledgment[1])+'</p></section><footer class="charge-signature"><span>旅客签字 Passenger Signature: <i></i></span></footer></article>';}
+ function sheet(){return '<article class="charge-paper"><header class="charge-brand"><img src="/has/assets/charge-form/china-eastern-logo.png" alt="中国东方航空 CHINA EASTERN"><div><h1>付费项目旅客告知书</h1><h2>Passenger Notice for Paid Services</h2></div></header><section class="charge-passenger"><label>Passenger Name: '+input('Passenger Name','maxlength="100"')+'</label><label>BN: '+input('BN','maxlength="20"')+'</label><label>Flight No.: '+input('Flight No.','value="MU586" maxlength="10"')+'</label><label>Flight Date: '+input('Flight Date','type="date" value="'+today()+'"')+'</label><label class="charge-rate">Today Exchange Rate <small>USD / CNY</small>'+input('Exchange rate','data-charge-rate inputmode="decimal" type="number" min="0.00000001" step="any" value="'+esc(state.exchange.rate)+'"')+'</label></section><div class="charge-baggage-section">'+'<section data-charge-block>'+baggageTable()+'</section><section data-charge-block>'+table('Fee For Special Baggage',model.groups.special,true)+'<label class="charge-special-name">Special Item Name: '+input('Special Item Name','maxlength="100"')+'</label></section></div><div class="charge-columns charge-bottom"><section data-charge-block>'+table('Upgrade: Economy to Business (I)',model.groups.business)+table('Upgrade: Business to First (F)',model.groups.first,false,false)+'</section><section data-charge-block><table class="charge-table charge-seat charge-seat-table"><caption>First Row</caption><thead><tr><th>Item</th><th>USD</th><th>RMK</th></tr></thead><tbody><tr><td><label>'+check('FIRST ROW','seat0')+' First Row</label></td><td data-charge-usd="seat0"></td><td>'+input('FIRST ROW RMK','class="charge-rmk" maxlength="60"')+'</td></tr><tr><th scope="row">Seat preference</th><td colspan="2"><div class="charge-seat-options"><label>'+check('Window 靠窗','window')+' Window 靠窗</label><label>'+check('Middle 中间','middle')+' Middle 中间</label><label>'+check('Aisle 走道','aisle')+' Aisle 走道</label></div></td></tr></tbody></table><div class="charge-ticket">'+check('Purchase Ticket','ticket')+'<strong>Purchase Ticket</strong><label>'+input('Purchase Ticket RMK','maxlength="80"')+'</label></div></section></div><section class="charge-notice"><h3>旅客须知（Information for Passengers）</h3>'+model.notices.map(([zh,en],i)=>'<div class="charge-notice-row"><span>'+(i+1)+'.</span><p>'+esc(zh)+'<br>'+esc(en)+'</p></div>').join('')+'</section><section class="charge-acknowledgment"><p>'+esc(model.acknowledgment[0])+'</p><p>'+esc(model.acknowledgment[1])+'</p></section><footer class="charge-signature"><span>旅客签字 Passenger Signature: <i></i></span></footer></article>';}
  const layoutEditor=dialog.querySelector('.charge-layout-editor'),layoutToggle=dialog.querySelector('[data-layout-toggle]');
  const blockNames=['Excess baggage','Special baggage','Upgrades','First Row and Purchase Ticket'];
  const slotNames=['Upper left','Upper right','Lower left','Lower right'];
  const defaultLayout=[0,1,2,3];
  const layoutKey='charge-form-layout-v1';
- let layout=defaultLayout.slice(),blocks=[];
+ let layout=defaultLayout.slice(),blocks=[],sizes={};
  try{
   const saved=JSON.parse(localStorage.getItem(layoutKey));
   if(Array.isArray(saved)&&saved.length===4&&defaultLayout.every(index=>saved.includes(index)))layout=saved;
+  sizes=JSON.parse(localStorage.getItem(layoutKey+'-sizes'))||{};
  }catch{}
- function applyLayout(){
+ function applyLayout(move=true){
   const top=preview.querySelector('.charge-baggage-section'),bottom=preview.querySelector('.charge-bottom');
-  top.append(...layout.slice(0,2).map(index=>blocks[index]));
-  bottom.append(...layout.slice(2).map(index=>blocks[index]));
+  if(move){
+   top.append(...layout.slice(0,2).map(index=>blocks[index]));
+   bottom.append(...layout.slice(2).map(index=>blocks[index]));
+  }
+  for(const [row,section] of [top,bottom].entries()){
+   const width=sizes['width'+row];
+   section.style.setProperty('--charge-left',Number.isFinite(width)?Math.max(42,Math.min(58,width))+'fr':'');
+   section.style.setProperty('--charge-right',Number.isFinite(width)?100-Math.max(42,Math.min(58,width))+'fr':'');
+  }
+  for(const [index,block] of blocks.entries()){
+   const height=sizes['height'+index];
+   block.style.minHeight=Number.isFinite(height)?Math.max(0,Math.min(65,height))+'mm':'';
+  }
+
+ }
+ function addResizeHandles(){
+  for(const [index,block] of blocks.entries()){
+   const handle=document.createElement('button');
+   handle.type='button';handle.className='charge-resize-handle';
+   handle.textContent='↘';handle.setAttribute('aria-label','Resize '+blockNames[index]);
+   const resize=(dx,dy)=>{
+    const row=block.parentElement,number=Number(row.classList.contains('charge-bottom'));
+    const widthKey='width'+number,heightKey='height'+index;
+    const first=row.firstElementChild;
+    const paper=preview.querySelector('.charge-paper');
+    if(dx)sizes[widthKey]=Math.max(42,Math.min(58,100*(first.getBoundingClientRect().width+dx)/row.clientWidth));
+    if(dy)sizes[heightKey]=Math.max(0,Math.min(65,190*(block.getBoundingClientRect().height+dy)/paper.clientWidth));
+    applyLayout(false);
+   };
+   const persist=()=>{try{localStorage.setItem(layoutKey+'-sizes',JSON.stringify(sizes));}catch{}};
+   handle.onpointerdown=event=>{
+    event.preventDefault();
+    handle.setPointerCapture(event.pointerId);
+    let x=event.clientX,y=event.clientY;
+    handle.onpointermove=move=>{resize(move.clientX-x,move.clientY-y);x=move.clientX;y=move.clientY;};
+    handle.onlostpointercapture=()=>{handle.onpointermove=null;persist();};
+   };
+   handle.onkeydown=event=>{
+    const delta={ArrowLeft:[-5,0],ArrowRight:[5,0],ArrowUp:[0,-5],ArrowDown:[0,5]}[event.key];
+    if(delta){event.preventDefault();resize(...delta);persist();}
+   };
+   block.append(handle);
+  }
  }
  function renderLayoutEditor(){
   layoutEditor.replaceChildren();
@@ -47,7 +89,7 @@
   }
   const reset=document.createElement('button');
   reset.type='button';reset.textContent='Reset layout';
-  reset.onclick=()=>{layout=defaultLayout.slice();saveLayout();layoutEditor.querySelector('button').focus();};
+  reset.onclick=()=>{layout=defaultLayout.slice();sizes={};saveLayout();try{localStorage.removeItem(layoutKey+'-sizes');}catch{}layoutEditor.querySelector('button').focus();};
   layoutEditor.append(reset);
  }
  function saveLayout(){
@@ -57,6 +99,7 @@
  layoutToggle.onclick=()=>{
   layoutEditor.hidden=!layoutEditor.hidden;
   layoutToggle.setAttribute('aria-expanded',String(!layoutEditor.hidden));
+  preview.classList.toggle('is-editing-layout',!layoutEditor.hidden);
  };
  function editableText(){
   const paper=preview.querySelector('.charge-paper'),walker=document.createTreeWalker(paper,NodeFilter.SHOW_TEXT),texts=[];let node;
@@ -82,7 +125,7 @@
   }catch(error){if(run===generation)status.textContent=error.message;}finally{rateSaving=false;if(run===generation&&state)calculate();}}
  button.onclick=async()=>{if(!ready||dialog.open)return;const run=++generation;priceOverrides={};rateDirty=false;rateSaving=false;editor.hidden=true;toggle.disabled=false;
   const cached=cachedState?.exchange.date===today()?cachedState:null;state={...(cached||{revision:0,prices:model.defaults,canEdit:false,exchange:{status:'unavailable',date:today(),revision:0,rate:'',source:'XS FSC'}}),prices:{...(cached?.prices||model.defaults)},exchange:{...(cached?.exchange||{status:'unavailable',date:today(),revision:0,rate:'',source:'XS FSC'})}};
-  preview.innerHTML=sheet();blocks=[...preview.querySelectorAll('[data-charge-block]')];applyLayout();renderLayoutEditor();editableText();toggle.hidden=!state.canEdit;loading=!cached;dialog.showModal();calculate();status.textContent=state.exchange.rate?'Today’s saved exchange rate. Form text remains editable.':'Enter today’s exchange rate, or wait for the first XS FSC log lookup.';
+  preview.innerHTML=sheet();blocks=[...preview.querySelectorAll('[data-charge-block]')];applyLayout();addResizeHandles();renderLayoutEditor();editableText();toggle.hidden=!state.canEdit;loading=!cached;dialog.showModal();calculate();status.textContent=state.exchange.rate?'Today’s saved exchange rate. Form text remains editable.':'Enter today’s exchange rate, or wait for the first XS FSC log lookup.';
   try{const result=await fetchDefaults();if(run!==generation||!dialog.open)return;loading=false;applyResult(result,run);if(result.exchange.status!=='available')void lookupRate(run).catch(error=>{if(run===generation)status.textContent=error.message;});}
   catch(error){if(run===generation)status.textContent=error.message;}finally{if(run===generation){loading=false;calculate();}}
  };
@@ -90,7 +133,7 @@
  toggle.onclick=()=>{if(!state?.canEdit||saving)return;if(!editor.hidden){editor.hidden=true;return;}editorRevision=state.revision;const titles={china:'US-CHINA',international:'US-CHINA-INTERNATIONAL',seat:'FIRST ROW',business:'Economy to Business',first:'Business to First',special:'Special Baggage'};editor.querySelector('div').innerHTML=Object.entries(model.groups).map(([key,items])=>'<fieldset><legend>'+titles[key]+'</legend>'+items.map(item=>'<label>'+esc(item.label)+' · '+item.currency+'<input data-price-id="'+item.id+'" aria-label="'+esc(item.id+' '+item.currency+' price')+'" type="number" min="0" max="1000000" step="0.01" required value="'+state.prices[item.id]+'"></label>').join('')+'</fieldset>').join('');editor.hidden=false;toggle.disabled=false;};
  editor.querySelector('[data-price-cancel]').onclick=()=>{editor.hidden=true;toggle.disabled=false;};
  editor.onsubmit=async event=>{event.preventDefault();if(saving||!state?.canEdit)return;saving=true;print.disabled=true;for(const node of editor.querySelectorAll('button,input'))node.disabled=true;const prices=Object.fromEntries([...editor.querySelectorAll('[data-price-id]')].map(node=>[node.dataset.priceId,Number(node.value)]));try{const result=await peopleApi('/briefing-api/charge-form',{revision:editorRevision,prices});state={...state,...result};priceOverrides={};cachedState={...state,prices:{...result.prices},exchange:{...state.exchange}};editor.hidden=true;toggle.disabled=false;status.textContent='Shared prices saved.';calculate();}catch(error){status.textContent=error.message;}finally{saving=false;for(const node of editor.querySelectorAll('button,input'))node.disabled=false;calculate();}};
- print.onclick=async()=>{calculate();if(print.disabled)return;const copy=preview.querySelector('.charge-paper').cloneNode(true);for(const text of copy.querySelectorAll('[contenteditable]')){text.removeAttribute('contenteditable');text.removeAttribute('aria-label');}for(const node of copy.querySelectorAll('input')){const span=document.createElement('span');span.className=node.type==='checkbox'?'charge-print-check':'charge-print-value';span.textContent=node.type==='checkbox'?(node.checked?'☑':'☐'):node.type==='date'?[node.value.slice(5,7),node.value.slice(8,10),node.value.slice(0,4)].join('/'):node.value;node.replaceWith(span);}const frame=document.createElement('iframe');frame.className='charge-print-frame';frame.title='Charge Form print';document.body.append(frame);const doc=frame.contentDocument;doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>China Eastern Charge Form</title><link rel="stylesheet" href="/has/charge-form.css?v=amount-font"><style>@page{size:'+dialog.querySelector('#charge-paper-size').value+' portrait;margin:8mm}</style></head><body class="charge-print-document">'+copy.outerHTML+'</body></html>');doc.close();try{await Promise.all([...doc.images].map(img=>img.decode()));await doc.fonts.ready;await new Promise(resolve=>{if(doc.styleSheets.length>=2)resolve();else frame.onload=resolve;});frame.contentWindow.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),30000),{once:true});frame.contentWindow.focus();frame.contentWindow.print();}catch{frame.remove();status.textContent='Print preview could not load. Please retry.';}};
+ print.onclick=async()=>{calculate();if(print.disabled)return;const copy=preview.querySelector('.charge-paper').cloneNode(true);for(const handle of copy.querySelectorAll('.charge-resize-handle'))handle.remove();for(const text of copy.querySelectorAll('[contenteditable]')){text.removeAttribute('contenteditable');text.removeAttribute('aria-label');}for(const node of copy.querySelectorAll('input')){const span=document.createElement('span');span.className=node.type==='checkbox'?'charge-print-check':'charge-print-value';span.textContent=node.type==='checkbox'?(node.checked?'☑':'☐'):node.type==='date'?[node.value.slice(5,7),node.value.slice(8,10),node.value.slice(0,4)].join('/'):node.value;node.replaceWith(span);}const frame=document.createElement('iframe');frame.className='charge-print-frame';frame.title='Charge Form print';document.body.append(frame);const doc=frame.contentDocument;doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>China Eastern Charge Form</title><link rel="stylesheet" href="/has/charge-form.css?v=resize-blocks"><style>@page{size:'+dialog.querySelector('#charge-paper-size').value+' portrait;margin:8mm}</style></head><body class="charge-print-document">'+copy.outerHTML+'</body></html>');doc.close();try{await Promise.all([...doc.images].map(img=>img.decode()));await doc.fonts.ready;await new Promise(resolve=>{if(doc.styleSheets.length>=2)resolve();else frame.onload=resolve;});frame.contentWindow.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),30000),{once:true});frame.contentWindow.focus();frame.contentWindow.print();}catch{frame.remove();status.textContent='Print preview could not load. Please retry.';}};
  const updateDirection=event=>{ready=event.detail.ready&&event.detail.direction==='departure'&&!new URLSearchParams(location.search).has('quick')&&!new URLSearchParams(location.search).has('embed');button.hidden=!ready;if(!ready&&dialog.open)close();if(!event.detail.ready)cachedState=null;};
  window.addEventListener('briefing-direction',updateDirection);
  updateDirection({detail:window.briefingToolContext});
