@@ -122,6 +122,6 @@
 @media(max-width: 650px) {
   .coverage-toolbar { flex-direction: column; align-items: stretch; gap: 4px; }
 }
-.qa-workspace .home-topbar #flight-account { margin-inline-start: auto; }
+body.qa-workspace .home-topbar > #flight-account { margin-left: auto; }
 .coverage-station-picker { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
 .coverage-station-picker select { font: inherit; color: #183f6e; background: #f5f9ff; border: 1px solid #cddff4; border-radius: 7px; padding: 5px 9px; }
