@@ -27,7 +27,10 @@
    const rate=row.expectedFlights?Math.min(100,Math.round(row.coveredFlights/row.expectedFlights*100)):null;
    return '<button type="button" class="has-qa-scope" data-qa-scope="'+esc(key)+'" data-covered="'+Boolean(row.coveredFlights)+'"><strong>'+esc(key)+'</strong><svg class="has-progress-ring" viewBox="0 0 160 160" role="img" aria-label="'+(rate===null?'No scheduled flights':rate+'% covered')+'"><circle cx="80" cy="80" r="58" fill="none" stroke="#dbe8f5" stroke-width="13"/>'+(rate?'<circle cx="80" cy="80" r="58" fill="none" stroke="#258be8" stroke-width="13" stroke-linecap="round" pathLength="100" stroke-dasharray="'+rate+' 100" transform="rotate(-90 80 80)"/>':'')+'<text x="80" y="89" text-anchor="middle" font-size="30" font-weight="700" fill="#205f9e">'+(rate===null?'—':rate+'%')+'</text></svg></button>';
   }).join('');
-  return '<section class="has-panel has-qa-overview"><h2>'+esc(title)+'</h2>'+(station?'<button type="button" data-qa-back>← '+(account?'All accounts in '+esc(d.station):'All stations')+'</button>':'')+(account?'':'<div class="coverage-filters" aria-label="Coverage filter"><button type="button" data-coverage-filter="all">All</button><button type="button" data-coverage-filter="covered">With coverage</button><button type="button" data-coverage-filter="uncovered">No coverage</button></div><div class="has-chart-grid has-qa-grid">'+(cards||'<p>No PBB scopes available.</p>')+'</div>')+'</section>';
+  const stationButtons=[...$('dashboard-station').options].map(({value})=>
+   `<button type="button" data-qa-station="${esc(value)}" aria-pressed="${d.station===value}">${value==='ALL'?'All stations':esc(value)}</button>`).join('');
+  const filters=account?'':'<div class="coverage-filters" aria-label="Coverage filter"><button type="button" data-coverage-filter="all">All</button><button type="button" data-coverage-filter="covered">With coverage</button><button type="button" data-coverage-filter="uncovered">No coverage</button></div>';
+  return `<section class="has-panel has-qa-overview"><h2>${esc(title)}</h2><div class="coverage-toolbar">${filters}<div class="coverage-stations" role="group" aria-label="Stations">${stationButtons}</div></div>${account?`<button type="button" data-qa-back>← All accounts in ${esc(d.station)}</button>`:`<div class="has-chart-grid has-qa-grid">${cards||'<p>No PBB scopes available.</p>'}</div>`}</section>`;
  }
  const headings='<th>Expected flights</th><th>Submitted flights</th><th>Submitted checklists</th><th>In progress</th>';
  const cells=r=>`<td>${r.expectedFlights}</td><td>${r.submittedFlights}</td><td>${r.submittedChecklists}</td><td>${r.pending}</td>`;
@@ -96,11 +99,13 @@
   const filter=event.target.closest('[data-coverage-filter]');
   if(filter){coverageFilter=filter.dataset.coverageFilter;applyCoverageFilter();return;}
   const scope=event.target.closest('[data-qa-scope]'),back=event.target.closest('[data-qa-back]');
-  if(qa&&(scope||back)){
+  const stationButton=event.target.closest('[data-qa-station]');
+  if(qa&&(scope||back||stationButton)){
    const station=$('dashboard-station'),account=$('dashboard-account');
-   if(back){if(account.value!=='ALL')account.value='ALL';else station.value='ALL';}
+   if(stationButton){station.value=stationButton.dataset.qaStation;account.value='ALL';}
+   else if(back){if(account.value!=='ALL')account.value='ALL';else station.value='ALL';}
    else if(station.value==='ALL')station.value=scope.dataset.qaScope;else account.value=scope.dataset.qaScope;
-   coverageFilter='all';await load();$('dashboard-results').querySelector('[data-qa-back], [data-qa-scope]')?.focus();return;
+   coverageFilter='all';await load();$('dashboard-results').querySelector(stationButton?'[data-qa-station][aria-pressed=true]':'[data-qa-back], [data-qa-scope]')?.focus();return;
   }
   const button=event.target.closest('[data-download-pdf]');if(!button)return;const record=dashboardRecords.find(r=>r.id===button.dataset.downloadPdf);if(!record)return;button.disabled=true;
   try{const response=await fetch(resolveApiBase()+'/has-pbb-api/dashboard/records/'+encodeURIComponent(button.dataset.downloadPdf)+'/pdf'+(qa?'?qa=1':''),{headers:await authHeaders(),cache:'no-store'});

@@ -43,3 +43,8 @@
 }
 .charge-layout-editor label { display: grid; gap: 4px; }
 .charge-layout-editor :is(button,select) { padding: 6px; border: 1px solid #bccbdd; border-radius: 6px; background: white; color: inherit; font: inherit; }
+.charge-paper :is([data-charge-usd],[data-charge-base]) {
+  font: 400 10pt/1.1 Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
