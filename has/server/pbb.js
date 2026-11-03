@@ -81,6 +81,7 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
  const drive=providedDrive||createPbbDrive();
  const employees=require('./employeeDatabase').openEmployeeDatabase(store.db,{seed:employeeSeed});
  const profiles=require('./employeeProfiles').registerProfiles(app,{employees,authenticate,onChange:()=>{for(const clients of streams.values())for(const res of clients)res.write(`event: employees\ndata: ${JSON.stringify(employees.options())}\n\n`);}});
+ require('./workspacePagePermissions').registerWorkspacePagePermissions(app,{employees,profiles,authenticate});
  const pushService=require('./approvalPush').registerPush(app,{employees,profiles,authenticate});
  const notificationCenter=require('./notificationCenter').registerNotificationCenter(app,{employees,profiles,authenticate,push:pushService});
  const staffScheduleService=require('./staffSchedule').registerStaffSchedule(app,{employees,profiles,authenticate});

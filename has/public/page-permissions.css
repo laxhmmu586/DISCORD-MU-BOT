@@ -29,3 +29,14 @@
   .permission-audience { grid-template-columns: 1fr; }
   .permission-audience fieldset div { max-height: 135px; }
 }
+.workspace-permission-button {
+  position: fixed; top: 12px; right: 12px; z-index: 40;
+  box-shadow: 0 2px 8px #153d6620;
+}
+.workspace-permission-notice {
+  max-width: 540px; margin: 12vh auto 0; padding: 24px; color: #173a65;
+  background: #fff; border: 1px solid #c2d7ee; border-radius: 14px;
+}
+body[data-permission-pending] > :not(.workspace-permission-notice):not(.workspace-permission-button):not(.page-permission-dialog) {
+  display: none !important;
+}

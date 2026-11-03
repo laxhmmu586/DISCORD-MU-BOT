@@ -41,3 +41,50 @@
   padding: 10px; text-align: left; border-bottom: 1px solid #dfebf7; white-space: nowrap;
 }
 .has-coverage-main .has-table-wrap th { background: #edf5ff; }
+.has-coverage-main .has-page-intro {
+  background: #fff; color: #102e56; border: 1px solid #cddff4;
+  box-shadow: 0 4px 14px #173a650d; padding: 20px 24px; border-radius: 16px;
+}
+.has-coverage-main .has-page-intro .eyebrow, .has-coverage-main .has-page-intro p { color: #405b75; }
+.has-coverage-main .has-page-intro h1 { font-size: clamp(24px, 4vw, 36px); }
+#dashboard-results > h2 { margin-bottom: 10px; }
+.has-coverage-main .has-totals {
+  display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-bottom: 16px;
+}
+.has-coverage-main .has-totals div {
+  min-width: 0; background: #fff; border: 1px solid #cddff4; border-radius: 14px; padding: 14px;
+}
+.has-coverage-main .has-totals .coverage-kpi { background: #eaf4ff; border-color: #77b4f3; }
+.coverage-kpi small { display: block; color: #405b75; }
+.coverage-overview-grid, .coverage-detail-grid {
+  display: grid; gap: 14px; margin: 0 0 14px; align-items: stretch;
+}
+.coverage-overview-grid { grid-template-columns: minmax(190px, 1fr) minmax(0, 3fr); }
+.coverage-detail-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.has-coverage-main #dashboard-results :is(.has-panel,.has-chart-card) {
+  min-width: 0; margin: 0; padding: 16px; border: 1px solid #cddff4; border-radius: 15px;
+  background: white; box-shadow: 0 3px 10px #173a650c;
+}
+.has-coverage-main #dashboard-results > .has-panel { margin-top: 14px; }
+.has-coverage-main #dashboard-results h2 { margin-bottom: 10px; }
+.has-coverage-main .has-chart-scroll { overflow-x: auto; }
+.has-coverage-main .has-chart-card .has-progress-ring { display: block; width: min(100%,170px); margin: 0 auto; }
+.has-coverage-main .has-chart-card :is(p,.has-chart-summary) { color: #405b75; }
+.has-coverage-main .has-qa-grid { grid-template-columns: repeat(auto-fill,minmax(66px,1fr)); gap: 6px; }
+.has-coverage-main .has-qa-grid .has-qa-scope { padding: 5px; border-radius: 8px; background: #fff; }
+.has-coverage-main .has-qa-scope strong { font-size: 13px; overflow-wrap: anywhere; }
+.has-coverage-main .has-qa-scope svg { width: 57px; display: block; margin: auto; }
+.has-coverage-main .has-qa-scope[data-covered="true"] { background: #eaf4ff; border-color: #77b4f3; }
+.coverage-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.coverage-filters button { padding: 5px 9px; border: 1px solid #cddff4; background: #f5f9ff; color: #183f6e; border-radius: 7px; }
+.coverage-filters button[aria-pressed="true"] { background: #165fa9; color: white; }
+.coverage-audit h2 small { font-size: .75em; color: #405b75; font-weight: 400; }
+.has-coverage-main .has-table-wrap :is(th,td) { padding: 8px; font-size: .82rem; }
+.has-coverage-main .has-table-wrap tbody tr:nth-child(even) { background: #f5f9fe; }
+.coverage-method { color: #405b75; margin: 12px 0; }
+.coverage-method summary { cursor: pointer; }
+@media(max-width: 1050px) { .coverage-detail-grid { grid-template-columns: minmax(0,1fr); } }
+@media(max-width: 700px) {
+  .coverage-overview-grid { grid-template-columns: minmax(0,1fr); }
+  .has-coverage-main .has-totals { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}

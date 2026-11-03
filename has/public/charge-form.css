@@ -23,16 +23,11 @@
   display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 3mm; align-items: start; margin-bottom: 2mm; break-inside: avoid;
 }
-.charge-baggage-section .charge-seat { margin: 0; font-size: 8pt; }
-.charge-baggage-section .charge-seat > div:first-child {
-  grid-template-columns: 6mm auto auto minmax(0, 1fr);
-}
-.charge-baggage-section .charge-seat > div:first-child > strong { padding: 1mm; white-space: nowrap; }
-.charge-baggage-section .charge-seat > div + div {
-  display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 1.5mm 2.5mm; padding: 1mm 2mm;
-}
-.charge-baggage-section .charge-seat > div + div > strong { flex-basis: 100%; }
-.charge-baggage-section .charge-seat label { gap: 1mm; white-space: nowrap; }
+.charge-seat-table th:first-child { width: 35%; }
+.charge-seat-table th:nth-child(2) { width: 22%; }
+.charge-seat-table td:nth-child(2) { text-align: center; }
+.charge-seat-table .charge-seat-options { display: flex; flex-wrap: wrap; gap: 1mm 2mm; }
+.charge-seat-table label { gap: 1mm; white-space: nowrap; }
 @media screen and (max-width: 600px) {
   .charge-preview .charge-baggage-section { grid-template-columns: 1fr; }
 }
