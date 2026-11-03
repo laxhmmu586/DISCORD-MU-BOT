@@ -13,3 +13,26 @@
 .charge-editable-text[contenteditable=true]{cursor:text;outline:1px dashed transparent}.charge-editable-text[contenteditable=true]:hover{outline-color:#a8b9cc}.charge-editable-text[contenteditable=true]:focus{outline:1px solid #4489d8;background:#f3f8ff}.charge-print-document .charge-editable-text{outline:none!important;background:transparent!important}
 
 .charge-table.charge-upgrade-table td:nth-child(2){text-align:center}.charge-seat>div:first-child>.charge-print-check{margin-left:2mm}
+
+.charge-baggage { table-layout: fixed; }
+.charge-baggage th:first-child { width: 32%; }
+.charge-baggage th:last-child { width: 28%; }
+.charge-baggage th[scope="row"] { text-align: left; font-weight: 500; }
+.charge-baggage-choice { display: inline-flex; align-items: center; gap: .35em; white-space: nowrap; }
+.charge-baggage-section {
+  display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 3mm; align-items: start; margin-bottom: 2mm; break-inside: avoid;
+}
+.charge-baggage-section .charge-seat { margin: 0; font-size: 8pt; }
+.charge-baggage-section .charge-seat > div:first-child {
+  grid-template-columns: 6mm auto auto minmax(0, 1fr);
+}
+.charge-baggage-section .charge-seat > div:first-child > strong { padding: 1mm; white-space: nowrap; }
+.charge-baggage-section .charge-seat > div + div {
+  display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 1.5mm 2.5mm; padding: 1mm 2mm;
+}
+.charge-baggage-section .charge-seat > div + div > strong { flex-basis: 100%; }
+.charge-baggage-section .charge-seat label { gap: 1mm; white-space: nowrap; }
+@media screen and (max-width: 600px) {
+  .charge-preview .charge-baggage-section { grid-template-columns: 1fr; }
+}

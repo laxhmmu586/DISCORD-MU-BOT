@@ -1,0 +1,31 @@
+[data-page-permissions] {
+  color: #164376; background: #f7fbff; border: 1px solid #b9d4f0;
+  border-radius: 10px; padding: 8px 12px; font: inherit; cursor: pointer;
+}
+[data-page-permissions][hidden], .page-permission-dialog [hidden] { display: none !important; }
+.page-permission-dialog {
+  box-sizing: border-box; width: min(680px, calc(100% - 24px)); max-height: 90dvh;
+  padding: clamp(16px, 4vw, 28px); border: 1px solid #c2d7ee; border-radius: 20px;
+  background: #f4f8ff; color: #143459; box-shadow: 0 24px 80px #102c5460;
+}
+.page-permission-dialog::backdrop { background: #10274488; }
+.page-permission-dialog header, .page-permission-dialog footer {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+}
+.page-permission-dialog h2 { margin: 0; }
+.page-permission-dialog button {
+  border: 1px solid #b9d4f0; border-radius: 10px; padding: 8px 14px;
+  background: white; color: inherit; font: inherit; cursor: pointer;
+}
+.page-permission-dialog footer { justify-content: flex-end; }
+.page-permission-dialog footer button { background: #1b5da4; color: white; }
+.page-permission-dialog .permission-private { margin-top: 18px; font-weight: 700; }
+.permission-audience { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.permission-audience fieldset { min-width: 0; margin: 0; border: 1px solid #c7daf0; border-radius: 12px; }
+.permission-audience fieldset div { max-height: 220px; overflow: auto; }
+.page-permission-dialog label { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; }
+.permission-audience input[type=search] { width: 100%; margin-bottom: 8px; }
+@media(max-width: 540px) {
+  .permission-audience { grid-template-columns: 1fr; }
+  .permission-audience fieldset div { max-height: 135px; }
+}
