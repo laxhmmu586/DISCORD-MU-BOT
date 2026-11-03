@@ -48,7 +48,7 @@ function emailShell({subject='',html='',text='',record={}}) {
   const rows=[];
   if(received)rows.push([pick('Report Type','报告类型'),record.caseType==='DPR'?pick('DPR – Damaged Baggage','DPR – 行李损坏'):pick('AHL – Delayed / Lost Baggage','AHL – 行李延误／遗失')]);
   if(record.worldTracerFileNumber)rows.push([pick('WorldTracer Case Number','WorldTracer 案件编号'),record.worldTracerFileNumber]);
-  if(pickup||future){rows.push([pick('Pick-Up Location','领取地点'),'LAX TBIT, Counter A68 Office'],[pick('Pick-Up Hours','领取时间'),future?pick('8:00 AM – 2:00 PM','上午 8:00 – 下午 2:00'):pick('7:00 AM – 3:00 PM','上午 7:00 – 下午 3:00')]);if(future&&record.availableDate)rows.push([pick('Available from','可领取日期'),record.availableDate]);}
+  if(pickup||future){rows.push([pick('Pick-Up Location','领取地点'),'LAX TBIT, Counter A68 Office'],[pick('Pick-Up Hours','领取时间'),future?pick('8:00 AM – 2:00 PM','上午 8:00 – 下午 2:00'):pick('7:00 AM – 2:00 PM','上午 7:00 – 下午 2:00')]);if(future&&record.availableDate)rows.push([pick('Available from','可领取日期'),record.availableDate]);}
   rows.push([pick('Passenger Name','旅客姓名'),record.passengerName],[pick('Contact Phone','联系电话'),record.phoneNumber||record.phone],[pick('Bag Tag Number','行李牌号码'),record.bagTag||(record.bagIdentifications||[]).map(b=>b.tag).filter(Boolean).join(' / ')]);
   if(transfer)rows.push([pick('Current Status','当前状态'),pick('In Transfer','转运中')],[pick('Estimated Arrival at LAX','预计抵达洛杉矶日期'),record.estimatedArrivalTime]);
   for(const flight of record.formVersion>=3?[]:record.flightRows||[])rows.push([pick('Flight Number','航班号'),flight.flightNo],[pick('Travel Date','出行日期'),flight.flightDate]);
