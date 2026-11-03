@@ -193,6 +193,7 @@
     "has-network.js",
     "has-pbb-client.js",
     "has-pbb-config.js",
+    "qa.html",
     "has-pbb-dashboard.html",
     "has-pbb-dashboard.js",
     "has-pbb-data.js",

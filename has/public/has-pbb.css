@@ -399,6 +399,18 @@ html.has-theme{background:#fff;color-scheme:light}
 
 .has-topbar .pbb-account-destination{display:flex;align-items:center;gap:8px;text-decoration:none;color:#254a70}.has-topbar #flight-account{display:flex;align-items:center}.has-topbar #flight-account .login-button{padding:0 2px;min-width:12px;width:auto}
 
-.has-chart-grid.has-qa-grid{grid-template-columns:repeat(auto-fit,minmax(min(175px,100%),1fr))}
-.has-qa-grid .has-qa-scope{min-width:0;background:#f6faff;color:#205f9e;cursor:pointer}
-.has-qa-grid .has-qa-scope:hover,.has-qa-grid .has-qa-scope:focus-visible{border-color:#258be8;background:white}
+.has-chart-grid.has-qa-grid{grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:24px;margin:22px 0 36px}
+.has-qa-grid .has-qa-scope{min-width:0;padding:10px 4px;border:0;background:transparent;color:#205f9e;cursor:pointer;font:inherit}
+.has-qa-scope strong{display:block;font-size:16px}
+.has-qa-scope span{font-size:12px}
+.has-qa-scope .has-progress-ring{max-width:100%;width:136px;height:auto}
+.has-qa-grid .has-qa-scope:hover strong{text-decoration:underline}
+.has-qa-grid .has-qa-scope:focus-visible{outline:2px solid #258be8;outline-offset:4px}
+.qa-workspace [hidden]{display:none!important}
+.qa-workspace .home-main{padding-bottom:40px}
+.qa-workspace .has-page-intro h1{margin:8px 0}
+.qa-workspace #dashboard-form{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:20px 0}
+.qa-workspace #dashboard-form label{display:grid;gap:6px}
+.qa-workspace #dashboard-form input,.qa-workspace #dashboard-form button,.qa-workspace [data-qa-back]{border:1px solid #fff;border-radius:10px;background:#f7faff;color:inherit;padding:9px 12px;font:inherit}
+.qa-workspace button{cursor:pointer}
+.qa-workspace #dashboard-results .has-panel,.qa-workspace #dashboard-results .has-chart-card{background:transparent;border:0;box-shadow:none;padding:0}

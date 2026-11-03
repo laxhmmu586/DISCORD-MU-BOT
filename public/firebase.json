@@ -1073,6 +1073,10 @@
         "destination": "/has/has-pbb-config.js"
       },
       {
+        "source": "/QA",
+        "destination": "/has/qa.html"
+      },
+      {
         "source": "/has-pbb-dashboard.html",
         "destination": "/has/has-pbb-dashboard.html"
       },

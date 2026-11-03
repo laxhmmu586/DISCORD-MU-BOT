@@ -1,12 +1,21 @@
 (() => {
  const $=id=>document.getElementById(id),esc=escapeHtml;let timer,chartObserver,requestVersion=0,dashboardRecords=[];
- const qa=new URLSearchParams(location.search).get('qa')==='1';
+ const qaWorkspace=document.body.classList.contains('qa-workspace');
+ const qa=qaWorkspace||new URLSearchParams(location.search).get('qa')==='1';
  if(qa){
   document.title='QA · PBB';
   document.querySelector('.has-page-intro').innerHTML='<span class="eyebrow">QUALITY ASSURANCE</span><h1>PBB coverage</h1><p>Company → Station → Account</p>';
-  document.querySelector('.has-brand').href='/home';
+  const brand=document.querySelector('.has-brand');
+  if(brand)brand.href='/QA';
   $('dashboard-station').closest('label').hidden=true;
   $('dashboard-account').closest('label').hidden=true;
+ }
+ if(qaWorkspace){
+  const toggle=document.querySelector('.menu-toggle'),scrim=document.querySelector('.sidebar-scrim');
+  const show=open=>{document.body.classList.toggle('sidebar-open',open);toggle.setAttribute('aria-expanded',String(open));scrim.hidden=!open;};
+  toggle.onclick=()=>show(scrim.hidden);
+  scrim.onclick=()=>{show(false);toggle.focus();};
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!scrim.hidden)scrim.onclick();});
  }
  function qaOverview(d){
   const station=d.station!=='ALL',account=d.account!=='ALL';
@@ -14,16 +23,15 @@
   const groups=new Map();
   for(const row of d.byScope){
    const key=station?row.account:row.station;
-   const group=groups.get(key)||{expectedFlights:0,coveredFlights:0,pending:0};
+   const group=groups.get(key)||{expectedFlights:0,coveredFlights:0};
    for(const metric of Object.keys(group))group[metric]+=row[metric];
    groups.set(key,group);
   }
-  const cards=[...groups].sort(([a],[b])=>a.localeCompare(b)).map(([key,row])=>{
+  const cards=[...groups].sort(([a],[b])=>Number(b==='LAX')-Number(a==='LAX')||a.localeCompare(b)).map(([key,row])=>{
    const rate=row.expectedFlights?Math.min(100,Math.round(row.coveredFlights/row.expectedFlights*100)):null;
-   const missing=Math.max(0,row.expectedFlights-row.coveredFlights);
-   return '<button type="button" class="has-chart-card has-qa-scope" data-qa-scope="'+esc(key)+'"><strong>'+esc(key)+'</strong><svg class="has-progress-ring" viewBox="0 0 160 160" role="img" aria-label="'+(rate===null?'No scheduled flights':rate+'% covered')+'"><circle cx="80" cy="80" r="58" fill="none" stroke="#edf3fa" stroke-width="13"/>'+(rate?'<circle cx="80" cy="80" r="58" fill="none" stroke="#258be8" stroke-width="13" stroke-linecap="round" pathLength="100" stroke-dasharray="'+rate+' 100" transform="rotate(-90 80 80)"/>':'')+'<text x="80" y="89" text-anchor="middle" font-size="30" font-weight="700" fill="#205f9e">'+(rate===null?'—':rate+'%')+'</text></svg><span>'+row.coveredFlights+' / '+row.expectedFlights+' scheduled flights covered</span><br><small>'+missing+' uncovered · '+row.pending+' checklists in progress</small></button>';
+   return '<button type="button" class="has-qa-scope" data-qa-scope="'+esc(key)+'"><strong>'+esc(key)+'</strong><svg class="has-progress-ring" viewBox="0 0 160 160" role="img" aria-label="'+(rate===null?'No scheduled flights':rate+'% covered')+'"><circle cx="80" cy="80" r="58" fill="none" stroke="#edf3fa" stroke-width="13"/>'+(rate?'<circle cx="80" cy="80" r="58" fill="none" stroke="#258be8" stroke-width="13" stroke-linecap="round" pathLength="100" stroke-dasharray="'+rate+' 100" transform="rotate(-90 80 80)"/>':'')+'<text x="80" y="89" text-anchor="middle" font-size="30" font-weight="700" fill="#205f9e">'+(rate===null?'—':rate+'%')+'</text></svg><span>'+row.coveredFlights+' / '+row.expectedFlights+' scheduled flights covered</span></button>';
   }).join('');
-  return '<section class="has-panel"><h2>'+esc(title)+'</h2>'+(station?'<button type="button" data-qa-back>← '+(account?'All accounts in '+esc(d.station):'All stations')+'</button>':'')+(account?'':'<div class="has-chart-grid has-qa-grid">'+(cards||'<p>No PBB scopes available.</p>')+'</div>')+'</section>';
+  return '<section class="has-qa-overview"><h2>'+esc(title)+'</h2>'+(station?'<button type="button" data-qa-back>← '+(account?'All accounts in '+esc(d.station):'All stations')+'</button>':'')+(account?'':'<div class="has-chart-grid has-qa-grid">'+(cards||'<p>No PBB scopes available.</p>')+'</div>')+'</section>';
  }
  const headings='<th>Expected flights</th><th>Submitted flights</th><th>Submitted checklists</th><th>In progress</th>';
  const cells=r=>`<td>${r.expectedFlights}</td><td>${r.submittedFlights}</td><td>${r.submittedChecklists}</td><td>${r.pending}</td>`;
