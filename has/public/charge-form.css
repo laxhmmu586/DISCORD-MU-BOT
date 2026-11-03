@@ -31,3 +31,15 @@
 @media screen and (max-width: 600px) {
   .charge-preview .charge-baggage-section { grid-template-columns: 1fr; }
 }
+.charge-baggage th:first-child { width: 40%; }
+.charge-baggage th:last-child { width: 18%; }
+.charge-baggage-section { grid-template-columns: minmax(0, 56fr) minmax(0, 44fr); }
+.charge-table:has([data-charge-base]) .charge-amount-col { width: 14mm; }
+.charge-table:has([data-charge-base]) .charge-rmk-col { width: 12mm; }
+.charge-table:has([data-charge-base]) td:nth-child(2) { white-space: normal; overflow-wrap: anywhere; }
+.charge-layout-editor {
+  display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end;
+  padding: 10px; margin-bottom: 8px; border: 1px solid #bccbdd; border-radius: 10px; background: white;
+}
+.charge-layout-editor label { display: grid; gap: 4px; }
+.charge-layout-editor :is(button,select) { padding: 6px; border: 1px solid #bccbdd; border-radius: 6px; background: white; color: inherit; font: inherit; }
