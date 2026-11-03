@@ -27,9 +27,20 @@ test('both shared templates can be edited, reordered and persisted with concurre
 test('templates do not create passenger/checklist records and retired form endpoints are unavailable',async t=>{
  const {db,request}=await fixture(t);assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='briefing_departure_checklists'").get(),undefined);
  assert.equal((await request('lead','?date=2026-11-02&flight=MU586')).status,404);assert.equal((await request('lead','',{date:'2026-11-02',flight:'MU586'})).status,404);
- assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_checklist_templates').get().n,2);
+ assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_checklist_templates').get().n,3);
 });
 test('printing produces blank paper templates with all source items and no filled checks or values',()=>{
  for(const [type,count,sheets] of [['avih',15,1],['service-dog',12,2]]){const def=model.definitions[type],html=model.printHtml(def);assert.equal((html.match(/class="cl-print-tick">☐/g)||[]).length,count);assert(!html.includes('☑'));assert(!/<input|<textarea|<select/.test(html));assert(!html.includes('MU586'));assert.equal((html.match(/class="cl-paper /g)||[]).length,sheets);assert(html.includes('Passenger / 旅客'));assert(html.includes('值机员 / Agent:'));if(type==='avih')assert(html.includes('起飞____分钟后'));else assert(html.includes('second check at the boarding gate'));}
  const def=structuredClone(model.definitions.avih);def.items[0].en='<script>alert(1)</script>';const html=model.printHtml(def);assert(html.includes('&lt;script&gt;'));assert(!html.includes('<script>'));
+});
+test('VIP includes seven items and custom templates can be created and renamed',async t=>{
+ const {request}=await fixture(t);
+ const list=(await request('lead','/templates')).data.templates;
+ assert.equal(list.find(template=>template.type==='vip').items.length,7);
+ const created=await request('lead','/templates',{type:null,name:'Custom',title:'检查单',subtitle:'Checklist',items:[{id:'first',zh:'检查',en:'Check'}]});
+ assert.equal(created.status,200);
+ assert.match(created.data.type,/^custom-/);
+ const updated=await request('lead','/templates',{...created.data,name:'Renamed',title:'新标题'});
+ assert.equal(updated.status,200);
+ assert.equal((await request('lead','/templates')).data.templates.find(template=>template.type===created.data.type).name,'Renamed');
 });

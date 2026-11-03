@@ -36,3 +36,8 @@
 .cl-template-preview{background:#f5f5f5;padding:12px;box-sizing:border-box;border-radius:10px;overflow:hidden}.cl-template-preview .cl-paper{width:720px;zoom:var(--cl-preview-scale,1);margin:0 auto 16px;padding:25px;background:#fff;box-shadow:0 1px 5px #00000015;box-sizing:border-box}.cl-template-preview .cl-paper:last-child{margin-bottom:0}.cl-template-preview .cl-paper footer span{min-height:24px}
 
 .cl-template-titles label{display:grid;gap:7px;font-size:11px;color:#737373;font-weight:500}
+.cl-sidebar .cl-vip-icon {
+  display:inline-grid; place-items:center; padding:3px 5px; border-radius:6px;
+  background:linear-gradient(#fff1ad,#e8b646); color:#4c3200; font-size:11px; font-weight:800;
+}
+[data-cl-new] { text-align:left; }

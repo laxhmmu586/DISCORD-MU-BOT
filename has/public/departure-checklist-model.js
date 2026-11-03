@@ -30,6 +30,15 @@
    ['柜台检查口套、牵引绳。应在登机前为其戴上口套、系上牵引绳索，登机口2次检查。','Check the muzzle and leash at the counter. The service dog shall be muzzled and leashed before boarding, with a second check at the boarding gate.'],
    ['填写《特种行李机长通知单》','Fill in the Special Baggage Captain Notification Form.'],
    ['航班起飞后拍发PETC电报','Send PETC telegram after flight departure.']
+  ]},
+  vip:{name:'VIP',title:'要客地面服务检查单',subtitle:'VIP Ground Handling Checklist',source:'VIP ground handling procedures',items:[
+   ['提前48小时在离港系统按要客需求预留座位，VVIP座位旁尽量不预留其他旅客座位','Reserve seats in the departure control system 48 hours in advance according to the VIP’s needs. Where possible, leave seats next to a VVIP unassigned.'],
+   ['要客行李办理托运，挂VIP吊牌、优先牌。','Check in VIP baggage and attach VIP and priority tags.'],
+   ['AKE 放置最外侧，行李装在 AKE 内最上层，并通知 Load Control 在 CPM 中注明。','Place the AKE in the outermost position and load VIP baggage on its top layer. Notify Load Control to note this in the CPM.'],
+   ['填写《特殊服务交接单》一式四联，并全程协助旅客或其随行人员办理各项联检手续。','Complete four copies of the Special Service Handover Form and assist the passenger or accompanying personnel through all required joint inspections.'],
+   ['引导重要旅客前往贵宾室休息，并全程进行相关服务直至其登机。（了解要客上客时间要求，询问提前上还是最后上）','Escort the VIP to the lounge and provide assistance through boarding. Confirm the preferred boarding time and ask whether they wish to board early or last.'],
+   ['与客舱乘务员交接要客信息，签署《交接单》。','Hand over VIP information to the cabin crew and sign the Handover Form.'],
+   ['航班起飞后拍发电报，将要客人数、行李装机位置，需要特殊协助内容通知经停、目的站。','After takeoff, send a message to the transit and destination stations with the VIP count, baggage loading position, and any special assistance required.']
   ]}
  };
  for(const [type,def] of Object.entries(definitions)){def.type=type;def.revision=0;def.items=def.items.map(([zh,en],i)=>({id:type+'-'+(i+1),zh,en}));}
@@ -39,7 +48,7 @@
   // Keep the supplied service-dog template on two sheets; long or expanded
   // templates may flow onto additional pages without splitting an item.
   const size=def.type==='service-dog'?7:15;for(let i=0;i<def.items.length;i+=size)pages.push(def.items.slice(i,i+size));
-  return pages.map((items,index)=>{const start=offset;offset+=items.length;return '<article class="cl-paper '+(def.type==='avih'?'cl-avih':'cl-service')+'"><header><p class="cl-print-eyebrow">CHINA EASTERN · LAX / MU · '+esc(def.name)+'</p><h1>'+esc(def.title)+'</h1><p>'+esc(def.subtitle)+'</p></header><div class="cl-print-fields">'+[['Flight / 航班',''],['Date / 日期',''],['Route / 航段',''],['Passenger / 旅客',''],['Seat / 座位',''],['Animal / 动物','']].map(([label,value])=>'<div><b>'+label+'</b><span>'+esc(value)+'</span></div>').join('')+'</div><table><colgroup><col style="width:6%"><col style="width:41%"><col style="width:46%"><col style="width:7%"></colgroup><thead><tr><th>No.</th><th>检查项</th><th>Checklist</th><th>完成</th></tr></thead><tbody>'+items.map(({id,zh,en},i)=>{const no=start+i;return '<tr'+(id==='service-dog-10'?' class="cl-important"':'')+'><td>'+(no+1)+'</td><td>'+esc(zh)+'</td><td>'+esc(en)+'</td><td class="cl-print-tick">☐</td></tr>';}).join('')+'</tbody></table>'+(index===pages.length-1?'<div class="cl-print-notes"><b>Notes / 备注</b><p></p></div><footer><span>值机员 / Agent: </span><span>分管领导 / Supervisor: </span></footer>':'')+'<p class="cl-page-number">Template v'+def.revision+' · Sheet '+(index+1)+' / '+pages.length+'</p></article>';}).join('');
+  return pages.map((items,index)=>{const start=offset;offset+=items.length;return '<article class="cl-paper '+(def.type==='avih'?'cl-avih':'cl-service')+'"><header><p class="cl-print-eyebrow">CHINA EASTERN · LAX / MU · '+esc(def.name)+'</p><h1>'+esc(def.title)+'</h1><p>'+esc(def.subtitle)+'</p></header><div class="cl-print-fields">'+[['Flight / 航班',''],['Date / 日期',''],['Route / 航段',''],['Passenger / 旅客',''],['Seat / 座位',''],[def.type==='vip'||def.type.startsWith('custom-')?'Reference / 备注':'Animal / 动物','']].map(([label,value])=>'<div><b>'+label+'</b><span>'+esc(value)+'</span></div>').join('')+'</div><table><colgroup><col style="width:6%"><col style="width:41%"><col style="width:46%"><col style="width:7%"></colgroup><thead><tr><th>No.</th><th>检查项</th><th>Checklist</th><th>完成</th></tr></thead><tbody>'+items.map(({id,zh,en},i)=>{const no=start+i;return '<tr'+(id==='service-dog-10'?' class="cl-important"':'')+'><td>'+(no+1)+'</td><td>'+esc(zh)+'</td><td>'+esc(en)+'</td><td class="cl-print-tick">☐</td></tr>';}).join('')+'</tbody></table>'+(index===pages.length-1?'<div class="cl-print-notes"><b>Notes / 备注</b><p></p></div><footer><span>值机员 / Agent: </span><span>分管领导 / Supervisor: </span></footer>':'')+'<p class="cl-page-number">Template v'+def.revision+' · Sheet '+(index+1)+' / '+pages.length+'</p></article>';}).join('');
  }
  return {definitions,esc,printHtml};
 });
