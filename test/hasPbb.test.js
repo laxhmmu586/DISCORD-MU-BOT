@@ -444,6 +444,32 @@ test('Business Manager dashboard exposes only Main Account totals, schedules, fi
  const updated=f.employees.get();updated.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(updated,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard')).status,403);
 });
 
+test('QA PBB exposes company totals and only returns checklist details for a selected account',async t=>{
+ const f=await fixture(t);
+ const record=(await f.create('other')).data;
+ const pair={id:'qa-sfo',station:'SFO',account:'MU',inbound:{flightNo:'MU583',days:[1,2,3,4,5,6,7]},outbound:{flightNo:'MU586',days:[1,2,3,4,5,6,7]}};
+ assert.equal((await f.request('lake','/dashboard/config',{revision:1,pairs:[pair]})).status,200);
+ const draft=f.employees.get(),employee=draft.employees.find(e=>e.id==='spotter');
+ employee.position='Business Manager';
+ f.employees.save(draft,{email:'lake@mu.com'});
+ assert.equal((await f.request('spotter','/dashboard/qa-access')).data.canAccess,false);
+ assert.equal((await f.request('spotter','/dashboard?qa=1')).status,403);
+ assert.equal((await f.request('spotter','/dashboard/records/'+record.id+'/pdf?qa=1')).status,403);
+ const updated=f.employees.get();
+ updated.employees.find(e=>e.id==='spotter').position='Quality Assurance Manager & Project Coordinator';
+ f.employees.save(updated,{email:'lake@mu.com'});
+ assert.equal((await f.request('spotter','/dashboard/qa-access')).data.canAccess,true);
+ assert.equal((await f.request('spotter','/dashboard')).status,403);
+ const company=(await f.request('spotter','/dashboard?qa=1')).data;
+ assert(company.byScope.some(r=>r.station==='SFO'&&r.account==='MU'&&r.expectedFlights===14));
+ assert.deepEqual(company.records,[]);
+ assert.deepEqual((await f.request('spotter','/dashboard?qa=1&station=SFO')).data.records,[]);
+ const account=(await f.request('spotter','/dashboard?qa=1&station=SFO&account=MU')).data;
+ assert.equal(account.records[0].id,record.id);
+ assert.equal(account.missing.length,14);
+ assert.equal((await f.request('spotter','/dashboard/records/'+record.id+'/pdf?qa=1')).status,409);
+});
+
 test('each Business Manager downloads only Main Account PDFs while demo aggregates and downloads all accounts',async t=>{
  const f=await fixture(t,{failUpload:true,buildPdf:async r=>Buffer.from('%PDF-'+r.station+'-'+r.account)}),records=[];
  for(const user of ['driver','account','other']){
