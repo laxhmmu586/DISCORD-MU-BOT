@@ -89,7 +89,22 @@
     $('#org-unassigned').innerHTML=unassigned.length?`<section class="hr-unassigned"><h3>Reporting line not assigned · ${unassigned.length}</h3><div><div class="org-unassigned-tree"><ul class="org-list">${unassigned.map(row=>renderNode(row,display)).join('')}</ul></div></div></section>`:'';
     $('#hr-status').textContent=!loaded?'Sign in to view your organization.':!data.employees.length?'No employees are available in this workspace.':!display.length?'No people match your search.':!roots.length&&unassigned.length?'Assign reporting managers in each profile to build your organization chart.':'';
     $('#org-canvas').hidden=!roots.length;
-    $('#org-accounts').innerHTML=[...employeeAccountGroups.regions,'Other stations'].map(region=>{const accounts=(data.accounts||[]).filter(account=>(account.station==='HQ'?'West Coast':employeeAccountGroups.regionName(account.station,account.account))===region);if(!accounts.length)return '';return `<section class="hr-account-region"><h3>${escape(region)} <span>${accounts.length} workspaces</span></h3><div>${accounts.map(account=>{const count=account.employeeCount??data.employees.filter(r=>key(r)===key(account)||(r.additionalAccounts||[]).some(other=>key(other)===key(account))).length;return `<article class="hr-account-card"><button type="button" class="hr-account-open" data-scope="${escape(key(account))}"><small>${account.station==='HQ'?'HEADQUARTERS':'STATION / ACCOUNT'}</small><strong>${escape(label(key(account)))}</strong><span>${count} ${count===1?'person':'people'}</span><em>Explore team →</em></button>${role()?.mode==='admin'&&account.station!=='HQ'?`<button type="button" class="hr-account-delete" data-delete-scope="${escape(key(account))}" ${count?'disabled title="Move all employees and account memberships before deleting"':''}>Delete account</button>`:''}</article>`;}).join('')}</div></section>`;}).join('');
+    const accountsByStation=new Map();
+    for(const account of data.accounts||[]){
+      if(!accountsByStation.has(account.station))accountsByStation.set(account.station,[]);
+      accountsByStation.get(account.station).push(account);
+    }
+    const priority=['LAX','HQ'];
+    const stations=[...priority.filter(station=>accountsByStation.has(station)),
+      ...[...accountsByStation.keys()].filter(station=>!priority.includes(station)).sort((a,b)=>a.localeCompare(b))];
+    const accountList=$('#org-accounts');
+    const expanded=new Set([...accountList.querySelectorAll('details[open]')].map(section=>section.dataset.station));
+    accountList.innerHTML=stations.map(station=>{
+      const accounts=accountsByStation.get(station);
+      return `<details class="hr-account-region" data-station="${escape(station)}" ${expanded.has(station)?'open':''}><summary class="hr-account-open"><strong>${escape(station==='HQ'?'Headquarter':station)}</strong><span>${accounts.length} ${accounts.length===1?'account':'accounts'}</span></summary><div>${accounts.map(account=>{
+        const count=account.employeeCount??data.employees.filter(r=>key(r)===key(account)||(r.additionalAccounts||[]).some(other=>key(other)===key(account))).length;return `<article class="hr-account-card"><button type="button" class="hr-account-open" data-scope="${escape(key(account))}"><small>${account.station==='HQ'?'HEADQUARTERS':'STATION / ACCOUNT'}</small><strong>${escape(label(key(account)))}</strong><span>${count} ${count===1?'person':'people'}</span><em>Explore team →</em></button>${role()?.mode==='admin'&&account.station!=='HQ'?`<button type="button" class="hr-account-delete" data-delete-scope="${escape(key(account))}" ${count?'disabled title="Move all employees and account memberships before deleting"':''}>Delete account</button>`:''}</article>`;
+      }).join('')}</div></details>`;
+    }).join('');
     applyZoom();
   }
   function populateScopes(){
