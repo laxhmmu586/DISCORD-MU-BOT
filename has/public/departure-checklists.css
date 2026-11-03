@@ -41,3 +41,7 @@
   background:linear-gradient(#fff1ad,#e8b646); color:#4c3200; font-size:11px; font-weight:800;
 }
 [data-cl-new] { text-align:left; }
+.cl-header-fields { margin:16px 0; border:1px solid #ddd; border-radius:10px; padding:12px; }
+.cl-header-fields > div { display:flex; gap:8px; margin-bottom:8px; }
+.cl-header-fields input { min-width:0; flex:1; font:inherit; padding:8px; border:1px solid #ddd; border-radius:6px; }
+.cl-print-fields b { overflow-wrap:anywhere; }
