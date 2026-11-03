@@ -111,3 +111,14 @@
 }
 .has-coverage-main [data-download-pdf]:hover:not(:disabled) { background: linear-gradient(#149cdd,#075da9); }
 .has-coverage-main [data-download-pdf]:disabled { opacity: .55; cursor: wait; }
+.coverage-toolbar { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; min-width: 0; }
+.coverage-toolbar .coverage-filters { flex: none; margin: 0; }
+.coverage-stations { display: flex; gap: 5px; min-width: 0; overflow-x: auto; padding: 4px; }
+.coverage-stations button {
+  flex: none; white-space: nowrap; padding: 5px 9px; border: 1px solid #cddff4;
+  background: #f5f9ff; color: #183f6e; border-radius: 7px; font: inherit; font-size: .85rem;
+}
+.coverage-stations button[aria-pressed="true"] { background: #165fa9; color: white; }
+@media(max-width: 650px) {
+  .coverage-toolbar { flex-direction: column; align-items: stretch; gap: 4px; }
+}
