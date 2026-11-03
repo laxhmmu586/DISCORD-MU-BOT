@@ -398,3 +398,7 @@ html.has-theme{background:#fff;color-scheme:light}
 .has-page-intro #has-briefing-button{gap:8px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:#375c8d;font-size:13px;font-weight:500}.has-page-intro #has-briefing-button img{width:40px;height:40px;object-fit:contain}
 
 .has-topbar .pbb-account-destination{display:flex;align-items:center;gap:8px;text-decoration:none;color:#254a70}.has-topbar #flight-account{display:flex;align-items:center}.has-topbar #flight-account .login-button{padding:0 2px;min-width:12px;width:auto}
+
+.has-chart-grid.has-qa-grid{grid-template-columns:repeat(auto-fit,minmax(min(175px,100%),1fr))}
+.has-qa-grid .has-qa-scope{min-width:0;background:#f6faff;color:#205f9e;cursor:pointer}
+.has-qa-grid .has-qa-scope:hover,.has-qa-grid .has-qa-scope:focus-visible{border-color:#258be8;background:white}

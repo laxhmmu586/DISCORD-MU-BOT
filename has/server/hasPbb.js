@@ -29,6 +29,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  const configEditor=user=>require('./serverOwners').isOwner(user)||['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
  const globalDashboard=user=>['lax@mu.com','nextweek1216@gmail.com','lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
  const businessManager=user=>employeePositions.normalize(profiles.linked(user)?.position)==='Business Manager';
+ const qaViewer=user=>globalDashboard(user)||employeePositions.normalize(profiles.linked(user)?.position)==='Quality Assurance Manager & Project Coordinator';
  const dashboardViewer=user=>globalDashboard(user)||businessManager(user);
  function roleCheck(e,role,date=today(),gate){
   if(!['driver','spotter'].includes(role))fail('Select Driver or Spotter');
@@ -83,8 +84,25 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  }
  pruneIncomplete();
  const cleanupTimer=setInterval(pruneIncomplete,30000);cleanupTimer.unref();
- app.use('/has-pbb-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.hasUser=await authenticate(req);if(req.path.startsWith('/dashboard')){if(!(req.path==='/dashboard/config'?(dashboard(req.hasUser)||configEditor(req.hasUser)):(req.path==='/dashboard'||/^\/dashboard\/records\/[^/]+\/pdf$/.test(req.path))&&req.method==='GET'?dashboardViewer(req.hasUser):dashboard(req.hasUser)))fail('Dashboard access denied.',403);}else req.hasEmployee=employee(req.hasUser,req.query);pruneIncomplete();next();}catch(e){res.status(e.status||401).json({error:e.message});}});
+ app.use('/has-pbb-api',async(req,res,next)=>{
+  res.set('Cache-Control','private, no-store');
+  try{
+   req.hasUser=await authenticate(req);
+   const user=req.hasUser;
+   if(req.path.startsWith('/dashboard')){
+    const read=req.method==='GET';
+    if(read&&req.path==='/dashboard/qa-access')return next();
+    const report=read&&(req.path==='/dashboard'||/^\/dashboard\/records\/[^/]+\/pdf$/.test(req.path));
+    req.pbbQa=report&&req.query.qa==='1';
+    const allowed=req.pbbQa?qaViewer(user):report?dashboardViewer(user):dashboard(user)||req.path==='/dashboard/config'&&configEditor(user);
+    if(!allowed)fail('Dashboard access denied.',403);
+   }else req.hasEmployee=employee(user,req.query);
+   pruneIncomplete();
+   next();
+  }catch(e){res.status(e.status||401).json({error:e.message});}
+ });
  const route=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
+ app.get('/has-pbb-api/dashboard/qa-access',route((req,res)=>res.json({canAccess:qaViewer(req.hasUser)})));
  const configScopes=user=>employeePositions.normalize(profiles.linked(user)?.position)==='Business Manager'?[employeeAccounts.scope(employee(user))]:accounts(employee(user));
  const requestedConfigScopes=(user,query={})=>{
   if(query.station===undefined&&query.account===undefined)return dashboard(user)?null:configScopes(user);
@@ -220,7 +238,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  };
  app.get('/has-pbb-api/records/:id/pdf',route((req,res)=>sendPdf(req,res,authorized(req,req.params.id),()=>authorized(req,req.params.id))));
  app.get('/has-pbb-api/dashboard/records/:id/pdf',route((req,res)=>{
-  const authorize=()=>{const r=get(req.params.id);if(employeeAccounts.isHeadquarter(r)||!globalDashboard(req.hasUser)&&(!businessManager(req.hasUser)||!same(employeeAccounts.scope(employee(req.hasUser)),r)))fail('You can only download your Main Account PDFs.',403);return r;};
+  const authorize=()=>{const r=get(req.params.id);if(employeeAccounts.isHeadquarter(r)||!req.pbbQa&&!globalDashboard(req.hasUser)&&(!businessManager(req.hasUser)||!same(employeeAccounts.scope(employee(req.hasUser)),r)))fail('You can only download your Main Account PDFs.',403);return r;};
   return sendPdf(req,res,authorize(),authorize);
  }));
  app.get('/has-pbb-api/stream',route((req,res)=>{
@@ -232,7 +250,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  }));
  app.get('/has-pbb-api/dashboard',route((req,res)=>{
   // Resolve Main Account from the linked profile, never from client filters or additional accounts.
-  const allowed=globalDashboard(req.hasUser)?null:employeeAccounts.scope(employee(req.hasUser));
+  const allowed=req.pbbQa||globalDashboard(req.hasUser)?null:employeeAccounts.scope(employee(req.hasUser));
   const visible=scope=>!employeeAccounts.isHeadquarter(scope)&&(!allowed||same(allowed,scope));
   const end=String(req.query.end||today());if(!validDate(end))fail('Select a valid end date.');
   const start=String(req.query.start||new Date(Date.parse(end)-6*86400000).toISOString().slice(0,10));
@@ -241,7 +259,8 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   if(allowed&&((station!=='ALL'&&station!==allowed.station)||(account!=='ALL'&&account!==allowed.account)))fail('You can only view your Main Account dashboard.',403);
   const rows=db.prepare("SELECT data FROM has_pbb_records WHERE (?='ALL' OR station=?) AND (?='ALL' OR account=?) AND date>=? AND date<=? ORDER BY date,station,account,flight,bridge").all(station,station,account,account,start,end).map(x=>JSON.parse(x.data)).filter(visible);
   const configured=schedule().pairs.filter(visible);
-  const scopes=[...configured,...employees.get().employees,...db.prepare('SELECT DISTINCT station,account FROM has_pbb_records').all()].map(e=>({station:e.station,account:e.account})).filter(visible).filter((e,i,a)=>a.findIndex(x=>same(x,e))===i);
+  const roster=employees.get();
+  const scopes=[...configured,...(req.pbbQa?roster.accounts||[]:[]),...roster.employees,...db.prepare('SELECT DISTINCT station,account FROM has_pbb_records').all()].map(e=>({station:e.station,account:e.account})).filter(visible).filter((e,i,a)=>a.findIndex(x=>same(x,e))===i);
   const selectedScopes=scopes.filter(s=>(station==='ALL'||s.station===station)&&(account==='ALL'||s.account===account));
   const flightIdentity=r=>[r.station,r.account,r.date,r.type||'arrival',r.flightNo].join('/');
   const isScheduled=r=>{const weekday=new Date(r.date+'T12:00:00Z').getUTCDay()||7;return configured.some(pair=>{const leg=pair[(r.type||'arrival')==='departure'?'outbound':'inbound'];return same(pair,r)&&leg.flightNo===r.flightNo&&leg.days.includes(weekday);});};
@@ -249,7 +268,21 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   const expected=(date,scope)=>{const weekday=new Date(date+'T12:00:00Z').getUTCDay()||7;return configured.filter(pair=>same(pair,scope)).reduce((n,pair)=>n+Number(pair.inbound.days.includes(weekday))+Number(pair.outbound.days.includes(weekday)),0);};
   const daily=[];for(let d=Date.parse(start);d<=Date.parse(end);d+=86400000){const date=new Date(d).toISOString().slice(0,10);daily.push({date,expectedFlights:selectedScopes.reduce((n,s)=>n+expected(date,s),0),...counts(rows.filter(r=>r.date===date))});}
   const byScope=selectedScopes.map(s=>({...s,weeklyArrivals:configured.filter(pair=>same(pair,s)).reduce((n,pair)=>n+pair.inbound.days.length,0),weeklyDepartures:configured.filter(pair=>same(pair,s)).reduce((n,pair)=>n+pair.outbound.days.length,0),expectedFlights:daily.reduce((n,d)=>n+expected(d.date,s),0),...counts(rows.filter(r=>same(r,s)))}));
-  res.json({station,account,start,end,daily,scopes,byScope,records:rows.map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
+  const missing=[];
+  if(req.pbbQa&&station!=='ALL'&&account!=='ALL'){
+   const covered=new Set(rows.filter(r=>r.completedAt).map(flightIdentity));
+   const pairs=configured.filter(pair=>pair.station===station&&pair.account===account);
+   for(const {date} of daily){
+    const weekday=new Date(date+'T12:00:00Z').getUTCDay()||7;
+    for(const pair of pairs){
+     for(const [type,leg] of [['arrival',pair.inbound],['departure',pair.outbound]]){
+      const flight={station,account,date,type,flightNo:leg.flightNo};
+      if(leg.days.includes(weekday)&&!covered.has(flightIdentity(flight)))missing.push({date,type,flightNo:leg.flightNo});
+     }
+    }
+   }
+  }
+  res.json({station,account,start,end,daily,scopes,byScope,...(req.pbbQa?{missing}:{}),records:(req.pbbQa&&(station==='ALL'||account==='ALL')?[]:rows).map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
  }));
  for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&(r.delivery.status!=='ready'||r.station==='LAX'&&r.account==='MU'&&['pending','failed'].includes(r.discordDelivery?.status)))void deliver(row.id);}
  return {deliver,get,pruneIncomplete,flushProblemMail:problemMail.tick,close(){problemMail.close();clearInterval(cleanupTimer);for(const s of streams)s.res.end();}};

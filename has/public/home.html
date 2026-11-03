@@ -22,7 +22,7 @@
   <script defer src="/home.js?v=20261102-approval-forms"></script>
   <script defer src="/emergency-notification-model.js?v=20261030-calls"></script>
   <script defer src="/home-emergency.js?v=20261030-phone-right"></script>
-<script defer src="/department-access.js?v=20261030-access"></script></head>
+<script defer src="/department-access.js?v=qa-pbb"></script></head>
 <body class="home-page">
   <div class="app-frame">
     <header class="home-topbar profile-topbar">
@@ -39,7 +39,7 @@
       <nav class="top-nav" aria-label="Main navigation">
         <a href="/home" aria-current="page">Home</a>
         <a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1">HR</a>
-        <span class="top-nav-placeholder" aria-disabled="true">Finance</span><span class="top-nav-placeholder" aria-disabled="true">QA</span>
+        <span class="top-nav-placeholder" aria-disabled="true">Finance</span><details class="department-nav" data-department="qa" inert aria-disabled="true"><summary tabindex="-1" aria-disabled="true">QA</summary><div class="department-menu"><a href="/has-pbb-dashboard.html?qa=1"><span class="art-icon icon-bridge" aria-hidden="true"></span>PBB</a></div></details>
       </nav>
       <span class="topbar-date" id="home-date"></span><div id="flight-account" class="flight-account"></div>
     </header>
