@@ -14,7 +14,9 @@ function registerDepartureChecklists(app,{db,audit,now,wrap}){
   if(!Array.isArray(items)||items.length<1||items.length>60||items.some(item=>!item||typeof item.id!=='string'||!/^[a-z0-9-]{1,64}$/.test(item.id)||typeof item.zh!=='string'||typeof item.en!=='string'||!(item.zh.trim()||item.en.trim())||item.zh.length>2000||item.en.length>3000)||new Set(items.map(item=>item.id)).size!==items.length)fail('Provide 1–60 uniquely identified checklist items with text.');
   const name=body.name===undefined?before?.name:body.name;
   if(typeof name!=='string'||!name.trim()||name.length>80)fail('Provide a checklist name up to 80 characters.');
-  const next={...(before||{type,source:'Custom template'}),name:name.trim(),title:body.title,subtitle:body.subtitle,items:items.map(({id,zh,en})=>({id,zh,en}))},at=now().toISOString();
+  const fields=body.fields===undefined?model.headerFields(before||{type}):body.fields;
+  if(!Array.isArray(fields)||fields.length>24||fields.some(label=>typeof label!=='string'||!label.trim()||label.length>100))fail('Provide up to 24 header field names of 100 characters each.');
+  const next={...(before||{type,source:'Custom template'}),name:name.trim(),fields:fields.map(label=>label.trim()),title:body.title,subtitle:body.subtitle,items:items.map(({id,zh,en})=>({id,zh,en}))},at=now().toISOString();
   if(creating)db.prepare('INSERT INTO briefing_checklist_templates VALUES(?,1,?,?,?)').run(type,JSON.stringify(next),at,req.briefingAccess.employeeId);
   else db.prepare('UPDATE briefing_checklist_templates SET revision=revision+1,data=?,updated_at=?,updated_by=? WHERE type=?').run(JSON.stringify(next),at,req.briefingAccess.employeeId,body.type);
   audit(null,'checklist-template',before,next,req.briefingAccess.employeeId,at);return template(type);
