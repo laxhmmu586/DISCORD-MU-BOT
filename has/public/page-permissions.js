@@ -72,7 +72,7 @@
   finally{save.disabled=false;}
  };
  auth.onAuthStateChanged(async user=>{
-  button.hidden=true;if(dialog.open)dialog.close();if(!user)return;
-  try{await request();if(auth.currentUser===user)button.hidden=false;}catch{}
+  button.hidden=!['lake@mu.com','nextweek1216@gmail.com'].includes(String(user?.email||'').trim().toLowerCase());
+  if(dialog.open)dialog.close();
  });
 })();

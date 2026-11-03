@@ -4,7 +4,7 @@ const {pagePermissions}=require('./pagePermissions');
 const pages={
  'account-settings':[], 'admin':[], 'approval-workflow':[], 'attendance-request':[],
  attendance:[], 'has-checklist':[], 'has-form':['/new-access-api'],
- 'has-pbb':['/has-pbb-api'], 'has-report-dashboard':[],
+ 'has-report-dashboard':[],
  'has-report':['/has-report-api','/incident-api','/expense-api','/terrific-api'],
  home:[], hr:['/employee-admin-api'], info:[], 'my-approvals':[], profile:[],
  'read-sign':['/read-sign-api'], schedule:['/staff-schedule-api'], uniform:['/uniform-api']
@@ -25,7 +25,7 @@ function registerWorkspacePagePermissions(app,{employees,profiles,authenticate})
   app.get(path+'/access',(req,res)=>res.json({canAccess:!policy.restricted()||policy.allows(req.pageUser,linked(req.pageUser),true)}));
   policy.register(app,path+'/permissions',req=>req.pageUser);
   for(const api of apis)app.use(api,(req,res,next)=>{
-   if(!policy.restricted()||page==='has-pbb'&&req.path.startsWith('/dashboard'))return next();
+   if(!policy.restricted())return next();
    return authenticatePage(req,res,()=>{
     if(!policy.allows(req.pageUser,linked(req.pageUser),true))return res.status(403).json({error:'Page access denied.'});
     next();

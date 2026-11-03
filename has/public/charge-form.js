@@ -32,44 +32,45 @@
    top.append(...layout.slice(0,2).map(index=>blocks[index]));
    bottom.append(...layout.slice(2).map(index=>blocks[index]));
   }
-  for(const [row,section] of [top,bottom].entries()){
-   const width=sizes['width'+row];
-   section.style.setProperty('--charge-left',Number.isFinite(width)?Math.max(42,Math.min(58,width))+'fr':'');
-   section.style.setProperty('--charge-right',Number.isFinite(width)?100-Math.max(42,Math.min(58,width))+'fr':'');
-  }
-  for(const [index,block] of blocks.entries()){
-   const height=sizes['height'+index];
-   block.style.minHeight=Number.isFinite(height)?Math.max(0,Math.min(65,height))+'mm':'';
-  }
-
  }
  function addResizeHandles(){
-  for(const [index,block] of blocks.entries()){
-   const handle=document.createElement('button');
-   handle.type='button';handle.className='charge-resize-handle';
-   handle.textContent='↘';handle.setAttribute('aria-label','Resize '+blockNames[index]);
-   const resize=(dx,dy)=>{
-    const row=block.parentElement,number=Number(row.classList.contains('charge-bottom'));
-    const widthKey='width'+number,heightKey='height'+index;
-    const first=row.firstElementChild;
-    const paper=preview.querySelector('.charge-paper');
-    if(dx)sizes[widthKey]=Math.max(42,Math.min(58,100*(first.getBoundingClientRect().width+dx)/row.clientWidth));
-    if(dy)sizes[heightKey]=Math.max(0,Math.min(65,190*(block.getBoundingClientRect().height+dy)/paper.clientWidth));
-    applyLayout(false);
-   };
-   const persist=()=>{try{localStorage.setItem(layoutKey+'-sizes',JSON.stringify(sizes));}catch{}};
-   handle.onpointerdown=event=>{
-    event.preventDefault();
-    handle.setPointerCapture(event.pointerId);
-    let x=event.clientX,y=event.clientY;
-    handle.onpointermove=move=>{resize(move.clientX-x,move.clientY-y);x=move.clientX;y=move.clientY;};
-    handle.onlostpointercapture=()=>{handle.onpointermove=null;persist();};
-   };
-   handle.onkeydown=event=>{
-    const delta={ArrowLeft:[-5,0],ArrowRight:[5,0],ArrowUp:[0,-5],ArrowDown:[0,5]}[event.key];
-    if(delta){event.preventDefault();resize(...delta);persist();}
-   };
-   block.append(handle);
+  for(const [tableIndex,table] of [...preview.querySelectorAll('.charge-table')].entries()){
+   const headers=[...table.querySelectorAll('thead th')];
+   if(headers.length<2)continue;
+   let group=table.querySelector('colgroup');
+   if(!group){
+    group=document.createElement('colgroup');
+    group.append(...headers.map(()=>document.createElement('col')));
+    table.querySelector('thead').before(group);
+   }
+   const columns=[...group.children],key='columns'+tableIndex;
+   const apply=widths=>columns.forEach((column,index)=>column.style.width=widths?widths[index]+'%':'');
+   const saved=sizes[key];
+   if(Array.isArray(saved)&&saved.length===columns.length&&saved.every(width=>Number.isFinite(width)&&width>0))apply(saved);
+   for(const [index,header] of headers.slice(0,-1).entries()){
+    const handle=document.createElement('button');
+    handle.type='button';handle.className='charge-resize-handle';
+    handle.setAttribute('aria-label','Resize '+(header.textContent.trim()||'checkbox')+' column in '+table.caption.textContent);
+    const widths=()=>headers.map(cell=>100*cell.getBoundingClientRect().width/table.clientWidth);
+    const resize=(initial,dx)=>{
+     const minimum=100*24/table.clientWidth;
+     const change=Math.max(Math.min(0,minimum-initial[index]),Math.min(Math.max(0,initial[index+1]-minimum),100*dx/table.clientWidth));
+     const next=initial.slice();next[index]+=change;next[index+1]-=change;
+     sizes[key]=next;apply(next);
+    };
+    const persist=()=>{try{localStorage.setItem(layoutKey+'-sizes',JSON.stringify(sizes));}catch{}};
+    handle.onpointerdown=event=>{
+     event.preventDefault();handle.setPointerCapture(event.pointerId);
+     const initial=widths(),x=event.clientX;
+     handle.onpointermove=move=>resize(initial,move.clientX-x);
+     handle.onlostpointercapture=()=>{handle.onpointermove=null;persist();};
+    };
+    handle.onkeydown=event=>{
+     if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
+     event.preventDefault();resize(widths(),event.key==='ArrowLeft'?-5:5);persist();
+    };
+    header.append(handle);
+   }
   }
  }
  function renderLayoutEditor(){
@@ -89,7 +90,7 @@
   }
   const reset=document.createElement('button');
   reset.type='button';reset.textContent='Reset layout';
-  reset.onclick=()=>{layout=defaultLayout.slice();sizes={};saveLayout();try{localStorage.removeItem(layoutKey+'-sizes');}catch{}layoutEditor.querySelector('button').focus();};
+  reset.onclick=()=>{layout=defaultLayout.slice();sizes={};for(const column of preview.querySelectorAll('col'))column.style.removeProperty('width');saveLayout();try{localStorage.removeItem(layoutKey+'-sizes');}catch{}layoutEditor.querySelector('button').focus();};
   layoutEditor.append(reset);
  }
  function saveLayout(){
@@ -133,7 +134,7 @@
  toggle.onclick=()=>{if(!state?.canEdit||saving)return;if(!editor.hidden){editor.hidden=true;return;}editorRevision=state.revision;const titles={china:'US-CHINA',international:'US-CHINA-INTERNATIONAL',seat:'FIRST ROW',business:'Economy to Business',first:'Business to First',special:'Special Baggage'};editor.querySelector('div').innerHTML=Object.entries(model.groups).map(([key,items])=>'<fieldset><legend>'+titles[key]+'</legend>'+items.map(item=>'<label>'+esc(item.label)+' · '+item.currency+'<input data-price-id="'+item.id+'" aria-label="'+esc(item.id+' '+item.currency+' price')+'" type="number" min="0" max="1000000" step="0.01" required value="'+state.prices[item.id]+'"></label>').join('')+'</fieldset>').join('');editor.hidden=false;toggle.disabled=false;};
  editor.querySelector('[data-price-cancel]').onclick=()=>{editor.hidden=true;toggle.disabled=false;};
  editor.onsubmit=async event=>{event.preventDefault();if(saving||!state?.canEdit)return;saving=true;print.disabled=true;for(const node of editor.querySelectorAll('button,input'))node.disabled=true;const prices=Object.fromEntries([...editor.querySelectorAll('[data-price-id]')].map(node=>[node.dataset.priceId,Number(node.value)]));try{const result=await peopleApi('/briefing-api/charge-form',{revision:editorRevision,prices});state={...state,...result};priceOverrides={};cachedState={...state,prices:{...result.prices},exchange:{...state.exchange}};editor.hidden=true;toggle.disabled=false;status.textContent='Shared prices saved.';calculate();}catch(error){status.textContent=error.message;}finally{saving=false;for(const node of editor.querySelectorAll('button,input'))node.disabled=false;calculate();}};
- print.onclick=async()=>{calculate();if(print.disabled)return;const copy=preview.querySelector('.charge-paper').cloneNode(true);for(const handle of copy.querySelectorAll('.charge-resize-handle'))handle.remove();for(const text of copy.querySelectorAll('[contenteditable]')){text.removeAttribute('contenteditable');text.removeAttribute('aria-label');}for(const node of copy.querySelectorAll('input')){const span=document.createElement('span');span.className=node.type==='checkbox'?'charge-print-check':'charge-print-value';span.textContent=node.type==='checkbox'?(node.checked?'☑':'☐'):node.type==='date'?[node.value.slice(5,7),node.value.slice(8,10),node.value.slice(0,4)].join('/'):node.value;node.replaceWith(span);}const frame=document.createElement('iframe');frame.className='charge-print-frame';frame.title='Charge Form print';document.body.append(frame);const doc=frame.contentDocument;doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>China Eastern Charge Form</title><link rel="stylesheet" href="/has/charge-form.css?v=resize-blocks"><style>@page{size:'+dialog.querySelector('#charge-paper-size').value+' portrait;margin:8mm}</style></head><body class="charge-print-document">'+copy.outerHTML+'</body></html>');doc.close();try{await Promise.all([...doc.images].map(img=>img.decode()));await doc.fonts.ready;await new Promise(resolve=>{if(doc.styleSheets.length>=2)resolve();else frame.onload=resolve;});frame.contentWindow.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),30000),{once:true});frame.contentWindow.focus();frame.contentWindow.print();}catch{frame.remove();status.textContent='Print preview could not load. Please retry.';}};
+ print.onclick=async()=>{calculate();if(print.disabled)return;const copy=preview.querySelector('.charge-paper').cloneNode(true);for(const handle of copy.querySelectorAll('.charge-resize-handle'))handle.remove();for(const text of copy.querySelectorAll('[contenteditable]')){text.removeAttribute('contenteditable');text.removeAttribute('aria-label');}for(const node of copy.querySelectorAll('input')){const span=document.createElement('span');span.className=node.type==='checkbox'?'charge-print-check':'charge-print-value';span.textContent=node.type==='checkbox'?(node.checked?'☑':'☐'):node.type==='date'?[node.value.slice(5,7),node.value.slice(8,10),node.value.slice(0,4)].join('/'):node.value;node.replaceWith(span);}const frame=document.createElement('iframe');frame.className='charge-print-frame';frame.title='Charge Form print';document.body.append(frame);const doc=frame.contentDocument;doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>China Eastern Charge Form</title><link rel="stylesheet" href="/has/charge-form.css?v=resize-columns"><style>@page{size:'+dialog.querySelector('#charge-paper-size').value+' portrait;margin:8mm}</style></head><body class="charge-print-document">'+copy.outerHTML+'</body></html>');doc.close();try{await Promise.all([...doc.images].map(img=>img.decode()));await doc.fonts.ready;await new Promise(resolve=>{if(doc.styleSheets.length>=2)resolve();else frame.onload=resolve;});frame.contentWindow.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),30000),{once:true});frame.contentWindow.focus();frame.contentWindow.print();}catch{frame.remove();status.textContent='Print preview could not load. Please retry.';}};
  const updateDirection=event=>{ready=event.detail.ready&&event.detail.direction==='departure'&&!new URLSearchParams(location.search).has('quick')&&!new URLSearchParams(location.search).has('embed');button.hidden=!ready;if(!ready&&dialog.open)close();if(!event.detail.ready)cachedState=null;};
  window.addEventListener('briefing-direction',updateDirection);
  updateDirection({detail:window.briefingToolContext});
