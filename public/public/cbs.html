@@ -387,6 +387,26 @@
     .bag-tag-edit-form{display:grid;gap:4px;min-width:130px;margin:0}
     .bag-tag-edit-form input{width:130px;padding:5px;border:1px solid #aac8ef;border-radius:5px;font:inherit;box-sizing:border-box}
     .bag-tag-edit-form small{font-size:11px;white-space:normal;color:#bd2440;max-width:220px}
+    /* Briefing workspace palette and glass surfaces. */
+    :root { --bg:#e7effc; --ink:#142f59; --muted:#526e93; --brand:#1c5eaf; --line:#cdddf3; --panel:#f4f8ff; }
+    body { background:radial-gradient(ellipse at 90% 0%,#d3e4ff,transparent 55%),#e7effc; font-family:Inter,"Segoe UI",Arial,"Noto Sans SC",sans-serif; }
+    body > header { background:linear-gradient(150deg,#f7faff,#e3edfd); border-right:1px solid #fff; color:var(--ink); box-shadow:8px 0 28px #496da516; }
+    .brand { color:#123662; letter-spacing:.08em; }
+    .nav-kicker,.cbs-live-status { color:#526e93; }
+    .page-tab,.sidebar-action { color:#345780; }
+    .page-tab-icon { color:#3778c5; }
+    .page-tab:hover,.sidebar-action:hover { background:#ffffffb3; color:#14549c; }
+    .page-tab.is-active { border-color:#fff; background:linear-gradient(120deg,#fff,#edf5ff); color:#0968df; box-shadow:inset 3px 0 #347ef0,0 5px 14px #709bd120; }
+    .page-tab.is-active .page-tab-icon { color:#0968df; }
+    .sidebar-toggle { background:linear-gradient(145deg,#f7fbff,#c9defa); color:#215b9e; border-color:#fff; box-shadow:0 5px 14px #4069a53d; }
+    .card { min-width:0; background:linear-gradient(130deg,#ffffffce,#f2f7ff9c); border-color:#fff; border-radius:23px; box-shadow:0 10px 28px #4776bb15,inset 0 1px white; }
+    .card h1,.card h2 { color:#123662; letter-spacing:-.025em; }
+    .card :is(input,select,textarea):focus-visible { outline:2px solid #377ed0; outline-offset:2px; }
+    @media (max-width:840px) {
+      body > header,body.sidebar-collapsed > header { background:#eef5ff; border-bottom:1px solid #fff; }
+      .page-tabs { background:#eff5ff; }
+      .sidebar-action,body.sidebar-collapsed .sidebar-action { color:#345780; }
+    }
 </style>
 <link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><script src="/cbs-data.js?v=20261101-case-counts"></script></head>
 <body>
