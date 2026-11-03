@@ -66,6 +66,8 @@
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.classList.add('org-connectors');svg.setAttribute('aria-hidden','true');svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths.join(' '));svg.append(path);tree.prepend(svg);
   }
+  $('#hr-account-status').insertAdjacentHTML('beforebegin', '<button type="button" class="hr-pending-link" data-back-stations hidden>← All stations</button>');
+  const backStations=$('[data-back-stations]');
   function render(){data.employees=model.applyDefaultReporting(data.employees);
     $('#hr-permissions').hidden=!loaded||!role();if(permissionManager)renderPermissionPeople();
     $('#add-hr-account').hidden=role()?.mode!=='admin';
@@ -99,7 +101,8 @@
       ...[...accountsByStation.keys()].filter(station=>!priority.includes(station)).sort((a,b)=>a.localeCompare(b))];
     const accountList=$('#org-accounts');
     const selected=accountList.dataset.station;
-    if(!accountsByStation.has(selected)){
+    backStations.hidden=!accountsByStation.has(selected);
+    if(backStations.hidden){
       accountList.innerHTML=`<section class="hr-account-region"><div>${stations.map((station,index)=>{
         const count=accountsByStation.get(station).length;
         return `<button type="button" class="hr-account-card" data-station-index="${index}"><small>STATION</small><strong>${escape(station==='HQ'?'Headquarter':station)}</strong><span>${count} ${count===1?'account':'accounts'}</span><em>View accounts →</em></button>`;
@@ -107,14 +110,14 @@
       accountList.querySelectorAll('[data-station-index]').forEach(button=>button.onclick=()=>{
         accountList.dataset.station=stations[Number(button.dataset.stationIndex)];
         render();
-        accountList.querySelector('[data-back-stations]').focus();
+        backStations.focus();
       });
     }else{
       const accounts=accountsByStation.get(selected);
-      accountList.innerHTML=`<section class="hr-account-region"><button type="button" class="hr-pending-link" data-back-stations>← All stations</button><h3>${escape(selected==='HQ'?'Headquarter':selected)}</h3><div>${accounts.map(account=>{
+      accountList.innerHTML=`<section class="hr-account-region"><h3>${escape(selected==='HQ'?'Headquarter':selected)}</h3><div>${accounts.map(account=>{
         const count=account.employeeCount??data.employees.filter(r=>key(r)===key(account)||(r.additionalAccounts||[]).some(other=>key(other)===key(account))).length;return `<article class="hr-account-card"><button type="button" class="hr-account-open" data-scope="${escape(key(account))}"><small>${account.station==='HQ'?'HEADQUARTERS':'STATION / ACCOUNT'}</small><strong>${escape(label(key(account)))}</strong><span>${count} ${count===1?'person':'people'}</span><em>Explore team →</em></button>${role()?.mode==='admin'&&account.station!=='HQ'?`<button type="button" class="hr-account-delete" data-delete-scope="${escape(key(account))}" ${count?'disabled title="Move all employees and account memberships before deleting"':''}>Delete account</button>`:''}</article>`;
       }).join('')}</div></section>`;
-      accountList.querySelector('[data-back-stations]').onclick=()=>{
+      backStations.onclick=()=>{
         delete accountList.dataset.station;
         render();
         accountList.querySelectorAll('[data-station-index]')[stations.indexOf(selected)]?.focus();
