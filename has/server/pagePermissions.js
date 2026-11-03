@@ -1,5 +1,7 @@
 const positions = require('../public/employee-positions');
 const {isOwner} = require('./serverOwners');
+const permissionEditors=new Set(['lake@mu.com','nextweek1216@gmail.com']);
+const canManage=user=>permissionEditors.has(String(user?.email||'').trim().toLowerCase());
 
 function pagePermissions(db, page, directory) {
  db.exec('CREATE TABLE IF NOT EXISTS page_view_permissions(page TEXT PRIMARY KEY, revision INTEGER NOT NULL, roles TEXT NOT NULL, members TEXT NOT NULL)');
@@ -10,6 +12,7 @@ function pagePermissions(db, page, directory) {
  };
  const members = () => directory().map(({id,name,station,account})=>({id:String(id),name,station,account}));
  return {
+  restricted:()=>read().restricted,
   allows(user, employee, defaultAccess) {
    if (isOwner(user)) return defaultAccess;
    const policy = read();
@@ -18,7 +21,7 @@ function pagePermissions(db, page, directory) {
   register(app, path, authenticatedUser) {
    const handle = async (req,res) => {
     const user=authenticatedUser(req);
-    if (!isOwner(user)) return res.status(403).json({error:'Only site owners can manage page permissions.'});
+    if (!canManage(user)) return res.status(403).json({error:'Page permission management access denied.'});
     try {
      const directoryMembers=members();
      if (req.method==='POST') {
