@@ -5,23 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>QA · Hallmark Aviation Services</title>
   <link rel="stylesheet" href="/home.css?v=20261102-red-approval-count">
-  <link rel="stylesheet" href="/has-pbb.css?v=qa-workspace">
+  <link rel="stylesheet" href="/has-pbb.css?v=coverage-review">
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="/__/firebase/init.js"></script>
   <script defer src="/has-network.js?v=20261024-direct-api"></script>
-  <script defer src="/service-common.js?v=20261023-has-network"></script>
+  <script defer src="/service-common.js?v=coverage-review"></script>
   <script defer src="/flight-account.js?v=20261030-visual-followup"></script>
   <script defer src="/department-access.js?v=qa-workspace"></script>
   <script defer src="/download-filename.js"></script>
-  <script defer src="/has-pbb-dashboard.js?v=qa-workspace"></script>
+  <script defer src="/has-pbb-dashboard.js?v=coverage-review"></script>
+<link rel="stylesheet" href="/has/page-permissions.css"><script defer src="/has/page-permissions.js"></script>
+<link rel="stylesheet" href="/has/pbb-coverage.css">
 </head>
 <body class="home-page qa-workspace">
 <div class="app-frame">
   <header class="home-topbar profile-topbar">
     <button class="menu-toggle" aria-label="Open QA navigation" aria-expanded="false" aria-controls="qa-sidebar">☰</button>
     <a class="home-brand" href="/home" aria-label="Hallmark Home"><img src="/assets/home-hallmark-transparent-v1.png" alt="Hallmark Aviation Services"></a>
-    <nav class="top-nav" aria-label="Main navigation"><a href="/home">Home</a><a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1">HR</a><span class="top-nav-placeholder" aria-disabled="true">Finance</span><a href="/QA" aria-current="page">QA</a></nav>
+    <nav class="top-nav" aria-label="Main navigation"><a href="/home">Home</a><a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1">HR</a><span class="top-nav-placeholder" aria-disabled="true">Finance</span><a data-department="qa" aria-disabled="true" aria-current="page" tabindex="-1">QA</a></nav>
     <div id="flight-account" class="flight-account"><span role="status">Checking session…</span></div>
   </header>
   <button class="sidebar-scrim" aria-label="Close QA navigation" hidden></button>
@@ -30,8 +32,8 @@
     <nav><a href="/QA" class="is-active" aria-current="page"><span class="art-icon icon-bridge" aria-hidden="true"></span><span>PBB</span></a></nav>
     <div class="sidebar-footer"><span class="footer-mark">HALLMARK</span><p>People. Operations. Together.</p><span class="footer-line"></span><small>Providing Peace of Mind.</small></div>
   </aside>
-  <main class="home-main">
-    <header class="has-page-intro"><span class="eyebrow">QUALITY ASSURANCE</span><h1>PBB coverage</h1><p>Company → Station → Account</p></header>
+  <main class="home-main has-coverage-main">
+    <header class="has-page-intro"><span class="eyebrow">QUALITY ASSURANCE</span><h1>PBB coverage</h1><p>Company → Station → Account</p><button type="button" data-page-permissions="/has-pbb-api/dashboard/qa-permissions" hidden>Permissions</button></header>
     <p id="has-status" role="status" aria-live="polite">Checking access…</p><section id="dashboard-panel" hidden><form id="dashboard-form" class="has-form"><label>Station<select id="dashboard-station"></select></label><label>Account<select id="dashboard-account"></select></label><label>Start date<input type="date" id="dashboard-start" required></label><label>End date<input type="date" id="dashboard-end" required></label><div><button class="primary">Refresh statistics</button></div></form><div id="dashboard-results"></div></section>
   </main>
 </div>

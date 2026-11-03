@@ -10,12 +10,12 @@ test('Dashboard Config counts Arrival and Departure independently using their op
  assert.deepEqual(context.flightSchedule,[pairs[0]]);
  assert.deepEqual((await f.request('other','/context')).data.flightSchedule,[]);
  assert.equal((await f.request('lake','/dashboard/config',{revision:config.revision,pairs:[]})).status,409);
- const stats=(await f.request('lake','/dashboard?start=2026-10-19&end=2026-10-25')).data;assert.deepEqual(stats.daily.map(d=>d.expectedFlights),[1,1,1,1,1,1,2]);assert.equal(stats.byScope.find(s=>s.station==='LAX'&&s.account==='MU').expectedFlights,6);assert.equal(stats.byScope.find(s=>s.station==='SFO'&&s.account==='XX').expectedFlights,2);
- const filtered=(await f.request('lake','/dashboard?station=LAX&account=MU&start=2026-10-19&end=2026-10-25')).data;assert.equal(filtered.daily.reduce((n,d)=>n+d.expectedFlights,0),6);
+ const stats=(await f.request('lake','/dashboard?qa=1&start=2026-10-19&end=2026-10-25')).data;assert.deepEqual(stats.daily.map(d=>d.expectedFlights),[1,1,1,1,1,1,2]);assert.equal(stats.byScope.find(s=>s.station==='LAX'&&s.account==='MU').expectedFlights,6);assert.equal(stats.byScope.find(s=>s.station==='SFO'&&s.account==='XX').expectedFlights,2);
+ const filtered=(await f.request('lake','/dashboard?qa=1&station=LAX&account=MU&start=2026-10-19&end=2026-10-25')).data;assert.equal(filtered.daily.reduce((n,d)=>n+d.expectedFlights,0),6);
  assert.equal(filtered.byScope[0].weeklyArrivals,3);assert.equal(filtered.byScope[0].weeklyDepartures,3);
  for(const bad of [{...pairs[0],inbound:{flightNo:'MU583',days:[]}},{...pairs[0],outbound:{flightNo:'MU586',days:[8]}},{...pairs[0],inbound:{flightNo:'BAD',days:[1]}},{...pairs[0],inbound:{flightNo:'MU583',days:[1,1]}}])assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[bad]})).status,400);
  assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[pairs[0],{...pairs[0],id:'dup'}]})).status,400);
- assert.equal((await f.request('lake','/dashboard/config',{revision:saved.data.revision,pairs:[]})).status,200);assert.equal((await f.request('lake','/dashboard')).data.daily.reduce((n,d)=>n+d.expectedFlights,0),0);
+ assert.equal((await f.request('driver','/dashboard/config',{revision:saved.data.revision,pairs:[]})).status,200);assert.equal((await f.request('driver','/dashboard')).data.daily.reduce((n,d)=>n+d.expectedFlights,0),0);
 });
 test('LAX terminal certificates have inclusive boundaries and never substitute for each other',async t=>{
  const license=require('../has/public/pbb-terminal-license'),f=await fixture(t);
@@ -154,18 +154,18 @@ test('SSE sends shared Ready changes, denies premature movement, supports change
  for(const q of items.filter(x=>x.phase==='after'))await apply('driver',{action:'answer',itemId:q.id,value:true});
  await apply('driver',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);r=f.service.get(r.id);assert.equal(r.delivery.status,'ready');assert.equal(f.uploads(),0);assert.equal(r.delivery.discord,undefined);assert.equal((await require('../vendor/pdf-lib/pdf-lib').PDFDocument.load(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf)).getPageCount(),2);
  await f.service.deliver(r.id);assert.equal(f.uploads(),0);assert.equal((await f.request('driver','/records/'+r.id+'/pdf')).data.subarray(0,4).toString(),'%PDF');
- const dashboard=await f.request('lake','/dashboard');assert.equal(dashboard.status,200);assert.equal(dashboard.data.daily.length,7);assert.equal(dashboard.data.daily.at(-1).submittedFlights,1);assert.equal(dashboard.data.daily.at(-1).driveSaved,undefined);
- assert.equal((await f.request('spotter','/dashboard')).status,403);assert.equal((await f.request('lake','/dashboard?end=bad')).status,400);
+ const dashboard=await f.request('driver','/dashboard');assert.equal(dashboard.status,200);assert.equal(dashboard.data.daily.length,7);assert.equal(dashboard.data.daily.at(-1).submittedFlights,1);assert.equal(dashboard.data.daily.at(-1).driveSaved,undefined);
+ assert.equal((await f.request('spotter','/dashboard')).status,403);assert.equal((await f.request('driver','/dashboard?end=bad')).status,400);
  assert.equal((await f.change('driver',r,{action:'dock'})).status,409);abort.abort();
 });
 test('dashboard independent station/account filters and overall totals count flights within each scope',async t=>{
  const f=await fixture(t);for(const [user,bridge] of [['driver','L1'],['driver','L2'],['other','L1'],['account','L1']]){
   const r=(await f.create(user,bridge)).data;r.completedAt='2026-10-21T17:00:00Z';r.delivery={status:'sent'};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
  }
- const overall=(await f.request('lake','/dashboard')).data;assert.equal(overall.byScope.length,3);assert.equal(overall.daily.at(-1).expectedFlights,0);assert.equal(overall.daily.at(-1).submittedFlights,3);assert.equal(overall.daily.at(-1).submittedChecklists,4);
- const lax=(await f.request('lake','/dashboard?station=LAX&account=ALL')).data;assert.equal(lax.byScope.length,2);assert.equal(lax.daily.at(-1).submittedFlights,2);assert.equal(lax.daily.at(-1).submittedChecklists,3);
- const mu=(await f.request('lake','/dashboard?station=ALL&account=MU')).data;assert.equal(mu.daily.at(-1).submittedFlights,2);
- const sfo=(await f.request('lake','/dashboard?station=SFO&account=MU')).data;assert.equal(sfo.daily.at(-1).submittedFlights,1);assert.equal(sfo.daily.at(-1).expectedFlights,0);
+ const overall=(await f.request('lake','/dashboard?qa=1')).data;assert.equal(overall.byScope.length,3);assert.equal(overall.daily.at(-1).expectedFlights,0);assert.equal(overall.daily.at(-1).submittedFlights,3);assert.equal(overall.daily.at(-1).submittedChecklists,4);
+ const lax=(await f.request('lake','/dashboard?qa=1&station=LAX&account=ALL')).data;assert.equal(lax.byScope.length,2);assert.equal(lax.daily.at(-1).submittedFlights,2);assert.equal(lax.daily.at(-1).submittedChecklists,3);
+ const mu=(await f.request('lake','/dashboard?qa=1&station=ALL&account=MU')).data;assert.equal(mu.daily.at(-1).submittedFlights,2);
+ const sfo=(await f.request('lake','/dashboard?qa=1&station=SFO&account=MU')).data;assert.equal(sfo.daily.at(-1).submittedFlights,1);assert.equal(sfo.daily.at(-1).expectedFlights,0);
 });
 test('completed PDFs remain downloadable without any Drive calls',async t=>{
  let builds=0;const f=await fixture(t,{failUpload:true,buildPdf:async()=>{builds++;return Buffer.from('%PDF-local');}});
@@ -174,7 +174,7 @@ test('completed PDFs remain downloadable without any Drive calls',async t=>{
   const response=await f.request(user,'/records/'+r.id+'/pdf');assert.equal(response.status,200);assert.equal(response.data.toString(),'%PDF-local');assert.equal(f.service.get(r.id).delivery.status,'ready');
   await f.service.deliver(r.id);assert.equal((await f.request(user,'/records/'+r.id+'/pdf')).status,200);
  }
- assert.equal(builds,3);assert.equal(f.uploads(),0);assert.equal((await f.request('lake','/dashboard')).data.daily.at(-1).driveSaved,undefined);
+ assert.equal(builds,3);assert.equal(f.uploads(),0);assert.equal((await f.request('driver','/dashboard')).data.daily.at(-1).driveSaved,undefined);
 });
 
 test('combined stopped/chocks question atomically saves both checks and NO blocks Ready',async t=>{
@@ -251,7 +251,7 @@ test('HAS Driver needs only a valid terminal ID; all linked employees may be Spo
 
 test('Gate confirmations and clears immediately broadcast scoped snapshots to a second employee',async t=>{const f=await fixture(t),abort=new AbortController();t.after(()=>abort.abort());const timeout=setTimeout(()=>abort.abort(),8000);timeout.unref();t.after(()=>clearTimeout(timeout));const response=await fetch(f.base+'/has-pbb-api/stream',{headers:{Authorization:'Bearer spotter'},signal:abort.signal}),reader=response.body.getReader();let buffer='';const until=async text=>{while(!buffer.includes(text)){const {value,done}=await reader.read();assert.equal(done,false);buffer+=new TextDecoder().decode(value);}const output=buffer;buffer='';return output;};await until('event: gates');const confirmed=await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate:'132'});assert.equal(confirmed.status,200);const gateEvent=await until('MU583');assert.match(gateEvent,/event: gates/);assert.match(gateEvent,/132/);assert.deepEqual((await f.request('other','/context')).data.gateLocks,[]);const cleared=await f.request('driver','/gate/clear',{flightNo:'MU583'});assert.equal(cleared.status,200);assert.match(await until('event: gates'),/"gateLocks":\[\]/);abort.abort();});
 
-test('demo dashboard permission is read-only and does not grant Config access',async t=>{const f=await fixture(t);assert.equal((await f.request('demo','/dashboard')).status,200);assert.equal((await f.request('demo','/dashboard/config')).status,403);assert.equal((await f.request('demo','/dashboard/config',{revision:1,pairs:[]})).status,403);assert.equal((await f.request('spotter','/dashboard')).status,403);});
+test('demo dashboard permission is read-only and does not grant Config access',async t=>{const f=await fixture(t);assert.equal((await f.request('demo','/dashboard?qa=1')).status,200);assert.equal((await f.request('demo','/dashboard/config')).status,403);assert.equal((await f.request('demo','/dashboard/config',{revision:1,pairs:[]})).status,403);assert.equal((await f.request('spotter','/dashboard')).status,403);});
 test('Ready immediately authorizes movement and Spotter can sign after Driver finishes',async t=>{const f=await fixture(t);let r=(await f.create()).data;const apply=async(user,body)=>{const response=await f.change(user,r,body);assert.equal(response.status,200,JSON.stringify(response));r=response.data;};for(const role of ['driver','spotter'])for(const q of items.filter(x=>x.role===role&&x.phase==='pre'))await apply(role,{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'ready',value:true});await apply('spotter',{action:'ready',value:true});assert.equal(r.signatures.spotter,undefined);await apply('driver',{action:'move'});assert.ok(r.movingAt);await apply('driver',{action:'answer',itemId:'floor',value:true});await apply('driver',{action:'dock'});for(const q of items.filter(x=>x.role==='driver'&&x.phase==='after'))await apply('driver',{action:'answer',itemId:q.id,value:true});await apply('driver',{action:'sign',strokes});assert.equal(r.completedAt,undefined);await apply('spotter',{action:'sign',strokes});assert.ok(r.completedAt);await f.service.deliver(r.id);});
 
 test('Arbitrary numeric gates confirm with ordinary PBB credentials',async t=>{const f=await fixture(t);for(const gate of ['0','1','12','128','160','200','226','12345']){await f.request('driver','/gate/clear',{flightNo:'MU583'});assert.equal((await f.request('driver','/gate',{role:'driver',flightNo:'MU583',gate})).status,200,gate);}});
@@ -263,7 +263,7 @@ test('incomplete records expire one hour from creation or reset, completed PDFs 
  f.setTime('2026-10-21T17:59:59Z');assert.equal((await f.request('driver','/records')).data.length,2);
  const changed=(await f.change('driver',r,{action:'answer',itemId:'serviceable',value:true})).data;
  assert.equal(changed.updatedAt,'2026-10-21T17:59:59.000Z');
- f.setTime('2026-10-21T18:00:00Z');assert.equal((await f.request('lake','/dashboard')).data.records.length,1);
+ f.setTime('2026-10-21T18:00:00Z');assert.equal((await f.request('driver','/dashboard')).data.records.length,1);
  assert.equal((await f.request('driver','/records/'+r.id)).status,404);assert.equal((await f.change('driver',changed,{action:'sign',strokes})).status,404);
  assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(done.id).pdf.toString(),'saved PDF');
  const fresh=(await f.create()).data;assert.notEqual(fresh.id,r.id);
@@ -289,7 +289,7 @@ test('dashboard counts two flight legs separately from four or six bridge checkl
   const r=result.data;r.completedAt='2026-10-21T17:00:00Z';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
  };
  for(const type of ['arrival','departure'])for(const bridge of ['L1','L2'])await complete(type,bridge);
- const stats=async()=>(await f.request('lake','/dashboard?start=2026-10-21&end=2026-10-21')).data;
+ const stats=async()=>(await f.request('driver','/dashboard?start=2026-10-21&end=2026-10-21')).data;
  let d=await stats();assert.equal(d.daily[0].expectedFlights,2);assert.equal(d.daily[0].submittedFlights,2);assert.equal(d.daily[0].coveredFlights,2);assert.equal(d.daily[0].submittedChecklists,4);
  for(const type of ['arrival','departure'])await complete(type,'L3');
  d=await stats();assert.equal(d.daily[0].expectedFlights,2);assert.equal(d.daily[0].submittedFlights,2);assert.equal(d.daily[0].submittedChecklists,6);assert.equal(d.byScope.find(s=>s.station==='LAX'&&s.account==='MU').expectedFlights,2);
@@ -305,7 +305,7 @@ test('same-number Arrival/Departure flights remain distinct and partial checklis
   f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);
   await f.request('driver','/records',{role:'driver',type,flightNo:'MU100',gate:'132',bridge:'L2'});
  }
- const d=(await f.request('lake','/dashboard?start=2026-10-21&end=2026-10-22')).data;
+ const d=(await f.request('driver','/dashboard?start=2026-10-21&end=2026-10-22')).data;
  assert.equal(d.daily[0].expectedFlights,2);assert.equal(d.daily[0].submittedFlights,2);assert.equal(d.daily[0].coveredFlights,2);assert.equal(d.daily[0].submittedChecklists,2);assert.equal(d.daily[0].pending,2);
  assert.equal(d.daily[1].expectedFlights,0);assert.equal(d.daily[1].submittedFlights,0);
 });
@@ -373,9 +373,9 @@ test('HQ is excluded from dashboard totals, scope filters and details even with 
  assert.equal((await f.request('lake','/dashboard/config',{revision:config.revision,pairs})).status,200);
  const mu=(await f.create()).data;mu.completedAt='2026-10-21T17:00:00Z';mu.delivery={status:'sent'};f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(mu),mu.id);
  for(const [i,scope] of [{station:'HQ',account:'HQ'},{station:'LAX',account:'HEADQUARTER'},{station:'HEADQUARTERS',account:'MU'}].entries()){const r={...mu,...scope,id:'hq-historical-'+i};f.db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(r.id,r.station,r.account,r.date,r.flightNo,r.bridge,JSON.stringify(r));}
- const data=(await f.request('lake','/dashboard?start=2026-10-19&end=2026-10-25')).data;
+ const data=(await f.request('lake','/dashboard?qa=1&station=LAX&account=MU&start=2026-10-19&end=2026-10-25')).data;
  const isHq=require('../has/public/employee-account-groups').isHeadquarter;assert(data.scopes.every(s=>!isHq(s)));assert(data.byScope.every(s=>!isHq(s)));assert.deepEqual(data.records.map(r=>r.id),[mu.id]);assert.equal(data.daily.reduce((n,d)=>n+d.expectedFlights,0),14);assert.equal(data.daily.reduce((n,d)=>n+d.submittedChecklists,0),1);
- const hq=(await f.request('lake','/dashboard?station=HQ&account=HQ')).data;assert.deepEqual(hq.byScope,[]);assert.deepEqual(hq.records,[]);assert(hq.daily.every(d=>d.expectedFlights===0&&d.submittedChecklists===0));
+ const hq=(await f.request('lake','/dashboard?qa=1&station=HQ&account=HQ')).data;assert.deepEqual(hq.byScope,[]);assert.deepEqual(hq.records,[]);assert(hq.daily.every(d=>d.expectedFlights===0&&d.submittedChecklists===0));
 });
 
 test('demo linked as Business Manager can configure only its assigned account',async t=>{
@@ -440,7 +440,7 @@ test('Business Manager dashboard exposes only Main Account totals, schedules, fi
   assert.deepEqual(d.scopes,[{station:'LAX',account:'MU'}]);assert.equal(d.byScope.length,1);assert.equal(d.records.length,1);assert(d.records.every(r=>r.station==='LAX'&&r.account==='MU'));assert(d.daily.every(r=>r.expectedFlights===2));assert.equal(d.daily.at(-1).pending,1);
  }
  for(const query of ['?station=LAX&account=XX','?station=SFO&account=MU'])assert.equal((await f.request('spotter','/dashboard'+query)).status,403);
- assert.equal((await f.request('lake','/dashboard')).data.records.length,3);
+ assert.equal((await f.request('lake','/dashboard')).status,403);
  const updated=f.employees.get();updated.employees.find(e=>e.id==='spotter').position='Agent';f.employees.save(updated,{email:'lake@mu.com'});assert.equal((await f.request('spotter','/dashboard')).status,403);
 });
 
@@ -470,15 +470,22 @@ test('QA PBB exposes company totals and only returns checklist details for a sel
  assert.equal((await f.request('spotter','/dashboard/records/'+record.id+'/pdf?qa=1')).status,409);
 });
 
-test('each Business Manager downloads only Main Account PDFs while demo aggregates and downloads all accounts',async t=>{
+test('each Business Manager downloads only Main Account PDFs including an owner and demo with linked accounts',async t=>{
  const f=await fixture(t,{failUpload:true,buildPdf:async r=>Buffer.from('%PDF-'+r.station+'-'+r.account)}),records=[];
  for(const user of ['driver','account','other']){
   const r=(await f.create(user)).data;r.completedAt='2026-10-21T17:00:00Z';f.db.prepare('UPDATE has_pbb_records SET data=? WHERE id=?').run(JSON.stringify(r),r.id);records.push(r);
  }
- const demo=await f.request('demo','/dashboard');assert.equal(demo.status,200);assert.equal(demo.data.records.length,3);assert.equal(demo.data.daily.at(-1).submittedFlights,3);
+ const draft=f.employees.get(),main=draft.employees.find(e=>e.id==='driver');
+ draft.employees.push({...main,id:'demo',name:'DEMO',position:'Agent'},{...main,id:'lake',name:'LAKE',position:'Agent'});
+ f.employees.save(draft,{email:'lake@mu.com'});
+ for(const user of ['demo','lake']){
+  const result=await f.request(user,'/dashboard');assert.equal(result.status,200);
+  assert.deepEqual(result.data.records.map(record=>record.id),[records[0].id]);
+  assert.equal((await f.request(user,'/dashboard?station=SFO&account=MU')).status,403);
+ }
  for(const [i,user] of ['driver','account','other'].entries()){
   const d=(await f.request(user,'/dashboard')).data;assert.equal(d.records.length,1);assert.equal(d.records[0].id,records[i].id);assert.equal(d.daily.at(-1).submittedChecklists,1);
-  for(const r of records){const path='/dashboard/records/'+r.id+'/pdf',result=await f.request(user,path);assert.equal(result.status,r.id===records[i].id?200:403);if(result.status===200)assert.equal(result.data.toString(),'%PDF-'+r.station+'-'+r.account);assert.equal((await f.request('demo',path)).status,200);}
+  for(const r of records){const path='/dashboard/records/'+r.id+'/pdf',result=await f.request(user,path);assert.equal(result.status,r.id===records[i].id?200:403);if(result.status===200)assert.equal(result.data.toString(),'%PDF-'+r.station+'-'+r.account);for(const globalUser of ['demo','lake'])assert.equal((await f.request(globalUser,path)).status,r.id===records[0].id?200:403);}
  }
  const pending=(await f.create('driver','L2')).data;assert.equal((await f.request('driver','/dashboard/records/'+pending.id+'/pdf')).status,409);
  assert.equal((await f.request('spotter','/dashboard/records/'+records[0].id+'/pdf')).status,403);assert.equal(f.uploads(),0);
@@ -504,4 +511,21 @@ test('saving a NO report atomically queues a scoped Business Manager email and d
 test('server owner checklist account choices remain Main, second and third; unrelated scopes are denied',async t=>{
  const f=await fixture(t,{owner:true}),data=f.employees.get();data.employees.find(e=>e.id==='driver').additionalAccounts=[{station:'LAX',account:'XX'},{station:'SFO',account:'MU'}];f.employees.save(data,{email:'lake@mu.com'});
  const context=(await f.request('driver','/context')).data;assert.equal(context.allAccountAccess,false);assert.deepEqual(context.accounts,[{station:'LAX',account:'MU'},{station:'LAX',account:'XX'},{station:'SFO',account:'MU'}]);assert.equal((await f.request('driver','/context?station=LAX&account=OPS')).status,403);
+});
+
+
+test('page permissions support role and member access, reject stale updates, and retain account isolation',async t=>{
+ const f=await fixture(t),qa='/dashboard/qa-permissions',dashboard='/dashboard/page-permissions';
+ const saved={revision:0,restricted:true,roles:['Agent'],members:['driver']};
+ assert.equal((await f.request('spotter',qa,saved)).status,403);
+ assert.equal((await f.request('lake',qa,saved)).status,200);
+ assert.equal((await f.request('lake',qa,saved)).status,409);
+ for(const user of ['spotter','driver'])assert.equal((await f.request(user,'/dashboard?qa=1')).status,200);
+ assert.equal((await f.request('other','/dashboard?qa=1')).status,403);
+ assert.equal((await f.request('lake',dashboard,saved)).status,200);
+ assert.equal((await f.request('spotter','/dashboard')).status,200);
+ assert.equal((await f.request('spotter','/dashboard?station=SFO&account=MU')).status,403);
+ assert.equal((await f.request('other','/dashboard')).status,403);
+ assert.equal((await f.request('lake',qa,{...saved,revision:1,restricted:false})).data.restricted,false);
+ assert.equal((await f.request('spotter','/dashboard?qa=1')).status,403);
 });

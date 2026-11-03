@@ -55,7 +55,7 @@ const auth = window.firebase?.apps?.length && window.firebase?.auth ? firebase.a
               detail = "";
             }
           }
-          throw new Error(`HTTP ${res.status} ${res.statusText}${detail}`);
+          throw Object.assign(new Error(`HTTP ${res.status} ${res.statusText}${detail}`), { status: res.status });
         }
         if (!type.includes("application/json")) throw new Error(`API returned non-JSON from ${apiBase}.`);
         return res.json();

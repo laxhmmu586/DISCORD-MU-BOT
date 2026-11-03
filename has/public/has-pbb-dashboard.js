@@ -1,16 +1,12 @@
 (() => {
  const $=id=>document.getElementById(id),esc=escapeHtml;let timer,chartObserver,requestVersion=0,dashboardRecords=[];
- const qaWorkspace=document.body.classList.contains('qa-workspace');
- const qa=qaWorkspace||new URLSearchParams(location.search).get('qa')==='1';
+ const qa=document.body.classList.contains('qa-workspace');
  if(qa){
   document.title='QA · PBB';
-  document.querySelector('.has-page-intro').innerHTML='<span class="eyebrow">QUALITY ASSURANCE</span><h1>PBB coverage</h1><p>Company → Station → Account</p>';
-  const brand=document.querySelector('.has-brand');
-  if(brand)brand.href='/QA';
   $('dashboard-station').closest('label').hidden=true;
   $('dashboard-account').closest('label').hidden=true;
  }
- if(qaWorkspace){
+ if(document.querySelector('.menu-toggle')){
   const toggle=document.querySelector('.menu-toggle'),scrim=document.querySelector('.sidebar-scrim');
   const show=open=>{document.body.classList.toggle('sidebar-open',open);toggle.setAttribute('aria-expanded',String(open));scrim.hidden=!open;};
   toggle.onclick=()=>show(scrim.hidden);
@@ -29,7 +25,7 @@
   }
   const cards=[...groups].sort(([a],[b])=>Number(b==='LAX')-Number(a==='LAX')||a.localeCompare(b)).map(([key,row])=>{
    const rate=row.expectedFlights?Math.min(100,Math.round(row.coveredFlights/row.expectedFlights*100)):null;
-   return '<button type="button" class="has-qa-scope" data-qa-scope="'+esc(key)+'"><strong>'+esc(key)+'</strong><svg class="has-progress-ring" viewBox="0 0 160 160" role="img" aria-label="'+(rate===null?'No scheduled flights':rate+'% covered')+'"><circle cx="80" cy="80" r="58" fill="none" stroke="#edf3fa" stroke-width="13"/>'+(rate?'<circle cx="80" cy="80" r="58" fill="none" stroke="#258be8" stroke-width="13" stroke-linecap="round" pathLength="100" stroke-dasharray="'+rate+' 100" transform="rotate(-90 80 80)"/>':'')+'<text x="80" y="89" text-anchor="middle" font-size="30" font-weight="700" fill="#205f9e">'+(rate===null?'—':rate+'%')+'</text></svg><span>'+row.coveredFlights+' / '+row.expectedFlights+' scheduled flights covered</span></button>';
+   return '<button type="button" class="has-qa-scope" data-qa-scope="'+esc(key)+'"><strong>'+esc(key)+'</strong><svg class="has-progress-ring" viewBox="0 0 160 160" role="img" aria-label="'+(rate===null?'No scheduled flights':rate+'% covered')+'"><circle cx="80" cy="80" r="58" fill="none" stroke="#edf3fa" stroke-width="13"/>'+(rate?'<circle cx="80" cy="80" r="58" fill="none" stroke="#258be8" stroke-width="13" stroke-linecap="round" pathLength="100" stroke-dasharray="'+rate+' 100" transform="rotate(-90 80 80)"/>':'')+'<text x="80" y="89" text-anchor="middle" font-size="30" font-weight="700" fill="#205f9e">'+(rate===null?'—':rate+'%')+'</text></svg></button>';
   }).join('');
   return '<section class="has-qa-overview"><h2>'+esc(title)+'</h2>'+(station?'<button type="button" data-qa-back>← '+(account?'All accounts in '+esc(d.station):'All stations')+'</button>':'')+(account?'':'<div class="has-chart-grid has-qa-grid">'+(cards||'<p>No PBB scopes available.</p>')+'</div>')+'</section>';
  }
@@ -50,7 +46,7 @@
  async function load(initial=false){const version=++requestVersion;try{
   const query=new URLSearchParams();if(qa)query.set('qa','1');if(!initial){query.set('station',$('dashboard-station').value);query.set('account',$('dashboard-account').value);query.set('start',$('dashboard-start').value);query.set('end',$('dashboard-end').value);}
   const d=await apiJson('/has-pbb-api/dashboard?'+query);if(version!==requestVersion)return;$('dashboard-panel').hidden=false;dashboardRecords=d.records;
-  if(initial){for(const key of ['station','account'])$('dashboard-'+key).innerHTML=`<option value="ALL">All ${key==='station'?'stations':'accounts'}</option>`+[...new Set(d.scopes.map(s=>s[key]))].sort().map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');$('dashboard-start').value=d.start;$('dashboard-end').value=d.end;}
+  if(initial){for(const key of ['station','account'])$('dashboard-'+key).innerHTML=(qa?`<option value="ALL">All ${key==='station'?'stations':'accounts'}</option>`:'')+[...new Set(d.scopes.map(s=>s[key]))].sort().map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');$('dashboard-start').value=d.start;$('dashboard-end').value=d.end;}
   const total=key=>d.daily.reduce((sum,r)=>sum+r[key],0),title=d.station==='ALL'&&d.account==='ALL'?'Overall statistics':`${d.station==='ALL'?'All stations':d.station} / ${d.account==='ALL'?'All accounts':d.account}`;
   $('dashboard-results').innerHTML=`<section class="has-panel"><h2>${esc(title)}</h2><div class="has-totals"><div><strong>${total('expectedFlights')}</strong>Expected flights</div><div><strong>${total('submittedFlights')}</strong>Flights submitted</div><div><strong>${total('submittedChecklists')}</strong>Bridge checklists submitted</div></div><small>Expected flights include Arrival + Departure on their configured operating days. Each submitted Arrival or Departure flight counts once after at least one bridge checklist has both signatures. Additional bridge checklists count separately. Coverage includes scheduled flights only.</small>${charts(d)}<h3>Daily submissions</h3><div class="has-table-wrap"><table><thead><tr><th>Date</th>${headings}</tr></thead><tbody>${d.daily.map(r=>`<tr><td>${r.date}</td>${cells(r)}</tr>`).join('')}</tbody></table></div></section><section class="has-panel"><h2>By station and account</h2><div class="has-table-wrap"><table><thead><tr><th>Station</th><th>Account</th><th>Arrivals / week</th><th>Departures / week</th>${headings}</tr></thead><tbody>${d.byScope.map(r=>`<tr><td>${esc(r.station)}</td><td>${esc(r.account)}</td><td>${r.weeklyArrivals}</td><td>${r.weeklyDepartures}</td>${cells(r)}</tr>`).join('')}</tbody></table></div></section><section class="has-panel"><h2>Checklist details</h2><div class="has-table-wrap"><table><thead><tr><th>Station / Account</th><th>Date</th><th>Flight / Gate</th><th>Operation</th><th>Bridge</th><th>Driver</th><th>Spotter</th><th>Submitted</th><th>PDF</th></tr></thead><tbody>${d.records.map(r=>`<tr><td>${esc(r.station)} / ${esc(r.account)}</td><td>${r.date}</td><td>${esc(r.flightNo)} / ${esc(r.gate)}</td><td>${r.type==='departure'?'Departure':'Arrival'}</td><td>${r.bridge}</td><td>${esc(r.operators.driver||'—')}</td><td>${esc(r.operators.spotter||'—')}</td><td>${r.completedAt?esc(r.completedAt):'In progress'}</td><td>${r.completedAt?`<button type="button" data-download-pdf="${esc(r.id)}">Download PDF</button>`:'—'}</td></tr>`).join('')}</tbody></table></div></section>`;
   if(qa){const results=$('dashboard-results');if(d.account==='ALL')results.lastElementChild.remove();results.children[1].remove();results.insertAdjacentHTML('afterbegin',qaOverview(d));}
@@ -62,7 +58,7 @@
   }
   fitChart(d);
   $('has-status').textContent='Updated '+new Date().toLocaleTimeString()+' · Refreshes every 30 seconds';
- }catch(e){if(version!==requestVersion)return;if(qa){$('dashboard-results').replaceChildren();dashboardRecords=[];chartObserver?.disconnect();}$('has-status').textContent=e.message;}}
+ }catch(e){if(version!==requestVersion)return;if(e.status===403){$('dashboard-results').replaceChildren();$('dashboard-panel').hidden=true;dashboardRecords=[];chartObserver?.disconnect();}$('has-status').textContent=e.message;}}
  $('dashboard-results').addEventListener('click',async event=>{
   const scope=event.target.closest('[data-qa-scope]'),back=event.target.closest('[data-qa-back]');
   if(qa&&(scope||back)){
