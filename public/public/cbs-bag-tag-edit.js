@@ -1,9 +1,25 @@
 (function(root){
  'use strict';
  root.CbsBagTagEdit={install({save,refresh}){
-  let active=null;
+  let active=null,pending=null;
   const target=event=>event.target.closest?.('[data-edit-bag-tag]');
-  document.addEventListener('click',event=>{if(target(event))event.stopPropagation();},true);
+  function cancelClick(){
+   if(pending)clearTimeout(pending.timer);
+   pending=null;
+  }
+  function toggleCase(node){
+   node.closest('[data-toggle-case],[data-toggle-unresolved-update],[data-toggle-shipment]')?.click();
+  }
+  document.addEventListener('click',event=>{
+   const node=target(event);
+   if(!node)return;
+   event.stopPropagation();
+   if(active===node)return;
+   if(pending&&pending.node!==node)toggleCase(pending.node);
+   cancelClick();
+   if(event.detail>1)return;
+   pending={node,timer:setTimeout(()=>{pending=null;toggleCase(node);},320)};
+  },true);
   function begin(node){
    if(active||node.querySelector('input'))return;
    const previous=node.textContent.trim(),form=document.createElement('form'),input=document.createElement('input'),status=document.createElement('small');
@@ -23,7 +39,7 @@
    input.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'&&!saving){event.preventDefault();finish(previous);}});
    input.focus();input.select();
   }
-  document.addEventListener('dblclick',event=>{const node=target(event);if(node){event.preventDefault();event.stopPropagation();begin(node);}},true);
-  document.addEventListener('keydown',event=>{const node=target(event);if(node&&event.target===node&&event.key==='Enter'){event.preventDefault();event.stopPropagation();begin(node);}},true);
+  document.addEventListener('dblclick',event=>{const node=target(event);if(node){event.preventDefault();event.stopPropagation();cancelClick();begin(node);}},true);
+  document.addEventListener('keydown',event=>{const node=target(event);if(node&&event.target===node&&event.key==='Enter'){event.preventDefault();event.stopPropagation();cancelClick();begin(node);}},true);
  }};
 })(window);

@@ -33,7 +33,7 @@
     body.sidebar-collapsed { padding-left:76px; }
     body.sidebar-collapsed header { width:76px; padding-inline:10px; }
     body.sidebar-collapsed .brand { overflow:hidden; width:38px; padding:0; font-size:0; text-align:center; }
-    body.sidebar-collapsed .brand::after { content:"MU"; display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#245fce; color:#fff; font-size:12px; letter-spacing:0; }
+    body.sidebar-collapsed .brand::after { content:"LAKE"; display:grid; place-items:center; width:38px; height:38px; border-radius:999px; background:#245fce; color:#fff; font-size:12px; letter-spacing:0; }
     body.sidebar-collapsed .nav-kicker,body.sidebar-collapsed .page-tab-label,body.sidebar-collapsed .sidebar-action-label { display:none; }
     body.sidebar-collapsed .page-tab { grid-template-columns:1fr; justify-items:center; padding:13px 8px; }
     body.sidebar-collapsed .page-tab-icon svg { width:22px; height:22px; }
@@ -407,12 +407,11 @@
       .page-tabs { background:#eff5ff; }
       .sidebar-action,body.sidebar-collapsed .sidebar-action { color:#345780; }
     }
-    .cbs-icon-defs { position:absolute; width:0; height:0; overflow:hidden; }
     .page-tab { grid-template-columns:34px minmax(0,1fr); gap:9px; font-weight:700; border-radius:16px; }
-    .page-tab-icon svg.cbs-art,.case-stat-icon svg.cbs-art,.open-case-group-head svg.cbs-art {
-      width:32px; height:32px; stroke:none; fill:none; filter:drop-shadow(0 3px 3px #1879d33b);
+    .page-tab-icon img.cbs-art,.case-stat-icon img.cbs-art,.open-case-group-head img.cbs-art {
+      width:32px; height:32px; object-fit:contain;
     }
-    .open-case-group-head svg.cbs-art { width:25px; height:25px; }
+    .open-case-group-head img.cbs-art { width:25px; height:25px; }
     .case-stat-card[data-case-group],.open-case-group {
       border:1px solid #fff; border-radius:19px; color:#153c69;
       background:linear-gradient(135deg,#fbfdff,#e6efff);
@@ -427,7 +426,7 @@
     }
     @media (max-width:840px) {
       .page-tabs { padding-top:9px; }
-      .page-tab-icon svg.cbs-art { width:25px; height:25px; }
+      .page-tab-icon img.cbs-art { width:25px; height:25px; }
     }
     .case-stat-card[data-case-group] {
       --case-accent:#2c7fe2; --case-tint:#e2efff;
@@ -437,37 +436,23 @@
     .case-stat-card[data-case-group="on-hand"] { --case-accent:#268269; --case-tint:#e1f5eb; color:#12654e; }
     .case-stat-card[data-case-group="bag-room"] { --case-accent:#ab7a09; --case-tint:#fff2c8; color:#795900; }
     .case-stat-card[data-case-group].is-active { border-color:var(--case-accent); box-shadow:inset 0 0 0 1px var(--case-accent),0 8px 20px #507ab225; }
-    .case-stat-icon svg.cbs-art { width:38px; height:38px; }
+    .case-stat-icon img.cbs-art { width:38px; height:38px; }
 </style>
 <link rel="stylesheet" href="/assets/cbs-report.css?v=20261015-reference-layout"><script src="/cbs-data.js?v=20261101-case-counts"></script></head>
 <body>
-  <svg class="cbs-icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
-    <linearGradient id="cbs-icon-blue" x1="0%" y1="0%" x2="85%" y2="100%"><stop stop-color="#effaff"/><stop offset=".45" stop-color="#71cdff"/><stop offset="1" stop-color="#0871df"/></linearGradient>
-    <symbol id="cbs-icon-open-cases-tab" viewBox="0 0 32 32"><path d="M3 10Q3 8 5 8h8l3 3h11v15H3Z" transform="translate(2 2)" fill="#0751ae"/><path d="M3 10Q3 8 5 8h8l3 3h11v15H3Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M6 16h17M6 20h12" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="cbs-icon-worldtracer-tab" viewBox="0 0 32 32"><path d="M3 17l10-3 4-11 4 1-2 10 9 4v4l-10-3-4 9-4-1 2-8-9 2Z" transform="translate(2 2)" fill="#0751ae"/><path d="M3 17l10-3 4-11 4 1-2 10 9 4v4l-10-3-4 9-4-1 2-8-9 2Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M17 8l-2 8-7 2" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="cbs-icon-add-baggage-tab" viewBox="0 0 32 32"><path d="M7 10h3V5h10v5h5v16H7Z" transform="translate(2 2)" fill="#0751ae"/><path d="M7 10h3V5h10v5h5v16H7Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M12 10V7h6v3m-6 4v8m8-8v8" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="22" r="6" fill="#0872df" stroke="#bdeeff"/><path d="M21 22h6m-3-3v6" stroke="white" stroke-width="1.6"/></symbol>
-    <symbol id="cbs-icon-missing-report-alert" viewBox="0 0 32 32"><path d="M4 8h15v3h4v14H4Z" transform="translate(2 2)" fill="#0751ae"/><path d="M4 8h15v3h4v14H4Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M8 13h6m-6 4h5m-5 4h4" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="19" r="5" fill="#c3edff" stroke="#176fcf" stroke-width="2"/><path d="M25 23l4 4" stroke="#0750a4" stroke-width="3" stroke-linecap="round"/></symbol>
-    <symbol id="cbs-icon-email-tab" viewBox="0 0 32 32"><path d="M3 8h24v17H3Z" transform="translate(2 2)" fill="#0751ae"/><path d="M3 8h24v17H3Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M4 9l11 9L26 9M4 24l7-7m15 7-7-7" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="cbs-icon-baggage-chart-tab" viewBox="0 0 32 32"><path d="M5 4h20v23H5Z" transform="translate(2 2)" fill="#0751ae"/><path d="M5 4h20v23H5Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M9 22h12m-11-3v-4m5 4v-8m5 8V8" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="cbs-icon-shipment-tab" viewBox="0 0 32 32"><path d="M3 7h15v5h6l4 5v7H3Z" transform="translate(2 2)" fill="#0751ae"/><path d="M3 7h15v5h6l4 5v7H3Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M18 13v6h8M6 11h8m-8 4h8" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="24" r="3" fill="#153e79" stroke="#bdeeff"/><circle cx="23" cy="24" r="3" fill="#153e79" stroke="#bdeeff"/></symbol>
-    <symbol id="cbs-icon-closed-cases-tab" viewBox="0 0 32 32"><path d="M3 10Q3 8 5 8h8l3 3h11v15H3Z" transform="translate(2 2)" fill="#0751ae"/><path d="M3 10Q3 8 5 8h8l3 3h11v15H3Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M8 18l5 4 9-8" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="cbs-icon-passenger" viewBox="0 0 32 32"><path d="M15 4a5 5 0 1 1 0 10 5 5 0 0 1 0-10ZM5 26v-4c0-9 20-9 20 0v4Z" transform="translate(2 2)" fill="#0751ae"/><path d="M15 4a5 5 0 1 1 0 10 5 5 0 0 1 0-10ZM5 26v-4c0-9 20-9 20 0v4Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M8 23c0-3 3-5 6-5" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="cbs-icon-on-hand" viewBox="0 0 32 32"><path d="M5 10h5V5h10v5h5v16H5Z" transform="translate(2 2)" fill="#0751ae"/><path d="M5 10h5V5h10v5h5v16H5Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M12 10V7h6v3M10 14v8m5-8v8m5-8v8" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="cbs-icon-bag-room" viewBox="0 0 32 32"><path d="M3 12l12-8 12 8v14H3Z" transform="translate(2 2)" fill="#0751ae"/><path d="M3 12l12-8 12 8v14H3Z" fill="url(#cbs-icon-blue)" stroke="#2788d9" stroke-width=".8" stroke-linejoin="round"/><path d="M7 24V14h16v10M8 16h14m-14 4h14" fill="none" stroke="#e9f9ff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  </defs></svg>
 
   <header>
-    <a class="brand" href="/flights.html">MUBC</a>
+    <a class="brand" href="/flights.html">LAKE</a>
     <div class="nav-kicker">Baggage Operations</div>
     <nav class="page-tabs" aria-label="CBS sections">
-      <button class="page-tab" id="open-cases-tab" type="button" title="Open Case"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-open-cases-tab"/></svg></span><span class="page-tab-label"><span class="en">Open Case</span><span class="zh">未结案件</span></span></button>
-      <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-worldtracer-tab"/></svg></span><span class="page-tab-label">Rush Bag</span></button>
-      <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-add-baggage-tab"/></svg></span><span class="page-tab-label">Add Baggage</span></button>
-      <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-missing-report-alert"/></svg></span><span class="page-tab-label">Missing Bag Report</span></button>
-      <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-email-tab"/></svg></span><span class="page-tab-label">Email</span></button>
-      <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-baggage-chart-tab"/></svg></span><span class="page-tab-label">Baggage Chart</span></button>
-      <button class="page-tab" id="shipment-tab" type="button" title="Shipment"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-shipment-tab"/></svg></span><span class="page-tab-label">Shipment</span></button>
-      <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-closed-cases-tab"/></svg></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
+      <button class="page-tab" id="open-cases-tab" type="button" title="Open Case"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/open-cases-tab.webp" alt="" width="38" height="38"></span><span class="page-tab-label"><span class="en">Open Case</span><span class="zh">未结案件</span></span></button>
+      <button class="page-tab" id="worldtracer-tab" type="button" title="Rush Bag"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/worldtracer-tab.webp" alt="" width="38" height="38"></span><span class="page-tab-label">Rush Bag</span></button>
+      <button class="page-tab" id="add-baggage-tab" type="button" title="Add Baggage"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/add-baggage-tab.webp" alt="" width="38" height="38"></span><span class="page-tab-label">Add Baggage</span></button>
+      <button class="page-tab" id="missing-report-alert" type="button" title="Missing Bag Report"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/missing-report-alert.webp" alt="" width="38" height="38"></span><span class="page-tab-label">Missing Bag Report</span></button>
+      <button class="page-tab" id="email-tab" type="button" title="Email"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/email-tab.webp" alt="" width="38" height="38"></span><span class="page-tab-label">Email</span></button>
+      <button class="page-tab" id="baggage-chart-tab" type="button" title="Baggage Chart"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/baggage-chart-tab.webp" alt="" width="38" height="38"></span><span class="page-tab-label">Baggage Chart</span></button>
+      <button class="page-tab" id="shipment-tab" type="button" title="Shipment"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/shipment-tab.webp" alt="" width="38" height="38"></span><span class="page-tab-label">Shipment</span></button>
+      <button class="page-tab" id="closed-cases-tab" type="button" title="Closed Case"><span class="page-tab-icon" aria-hidden="true"><img class="cbs-art" src="/assets/cbs-icons/closed-cases-tab.webp" alt="" width="38" height="38"></span><span class="page-tab-label"><span class="en">Closed Case</span><span class="zh">已结案件</span></span></button>
     </nav>
     <span class="header-spacer"></span>
     <span class="cbs-live-status" id="cbs-live-status" role="status">Sync every 1 min</span>
@@ -485,20 +470,20 @@
         <div class="case-dashboard-controls"><input class="month-filter" id="closed-month" type="month" aria-label="Closed case month" hidden /><label class="case-search-wrap"><input class="search-field" id="case-search" aria-label="Search cases" placeholder="Search case / bag tag..." /><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></label></div>
       </div>
       <div class="case-summary-cards" role="tablist" aria-label="Case categories">
-        <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-case-group="passenger"><span class="case-stat-icon"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-passenger"/></svg></span><span class="case-stat-heading"><span class="case-stat-label">Passenger Filed</span><span class="case-stat-subtitle">AHL / DPR</span></span><strong class="case-stat-count" data-case-count="passenger">0</strong></button>
-        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-case-group="on-hand"><span class="case-stat-icon"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-on-hand"/></svg></span><span class="case-stat-heading"><span class="case-stat-label">On-hand</span><span class="case-stat-subtitle">OHL</span></span><strong class="case-stat-count" data-case-count="on-hand">0</strong></button>
-        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-case-group="bag-room"><span class="case-stat-icon"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-bag-room"/></svg></span><span class="case-stat-label">Bag Room Unload Bag</span><strong class="case-stat-count" data-case-count="bag-room">0</strong></button>
+        <button class="case-stat-card is-active" type="button" role="tab" aria-selected="true" data-case-group="passenger"><span class="case-stat-icon"><img class="cbs-art" src="/assets/cbs-icons/passenger.webp" alt="" width="38" height="38"></span><span class="case-stat-heading"><span class="case-stat-label">Passenger Filed</span><span class="case-stat-subtitle">AHL / DPR</span></span><strong class="case-stat-count" data-case-count="passenger">0</strong></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-case-group="on-hand"><span class="case-stat-icon"><img class="cbs-art" src="/assets/cbs-icons/on-hand.webp" alt="" width="38" height="38"></span><span class="case-stat-heading"><span class="case-stat-label">On-hand</span><span class="case-stat-subtitle">OHL</span></span><strong class="case-stat-count" data-case-count="on-hand">0</strong></button>
+        <button class="case-stat-card" type="button" role="tab" aria-selected="false" data-case-group="bag-room"><span class="case-stat-icon"><img class="cbs-art" src="/assets/cbs-icons/bag-room.webp" alt="" width="38" height="38"></span><span class="case-stat-label">Bag Room Unload Bag</span><strong class="case-stat-count" data-case-count="bag-room">0</strong></button>
       </div>
       <section class="open-case-group is-active" data-case-panel="passenger">
-        <div class="open-case-group-head"><h2><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-passenger"/></svg>Passenger Filed <span data-case-title-count="passenger">(0)</span></h2><button class="case-view-all" type="button">View All</button></div>
+        <div class="open-case-group-head"><h2><img class="cbs-art" src="/assets/cbs-icons/passenger.webp" alt="" width="38" height="38">Passenger Filed <span data-case-title-count="passenger">(0)</span></h2><button class="case-view-all" type="button">View All</button></div>
         <div id="cases-output"><p class="muted">Loading passenger files...</p></div>
       </section>
       <section class="open-case-group" id="on-hand-group" data-case-panel="on-hand">
-        <div class="open-case-group-head"><h2 id="on-hand-title"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-on-hand"/></svg>On-hand</h2><span data-case-title-count="on-hand">(0)</span><button class="case-view-all" type="button">View All</button></div>
+        <div class="open-case-group-head"><h2 id="on-hand-title"><img class="cbs-art" src="/assets/cbs-icons/on-hand.webp" alt="" width="38" height="38">On-hand</h2><span data-case-title-count="on-hand">(0)</span><button class="case-view-all" type="button">View All</button></div>
         <div id="unresolved-baggage-output"><p class="muted">Loading On-hand cases...</p></div>
       </section>
       <section class="open-case-group" id="bag-room-unload-group" data-case-panel="bag-room">
-        <div class="open-case-group-head"><h2 id="bag-room-unload-title"><svg class="cbs-art" viewBox="0 0 32 32" aria-hidden="true"><use href="#cbs-icon-bag-room"/></svg>Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><div class="bag-room-notice-actions"><span class="bag-room-notice-status" id="bag-room-notice-status" role="status"></span><button class="bag-room-notice-button" id="bag-room-notice-button" type="button" hidden>Send Unload Notice Email</button><button class="case-view-all" type="button">View All</button></div></div>
+        <div class="open-case-group-head"><h2 id="bag-room-unload-title"><img class="cbs-art" src="/assets/cbs-icons/bag-room.webp" alt="" width="38" height="38">Bag Room Unload Bag</h2><span data-case-title-count="bag-room">(0)</span><div class="bag-room-notice-actions"><span class="bag-room-notice-status" id="bag-room-notice-status" role="status"></span><button class="bag-room-notice-button" id="bag-room-notice-button" type="button" hidden>Send Unload Notice Email</button><button class="case-view-all" type="button">View All</button></div></div>
         <div id="bag-room-unload-output"><p class="muted">Loading Bag Room Unload Bag cases...</p></div>
       </section>
     </section>
@@ -563,7 +548,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="/cbs-bag-tag-edit.js?v=20261102-autosave"></script><script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
+  <script src="/cbs-bag-tag-edit.js?v=tag-click"></script><script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
   <script>
     const baggageEditor=document.querySelector('#baggage-editor'),baggageEditForm=document.querySelector('#baggage-edit-form');
     document.querySelector('#baggage-edit-close').addEventListener('click',()=>baggageEditor.close());
@@ -1679,7 +1664,7 @@
     function normalizedRushTag(value) { return String(value || '').trim().toUpperCase().replace(/[\s-]+/g, ''); }
     function editableBagTagHtml(tag,row,source='unresolved',field='bagTag') {
       if(!tag||tag==='-')return '<span class="bag-tag-value">-</span>';
-      return `<span class="bag-tag-value" data-edit-bag-tag data-tag-row="${escapeHtml(row.rowNumber)}" data-tag-source="${escapeHtml(source)}" data-tag-field="${field}" tabindex="0" role="button" title="Double-click to edit · Enter to edit" aria-label="Edit bag tag ${escapeHtml(tag)}">${escapeHtml(tag)}</span>`;
+      return `<span class="bag-tag-value" data-edit-bag-tag data-tag-row="${escapeHtml(row.rowNumber)}" data-tag-source="${escapeHtml(source)}" data-tag-field="${field}" tabindex="0" role="button" title="Click to open case · Double-click or press Enter to edit" aria-label="Edit bag tag ${escapeHtml(tag)}">${escapeHtml(tag)}</span>`;
     }
     function bagTagSummaryHtml(value,row) {
       const tags = String(value || '').split(/\s*\/\s*/).map((tag) => tag.trim()).filter(Boolean);
