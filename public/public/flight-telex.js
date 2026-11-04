@@ -20,7 +20,9 @@
   }
 
   function showChecks() {
-    for (const input of items.querySelectorAll("input")) {
+    const inputs = [...items.querySelectorAll("input")];
+    panel.classList.toggle("is-complete", loaded && !saving && inputs.length > 0 && inputs.every(input => checked.has(input.value)));
+    for (const input of inputs) {
       input.checked = checked.has(input.value);
       input.disabled = !loaded || saving;
     }
