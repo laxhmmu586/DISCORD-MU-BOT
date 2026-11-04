@@ -33,10 +33,10 @@
   const text = value => `<p data-wording>${value}</p>`;
   const options = (labels, name = "", prefix = "") => labels.map(label =>
     `<label class="flight-form-option"><input type="${name ? "radio" : "checkbox"}" name="${name}" aria-label="${prefix}${label}"><span data-wording>${label}</span></label>`).join("");
-  const flightAndDate = flight => `<div class="flight-form-combined">
+  const flightAndDate = () => `<div class="flight-form-combined">
     <span data-wording>FLIGHT No. / DATE</span>
     <div class="flight-form-combined-inputs">
-      <input aria-label="Flight No." value="${flight}"><span aria-hidden="true">/</span>${input("Flight date")}
+      ${input("Flight No.")}<span aria-hidden="true">/</span>${input("Flight date")}
     </div>
   </div>`;
   const fields = (...items) => `<div class="flight-form-fields">${items.join("")}</div>`;
@@ -47,7 +47,7 @@
   const templates = [
     ["Release Form", () => `
       ${header("Waiver of Claim Against China Eastern Airlines", "Release and Waiver Form")}
-      ${fields(flightAndDate(context.flightNo), field("Passenger name"), field("BN"), field("Seat No."))}
+      ${fields(flightAndDate(), field("Passenger name"), field("BN"), field("Seat No."))}
       <section class="waiver-section"><h2 data-wording>Declaration</h2>${text(copy.declaration)}</section>
       <section class="waiver-section"><h2 data-wording>Applicable Conditions</h2>${options(copy.conditions)}
       <div class="flight-form-option"><input type="checkbox" aria-label="Meal condition applies"><span><span data-wording>I acknowledge and agree that no</span> ${input("Meal")} <span data-wording>meal will be served for this flight.</span></span></div>
@@ -64,7 +64,7 @@
       ${text("*员工免优票不适用")}`],
     ["Gate Bag", () => `
       ${header("特殊服务交接单（GATE BAG）", "SPECIAL SERVICE INFORMATION LIST")}
-      ${fields(field("Route", "LAX – PVG"), flightAndDate(context.flightNo || "MU586"))}
+      ${fields(field("Route"), flightAndDate())}
       ${table(["Tag number", "Seat number", "Description", "Pickup"], Array.from({length: 7}, (_, i) =>
         `<tr><td>${input("Tag number " + (i + 1))}</td><td>${input("Seat number " + (i + 1))}</td><td>${options(["STRL 婴儿推车", "CARSEAT 安全座椅", "Wheelchair 轮椅", "WALKER 步行器/拐杖", "Guitar 乐器"], "", `Bag ${i + 1} · `)}</td><td data-wording>飞机旁提取行李</td></tr>`))}`],
     ["STANDBY LIST", () => `
@@ -183,7 +183,7 @@
     frame.title = "Print " + title.textContent;
     const paper = dialog.querySelector("select").value === "Letter" ? "Letter" : "A4";
     const orientation = active === 3 ? "landscape" : "portrait";
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=form-fields"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=compact-done"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
     frame.onload = async () => {
       try {
         await frame.contentDocument.fonts.ready;

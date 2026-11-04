@@ -97,7 +97,8 @@
       const instruction = document.createElement("small");
       instruction.textContent = separate.has(code) ? `Send a separate Telex to ${recipients}` : "Send Telex";
       const confirmation = document.createElement("span");
-      confirmation.textContent = "Telex sent";
+      confirmation.className = "telex-done";
+      confirmation.textContent = "Done";
       text.append(name, instruction);
       label.append(input, text, confirmation);
       return label;
