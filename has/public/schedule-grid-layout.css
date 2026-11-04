@@ -1,5 +1,6 @@
 /* Keep calendar geometry independent of cached base theme versions. */
 .schedule-grid{overflow:auto;max-width:100%;box-sizing:border-box}
+@media(min-width:761px){.schedule-grid:not(.coverage-grid){max-height:none;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:auto}}
 .schedule-grid #schedule-table,.schedule-grid #coverage-table{table-layout:fixed;border-spacing:0}
 .schedule-grid col:not(.employee-column){width:54px}
 .schedule-grid .date-heading th:not(.employee-cell),.schedule-grid tbody tr:not(.team-heading)>td{padding:0;overflow:hidden;box-sizing:border-box}
@@ -12,7 +13,7 @@
 .schedule-grid .weekly-summary td{overflow:hidden;padding:2px 0;font-size:11px}
 
 /* Spaced square duties and a single-line identity, including employee codes. */
-:root{--schedule-name-width:240px;--schedule-day-width:54px}
+:root{--schedule-name-width:200px;--schedule-day-width:54px}
 .schedule-grid tbody tr:not(.team-heading)>td{height:54px;padding:5px!important}
 .schedule-grid .duty{width:42px;max-width:42px;height:42px;min-height:42px;margin:auto;border:1px solid #00000012;border-radius:9px!important}
 .schedule-grid .employee-cell{box-sizing:border-box;padding:6px 10px}

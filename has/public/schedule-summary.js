@@ -4,12 +4,12 @@
  const rows=[
   {label:'Management',codes:['D'],hours:8,color:'#ffff00'},
   {label:'Check-in',codes:['C','EC'],hours:4,color:'#99ff00'},
-  {label:'Check-in + Lost and Found',codes:['CL'],hours:8,color:'#77933c'},
+  {label:'Check-in + LL',codes:['CL'],hours:8,color:'#77933c'},
   {label:'Arrival',codes:['A'],hours:4,color:'#c96a68'},
   {label:'Gate Specialist',codes:['G'],hours:4,color:'#9371c7'},
-  {label:'Bag room + Lost and Found',codes:['BL'],hours:8,color:'#66b3c2'},
+  {label:'Bag room + LL',codes:['BL'],hours:8,color:'#66b3c2'},
   {label:'Bag room',codes:['B'],hours:4,color:'#66b3c2'},
-  {label:'Flight Control + Lost and Found',codes:['FL'],hours:8,color:'#3333ff'},
+  {label:'Flight Control + LL',codes:['FL'],hours:8,color:'#3333ff'},
   {label:'Flight Control',codes:['F'],hours:6,color:'#7777ee'},
   {label:'Arrival Card Assistant',codes:['Q'],hours:0,color:'#4b183c'}
  ];

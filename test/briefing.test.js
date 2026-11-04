@@ -287,6 +287,10 @@ test('Departure SY booking is exact, refreshes, preserves overrides and freezes 
  let values={bookingF:'1',bookingJ:'55',bookingY:'248'},exported;
  const booking={read:async(date,flight)=>({status:'available',fields:date===DATE&&flight==='MU586'?values:{}})};
  const {request}=await fixture(t,{booking,buildPdf:async snapshot=>{exported=snapshot;return Buffer.from('%PDF-fixture');}}),path='?date='+DATE+'&flight=MU586&direction=departure';
+ const initial=await request('sup',path+'&deferFlightSources=1');
+ assert.equal(initial.status,200);assert.equal(initial.data.direction,'departure');
+ assert.equal(initial.data.fields.bookingF,'');assert.equal(initial.data.booking,null);assert.equal(initial.data.etab,null);
+ const live=(await request('sup','/updates'+path)).data;assert.deepEqual(live.booking.fields,values);
  const first=(await request('sup',path)).data;assert.deepEqual(first.booking.fields,values);assert.equal(first.fields.bookingF,'');
  assert.equal((await request('sup','?date='+DATE+'&flight=MU583')).data.booking,null);
  assert.deepEqual((await request('sup','?date=2026-10-29&flight=MU586')).data.booking.fields,{});

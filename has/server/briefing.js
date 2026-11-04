@@ -57,7 +57,8 @@ function registerBriefing(app,{employees,profiles,authenticate=require('./pbbAut
    ? {...req.query,direction,flight:direction==='departure'?'MU586':'MU583'}
    : req.query;
   const key=identity(query),item=record(key);
-  const [flightSource,bookingSource]=await Promise.all([
+  // The live feed supplies flight sources after the form is ready.
+  const [flightSource,bookingSource]=req.query.deferFlightSources==='1'?[null,null]:await Promise.all([
    etabSource(key,item),
    item.direction==='departure'?booking.read(key.date,key.flight):null
   ]);
