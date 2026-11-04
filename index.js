@@ -1101,6 +1101,48 @@ app.get('/sy-live-stream', (req, res) => {
   req.on('close', () => { clearInterval(keepAlive); syStreamClients.delete(res); });
 });
 
+const telexDb = require('./db');
+telexDb.exec(`CREATE TABLE IF NOT EXISTS flight_telex_checks (
+  flight TEXT NOT NULL, date TEXT NOT NULL, service TEXT NOT NULL,
+  checked_by TEXT NOT NULL, checked_at TEXT NOT NULL,
+  PRIMARY KEY (flight, date, service)
+)`);
+const telexCodes = new Set(['VIP', 'INAD', 'INCP', 'WCHR', 'WCHC', 'AVIH', 'PTEC', 'UM', 'RUSH BAG']);
+const readTelex = telexDb.prepare('SELECT service FROM flight_telex_checks WHERE flight = ? AND date = ?');
+const markTelex = telexDb.prepare('INSERT OR IGNORE INTO flight_telex_checks VALUES (?, ?, ?, ?, ?)');
+const clearTelex = telexDb.prepare('DELETE FROM flight_telex_checks WHERE flight = ? AND date = ? AND service = ?');
+
+async function flightTelex(req, res) {
+  res.set('Cache-Control', 'no-store');
+  let user;
+  try {
+    user = await require('./has/server/pbbAuth').authenticate(req);
+  } catch {
+    return res.status(401).json({ error: 'Sign in required.' });
+  }
+  const { flightNo, flightDate, service, sent } = req.method === 'POST' ? (req.body || {}) : req.query;
+  const flight = normalizeSupportedFlight(flightNo);
+  if (!flight || flightDate !== operationalDate()) return res.status(400).json({ error: 'Choose today’s flight.' });
+  try {
+    if (req.method === 'POST') {
+      if (!telexCodes.has(service) || typeof sent !== 'boolean' || (service === 'RUSH BAG' && flight !== 'MU586')) {
+        return res.status(400).json({ error: 'Invalid Telex checklist item.' });
+      }
+      const result = sent ? markTelex.run(flight, flightDate, service, user.uid, new Date().toISOString())
+        : clearTelex.run(flight, flightDate, service);
+      if (result.changes) {
+        for (const client of syStreamClients) writeDashboardEvent(client, 'telex', { flightNo: flight, flightDate });
+      }
+    }
+    return res.json({ checked: readTelex.all(flight, flightDate).map(row => row.service) });
+  } catch (error) {
+    console.error('Telex checklist update failed:', error);
+    return res.status(500).json({ error: 'Unable to load the shared Telex checklist.' });
+  }
+}
+app.get('/flight-telex', flightTelex);
+app.post('/flight-telex', flightTelex);
+
 // Keep AHL/DPR and passenger forms current when their shared theme changes.
 app.use(['/pir-form.html', '/contact-form.html', '/cbs-form.html'], (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
