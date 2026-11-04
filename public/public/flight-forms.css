@@ -1,18 +1,13 @@
-.flight-forms[open] {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
-  height: min(810px, 91dvh);
-  gap: 10px;
+.flight-forms.checklist-dialog[open] {
+  resize: both; overflow: auto;
+  max-width: calc(100vw - 20px); max-height: calc(100dvh - 20px);
 }
-.flight-form-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.flight-form-tabs button {
-  background: #fff; border: 1px solid #bccbdd; border-radius: 8px;
-  color: #224b76; cursor: pointer; font: inherit; padding: 7px 11px;
+.flight-forms .cl-content { flex: 1; }
+.flight-form-preview {
+  min-width: max-content; padding: 12px;
+  background: #f3f3f3; border-radius: 10px;
 }
-.flight-form-tabs [aria-pressed="true"] { background: #e2edfb; border-color: #8caad1; font-weight: 700; }
-.flight-forms .charge-feedback { margin: 0; }
-.flight-forms .charge-feedback:empty { display: none; }
-.flight-forms:has(.charge-feedback:empty) { grid-template-rows: auto auto minmax(0, 1fr); }
+.flight-form-preview .flight-form-sheet { box-shadow: 0 1px 5px #0001; }
 .flight-form-sheet {
   box-sizing: border-box;
   width: 190mm;
@@ -176,3 +171,15 @@ body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.fli
   border-bottom: 0;
 }
 .flight-form-sheet input:focus-visible { outline: 2px solid #4284ca; outline-offset: -2px; }
+
+.flight-form-sheet[data-template="0"] .flight-form-checklist-fields {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, .7fr) minmax(0, 1fr);
+  gap: 2mm;
+}
+.release-flight { display: grid; min-width: 0; font-size: 9pt; }
+.release-flight > div {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline; gap: 1mm;
+}
+.waiver-section .flight-form-option > span[data-wording],
+.flight-form-sheet[data-template="1"] > p[data-wording] { white-space: pre-line; }
