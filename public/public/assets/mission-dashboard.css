@@ -46,12 +46,12 @@ main { padding-top:66px; }
 #warning-action .detail-action-badge { color:#fff; background:#b71934; border-radius:4px; padding:3px 8px; font-size:18px; }
 body.is-report-view #warning-action { display:none; }
 @media(min-width:1300px) { .mission-head { padding-right:225px; } }
-@media(max-width:1299px) { #warning-action { top:190px; } .mission-head { gap:30px; } .mission-side { gap:18px; } .status-strip { gap:14px; } h1 { font-size:clamp(28px,4vw,50px); } }
+@media(max-width:1299px) { .mission-head { gap:30px; } .mission-side { gap:18px; } .status-strip { gap:14px; } h1 { font-size:clamp(28px,4vw,50px); } }
 @media(max-width:760px) { .topbar { height:66px; } .mission-head { width:calc(100% - 36px); margin-top:28px; flex-wrap:wrap; gap:24px; } .mission-side { width:100%; } .status-strip { min-width:0; grid-template-columns:repeat(3,76px); gap:16px; } .status-metric { width:76px; height:76px; padding:12px 6px; } .status-metric strong { font-size:24px; } .mission-stage { margin-top:auto; padding-top:85px; height:340px; min-height:340px; } .timeline { gap:15px; padding-left:20px; padding-right:20px; } .timeline .node { flex-basis:112px; width:112px; } #warning-action { position:relative; top:auto; right:auto; align-self:flex-end; order:1; margin:18px 18px 0; padding:8px 12px; min-height:44px; } .mission-stage { order:2; } .details-panel { top:230px; } .result-panel { order:3; } body::before { background-position:center; } }
 @media(prefers-reduced-motion:reduce) { .timeline { scroll-behavior:auto; } .node { transition:none; } }
 
 /* Keep alerts nearer the flight controls and details in the viewport center. */
-@media(min-width:761px) { #warning-action { right:22vw; top:190px; } }
+@media(min-width:761px) { #warning-action { position:relative; inset:auto; align-self:flex-start; margin:clamp(24px, 4vh, 48px) 0 16px 14vw; } }
 .node-card,
 .details-panel.is-meal-open,
 .result-panel.is-centered-popup { position:fixed; top:50% !important; left:50% !important; right:auto; bottom:auto; transform:translate(-50%,-50%) !important; margin:0; max-height:calc(100svh - 160px); overflow-y:auto; z-index:150; }
