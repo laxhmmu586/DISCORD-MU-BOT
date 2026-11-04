@@ -131,3 +131,25 @@ body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.fli
   .flight-form-sheet[data-template="2"] { font-size: 9pt; line-height: 1.2; }
   .flight-form-sheet[data-template="2"] td { padding: .6mm 1mm; }
 }
+
+.flight-form-sheet header { position: relative; }
+.flight-form-header-detail {
+  position: absolute; inset-block-start: 0; inset-inline-end: 0; width: 39mm;
+  text-align: left; font-weight: 600;
+}
+.flight-form-header-detail label { display: grid; }
+.flight-form-fields .flight-form-combined {
+  display: grid; align-content: start; min-width: 0; padding: 1.6mm 2mm;
+  border: 1px solid #aaa; font-weight: 600;
+}
+.flight-form-combined-inputs {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline; gap: 2mm;
+}
+.flight-telex.is-complete {
+  border-color: #8ed3a9; background: linear-gradient(130deg, #f0fcf3, #d9f4e2);
+  color: #174e30;
+}
+.flight-telex.is-complete :is(h2, small, label > span:last-child) { color: #174e30; }
+.flight-telex.is-complete input { accent-color: #227445; }
+.flight-telex.is-complete label + label { border-color: #a6d9b8; }
