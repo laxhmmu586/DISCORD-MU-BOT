@@ -68,3 +68,10 @@
   resize: both;
   overflow: auto;
 }
+
+.charge-embedded .charge-controls { padding-block: 0 8px; }
+.charge-embedded .charge-controls label { margin-inline-end: auto; }
+.charge-embedded .charge-feedback { margin: 0 0 10px; }
+.charge-embedded .charge-preview { border-radius: 10px; background: #f3f3f3; }
+.charge-embedded .charge-paper { box-shadow: 0 1px 5px #0001; }
+.charge-embedded [hidden] { display: none !important; }

@@ -22,12 +22,15 @@
         <button type="button" class="cl-primary" data-form-print>Print</button>
       </div>
       <p class="cl-status" role="status"></p>
-      <div class="cl-content flight-form-content"><div class="flight-form-preview"></div></div>
+      <div class="cl-content flight-form-content"><div class="flight-form-preview"></div><div data-charge-form-host hidden></div></div>
     </div>`;
   document.body.append(dialog);
 
   const nav = dialog.querySelector("nav");
   const content = dialog.querySelector(".flight-form-preview");
+  const chargeHost = dialog.querySelector("[data-charge-form-host]");
+  const chargeButton = dialog.querySelector("#briefing-charge-form");
+  const toolbar = dialog.querySelector(".cl-toolbar");
   const title = dialog.querySelector("h2");
   const edit = dialog.querySelector("[data-form-edit]");
   const status = dialog.querySelector("[role=status]");
@@ -117,6 +120,18 @@
 
   function select(index) {
     active = index;
+    const chargeSelected = index === "charge";
+    chargeHost.hidden = !chargeSelected;
+    chargeButton.setAttribute("aria-pressed", String(chargeSelected));
+    toolbar.hidden = status.hidden = content.hidden = chargeSelected;
+    for (const button of nav.querySelectorAll("[data-form-index]")) {
+      button.setAttribute("aria-pressed", String(Number(button.dataset.formIndex) === index));
+    }
+    content.parentElement.scrollTop = 0;
+    if (chargeSelected) {
+      title.textContent = "Charge Form";
+      return;
+    }
     const [name, render, settings = {}] = templates[index];
     edit.hidden = Boolean(settings.printOnly);
     riskLanguage.closest("label").hidden = !settings.bilingual;
@@ -145,11 +160,7 @@
     }
     content.replaceChildren(drafts.get(index));
     updateRiskLanguage();
-    content.parentElement.scrollTop = 0;
     status.textContent = "";
-    for (const button of nav.querySelectorAll("[data-form-index]")) {
-      button.setAttribute("aria-pressed", String(Number(button.dataset.formIndex) === index));
-    }
     setEditing(false);
   }
 
@@ -177,6 +188,8 @@
     button.onclick = () => select(index);
     nav.append(button);
   }
+
+  chargeButton.addEventListener("click", () => select("charge"));
 
   const formButtons = [...nav.querySelectorAll("button")];
   const formKey = button => button.id || templates[Number(button.dataset.formIndex)][0];
@@ -272,8 +285,10 @@
     opener.onclick = () => {
       if (dialog.open) return;
       restoreFormOrder();
-      select(active ?? 0);
+      const reopenCharge = active === "charge" && !chargeButton.hidden;
+      select(reopenCharge ? "charge" : (active === "charge" ? 0 : active ?? 0));
       dialog.showModal();
+      if (reopenCharge) chargeButton.click();
     };
   }
   dialog.querySelector("[data-form-close]").onclick = () => dialog.close();
@@ -312,7 +327,7 @@
     frame.title = "Print " + title.textContent;
     const paper = dialog.querySelector("[aria-label=\"Form paper size\"]").value === "Letter" ? "Letter" : "A4";
     const orientation = active === 3 ? "landscape" : "portrait";
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=telex-square"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=embedded-charge"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
     frame.onload = async () => {
       try {
         await Promise.all([...frame.contentDocument.images].filter(img => !img.hidden).map(img => img.decode()));
