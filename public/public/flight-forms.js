@@ -17,6 +17,7 @@
       </header>
       <div class="cl-toolbar">
         <button type="button" data-form-edit aria-pressed="false">Edit wording</button>
+        <label data-risk-language hidden>Language <select aria-label="Flight Risk language"><option value="zh">中文</option><option value="en">English</option></select></label>
         <label>Paper <select aria-label="Form paper size"><option>A4</option><option>Letter</option></select></label>
         <button type="button" class="cl-primary" data-form-print>Print</button>
       </div>
@@ -30,6 +31,8 @@
   const title = dialog.querySelector("h2");
   const edit = dialog.querySelector("[data-form-edit]");
   const status = dialog.querySelector("[role=status]");
+  const riskLanguage = dialog.querySelector("[data-risk-language] select");
+  const formAssets = "/assets/flight-forms/";
   const drafts = new Map();
   let context = {};
   let active;
@@ -47,6 +50,22 @@
   const table = (headers, rows) => `<table><thead><tr>${headers.map(name =>
     `<th scope="col" data-wording>${name}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
   const header = (heading, subtitle = "", detail = "") => `<header><img src="/has/assets/charge-form/china-eastern-logo.png" alt="China Eastern Airlines"><h1 data-wording>${heading}</h1>${subtitle ? text(subtitle) : ""}${detail ? `<div class="flight-form-header-detail">${detail}</div>` : ""}</header>`;
+
+  const printCards = (kind, count, card) =>
+    `<div class="flight-print-cards ${kind}">${Array.from({length: count}, () => `<section>${card}</section>`).join("")}</div>`;
+  const arrivalCard = `
+    <img src="${formAssets}arrival-qr.png" alt="Arrival Card QR code">
+    <div><strong>Arrival Card</strong><p lang="zh">根据中国边防规定<br>落地前务必完成填写</p><p>Per China Immigration regulations, complete the form before arrival.</p></div>`;
+  const loungeCard = `
+    <h2 lang="zh">头等舱贵宾室指引</h2><strong>First Class Lounge</strong>
+    <p lang="zh">过完安检 → 过桥 → 左手边电梯上 5 楼</p>
+    <p>Pass TSA, cross the bridge, then take the elevator on the left to the 5th floor.</p>
+    <p lang="zh">出电梯后在您的右前方</p>
+    <p>After exiting the elevator, it will be ahead to your right.</p>`;
+  const riskPages = `<div class="flight-risk-pages">
+    <img data-risk-page="zh" src="${formAssets}flight-risk-zh.png" alt="乘机风险确认书">
+    <img data-risk-page="en" src="${formAssets}flight-risk-en.png" alt="Flight Risk Acknowledgement Form" hidden>
+  </div>`;
 
   const templates = [
     ["Release Form", () => `
@@ -75,14 +94,32 @@
       ${header("STANDBY PAX LIST", "", field("Date"))}
       ${table(["#", "Name", "Ticket number", "Class", "Time", "Remarks"], Array.from({length: 15}, (_, i) =>
         `<tr><th scope="row">${i + 1}</th>${["Name", "Ticket number", "Class", "Time", "Remarks"].map(label =>
-          `<td>${input(`${label} ${i + 1}`)}</td>`).join("")}</tr>`))}`]
+          `<td>${input(`${label} ${i + 1}`)}</td>`).join("")}</tr>`))}`],
+    ["Flight Risk Acknowledgement", () => riskPages, {printOnly: true, bilingual: true}],
+    ["INAD", () => `
+      ${header("被拒绝入境旅客告知书", "Notice to Inadmissible Passenger")}
+      ${checklistFields(field("旅客 / Passenger"), field("航班号 / Flight No."), field("返回日期 / Return date"))}
+      ${text("我司将安排您乘坐上述航班返回中国，现收取以下钱款或机票，作为您乘坐本次航班的费用。如您暂时无法提供钱款或机票，我公司将保留要求您支付乘机费用的权利。")}
+      ${text("China Eastern Airlines (MU) will arrange your return flight to China on the flight shown above. The following payment or ticket is collected to cover your flight. If you are temporarily unable to provide payment or a ticket, China Eastern Airlines reserves the right to seek reimbursement for the flight expenses.")}
+      <section class="waiver-section"><h2 data-wording>钱款或机票 / Payment or ticket</h2>
+        ${options(["钱款 / Payment"])}
+        ${fields(field("金额 / Amount"), field("币种 / Currency"))}
+        ${options(["机票 / Ticket"])}
+        ${fields(field("机票票号 / Ticket number"), field("原航班号及日期 / Original flight no. and date"), field("航段 / Route"))}
+        ${options(["无钱款、无机票 / Unable to provide payment or ticket"])}
+      </section>
+      ${fields(field("旅客签名 / Signature"), field("日期 / Date"))}`],
+    ["Arrival Card", () => printCards("arrival-cards", 14, arrivalCard), {printOnly: true}],
+    ["First Class Lounge", () => printCards("lounge-cards", 18, loungeCard), {printOnly: true}]
   ];
 
   const wordingKey = index => `mufc-form-wording:v1:${window.firebase?.auth().currentUser?.uid || "local"}:${templates[index][0]}`;
 
   function select(index) {
     active = index;
-    const [name, render] = templates[index];
+    const [name, render, settings = {}] = templates[index];
+    edit.hidden = Boolean(settings.printOnly);
+    riskLanguage.closest("label").hidden = !settings.bilingual;
     title.textContent = name;
     if (!drafts.has(index)) {
       const sheet = document.createElement("article");
@@ -107,6 +144,7 @@
       drafts.set(index, sheet);
     }
     content.replaceChildren(drafts.get(index));
+    updateRiskLanguage();
     content.parentElement.scrollTop = 0;
     status.textContent = "";
     for (const button of nav.querySelectorAll("[data-form-index]")) {
@@ -114,6 +152,13 @@
     }
     setEditing(false);
   }
+
+  function updateRiskLanguage() {
+    for (const page of content.querySelectorAll("[data-risk-page]")) {
+      page.hidden = page.dataset.riskPage !== riskLanguage.value;
+    }
+  }
+  riskLanguage.onchange = updateRiskLanguage;
 
   function setEditing(enabled) {
     edit.setAttribute("aria-pressed", String(enabled));
@@ -188,11 +233,12 @@
     const frame = document.createElement("iframe");
     frame.className = "flight-print-frame";
     frame.title = "Print " + title.textContent;
-    const paper = dialog.querySelector("select").value === "Letter" ? "Letter" : "A4";
+    const paper = dialog.querySelector("[aria-label=\"Form paper size\"]").value === "Letter" ? "Letter" : "A4";
     const orientation = active === 3 ? "landscape" : "portrait";
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=checklist-library"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=passenger-forms"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
     frame.onload = async () => {
       try {
+        await Promise.all([...frame.contentDocument.images].filter(img => !img.hidden).map(img => img.decode()));
         await frame.contentDocument.fonts.ready;
         frame.contentWindow.addEventListener("afterprint", () => frame.remove(), {once: true});
         frame.contentWindow.focus();
