@@ -183,3 +183,30 @@ body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.fli
 }
 .waiver-section .flight-form-option > span[data-wording],
 .flight-form-sheet[data-template="1"] > p[data-wording] { white-space: pre-line; }
+
+.flight-forms [hidden], .flight-risk-pages [hidden] { display: none !important; }
+.flight-forms .cl-toolbar [data-risk-language] { margin-left: 0; }
+.flight-form-sheet[data-template="4"] { padding: 0; }
+.flight-risk-pages img { width: 100%; height: auto; }
+.flight-print-cards { display: grid; }
+.flight-print-cards > section {
+  border: .25mm dashed #999; min-width: 0; break-inside: avoid;
+}
+.arrival-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.arrival-cards > section {
+  display: grid; grid-template-columns: 33mm minmax(0, 1fr); align-items: center;
+  min-height: 36mm; gap: 2mm; padding: 1mm 2mm; box-sizing: border-box;
+  font-size: 8pt; line-height: 1.22; text-align: center;
+}
+.arrival-cards img { width: 33mm; height: auto; }
+.arrival-cards strong { font-size: 10pt; }
+.lounge-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lounge-cards > section {
+  min-height: 41mm; padding: 2mm; box-sizing: border-box; font-size: 8pt; line-height: 1.24;
+}
+.lounge-cards h2, .lounge-cards strong { display: block; text-align: center; margin: 0; font-size: 9pt; }
+.flight-form-sheet[data-template="5"] .waiver-section > .flight-form-fields { margin-inline: 2mm; }
+@media print {
+  .flight-risk-pages img { width: auto; height: 276mm; max-width: 100%; object-fit: contain; margin-inline: auto; }
+  .letter .flight-risk-pages img { height: 258mm; }
+}
