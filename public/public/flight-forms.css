@@ -79,54 +79,62 @@
 }
 .mission-shortcuts button { width: 100%; }
 .mission-shortcuts :is(a,button):hover { background: #25466c; }
-.flight-telex-position {
-  width: min(1120px, calc(100% - 48px)); margin: 0 auto;
-}
-body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.flight-telex:not([hidden]))) { display: none; }
+/* Keep the Telex card next to the flight metrics whenever there is room. */
+.mission-head:has(.flight-telex:not([hidden])) { padding-right: 0; gap: clamp(20px, 2vw, 36px); flex-wrap: wrap; }
+.mission-head:has(.flight-telex:not([hidden])) h1 { font-size: clamp(28px, 3.35vw, 58px); }
+.mission-side:has(.flight-telex:not([hidden])) { flex-wrap: wrap; gap: 18px 22px; max-width: 100%; }
+.flight-telex-position { min-width: 0; max-width: 100%; padding-inline-start: 22px; border-inline-start: 1px solid #597c9a55; }
+.flight-telex-position:not(:has(.flight-telex:not([hidden]))) { display: none; }
 .flight-telex {
-  width: min(100%, 420px); margin: 16px 0 0; padding: 9px 12px;
-  border: 1px solid #fff; border-radius: 17px;
-  background: linear-gradient(130deg, #f7faff, #eaf2ff);
-  color: #203d65; box-shadow: 0 5px 16px #07162959, inset 0 1px 0 #fff;
+  display: grid; grid-template-columns: 35px minmax(0, 1fr); column-gap: 12px;
+  align-items: center; width: min(360px, 100%); min-width: min(310px, 100%);
+  box-sizing: border-box; padding: 12px 14px;
+  border: 1px solid #3c8092; border-radius: 17px;
+  background: linear-gradient(170deg, #214654 0%, #091e31 38%, #103243 100%);
+  color: #f2f9ff; box-shadow: inset 0 1px 7px #8bdeed33, 0 4px 14px #0005;
 }
-.flight-telex h2 { margin: 0 0 6px; font-size: 15px; color: #244d7e; }
+.flight-telex[hidden] { display: none; }
+.telex-document-icon { width: 32px; grid-row: 1 / span 2; filter: drop-shadow(0 2px 4px #0008); }
+.flight-telex h2 { margin: 0; font-size: 17px; line-height: 1.15; color: inherit; }
+[data-telex-items] { grid-column: 2; max-height: 150px; overflow-y: auto; padding-inline-end: 3px; }
 .flight-telex label {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;
   align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; font-size: 13px;
 }
-.flight-telex label + label { border-top: 1px solid #cfddee; }
-[data-telex-items] { max-height: 175px; overflow-y: auto; }
-.flight-telex small { display: block; color: #31547f; }
+.flight-telex label + label { border-top: 1px solid #83b7cb33; }
+.telex-instruction { display: block; color: #c0d8e6; font-size: 11px; }
+.telex-sent { display: none; margin-inline-start: 7px; color: #5bf5ad; white-space: nowrap; }
+.flight-telex label:has(input:checked) .telex-instruction { display: none; }
+.flight-telex label:has(input:checked) .telex-sent { display: inline; }
 .telex-control {
-  display: grid; place-items: center; min-width: 46px; min-height: 26px;
-  border: 1px solid #c9d8e9; border-radius: 8px;
-  background: linear-gradient(160deg, #fff, #e4edf9);
-  box-shadow: 0 1px 2px #17375722, inset 0 1px #fff;
+  display: grid; place-items: center; min-width: 58px; min-height: 28px; padding-inline: 5px;
+  border: 1px solid #5d9daf; border-radius: 999px; background: #15384b;
 }
 .telex-control > * { grid-area: 1 / 1; }
-.flight-telex .telex-done { visibility: hidden; color: #174e30; font-size: 12px; font-weight: 700; }
-.telex-control:has(input:checked) { background: #e1f5e7; border-color: #a6d9b8; }
+.flight-telex .telex-done { visibility: hidden; color: #eafff2; font-size: 12px; font-weight: 750; }
+.telex-control:has(input:checked) { background: #08784f; border-color: #22b57b; }
 .telex-control:has(input:checked) .telex-done { visibility: visible; }
-.telex-control:has(input:focus-visible) { outline: 2px solid #265c9f; outline-offset: 2px; }
-.telex-control input {
-  width: 15px; height: 15px; margin: 0; accent-color: #2573cc; color-scheme: light; cursor: pointer;
-}
+.telex-done::before { content: "✓"; margin-inline-end: 4px; color: #9bffcc; }
+.telex-control:has(input:focus-visible) { outline: 2px solid #b1f3ff; outline-offset: 1px; }
+.telex-control input { width: 15px; height: 15px; margin: 0; accent-color: #1dcf93; cursor: pointer; }
 .telex-control input:checked { opacity: 0; }
+.flight-telex.is-complete {
+  border-color: #29c5a2;
+  background: linear-gradient(155deg, #215b64, #091e31 44%, #115348);
+  box-shadow: inset 0 1px 10px #58f9ca38, 0 0 15px #11c2a451;
+}
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .flight-telex { transition: transform .17s ease, box-shadow .17s ease; }
-  .flight-telex:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 11px 25px #06142670, inset 0 1px 0 #fff;
-  }
+  .flight-telex:hover { transform: translateY(-3px); box-shadow: inset 0 1px 10px #58f9ca38, 0 7px 21px #11c2a459; }
 }
-.flight-telex [role="status"] { margin: 4px 0 0; font-size: 12px; color: #8a2d20; }
+.flight-telex [role="status"] { grid-column: 2; margin: 4px 0 0; color: #ffd2b6; font-size: 12px; }
 .flight-telex [role="status"]:empty { display: none; }
-@media (min-width: 761px) {
-  .flight-telex-position { width: calc(100% - 9vw); padding-inline-start: 46px; }
-}
 @media screen and (max-width: 760px), screen and (pointer: coarse) {
   .nav-row.mission-grid-tools { display: none !important; }
-  .flight-telex-position { width: calc(100% - 36px); }
+}
+@media (max-width: 760px) {
+  .flight-telex-position { width: 100%; padding-inline-start: 0; border-inline-start: 0; }
+  .flight-telex { width: min(360px, 100%); }
 }
 @media print {
   body { margin: 0; }
@@ -158,13 +166,6 @@ body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.fli
   margin: 2mm 0 3mm;
 }
 .flight-form-checklist-fields label { display: grid; min-width: 0; font-size: 9pt; }
-.flight-telex.is-complete {
-  border-color: #8ed3a9; background: linear-gradient(118deg, #fff 4%, #e8faef 41%, #91dea9 100%);
-  color: #174e30;
-}
-.flight-telex.is-complete :is(h2, small) { color: #174e30; }
-.flight-telex.is-complete input { accent-color: #227445; }
-.flight-telex.is-complete label + label { border-color: #a6d9b8; }
 
 /* The surrounding cell already provides a writing boundary. */
 .flight-form-sheet :is(.flight-form-fields, td) :is(input:not([type="checkbox"], [type="radio"]), .flight-print-value) {
