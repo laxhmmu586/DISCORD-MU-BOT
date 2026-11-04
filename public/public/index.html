@@ -4483,14 +4483,18 @@
               <div class="status-metric status-metric--energy status-metric--bdt"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>BDT</span><strong id="metric-bdt">----</strong></div>
               <div class="status-metric status-metric--energy status-metric--etd"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>ETD</span><strong id="metric-etd">----</strong></div>
             </div>
+            <div class="flight-telex-position">
+              <section id="flight-telex" class="flight-telex" aria-labelledby="flight-telex-title" hidden>
+                <svg class="telex-document-icon" viewBox="0 0 32 36" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M5 2h14l8 8v24H5zM19 2v9h8M10 10h4M10 15h12M10 21h3m3 0h6m-12 6 3 3 5-6"/>
+                </svg>
+                <h2 id="flight-telex-title">Telex Checklist</h2>
+                <div data-telex-items></div>
+                <p data-telex-status role="status"></p>
+              </section>
+            </div>
           </div>
         </div>
-
-        <div class="flight-telex-position"><section id="flight-telex" class="flight-telex" aria-labelledby="flight-telex-title" hidden>
-          <h2 id="flight-telex-title">Telex checklist</h2>
-          <div data-telex-items></div>
-          <p data-telex-status role="status"></p>
-        </section></div>
 
         <section class="report-page" id="report-page" aria-label="Report center" hidden>
           <div class="report-hero">
@@ -4676,12 +4680,12 @@
     <script src="/__/firebase/init.js"></script>
     <link rel="stylesheet" href="/has/charge-form.css?v=resizable-preview">
     <link rel="stylesheet" href="/has/departure-checklists.css?v=checklist-header-fields">
-    <link rel="stylesheet" href="/flight-forms.css?v=passenger-forms">
+    <link rel="stylesheet" href="/flight-forms.css?v=telex-etd">
     <script defer src="/flight-form-copy.js?v=bilingual"></script>
     <script defer src="/flight-forms.js?v=passenger-forms"></script>
     <script defer src="/people-api.js?v=20261028-workspace"></script>
     <script defer src="/has/briefing-tools.js?v=blank-flight"></script>
-    <script defer src="/flight-telex.js?v=checklist-finish"></script>
+    <script defer src="/flight-telex.js?v=telex-etd"></script>
     <script src="/employee-profile-api.js?v=20261026-avatar-crop"></script>
     <script src="/has/dashboard-profile.js?v=dashboard-bootstrap"></script>
     <script>

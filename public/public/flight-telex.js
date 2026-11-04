@@ -95,11 +95,15 @@
       const name = document.createElement("strong");
       name.textContent = code;
       const instruction = document.createElement("small");
+      instruction.className = "telex-instruction";
       instruction.textContent = separate.has(code) ? `Send a separate Telex to ${recipients}` : "Send Telex";
       const confirmation = document.createElement("span");
       confirmation.className = "telex-done";
       confirmation.textContent = "Done";
-      text.append(name, instruction);
+      const sent = document.createElement("span");
+      sent.className = "telex-sent";
+      sent.textContent = "✓ Sent";
+      text.append(name, instruction, sent);
       const control = document.createElement("span");
       control.className = "telex-control";
       control.append(input, confirmation);
