@@ -300,3 +300,29 @@ test('supplied October 8 IF and BDT commands complete MU586 October 10 preparati
  const step=info.crewApis.steps.find(s=>s.key===key);assert.equal(step.complete,true);assert.equal(step.time,time);
  }
 });
+
+test('Authorization Report requires both EMD services in the same FB response', () => {
+  const { findSYInfo } = require('../syParser');
+  const seat = 'ASVC- A/0B5/SEAT/G 32F USD14-9 A/EMDA-7810000000001/1-C';
+  const pdug = 'ASVC- A/0BJ/PDUG/XC V I USD3020 M/EMDA-7810000000002/1-C';
+  const timestamp = '2026 September 07, Monday, 11:25:20';
+  const pr = ' PR: MU586/07SEP26*LAX,BN30         PNR RL  ABC123';
+  const parse = (...lines) => findSYInfo([
+    timestamp,
+    '> SY: MU586/07SEP26 LAX/0 CI1145/NAM',
+    '777/773L/B-7868 GTD/130 POS/GATE BN299 AK00000 CD00000',
+    timestamp,
+    '>FB30',
+    pr,
+    ' 1. EXAMPLE/PASSENGER    BN030  7A     I PVG WEB',
+    ...lines
+  ].join('\n'), '07SEP26', { preferredFlightNo: 'MU586' }).psmList;
+  const rows = parse(seat, pdug, timestamp, '>PN1', pr, seat, pdug);
+  assert.deepEqual(rows.map(({ bn, type, detail }) => ({ bn, type, detail })), [{
+    bn: '030',
+    type: 'ASVC SEAT/PDUG',
+    detail: 'SEAT EMD 7810000000001\nPDUG EMD 7810000000002'
+  }]);
+  assert.deepEqual(parse(seat, timestamp, '>PN1', pr, seat, pdug), []);
+  assert.deepEqual(parse(seat, timestamp, '>FB30', pr, ' 1. EXAMPLE/PASSENGER    BN030  7A     I PVG WEB', pdug), []);
+});

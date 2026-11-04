@@ -6918,7 +6918,12 @@
         return false;
       }
 
+      const asvcWarningType = "ASVC SEAT/PDUG";
+
       function warningAckKey(row) {
+        if (row.warningType === asvcWarningType) {
+          return [normalizedBn(row.bn), asvcWarningType, row.detail.replace(/\s+/g, " ")].join("|").toUpperCase();
+        }
         return [normalizedBn(row?.bn || row?.passengerRecord?.bn), row?.seat || row?.passengerRecord?.seat || "", row?.warningType || "WARNING", row?.warningReason || ""].join("|").toUpperCase();
       }
 
@@ -7027,7 +7032,13 @@
             }, "INF TKT", `${row.adultName || "Adult passenger"} has adult ticket ${row.adultTicketNo || "missing"}, but the infant ticket${row.infantName ? ` for ${row.infantName}` : ""} is missing.`);
           }
         }
-        return applyWarningAck(rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || ""))));
+        for (const row of sy?.psmList || []) {
+          if (row.type === asvcWarningType) {
+            addWarning(row, asvcWarningType, "Please notify MU or KK.");
+          }
+        }
+        return applyWarningAck(rows.sort((a, b) => Number(a.bn || 9999) - Number(b.bn || 9999) || String(a.warningType || "").localeCompare(String(b.warningType || ""))))
+          .filter((row) => row.warningType !== asvcWarningType || !userHasAcknowledged(row.acknowledgements));
       }
 
       function renderWarningPanel() {
@@ -7036,7 +7047,7 @@
           const ackList = row.acknowledgements || [];
           const ackText = ackList.length ? `Acknowledged by ${ackList.map((ack) => ack.by).filter(Boolean).join(", ")}` : "Not acknowledged";
           const ownAck = userHasAcknowledged(ackList);
-          return `<div class="warning-card ${ownAck ? "is-acknowledged" : ""}" data-warning-card="${index}"><span class="bn-button ${ownAck ? "" : "is-warning"}">${escapeHtml(bnCircleLabel(row.bn))}</span><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`;
+          return `<div class="warning-card ${ownAck ? "is-acknowledged" : ""}" data-warning-card="${index}"><span class="bn-button ${ownAck ? "" : "is-warning"}">${escapeHtml(bnCircleLabel(row.bn))}</span><div class="warning-card-main"><div class="warning-card-head"><strong>${escapeHtml(passengerName(row) || "Passenger")}</strong><small>${escapeHtml(row.seat ? `Seat ${row.seat}` : "No seat")}</small></div><div class="warning-card-body">${escapeHtml(row.warningReason)}</div><div class="warning-ack-row"><button class="warning-ack-button" type="button" data-warning-ack="${index}" ${ownAck ? "disabled" : ""}>${ownAck ? "Acknowledged" : row.warningType === asvcWarningType ? "Okay" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(ackText)}</span></div></div><span class="psm-badge">${escapeHtml(row.warningType)}</span></div>`;
         }).join("")}</div></article>` : `<p class="panel-muted">No WARNING records found.</p>`;
         renderPanel("WARNING", currentSy?.flightNo || "SY", body);
         setPanelPassengerRows(rows);

@@ -1484,6 +1484,19 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
 }
 
 
+function extractAsvcSeatPdugDetail(section) {
+  if (!/^>[ \t]*FB[ \t]*\d+\b/i.test(section)) return '';
+
+  // PN/PF output can repeat the FB services. Read the FB response only.
+  const fb = section.split(/^>[ \t]*(?:PN|PF)\d*\b/im, 1)[0];
+  const seatEmd = fb.match(/^[ \t]*ASVC-[ \t]*A\/0B5\/SEAT\/[^\r\n]*?\/EMDA-(\d{13})(?=\/|\s|$)/im)?.[1];
+  const pdugEmd = fb.match(/^[ \t]*ASVC-[ \t]*A\/0BJ\/PDUG\/[^\r\n]*?\/EMDA-(\d{13})(?=\/|\s|$)/im)?.[1];
+  if (!seatEmd || !pdugEmd) return '';
+
+  return `SEAT EMD ${seatEmd}\nPDUG EMD ${pdugEmd}`;
+}
+
+
 function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) return [];
   const sections = splitLogicalSections(log);
@@ -1500,7 +1513,8 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
 
     const psmLines = extractPsmLines(section).filter(hasTargetPsm);
     const involuntaryUpgrade = extractInvoluntaryUpgrade(section);
-    if (!psmLines.length && !involuntaryUpgrade) continue;
+    const asvcDetail = extractAsvcSeatPdugDetail(section);
+    if (!psmLines.length && !involuntaryUpgrade && !asvcDetail) continue;
 
     const bn = passengerBn(section);
     if (!bn) continue;
@@ -1524,6 +1538,12 @@ function enrichPsmListFromLog(log, syInfo, targetYmd = null) {
       ...baseRow,
       type: 'Involuntary upgrade',
       detail: involuntaryUpgrade.detail,
+      psmLines: []
+    });
+    if (asvcDetail) candidates.push({
+      ...baseRow,
+      type: 'ASVC SEAT/PDUG',
+      detail: asvcDetail,
       psmLines: []
     });
     for (const candidate of candidates) {

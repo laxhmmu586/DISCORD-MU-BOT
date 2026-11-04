@@ -40,6 +40,18 @@ let activeReportMode = "sales";
 const reportFlight = document.querySelector("#report-flight");
 function matchesReportFlight(row) { return !reportFlight.value || String(row.flightNo || row.flight || "").trim().toUpperCase() === reportFlight.value; }
 function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); return String(date.getUTCDate()).padStart(2,"0") + ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][date.getUTCMonth()] + String(date.getUTCFullYear()).slice(-2); }
+      function authorizationReportGroups(rows) {
+        const asvc = { label: "ASVC SEAT/PDUG", rows: [] };
+        const upgrades = { label: "Involuntary Upgrade", rows: [] };
+        const psmMsg = { label: "PSM / MSG", rows: [] };
+        for (const row of rows) {
+          if (row.type === asvc.label) asvc.rows.push(row);
+          else if (/^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim())) upgrades.rows.push(row);
+          else psmMsg.rows.push(row);
+        }
+        return [asvc, upgrades, psmMsg].filter((group) => group.rows.length);
+      }
+
       function authorizationReportTable(rows) {
         if (!rows.length) return `<p class="panel-muted">No Authorization Report rows found.</p>`;
         const columns = [
@@ -52,15 +64,12 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
           ["Detail", (row) => row.detail],
         ];
         const renderGroup = (title, groupRows) => {
-          if (!groupRows.length) return "";
           const body = groupRows.map((row) => `<tr>${columns.map(([, value]) => `<td>${escapeHtml(value(row) || "-")}</td>`).join("")}<td><input class="report-remark-input" type="text" maxlength="1000" value="${escapeHtml(row.remark || "")}" data-authorization-remark="${escapeHtml(encodeURIComponent(row.key || ""))}" aria-label="Remark for ${escapeHtml(row.passenger || "passenger")}" placeholder="Enter remark" /></td></tr>`).join("");
           const columnWidths = [9, 7, 12, 4, 5, 20, 21, 22];
           const colgroup = `<colgroup>${columnWidths.map((width) => `<col style="width:${width}%">`).join("")}</colgroup>`;
           return `<section class="authorization-report-group"><h3>${escapeHtml(title)}</h3><table class="data-table">${colgroup}<thead><tr>${columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th>Remark</th></tr></thead><tbody>${body}</tbody></table></section>`;
         };
-        const involuntaryUpgrades = rows.filter((row) => /^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim()));
-        const psmMsgRows = rows.filter((row) => !involuntaryUpgrades.includes(row));
-        return renderGroup("Involuntary Upgrade", involuntaryUpgrades) + renderGroup("PSM / MSG", psmMsgRows);
+        return authorizationReportGroups(rows).map(({ label, rows }) => renderGroup(label, rows)).join("");
       }
 
       function moneyText(value) {
@@ -274,11 +283,7 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
         ];
         const tableWidth = columns.reduce((total, column) => total + column.width, 0);
         const pages = [];
-        const upgrades = rows.filter((row) => /^INVOLUNTARY UPGRADE$/i.test(String(row.type || "").trim()) || /^INVOLUNTARY UPGRADE\b/i.test(String(row.detail || "").trim()));
-        const groups = [
-          { label: "INVOLUNTARY UPGRADE", rows: upgrades },
-          { label: "PSM / MSG", rows: rows.filter((row) => !upgrades.includes(row)) },
-        ].filter((group) => group.rows.length);
+        const groups = authorizationReportGroups(rows);
 
         rows.forEach((row) => {
           const encodedKey = encodeURIComponent(row.key || "");
@@ -339,7 +344,7 @@ function isoToSyDate(value) { const date = new Date(value + "T12:00:00Z"); retur
         const addGroupHeading = (label) => {
           if (page.y - 25 < tableBottom) page = newPage();
           page.commands.push(fillRect(margin, page.y - 25, tableWidth, 25, "0.90 0.94 0.98"));
-          page.commands.push(textCommand(label, margin + 8, page.y - 16, 8, "F2", "0.035 0.15 0.29"));
+          page.commands.push(textCommand(label.toUpperCase(), margin + 8, page.y - 16, 8, "F2", "0.035 0.15 0.29"));
           page.y -= 25;
         };
         groups.forEach((group) => {
