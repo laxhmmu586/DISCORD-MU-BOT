@@ -97,3 +97,7 @@ body.report-admin-page.airport-scene::after {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+.report-admin-page .authorization-report-group td:nth-child(7) {
+  white-space: pre-line;
+}
