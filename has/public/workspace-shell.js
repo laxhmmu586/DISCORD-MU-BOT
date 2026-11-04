@@ -12,7 +12,7 @@
   header.innerHTML = `<button class="menu-toggle" type="button" aria-label="Open workspace navigation" aria-controls="workspace-sidebar" aria-expanded="false">${menuIcon}</button><a class="home-brand" href="/profile" aria-label="Hallmark Aviation Services profile"><img src="/assets/home-hallmark-transparent-v1.png" alt="Hallmark Aviation Services" width="178" height="76"></a><span class="topbar-date" id="workspace-date"></span>`;
   header.append(account);
   const navigation = document.createElement('nav'); navigation.className = 'top-nav'; navigation.setAttribute('aria-label', 'Main navigation');
-  navigation.innerHTML = '<a href="/home">Home</a><a data-department="hr" data-department-href="/hr" aria-disabled="true" tabindex="-1">HR</a><span class="top-nav-placeholder" aria-disabled="true">Finance</span><a data-department="qa" aria-disabled="true" tabindex="-1">QA</a>';
+  navigation.innerHTML = '<a href="/home">Home</a><a data-department="hr" data-department-href="/admin" aria-disabled="true" tabindex="-1">Admin</a><span class="top-nav-placeholder" aria-disabled="true">Finance</span><a data-department="qa" aria-disabled="true" tabindex="-1">QA</a>';
 
   header.querySelector('.topbar-date').before(navigation);
   if(!document.querySelector('script[src*="department-access.js"]')){const access=document.createElement('script');access.src='/department-access.js?v=qa-navigation';document.head.append(access);}
@@ -29,7 +29,7 @@
   ];
   sidebar.id = 'workspace-sidebar'; sidebar.classList.add('home-sidebar');
   sidebar.innerHTML = `<button class="sidebar-collapse" type="button" aria-label="Collapse sidebar" aria-controls="workspace-sidebar" aria-expanded="true"><svg class="collapse-arrow" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="workspace-arrow-blue"><stop stop-color="#9cddff"/><stop offset="1" stop-color="#1268e4"/></linearGradient></defs><path d="m25 9-14 12a4 4 0 0 0 0 6l14 12a4 4 0 0 0 6-3v-5h8a4 4 0 0 0 4-4v-5a4 4 0 0 0-4-4h-8v-6a4 4 0 0 0-6-3Z" fill="url(#workspace-arrow-blue)" stroke="#d3efff" stroke-width="1.5"/></svg></button><p class="sidebar-caption">QUICK ACCESS</p><nav aria-label="Workspace pages">${links.map(([href,label,icon,attrs]) => `<a href="${href}" ${attrs}${href === current ? ' class="is-active" aria-current="page"' : ''} aria-label="${label.replace('&', '&amp;')}" title="${label.replace('&', '&amp;')}">${artwork(icon)}<span>${label.replace('&', '&amp;')}</span></a>`).join('')}</nav><div class="home-team-art" data-employee-art></div><div class="sidebar-footer"><span class="footer-mark">HALLMARK</span><p>People. Operations. Together.</p><span class="footer-line"></span><small>Providing Peace of Mind.</small></div>`;
-  if (admin) { admin.href = '/hr'; sidebar.querySelector('nav').append(admin); }
+  if (admin) { admin.href = '/admin'; sidebar.querySelector('nav').append(admin); }
   if (!document.querySelector('script[src*="info-access.js"]')) { const info = document.createElement('script'); info.src = '/info-access.js?v=20261030-resources'; document.head.append(info); }
   main.classList.add('home-main');
   const frame = document.createElement('div'); frame.className = 'app-frame';
@@ -65,7 +65,7 @@
     }
   });
   mobile.addEventListener('change', () => drawer(false)); drawer(false);
-  if (new URLSearchParams(location.search).get('preview') === '1') document.querySelectorAll('a[href="/home"],a[href="/hr"],a[href="/has-checklist"],a[href="/info"]').forEach(link => link.href += '?preview=1');
+  if (new URLSearchParams(location.search).get('preview') === '1') document.querySelectorAll('a[href="/home"],a[href="/admin"],a[href="/has-checklist"],a[href="/info"]').forEach(link => link.href += '?preview=1');
   const departments = [...header.querySelectorAll('.department-nav')];
   departments.forEach(details => details.addEventListener('toggle', () => { if (details.open) departments.forEach(other => { if (other !== details) other.open = false; }); }));
   document.addEventListener('click', event => departments.forEach(details => { if (!details.contains(event.target)) details.open = false; }));
