@@ -6,8 +6,9 @@ function record(type='arrival',account='MU'){
  const answers={driver:{},spotter:{}};for(const q of items.filter(q=>q.type===type))answers[q.role][q.id]=true;
  return {id:'fictional-template-check',station:'LAX',account,type,date:'2099-01-01',flightNo:'ZZ000',gate:'999',bridge:'L2',answers,gateConfirmedAt:'2099-01-01T10:00:00Z',ready:{driver:true,spotter:true},movingAt:'2099-01-01T10:01:00Z',dockedAt:'2099-01-01T10:03:00Z',signatures:{driver:{name:'EXAMPLE DRIVER',strokes:[[[.1,.1],[.4,.6],[.8,.2]]]},spotter:{name:'EXAMPLE SPOTTER',typedSignature:'SAMPLE ONLY',strokes:[]}}};
 }
-test('Arrival template maps existing gate/readiness/checks, preserves the duplicate SAFE line and leaves rollers unconfirmed',()=>{
- const r=record(),checks=templateChecks(r);assert.equal(checks.length,21);assert.deepEqual(checks.map((yes,i)=>yes?null:i).filter(i=>i!==null),[3,7]);assert.equal(checks[12],checks[13]);
+test('Arrival template maps existing gate/readiness/checks, includes a single spotter SAFE check and leaves rollers unconfirmed',()=>{
+ const r=record(),checks=templateChecks(r);assert.equal(checks.length,20);assert.deepEqual(checks.map((yes,i)=>yes?null:i).filter(i=>i!==null),[3,7]);assert.equal(checks[12],true);
+ delete r.movingAt;assert.equal(templateChecks(r)[13],false);
  delete r.gateConfirmedAt;r.ready.driver=false;r.ready.spotter=false;const empty=templateChecks(r);assert.equal(empty[0],false);assert.equal(empty[6],false);assert.equal(empty[8],false);
  r.ready.driver=true;assert.equal(templateChecks(r)[6],true);assert.equal(templateChecks(r)[8],false);r.answers.driver.serviceable=false;assert.equal(templateChecks(r)[1],false);
 });

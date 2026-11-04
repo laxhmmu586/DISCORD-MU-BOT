@@ -91,7 +91,7 @@
   box-sizing: border-box; padding: 12px 14px;
   border: 1px solid #bc5364; border-radius: 17px;
   background: linear-gradient(155deg, #672a3a, #2e111e 43%, #411424);
-  color: #f2f9ff; box-shadow: inset 0 1px 9px #ff9eaa35, 0 4px 16px #a31e4260;
+  color: #f2f9ff; box-shadow: inset 0 1px 9px #ff9eaa35, 0 0 8px #fb466384, 0 0 25px #e6295980;
 }
 .flight-telex[hidden] { display: none; }
 .telex-document-icon { width: 32px; grid-row: 1 / span 2; filter: drop-shadow(0 2px 4px #0008); }
@@ -115,7 +115,8 @@
 .telex-done::before { content: "✓"; margin-inline-end: 4px; color: #9bffcc; }
 .telex-control:has(input:focus-visible) { outline: 2px solid #b1f3ff; outline-offset: 1px; }
 .telex-control input { appearance: none; width: 100%; height: 100%; margin: 0; border: 0; background: transparent; cursor: pointer; }
-.telex-control input::after { content: "✓"; display: grid; place-items: center; height: 100%; color: #ffadb9; font: 750 18px/1 system-ui; }
+.telex-control input { display: grid; place-items: center; }
+.telex-control input::after { content: ""; width: 17px; height: 17px; border: 2px solid #ffc1c9; border-radius: 3px; box-shadow: 0 0 6px #ff53676b; }
 .telex-control input:disabled { cursor: wait; opacity: .5; }
 .telex-control input:checked { opacity: 0; }
 .flight-telex.is-complete {

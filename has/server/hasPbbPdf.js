@@ -7,7 +7,7 @@ function templateChecks(r){
  const a=id=>{const q=items.find(q=>q.id===id);return r.answers?.[q?.role]?.[id]===true;},ready=role=>r.ready?.[role]===true,moving=Boolean(r.movingAt),docked=Boolean(r.dockedAt);
  // Unmapped/partially covered statements remain unchecked; no new operator questions are inferred.
  if(r.type==='departure')return [a('d1')&&a('d3'),moving&&ready('driver')&&ready('spotter'),a('d2'),ekAccount(r),a('d4'),false,moving&&ready('driver')&&ready('spotter'),false,docked,a('d11'),a('d3'),false];
- return [Boolean(r.gateConfirmedAt),a('serviceable'),a('controls'),false /* rollers are not explicitly covered by the existing roller-door check */,a('cables'),a('stand'),ready('driver')||ready('spotter'),ekAccount(r),ready('driver')&&ready('spotter'),a('stopped'),a('chocks'),a('path'),ready('spotter'),ready('spotter'),moving&&ready('spotter'),moving&&ready('driver'),a('floor'),a('crew'),a('shoe'),a('leveler'),a('canopy')];
+ return [Boolean(r.gateConfirmedAt),a('serviceable'),a('controls'),false /* rollers are not explicitly covered by the existing roller-door check */,a('cables'),a('stand'),ready('driver')||ready('spotter'),ekAccount(r),ready('driver')&&ready('spotter'),a('stopped'),a('chocks'),a('path'),ready('spotter'),moving&&ready('spotter'),moving&&ready('driver'),a('floor'),a('crew'),a('shoe'),a('leveler'),a('canopy')];
 }
 async function buildHasPbbPdf(r){
  const departure=r.type==='departure',template=departure?'departure':'arrival';
@@ -22,11 +22,11 @@ async function buildHasPbbPdf(r){
  for(const [i,value] of [r.flightNo,r.date,r.gate,r.blockTime||''].entries())text(value,columns[i]+4,top,9,columns[i+1]-columns[i]-8);
  const bridgeX=departure?[439,476,512]:[461,496,532],bridgeTop=departure?179.5:119;
  const bi=['L1','L2','L3'].indexOf(r.bridge);if(bi>=0)page.drawEllipse({x:bridgeX[bi],y:792-bridgeTop,xScale:12,yScale:6,borderWidth:.8,borderColor:ink});
- const checks=templateChecks(r),positions=departure?[202.38,224.82,243.54,265.89,310.17,327.21,358.89,400.41,429.21,457.07,474.47,504.47]:[148.51,168.79,185.23,204.91,224.59,244.15,263.86,283.54,323.5,355.3,374.98,394.66,414.22,433.92,468.6,488.28,526.44,562.44,582.12,601.8,621.51];
+ const checks=templateChecks(r),positions=departure?[202.38,224.82,243.54,265.89,310.17,327.21,358.89,400.41,429.21,457.07,474.47,504.47]:[148.51,168.79,185.23,204.91,224.59,244.15,263.86,283.54,323.5,355.3,374.98,394.66,414.22,448.9,468.58,506.74,542.74,562.42,582.1,601.81];
  for(let i=0;i<checks.length;i++)if(checks[i])tick(departure?67.7:42.24,positions[i]);
- if(Object.values(r.evidence||{}).some(reports=>Object.keys(reports).length))text('See attached problem report(s).',departure?66:43,departure?559:652,8,480);
+ if(Object.values(r.evidence||{}).some(reports=>Object.keys(reports).length))text('See attached problem report(s).',departure?66:43,departure?559:632.3,8,480);
  for(const [i,role] of ['driver','spotter'].entries()){
-  const s=r.signatures[role];if(!s)throw Error('Both signatures required');const rowTop=(departure?641:703)+i*(departure?30:24),signatureX=departure?366:385,signatureWidth=departure?174:180;
+  const s=r.signatures[role];if(!s)throw Error('Both signatures required');const rowTop=(departure?641:683.3)+i*(departure?30:24),signatureX=departure?366:385,signatureWidth=departure?174:180;
   text(s.name,departure?68:48,rowTop,9,departure?220:270);
   if(s.typedSignature)text(s.typedSignature,signatureX,rowTop,9,signatureWidth);
   for(const stroke of s.strokes||[])for(let j=1;j<stroke.length;j++)page.drawLine({start:{x:signatureX+stroke[j-1][0]*signatureWidth,y:792-rowTop-stroke[j-1][1]*(departure?13:10)},end:{x:signatureX+stroke[j][0]*signatureWidth,y:792-rowTop-stroke[j][1]*(departure?13:10)},thickness:.8,color:ink});
@@ -40,7 +40,7 @@ async function buildHasPbbPdf(r){
   detail.drawText(report.resolvedAt?'Resolved: '+report.resolvedAt:'Unresolved',{x:36,y:45,size:9,font});
   await doc.attach(Buffer.from(report.reason,'utf8'),`problem-${role}-${itemId}.txt`,{mimeType:'text/plain',description:'Original problem explanation (UTF-8)'});
  }
- await doc.attach(Buffer.from(JSON.stringify({...r,pdfTemplate:{version:'2026-11-01',type:template,ekOnly:{checked:ekAccount(r),source:'record.account'},gateConfirmedAt:r.gateConfirmedAt||null,communicationSource:'Driver/Spotter Ready handshake',checks}},null,2)),`HAS-PBB-${r.id}-audit.json`,{mimeType:'application/json',description:'Scoped checklist, qualification, readiness and signature audit'});
+ await doc.attach(Buffer.from(JSON.stringify({...r,pdfTemplate:{version:departure?'2026-11-01':'2026-11-01-rev1',type:template,ekOnly:{checked:ekAccount(r),source:'record.account'},gateConfirmedAt:r.gateConfirmedAt||null,communicationSource:'Driver/Spotter Ready handshake',checks}},null,2)),`HAS-PBB-${r.id}-audit.json`,{mimeType:'application/json',description:'Scoped checklist, qualification, readiness and signature audit'});
  doc.setTitle(`HAS PBB ${r.station} ${r.account} ${r.date} ${r.flightNo} ${r.bridge}`);return Buffer.from(await doc.save());
 }
 module.exports={buildHasPbbPdf,templateChecks};
