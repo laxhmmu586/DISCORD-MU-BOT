@@ -196,6 +196,7 @@
         white-space: nowrap;
       }
 
+      .nav-links [data-open-flight-forms],
       .nav-links a,
       .nav-actions a {
         color: rgba(255, 255, 255, 0.88);
@@ -206,10 +207,13 @@
         text-transform: uppercase;
       }
 
+      .nav-links [data-open-flight-forms]:hover,
       .nav-links a:hover,
       .nav-actions a:hover {
         color: white;
       }
+
+      .nav-links [data-open-flight-forms] { background: none; border: 0; padding: 0; cursor: pointer; }
 
       .boarding-nav-link {
         color: rgba(255, 255, 255, 0.88);
@@ -632,76 +636,7 @@
         transform: translate(-50%, -50%);
       }
 
-      .flight-tools {
-        position: relative;
-        z-index: 40;
-        align-self: end;
-      }
 
-      .flight-menu-button {
-        width: 44px;
-        height: 72px;
-        display: grid;
-        place-items: center;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(0, 0, 0, 0.2);
-        color: white;
-        cursor: pointer;
-      }
-
-      .flight-menu-button svg {
-        width: 18px;
-        height: 18px;
-      }
-
-      .line-menu-icon {
-        display: grid;
-        gap: 4px;
-      }
-
-      .line-menu-icon span {
-        display: block;
-        width: 15px;
-        height: 2px;
-        background: currentColor;
-      }
-
-      .flight-menu {
-        position: absolute;
-        top: 0;
-        right: auto;
-        left: calc(100% + 10px);
-        z-index: 100;
-        width: 240px;
-        display: none;
-        border: 1px solid rgba(176, 216, 255, 0.22);
-        background: rgba(1, 10, 18, 0.94);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
-        backdrop-filter: blur(18px);
-      }
-
-      .flight-menu.is-open {
-        display: block;
-      }
-
-      .flight-menu button {
-        width: 100%;
-        padding: 13px 16px;
-        border: 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        background: transparent;
-        color: white;
-        text-align: left;
-        font-size: 12px;
-        font-weight: 850;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        cursor: pointer;
-      }
-
-      .flight-menu button:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
 
       .details-panel {
         width: min(1120px, calc(100% - 48px));
@@ -1847,9 +1782,7 @@
       }
 
       .detail-action[hidden],
-      .flight-menu button[hidden] {
-        display: none !important;
-      }
+
 
       .result-panel,
       .password-page {
@@ -4070,22 +4003,6 @@
           transform: none;
         }
 
-        .flight-tools,
-        .flight-menu-button {
-          width: 100%;
-        }
-
-        .flight-menu-button {
-          height: 46px;
-        }
-
-        .flight-menu {
-          top: calc(100% + 10px);
-          left: 0;
-          right: auto;
-          width: 100%;
-        }
-
         .detail-top-actions,
         .details-manifest {
           grid-template-columns: 1fr;
@@ -4513,6 +4430,7 @@
             <a href="scan2.html">Emergency Boarding</a>
             <a href="scan.html">Boarding</a>
             <a href="240.html">240</a>
+            <a href="/has-pbb.html">Jet Bridge</a>
           </div>
         </details>
       </div>
@@ -4545,6 +4463,9 @@
       <a href="/baggage.html" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">LBS</a>
       <button type="button" data-open-flight-forms>Form</button>
+      <a href="scan.html">Boarding</a>
+      <a href="240.html">240</a>
+      <a href="/has-pbb.html">Jet Bridge</a>
       <button class="mobile-logout-button" id="mobile-logout" type="button">Logout</button>
     </aside>
 
@@ -4562,23 +4483,14 @@
               <div class="status-metric status-metric--energy status-metric--bdt"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>BDT</span><strong id="metric-bdt">----</strong></div>
               <div class="status-metric status-metric--energy status-metric--etd"><i class="energy-glow" aria-hidden="true"></i><i class="energy-ring" aria-hidden="true"></i><span>ETD</span><strong id="metric-etd">----</strong></div>
             </div>
-            <div class="flight-tools" aria-label="Flight data">
-              <button class="flight-menu-button" type="button" aria-label="Open flight data menu" aria-expanded="false">
-                <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-              </button>
-              <div class="flight-menu" aria-hidden="true">
-                <a href="scan.html">Boarding</a>
-                <a href="240.html">240</a>
-                <a href="/has-pbb.html">Jet Bridge</a>
-              </div>
-            </div>
           </div>
         </div>
 
-        <section id="flight-telex" class="flight-telex" aria-labelledby="flight-telex-title" hidden>
+        <div class="flight-telex-position"><section id="flight-telex" class="flight-telex" aria-labelledby="flight-telex-title" hidden>
           <h2 id="flight-telex-title">Telex checklist</h2>
           <div data-telex-items></div>
-        </section>
+          <p data-telex-status role="status"></p>
+        </section></div>
 
         <section class="report-page" id="report-page" aria-label="Report center" hidden>
           <div class="report-hero">
@@ -4762,13 +4674,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
-    <link rel="stylesheet" href="/has/departure-checklists.css?v=checklist-header-fields">
-    <link rel="stylesheet" href="/flight-forms.css">
+    <link rel="stylesheet" href="/has/charge-form.css?v=resizable-preview">
+    <link rel="stylesheet" href="/flight-forms.css?v=charge-preview">
     <script defer src="/flight-form-copy.js"></script>
-    <script defer src="/flight-forms.js"></script>
+    <script defer src="/flight-forms.js?v=charge-preview"></script>
     <script defer src="/people-api.js?v=20261028-workspace"></script>
-    <script defer src="/has/briefing-tools.js?v=flight-forms"></script>
-    <script defer src="/flight-telex.js"></script>
+    <script defer src="/has/briefing-tools.js?v=resizable-preview"></script>
+    <script defer src="/flight-telex.js?v=shared"></script>
     <script src="/employee-profile-api.js?v=20261026-avatar-crop"></script>
     <script src="/has/dashboard-profile.js?v=dashboard-bootstrap"></script>
     <script>
@@ -4781,8 +4693,6 @@
       const changePasswordButton = document.querySelector("#change-password");
       const logoutButton = document.querySelector("#logout");
       const mobileLogoutButton = document.querySelector("#mobile-logout");
-      const flightMenuButton = document.querySelector(".flight-menu-button");
-      const flightMenu = document.querySelector(".flight-menu");
       const nodeTime = document.querySelector("#node-time");
       const nodes = document.querySelectorAll(".node");
       nodes.forEach((node) => node.insertAdjacentHTML("beforeend", '<span class="node-glass" aria-hidden="true"></span><span class="node-led" aria-hidden="true"></span>'));
@@ -4804,7 +4714,6 @@
       const timeline = document.querySelector(".timeline");
       const timelineShell = document.querySelector(".timeline-shell");
       const resultPanel = document.querySelector("#result-panel");
-      const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
       const reportNavLink = document.querySelector("#report-nav-link");
       const mobileReportNavLink = document.querySelector("#mobile-report-nav-link");
@@ -6376,7 +6285,6 @@
         }
         if (duplicateBagsAction) duplicateBagsAction.hidden = true;
         if (duplicateNamesAction) duplicateNamesAction.hidden = duplicateNameCount === 0;
-        if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
         let previousStarted = true;
         const persistedGreenNodes = completedSyNodeState(sy);
         nodes.forEach((node) => {
@@ -6543,6 +6451,8 @@
         if (!window.EventSource || document.hidden || !isTodaySyQuery(activeSyQuery)) return;
         syLiveStream?.close();
         syLiveStream = new EventSource(`${resolveApiBase()}/sy-live-stream`);
+        syLiveStream.addEventListener("connected", () => globalThis.refreshFlightTelex?.());
+        syLiveStream.addEventListener("telex", (event) => globalThis.refreshFlightTelex?.(event.data));
         syLiveStream.addEventListener("refresh", (event) => {
           if (document.hidden || syAutoRefreshInFlight) return;
           try {
@@ -7133,19 +7043,6 @@
         setPanelPassengerRows(rows);
       }
 
-      function renderBagReport() {
-        const sheet = currentSy?.bagSheet || {};
-        const sections = [];
-        const addBagSection = (title, bagSection, headers) => {
-          const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
-          if (!rows.length) return;
-          sections.push(`<h3>${escapeHtml(title)}</h3>${rowsTable(rows, headers.map((label, index) => ({ label, value: (row) => row[index] })), "No rows.")}`);
-        };
-        addBagSection("Rush Bags", sheet.rushBags, ["Rush #", "Orig #", "To", "AKE"]);
-        addBagSection("Not Load Bags", sheet.notLoadBags, ["Tag #", "Type", "Remark"]);
-        renderPanel("Bag Report", currentSy?.flightNo || "SY", sheet.hasData && sections.length ? sections.join("") : `<p class="panel-muted">No Google Sheet bag report data found for this SY date.</p>`);
-      }
-
       async function downloadSalesReport() {
         if (!currentSy?.flightNo || !currentSy?.flightDate) {
           renderPanel("Sales Report", "No flight", `<p class="panel-muted status-fail">Search SY before downloading the sales report.</p>`);
@@ -7250,7 +7147,6 @@
         if (testPage) testPage.hidden = true;
         if (passwordPage) passwordPage.hidden = true;
         closeLoginMenu();
-        closeFlightMenu();
         closeMobilePanel();
         closePassengerModal();
         resetPanelState();
@@ -7325,7 +7221,6 @@
         if (baggagePage) baggagePage.hidden = false;
         document.body.classList.add("is-report-view");
         closeLoginMenu();
-        closeFlightMenu();
         closeMobilePanel();
         baggagePage?.scrollTo({ top: 0, left: 0, behavior: "auto" });
         setBaggageDefaults(true);
@@ -8590,23 +8485,9 @@
         loginMenu.setAttribute("aria-hidden", "true");
       }
 
-      function closeFlightMenu() {
-        flightMenuButton.setAttribute("aria-expanded", "false");
-        flightMenu.classList.remove("is-open");
-        flightMenu.setAttribute("aria-hidden", "true");
-      }
-
-      function closeFlightMenuAfterAction(handler) {
-        return async function handleFlightMenuAction(event) {
-          closeFlightMenu();
-          return handler.call(this, event);
-        };
-      }
-
       loginButton.addEventListener("click", (event) => {
         event.stopPropagation();
         const open = loginButton.getAttribute("aria-expanded") === "true";
-        closeFlightMenu();
         loginButton.setAttribute("aria-expanded", String(!open));
         loginMenu.classList.toggle("is-open", !open);
         loginMenu.setAttribute("aria-hidden", String(open));
@@ -8614,7 +8495,6 @@
 
       changePasswordButton.addEventListener("click", () => {
         closeLoginMenu();
-        closeFlightMenu();
         passwordPage.hidden = false;
         passwordStatus.textContent = "";
         resetPanelState();
@@ -8649,22 +8529,7 @@
       logoutButton.addEventListener("click", logoutToLogin);
       mobileLogoutButton?.addEventListener("click", logoutToLogin);
 
-      flightMenuButton.addEventListener("click", () => {
-        const open = flightMenuButton.getAttribute("aria-expanded") === "true";
-        closeLoginMenu();
-        flightMenuButton.setAttribute("aria-expanded", String(!open));
-        flightMenu.classList.toggle("is-open", !open);
-        flightMenu.setAttribute("aria-hidden", String(open));
-      });
-
-      flightMenu.addEventListener("click", (event) => {
-        if (event.target.closest("button")) closeFlightMenu();
-      });
-
-
-
       document.addEventListener("click", (event) => {
-        if (!event.target.closest(".flight-tools")) closeFlightMenu();
         if (!event.target.closest(".nav-actions")) closeLoginMenu();
         if (nodeCard.classList.contains("is-open") && !event.target.closest(".node-card") && !event.target.closest(".node")) {
           hideTimelineNodeCard();
@@ -8707,7 +8572,6 @@
         });
       });
 
-      bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
       const shortcutMenu = document.querySelector(".mission-grid");
       salesReportButton?.addEventListener("click", () => {
         shortcutMenu.open = false;
@@ -8938,17 +8802,9 @@
       }, true);
 
       if (window.location.hash === "#open-login") {
-        closeFlightMenu();
         loginButton.setAttribute("aria-expanded", "true");
         loginMenu.classList.add("is-open");
         loginMenu.setAttribute("aria-hidden", "false");
-      }
-
-      if (window.location.hash === "#open-flight-menu") {
-        closeLoginMenu();
-        flightMenuButton.setAttribute("aria-expanded", "true");
-        flightMenu.classList.add("is-open");
-        flightMenu.setAttribute("aria-hidden", "false");
       }
 
       if (window.location.hash === "#reports") {

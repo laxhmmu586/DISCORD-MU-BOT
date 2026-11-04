@@ -59,3 +59,12 @@
 .charge-resize-handle::after {
   content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: #4382bf;
 }
+
+/* Drag the preview window from its lower-right corner. */
+.charge-dialog {
+  min-width: min(420px, calc(100vw - 20px));
+  max-width: calc(100vw - 20px);
+  min-height: min(280px, 94dvh);
+  resize: both;
+  overflow: auto;
+}

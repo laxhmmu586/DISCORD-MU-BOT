@@ -1,44 +1,70 @@
-.flight-forms .cl-content { overflow: auto; }
-.flight-forms nav [aria-pressed="true"] { background: #e6efff; color: #164e9a; }
+.flight-forms[open] {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  height: min(810px, 91dvh);
+  gap: 10px;
+}
+.flight-form-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.flight-form-tabs button {
+  background: #fff; border: 1px solid #bccbdd; border-radius: 8px;
+  color: #224b76; cursor: pointer; font: inherit; padding: 7px 11px;
+}
+.flight-form-tabs [aria-pressed="true"] { background: #e2edfb; border-color: #8caad1; font-weight: 700; }
+.flight-forms .charge-feedback { margin: 0; }
+.flight-forms .charge-feedback:empty { display: none; }
+.flight-forms:has(.charge-feedback:empty) { grid-template-rows: auto auto minmax(0, 1fr); }
 .flight-form-sheet {
   box-sizing: border-box;
-  width: min(100%, 840px);
+  width: 190mm;
   margin: 0 auto;
-  padding: 24px;
-  background: white;
-  color: #172236;
-  font: 14px/1.45 "Segoe UI", "Microsoft YaHei", sans-serif;
-}
-.flight-form-sheet header { margin-bottom: 12px; text-align: center; }
-.flight-form-sheet img { display: block; width: 125px; height: auto; }
-.flight-form-sheet h1 { margin: 6px 0; font-size: 1.55em; }
-.flight-form-sheet h2 { margin: 12px 0 5px; font-size: 1.12em; }
-.flight-form-sheet p { margin: 4px 0; }
-.flight-form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 12px; margin: 8px 0; }
-.flight-form-fields label { min-width: 0; font-weight: 600; }
-.flight-form-sheet input:not([type="checkbox"], [type="radio"]) {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  min-height: 24px;
-  border: 1px solid #adbbce;
-  border-radius: 3px;
-  padding: 2px 4px;
+  padding: 7mm;
   background: #fff;
-  color: #172236;
-  font: inherit;
+  color: #111;
+  color-scheme: light;
+  font: 10pt/1.36 Arial, "Microsoft YaHei", sans-serif;
 }
-.flight-form-option { display: flex; align-items: baseline; gap: 6px; margin: 3px 0; }
-.flight-form-option input { margin: 0; }
-.flight-form-option input:not([type="checkbox"], [type="radio"]) { width: 9em; }
-.flight-form-sheet table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.flight-form-sheet td, .flight-form-sheet th { padding: 3px; border: 1px solid #a5b2c3; }
-.flight-form-sheet thead th { background: #eaf0f7; }
+.flight-form-sheet[data-template="3"] { width: 238mm; }
+.flight-form-sheet header { border-bottom: 2px solid #202020; margin-bottom: 4mm; padding-bottom: 3mm; text-align: center; }
+.flight-form-sheet img { display: block; width: 38mm; height: auto; }
+.flight-form-sheet h1 { color: inherit; margin: 2mm 0 1mm; font: 700 17pt/1.18 Arial, "Microsoft YaHei", sans-serif; }
+.flight-form-sheet h2 { margin: 3mm 0 1mm; font-size: 11pt; }
+.flight-form-sheet p { margin: 1mm 0; }
+.flight-form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 2mm 0; border: 1px solid #777; }
+.flight-form-sheet .flight-form-fields label {
+  display: grid; align-content: start; min-width: 0; padding: 1.6mm 2mm;
+  border: 1px solid #aaa; font-weight: 600;
+}
+.flight-form-sheet input:not([type="checkbox"], [type="radio"]) {
+  box-sizing: border-box; width: 100%; min-width: 0; min-height: 5mm;
+  border: 0; border-bottom: 1px solid #777; border-radius: 0;
+  padding: 0 1mm; background: #fff; color: #111; font: inherit; box-shadow: none;
+}
+.flight-form-sheet .flight-form-option {
+  display: grid; grid-template-columns: 3.5mm minmax(0, 1fr);
+  align-items: start; gap: 1.5mm; margin: 1mm 0; text-align: left;
+}
+.flight-form-sheet .flight-form-option > input:is([type="checkbox"], [type="radio"]) {
+  appearance: none; width: 3.2mm; height: 3.2mm; min-width: 0; min-height: 0;
+  margin: .3mm 0 0; padding: 0; border: 1px solid #222; border-radius: 0;
+  background: #fff; box-shadow: none; cursor: pointer;
+}
+.flight-form-option > input:checked::after { content: '✓'; display: block; color: #111; font: 700 9pt/3mm Arial; text-align: center; }
+.flight-form-option input[aria-label="Meal"] { width: 22mm; }
+.flight-form-option > label { display: grid; grid-template-columns: auto 1fr; gap: 2mm; }
+.flight-form-sheet table { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+.flight-form-sheet td, .flight-form-sheet th { padding: 1mm; border: 1px solid #777; }
+.flight-form-sheet thead th { background: #eee; }
 .flight-form-sheet [contenteditable] { outline: 1px dashed #5b83b6; outline-offset: 1px; }
+.waiver-section { margin: 3mm 0; border: 1px solid #777; }
+.waiver-section > h2 { margin: 0; padding: 1.4mm 2mm; background: #eee; border-bottom: 1px solid #777; }
+.waiver-section > p, .waiver-section > .flight-form-option { margin: 0; padding: 1.6mm 2mm; }
+.waiver-section > .flight-form-option + .flight-form-option { border-top: 1px solid #bbb; }
+.waiver-signature .flight-form-fields { border: 0; margin: 0; }
+.waiver-signature .flight-form-fields label { min-height: 15mm; }
 .flight-print-frame { position: fixed; width: 0; height: 0; border: 0; }
-.flight-print-value { display: block; min-height: 1.2em; border-bottom: 1px solid #758295; white-space: pre-wrap; overflow-wrap: anywhere; }
-.flight-form-option .flight-print-value { display: inline-block; min-width: 5em; }
-.flight-print-check { flex: none; }
+.flight-print-value { display: block; min-height: 1.2em; border-bottom: 1px solid #777; white-space: pre-wrap; overflow-wrap: anywhere; }
+.flight-form-option span > .flight-print-value { display: inline-block; min-width: 5em; }
+.flight-print-check { font-family: "Segoe UI Symbol", sans-serif; }
 .mission-grid { position: relative; z-index: 3; }
 .mission-grid summary {
   width: 44px; height: 44px; display: grid; place-items: center; list-style: none;
@@ -51,32 +77,57 @@
   position: absolute; right: 0; top: calc(100% + 8px); min-width: 210px;
   background: #040d1c; border: 1px solid #395371;
 }
-.mission-shortcuts a, .mission-shortcuts button, .flight-menu a,
-[data-open-flight-forms] {
+.mission-shortcuts a, .mission-shortcuts button, .mobile-panel [data-open-flight-forms] {
   display: block; border: 0; background: transparent; color: inherit;
   padding: 12px 16px; font: inherit; font-weight: 750; text-align: left;
   text-transform: uppercase; text-decoration: none; cursor: pointer;
 }
 .mission-shortcuts button { width: 100%; }
-.mission-shortcuts :is(a,button):hover, .flight-menu a:hover, [data-open-flight-forms]:hover { background: #25466c; }
-.flight-telex {
-  max-width: 740px; margin: 18px 0; padding: 14px; border: 1px solid #587da5;
-  border-radius: 12px; background: #0a192d; color: #eef6ff;
+.mission-shortcuts :is(a,button):hover { background: #25466c; }
+.flight-telex-position {
+  width: min(1120px, calc(100% - 48px)); margin: 0 auto;
 }
-.flight-telex h2 { margin: 0 0 8px; font-size: 1rem; }
-.flight-telex label { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
-.flight-telex label + label { border-top: 1px solid #304966; }
-.flight-telex small { display: block; color: #c3d9f1; }
-.flight-telex input { width: 1rem; height: 1rem; accent-color: #42c093; }
+body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.flight-telex:not([hidden]))) { display: none; }
+.flight-telex {
+  width: min(100%, 550px); margin: 16px 0 0; padding: 12px 15px;
+  border: 1px solid #fff; border-radius: 17px;
+  background: linear-gradient(130deg, #f7faff, #eaf2ff);
+  color: #203d65; box-shadow: 0 5px 20px #16366333;
+}
+.flight-telex h2 { margin: 0 0 6px; font-size: 15px; color: #244d7e; }
+.flight-telex label {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 8px; padding: 5px 0; cursor: pointer; font-size: 13px;
+}
+.flight-telex label + label { border-top: 1px solid #cfddee; }
+[data-telex-items] { max-height: 175px; overflow-y: auto; }
+.flight-telex small { display: block; color: #31547f; }
+.flight-telex label > span:last-child { color: #305582; font-size: 12px; }
+.flight-telex input { width: 15px; height: 15px; margin: 0; accent-color: #2573cc; color-scheme: light; }
+.flight-telex [role="status"] { margin: 4px 0 0; font-size: 12px; color: #8a2d20; }
+.flight-telex [role="status"]:empty { display: none; }
+@media (min-width: 761px) {
+  .flight-telex-position { width: calc(100% - 9vw); padding-inline-start: 46px; }
+}
 @media screen and (max-width: 760px), screen and (pointer: coarse) {
   .nav-row.mission-grid-tools { display: none !important; }
-  .flight-form-sheet { padding: 10px; font-size: 12px; }
-  .flight-form-sheet table { min-width: 410px; }
+  .flight-telex-position { width: calc(100% - 36px); }
 }
 @media print {
   body { margin: 0; }
-  .flight-form-sheet { width: 100%; padding: 0; font-size: 10pt; line-height: 1.3; }
-  .flight-form-sheet { color: #111; }
-  .flight-form-sheet tr, .flight-form-option { break-inside: avoid; }
+  .flight-form-sheet { width: 100% !important; padding: 0; font-size: 10pt; }
+  .flight-form-sheet tr, .flight-form-option, .waiver-signature { break-inside: avoid; }
   .flight-form-sheet thead { display: table-header-group; }
+  .flight-form-sheet[data-template="0"] {
+    display: flex; flex-direction: column; min-height: 273mm; break-inside: avoid;
+  }
+  .letter .flight-form-sheet[data-template="0"] { min-height: 255mm; font-size: 9.4pt; line-height: 1.28; }
+  .letter .waiver-section > p, .letter .waiver-section > .flight-form-option { padding-block: 1.25mm; }
+  .waiver-signature { margin-top: auto; }
+}
+
+.flight-form-sheet[data-template="2"] td .flight-form-option { margin-block: .35mm; }
+@media print {
+  .flight-form-sheet[data-template="2"] { font-size: 9pt; line-height: 1.2; }
+  .flight-form-sheet[data-template="2"] td { padding: .6mm 1mm; }
 }

@@ -1,29 +1,21 @@
 (() => {
   const copy = window.FlightFormCopy;
   const dialog = document.createElement("dialog");
-  dialog.className = "checklist-dialog flight-forms";
+  dialog.className = "charge-dialog flight-forms";
   dialog.setAttribute("aria-labelledby", "flight-forms-title");
   dialog.innerHTML = `
-    <aside class="cl-sidebar">
-      <div class="cl-brand"><span aria-hidden="true">☷</span><strong>Forms</strong></div>
-      <p class="cl-section-label">TEMPLATES</p>
-      <nav aria-label="Form templates">
-        <button type="button" id="briefing-charge-form" hidden>Charge Form</button>
-      </nav>
-    </aside>
-    <div class="cl-main">
-      <header class="cl-header">
-        <div><p class="cl-section-label">EDITABLE FORMS</p><h2 id="flight-forms-title">Release Form</h2></div>
-        <button type="button" data-form-close aria-label="Close Forms">×</button>
-      </header>
-      <div class="cl-toolbar">
-        <button type="button" data-form-edit aria-pressed="false">Edit wording</button>
-        <label>Paper <select aria-label="Form paper size"><option>A4</option><option>Letter</option></select></label>
-        <button type="button" data-form-print class="cl-primary">Print</button>
-      </div>
-      <p class="cl-status" role="status"></p>
-      <div class="cl-content flight-form-content"></div>
-    </div>`;
+    <header class="charge-controls">
+      <h2 id="flight-forms-title">Release Form</h2>
+      <label>Paper <select aria-label="Form paper size"><option>A4</option><option>Letter</option></select></label>
+      <button type="button" data-form-edit aria-pressed="false">Edit wording</button>
+      <button type="button" data-form-print>Print</button>
+      <button type="button" data-form-close aria-label="Close Forms">×</button>
+    </header>
+    <nav class="flight-form-tabs" aria-label="Form templates">
+      <button type="button" id="briefing-charge-form" hidden>Charge Form</button>
+    </nav>
+    <p class="charge-feedback" role="status"></p>
+    <div class="charge-preview flight-form-content"></div>`;
   document.body.append(dialog);
 
   const nav = dialog.querySelector("nav");
@@ -50,11 +42,11 @@
     ["Release Form", () => `
       ${header("Waiver of Claim Against China Eastern Airlines", "Release and Waiver Form")}
       ${fields(field("Flight No.", context.flightNo), field("Flight date"), field("Passenger name"), field("BN"), field("Seat No."))}
-      <h2 data-wording>Declaration</h2>${text(copy.declaration)}
-      <h2 data-wording>Applicable Conditions</h2>${options(copy.conditions)}
+      <section class="waiver-section"><h2 data-wording>Declaration</h2>${text(copy.declaration)}</section>
+      <section class="waiver-section"><h2 data-wording>Applicable Conditions</h2>${options(copy.conditions)}
       <div class="flight-form-option"><input type="checkbox" aria-label="Meal condition applies"><span><span data-wording>I acknowledge and agree that no</span> ${input("Meal")} <span data-wording>meal will be served for this flight.</span></span></div>
-      <div class="flight-form-option"><input type="checkbox" aria-label="Other condition applies">${field("Other conditions")}</div>
-      <h2 data-wording>Acknowledgement and Signature</h2>${fields(field("Signed by passenger"), field("Date"))}`],
+      <div class="flight-form-option"><input type="checkbox" aria-label="Other condition applies">${field("Other conditions")}</div></section>
+      <section class="waiver-section waiver-signature"><h2 data-wording>Acknowledgement and Signature</h2>${fields(field("Signed by passenger"), field("Date"))}</section>`],
     ["Under 21", () => `
       ${header("不符合休息室入场条件旅客告知书", "Notice to Passengers Ineligible for Lounge Access")}
       ${fields(field("BN #"))}
@@ -87,6 +79,7 @@
     if (!drafts.has(index)) {
       const sheet = document.createElement("article");
       sheet.className = "flight-form-sheet";
+      sheet.dataset.template = index;
       sheet.innerHTML = render();
       try {
         const wording = JSON.parse(localStorage.getItem(wordingKey(index)));
@@ -183,7 +176,7 @@
     frame.title = "Print " + title.textContent;
     const paper = dialog.querySelector("select").value === "Letter" ? "Letter" : "A4";
     const orientation = active === 3 ? "landscape" : "portrait";
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body>${sheet.outerHTML}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=charge-preview"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
     frame.onload = async () => {
       try {
         await frame.contentDocument.fonts.ready;

@@ -4,7 +4,12 @@
   const services = ["VIP", "INAD", "INCP", "WCHR", "WCHC", "AVIH", "PTEC", "UM"];
   const separate = new Set(["VIP", "INAD", "INCP"]);
   const recipients = "PVGKIMU, PVGKDMU, PVGTJMU";
-  let storageKey = "";
+  const status = panel.querySelector("[data-telex-status]");
+  let scope;
+  let revision = 0;
+  let saving = false;
+  let loaded = false;
+  let nextRead = 0;
   let renderKey = "";
   let checked = new Set();
 
@@ -15,21 +20,44 @@
   }
 
   function showChecks() {
-    for (const input of items.querySelectorAll("input")) input.checked = checked.has(input.value);
+    for (const input of items.querySelectorAll("input")) {
+      input.checked = checked.has(input.value);
+      input.disabled = !loaded || saving;
+    }
   }
 
-  function restoreChecks() {
+  window.refreshFlightTelex = async eventData => {
+    if (!scope || panel.hidden || saving) return;
+    if (eventData) {
+      const event = JSON.parse(eventData);
+      if (event.flightNo !== scope.flightNo || event.flightDate !== scope.flightDate) return;
+    }
+    const run = ++revision;
+    nextRead = Date.now() + 15000;
     try {
-      checked = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+      const data = await peopleApi("/flight-telex?" + new URLSearchParams({flightNo: scope.flightNo, flightDate: scope.flightDate}));
+      if (run !== revision) return;
+      checked = new Set(data.checked);
+      loaded = true;
+      status.textContent = "";
     } catch {
-      // Keep confirmations for the current page when storage is unavailable.
+      if (run !== revision) return;
+      status.textContent = "Unable to sync Telex checks.";
     }
     showChecks();
-  }
+  };
 
   window.renderFlightTelex = (sy, uid) => {
-    const key = uid && sy?.flightNo && sy?.flightDate
-      ? `mufc-telex:${uid}:${sy.flightNo}:${sy.flightDate}` : "";
+    const key = uid && sy?.flightNo && sy?.flightDate ? `${uid}:${sy.flightNo}:${sy.flightDate}` : "";
+    const previousKey = scope?.key;
+    if (key !== previousKey) {
+      ++revision;
+      scope = key ? {key, flightNo: sy.flightNo, flightDate: sy.flightDate} : undefined;
+      checked = new Set();
+      saving = loaded = false;
+      nextRead = 0;
+      status.textContent = "";
+    }
     const found = new Set();
     if (key && sy.permissions?.canViewSpecialService !== false) {
       for (const list of [sy.seatMapRecords, sy.bnAudit, sy.wchList, sy.psmList]) {
@@ -50,13 +78,11 @@
     }
 
     const signature = JSON.stringify([key, detected]);
-    if (signature === renderKey) return;
-    renderKey = signature;
-    if (key !== storageKey) {
-      storageKey = key;
-      checked = new Set();
-      restoreChecks();
+    if (signature === renderKey) {
+      if (Date.now() >= nextRead) window.refreshFlightTelex();
+      return;
     }
+    renderKey = signature;
     panel.hidden = detected.length === 0;
     items.replaceChildren(...detected.map(code => {
       const label = document.createElement("label");
@@ -75,23 +101,35 @@
       return label;
     }));
     showChecks();
+    window.refreshFlightTelex();
   };
 
-  items.addEventListener("change", event => {
+  items.addEventListener("change", async event => {
     const input = event.target;
-    if (!storageKey || input.type !== "checkbox") return;
+    if (!scope || !loaded || saving || input.type !== "checkbox") return;
     const sent = input.checked;
-    restoreChecks();
+    const run = ++revision;
+    const previous = new Set(checked);
     if (sent) checked.add(input.value);
     else checked.delete(input.value);
-    input.checked = sent;
+    saving = true;
+    showChecks();
     try {
-      localStorage.setItem(storageKey, JSON.stringify([...checked]));
+      const data = await peopleApi("/flight-telex", {
+        flightNo: scope.flightNo, flightDate: scope.flightDate, service: input.value, sent
+      });
+      if (run !== revision) return;
+      checked = new Set(data.checked);
+      status.textContent = "";
     } catch {
-      // The checklist still works for the current page if storage is unavailable.
+      if (run !== revision) return;
+      checked = previous;
+      status.textContent = "Telex check could not be saved. Try again.";
+    } finally {
+      if (run === revision) {
+        saving = false;
+        showChecks();
+      }
     }
-  });
-  window.addEventListener("storage", event => {
-    if (event.key === storageKey) restoreChecks();
   });
 })();

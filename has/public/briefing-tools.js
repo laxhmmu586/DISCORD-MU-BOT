@@ -2,7 +2,7 @@
  const query=new URLSearchParams(location.search);
  const standalone=!query.has('quick')&&!query.has('embed');
  const tools=[
-  ['charge-form','charge-form','blank-flight-date','charge-form-model.js?v=20261101-charge-daily',d=>standalone&&d.direction==='departure'],
+  ['charge-form','charge-form','resizable-preview','charge-form-model.js?v=20261101-charge-daily',d=>standalone&&d.direction==='departure'],
   ['express','arrival-express','20261102-on-demand',null,d=>standalone&&d.direction==='arrival'],
   ['checklists','departure-checklists','checklist-header-fields','departure-checklist-model.js?v=checklist-header-fields',d=>standalone&&d.direction==='departure'&&d.canUseChecklists]
  ];
