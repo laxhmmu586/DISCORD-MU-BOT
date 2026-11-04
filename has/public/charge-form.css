@@ -75,3 +75,20 @@
 .charge-embedded .charge-preview { border-radius: 10px; background: #f3f3f3; }
 .charge-embedded .charge-paper { box-shadow: 0 1px 5px #0001; }
 .charge-embedded [hidden] { display: none !important; }
+
+@media print {
+  .charge-print-document .charge-paper {
+    display: flex;
+    flex-direction: column;
+    min-height: 274mm;
+  }
+  .charge-print-letter .charge-paper { min-height: 257mm; }
+  .charge-print-document .charge-brand { padding-block: 3mm; margin-bottom: 2.5mm; }
+  .charge-print-document .charge-passenger label { padding-block: 2mm; }
+  .charge-print-document .charge-table th,
+  .charge-print-document .charge-table td { height: 6mm; }
+  .charge-print-document .charge-table caption { padding-block: 1.4mm; }
+  .charge-print-document .charge-notice-row { padding-block: 1.35mm; font-size: 8.3pt; line-height: 1.27; }
+  .charge-print-document .charge-acknowledgment { font-size: 8.3pt; line-height: 1.28; }
+  .charge-print-document .charge-signature { margin-top: auto; padding-top: 3mm; }
+}
