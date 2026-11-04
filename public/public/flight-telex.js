@@ -100,7 +100,10 @@
       confirmation.className = "telex-done";
       confirmation.textContent = "Done";
       text.append(name, instruction);
-      label.append(input, text, confirmation);
+      const control = document.createElement("span");
+      control.className = "telex-control";
+      control.append(input, confirmation);
+      label.append(text, control);
       return label;
     }));
     showChecks();

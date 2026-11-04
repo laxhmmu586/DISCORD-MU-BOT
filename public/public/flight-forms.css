@@ -92,19 +92,38 @@ body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.fli
   width: min(100%, 420px); margin: 16px 0 0; padding: 9px 12px;
   border: 1px solid #fff; border-radius: 17px;
   background: linear-gradient(130deg, #f7faff, #eaf2ff);
-  color: #203d65; box-shadow: 0 5px 20px #16366333;
+  color: #203d65; box-shadow: 0 5px 16px #07162959, inset 0 1px 0 #fff;
 }
 .flight-telex h2 { margin: 0 0 6px; font-size: 15px; color: #244d7e; }
 .flight-telex label {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
   align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; font-size: 13px;
 }
 .flight-telex label + label { border-top: 1px solid #cfddee; }
 [data-telex-items] { max-height: 175px; overflow-y: auto; }
 .flight-telex small { display: block; color: #31547f; }
+.telex-control {
+  display: grid; place-items: center; min-width: 46px; min-height: 26px;
+  border: 1px solid #c9d8e9; border-radius: 8px;
+  background: linear-gradient(160deg, #fff, #e4edf9);
+  box-shadow: 0 1px 2px #17375722, inset 0 1px #fff;
+}
+.telex-control > * { grid-area: 1 / 1; }
 .flight-telex .telex-done { visibility: hidden; color: #174e30; font-size: 12px; font-weight: 700; }
-.flight-telex label:has(input:checked) .telex-done { visibility: visible; }
-.flight-telex input { width: 15px; height: 15px; margin: 0; accent-color: #2573cc; color-scheme: light; }
+.telex-control:has(input:checked) { background: #e1f5e7; border-color: #a6d9b8; }
+.telex-control:has(input:checked) .telex-done { visibility: visible; }
+.telex-control:has(input:focus-visible) { outline: 2px solid #265c9f; outline-offset: 2px; }
+.telex-control input {
+  width: 15px; height: 15px; margin: 0; accent-color: #2573cc; color-scheme: light; cursor: pointer;
+}
+.telex-control input:checked { opacity: 0; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .flight-telex { transition: transform .17s ease, box-shadow .17s ease; }
+  .flight-telex:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 11px 25px #06142670, inset 0 1px 0 #fff;
+  }
+}
 .flight-telex [role="status"] { margin: 4px 0 0; font-size: 12px; color: #8a2d20; }
 .flight-telex [role="status"]:empty { display: none; }
 @media (min-width: 761px) {
@@ -139,14 +158,11 @@ body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.fli
   text-align: left; font-weight: 600;
 }
 .flight-form-header-detail label { display: grid; }
-.flight-form-fields .flight-form-combined {
-  display: grid; align-content: start; min-width: 0; padding: 1.6mm 2mm;
-  border: 1px solid #aaa; font-weight: 600;
+.flight-form-checklist-fields {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2mm 4mm;
+  margin: 2mm 0 3mm;
 }
-.flight-form-combined-inputs {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: baseline; gap: 2mm;
-}
+.flight-form-checklist-fields label { display: grid; min-width: 0; font-size: 9pt; }
 .flight-telex.is-complete {
   border-color: #8ed3a9; background: linear-gradient(118deg, #fff 4%, #e8faef 41%, #91dea9 100%);
   color: #174e30;
