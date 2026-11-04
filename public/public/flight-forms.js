@@ -1,25 +1,32 @@
 (() => {
   const copy = window.FlightFormCopy;
   const dialog = document.createElement("dialog");
-  dialog.className = "charge-dialog flight-forms";
+  dialog.className = "checklist-dialog flight-forms";
   dialog.setAttribute("aria-labelledby", "flight-forms-title");
   dialog.innerHTML = `
-    <header class="charge-controls">
-      <h2 id="flight-forms-title">Release Form</h2>
-      <label>Paper <select aria-label="Form paper size"><option>A4</option><option>Letter</option></select></label>
-      <button type="button" data-form-edit aria-pressed="false">Edit wording</button>
-      <button type="button" data-form-print>Print</button>
-      <button type="button" data-form-close aria-label="Close Forms">×</button>
-    </header>
-    <nav class="flight-form-tabs" aria-label="Form templates">
-      <button type="button" id="briefing-charge-form" hidden>Charge Form</button>
-    </nav>
-    <p class="charge-feedback" role="status"></p>
-    <div class="charge-preview flight-form-content"></div>`;
+    <aside class="cl-sidebar">
+      <div class="cl-brand"><span aria-hidden="true">☷</span><strong>Forms</strong></div>
+      <p class="cl-section-label">Templates</p>
+      <nav aria-label="Form templates"><button type="button" id="briefing-charge-form" hidden>Charge Form</button></nav>
+      <p class="cl-sidebar-note">Choose a form to edit, fill in, and print.</p>
+    </aside>
+    <div class="cl-main">
+      <header class="cl-header">
+        <div><p class="cl-section-label">Printable templates</p><h2 id="flight-forms-title">Release Form</h2></div>
+        <button type="button" data-form-close aria-label="Close Forms">×</button>
+      </header>
+      <div class="cl-toolbar">
+        <button type="button" data-form-edit aria-pressed="false">Edit wording</button>
+        <label>Paper <select aria-label="Form paper size"><option>A4</option><option>Letter</option></select></label>
+        <button type="button" class="cl-primary" data-form-print>Print</button>
+      </div>
+      <p class="cl-status" role="status"></p>
+      <div class="cl-content flight-form-content"><div class="flight-form-preview"></div></div>
+    </div>`;
   document.body.append(dialog);
 
   const nav = dialog.querySelector("nav");
-  const content = dialog.querySelector(".flight-form-content");
+  const content = dialog.querySelector(".flight-form-preview");
   const title = dialog.querySelector("h2");
   const edit = dialog.querySelector("[data-form-edit]");
   const status = dialog.querySelector("[role=status]");
@@ -33,6 +40,8 @@
   const text = value => `<p data-wording>${value}</p>`;
   const options = (labels, name = "", prefix = "") => labels.map(label =>
     `<label class="flight-form-option"><input type="${name ? "radio" : "checkbox"}" name="${name}" aria-label="${prefix}${label}"><span data-wording>${label}</span></label>`).join("");
+  const releaseFlight = `<div class="release-flight"><span data-wording>FLIGHT No. / DATE</span>
+    <div>${input("Flight No.")}<span aria-hidden="true">/</span>${input("Flight date")}</div></div>`;
   const checklistFields = (...items) => `<div class="flight-form-checklist-fields">${items.join("")}</div>`;
   const fields = (...items) => `<div class="flight-form-fields">${items.join("")}</div>`;
   const table = (headers, rows) => `<table><thead><tr>${headers.map(name =>
@@ -42,7 +51,7 @@
   const templates = [
     ["Release Form", () => `
       ${header("Waiver of Claim Against China Eastern Airlines", "Release and Waiver Form")}
-      ${checklistFields(field("Flight No."), field("Date"), field("Passenger name"), field("BN"), field("Seat No."))}
+      ${checklistFields(releaseFlight, field("Passenger name"), field("BN"), field("Seat No."))}
       <section class="waiver-section"><h2 data-wording>Declaration</h2>${text(copy.declaration)}</section>
       <section class="waiver-section"><h2 data-wording>Applicable Conditions</h2>${options(copy.conditions)}
       <div class="flight-form-option"><input type="checkbox" aria-label="Meal condition applies"><span><span data-wording>I acknowledge and agree that no</span> ${input("Meal")} <span data-wording>meal will be served for this flight.</span></span></div>
@@ -50,7 +59,7 @@
       <section class="waiver-section waiver-signature"><h2 data-wording>Acknowledgement and Signature</h2>${fields(field("Signed by passenger"), field("Date"))}</section>`],
     ["Under 21", () => `
       ${header("不符合休息室入场条件旅客告知书", "Notice to Passengers Ineligible for Lounge Access", field("BN #"))}
-      ${text("尊敬的旅客： / Dear Passenger:")}${copy.loungeIntro.map(text).join("")}
+      ${text("尊敬的旅客：\nDear Passenger:")}${copy.loungeIntro.map(text).join("")}
       ${options(["人民币200元东航电子代金券 / CNY 200 China Eastern E-voucher", "东航2000积分补偿 / 2000 China Eastern Miles"], "lounge-compensation")}
       <h2 data-wording>接收补偿会员信息 | Compensation Recipient Membership Information</h2>
       ${fields(field("东航会员卡号 / China Eastern Membership #"), field("会员姓名 / Name"))}
@@ -59,7 +68,7 @@
       ${text("*员工免优票不适用")}`],
     ["Gate Bag", () => `
       ${header("特殊服务交接单（GATE BAG）", "SPECIAL SERVICE INFORMATION LIST")}
-      ${checklistFields(field("Route"), field("Flight No."), field("Date"))}
+      ${checklistFields(field("Route", "LAX PVG"), field("Flight No.", "MU586"), field("Date"))}
       ${table(["Tag number", "Seat number", "Description", "Pickup"], Array.from({length: 7}, (_, i) =>
         `<tr><td>${input("Tag number " + (i + 1))}</td><td>${input("Seat number " + (i + 1))}</td><td>${options(["STRL 婴儿推车", "CARSEAT 安全座椅", "Wheelchair 轮椅", "WALKER 步行器/拐杖", "Guitar 乐器"], "", `Bag ${i + 1} · `)}</td><td data-wording>飞机旁提取行李</td></tr>`))}`],
     ["STANDBY LIST", () => `
@@ -83,11 +92,14 @@
       try {
         const wording = JSON.parse(localStorage.getItem(wordingKey(index)));
         const nodes = [...sheet.querySelectorAll("[data-wording]")];
-        if (Array.isArray(wording) && wording.length === nodes.length - 1 && (index === 0 || index === 2)) {
-          wording.splice(index === 0 ? 2 : 3, 1, "Flight No.", "Date");
+        if (Array.isArray(wording) && index === 0 && wording.length === nodes.length + 1) {
+          wording.splice(2, 2, "FLIGHT No. / DATE");
+        }
+        if (Array.isArray(wording) && index === 2 && wording.length === nodes.length - 1) {
+          wording.splice(3, 1, "Flight No.", "Date");
         }
         if (Array.isArray(wording) && wording.length === nodes.length) {
-          nodes.forEach((node, i) => { if (typeof wording[i] === "string") node.textContent = wording[i]; });
+          nodes.forEach((node, i) => { if (typeof wording[i] === "string" && node.textContent.replaceAll("\n", " ") !== wording[i] && wording[i] !== "尊敬的旅客： / Dear Passenger:") node.textContent = wording[i]; });
         }
       } catch {
         // The original wording is available when browser storage is unavailable.
@@ -95,7 +107,7 @@
       drafts.set(index, sheet);
     }
     content.replaceChildren(drafts.get(index));
-    content.scrollTop = 0;
+    content.parentElement.scrollTop = 0;
     status.textContent = "";
     for (const button of nav.querySelectorAll("[data-form-index]")) {
       button.setAttribute("aria-pressed", String(Number(button.dataset.formIndex) === index));
@@ -178,7 +190,7 @@
     frame.title = "Print " + title.textContent;
     const paper = dialog.querySelector("select").value === "Letter" ? "Letter" : "A4";
     const orientation = active === 3 ? "landscape" : "portrait";
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=checklist-finish"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=checklist-library"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
     frame.onload = async () => {
       try {
         await frame.contentDocument.fonts.ready;
