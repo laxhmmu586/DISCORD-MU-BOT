@@ -147,9 +147,15 @@ body.is-report-view .flight-telex-position, .flight-telex-position:not(:has(.fli
   align-items: baseline; gap: 2mm;
 }
 .flight-telex.is-complete {
-  border-color: #8ed3a9; background: linear-gradient(130deg, #f0fcf3, #d9f4e2);
+  border-color: #8ed3a9; background: linear-gradient(118deg, #fff 4%, #e8faef 41%, #91dea9 100%);
   color: #174e30;
 }
 .flight-telex.is-complete :is(h2, small, label > span:last-child) { color: #174e30; }
 .flight-telex.is-complete input { accent-color: #227445; }
 .flight-telex.is-complete label + label { border-color: #a6d9b8; }
+
+/* The surrounding cell already provides a writing boundary. */
+.flight-form-sheet :is(.flight-form-fields, td) :is(input:not([type="checkbox"], [type="radio"]), .flight-print-value) {
+  border-bottom: 0;
+}
+.flight-form-sheet input:focus-visible { outline: 2px solid #4284ca; outline-offset: -2px; }
