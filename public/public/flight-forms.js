@@ -178,6 +178,82 @@
     nav.append(button);
   }
 
+  const formButtons = [...nav.querySelectorAll("button")];
+  const formKey = button => button.id || templates[Number(button.dataset.formIndex)][0];
+  const orderKey = () => `mufc-form-order:v1:${window.firebase?.auth().currentUser?.uid || "local"}`;
+  let draggedForm = null;
+
+  function saveFormOrder() {
+    try {
+      localStorage.setItem(orderKey(), JSON.stringify([...nav.querySelectorAll("button")].map(formKey)));
+    } catch {
+      // Keep the current order when browser storage is unavailable.
+    }
+  }
+
+  function restoreFormOrder() {
+    let order = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem(orderKey()));
+      if (Array.isArray(saved)) order = saved;
+    } catch {
+      // Use the default order if the saved preference cannot be read.
+    }
+    const buttons = new Map(formButtons.map(button => [formKey(button), button]));
+    const ordered = order.map(name => buttons.get(name)).filter(Boolean);
+    nav.append(...new Set([...ordered, ...formButtons]));
+  }
+
+  function clearDropMarker() {
+    nav.querySelector("[data-drop-side]")?.removeAttribute("data-drop-side");
+  }
+
+  for (const button of formButtons) {
+    button.draggable = true;
+    button.title = "Drag to reorder, or use Alt + Up / Down";
+    button.addEventListener("keydown", event => {
+      if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault();
+      const visible = [...nav.querySelectorAll("button:not([hidden])")];
+      const forward = event.key === "ArrowDown";
+      const neighbor = visible[visible.indexOf(button) + (forward ? 1 : -1)];
+      if (!neighbor) return;
+      if (forward) neighbor.after(button);
+      else neighbor.before(button);
+      saveFormOrder();
+      button.focus();
+    });
+  }
+
+  nav.addEventListener("dragstart", event => {
+    draggedForm = event.target.closest("button");
+    if (!draggedForm) return;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedForm.textContent);
+  });
+  nav.addEventListener("dragover", event => {
+    clearDropMarker();
+    const target = event.target.closest("button");
+    if (!draggedForm || !target || target === draggedForm) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const bounds = target.getBoundingClientRect();
+    target.dataset.dropSide = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+  });
+  nav.addEventListener("drop", event => {
+    const target = event.target.closest("button[data-drop-side]");
+    if (!draggedForm || !target) return;
+    event.preventDefault();
+    if (target.dataset.dropSide === "before") target.before(draggedForm);
+    else target.after(draggedForm);
+    clearDropMarker();
+    saveFormOrder();
+  });
+  nav.addEventListener("dragend", () => {
+    draggedForm = null;
+    clearDropMarker();
+  });
+
   window.setFlightFormsContext = sy => {
     const next = {
       flightNo: /^[A-Z]{2}\d{1,4}$/.test(sy?.flightNo) ? sy.flightNo : "",
@@ -195,6 +271,7 @@
   for (const opener of document.querySelectorAll("[data-open-flight-forms]")) {
     opener.onclick = () => {
       if (dialog.open) return;
+      restoreFormOrder();
       select(active ?? 0);
       dialog.showModal();
     };
@@ -235,7 +312,7 @@
     frame.title = "Print " + title.textContent;
     const paper = dialog.querySelector("[aria-label=\"Form paper size\"]").value === "Letter" ? "Letter" : "A4";
     const orientation = active === 3 ? "landscape" : "portrait";
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=passenger-forms"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=form-order"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
     frame.onload = async () => {
       try {
         await Promise.all([...frame.contentDocument.images].filter(img => !img.hidden).map(img => img.decode()));

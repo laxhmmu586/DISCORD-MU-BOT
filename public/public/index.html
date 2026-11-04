@@ -4408,7 +4408,7 @@
         }
       }
     </style>
-  <link rel="stylesheet" href="assets/mission-dashboard.css?v=20261102-stable-glass" />
+  <link rel="stylesheet" href="assets/mission-dashboard.css?v=warning-placement" />
   <link rel="stylesheet" href="assets/energy-portals.css?v=20261026-dark-centers" />
   <script defer src="assets/orbit-interface.js?v=11-security-floating-modal"></script>
   <style>.login-menu button[hidden]{display:none!important}</style><link rel="stylesheet" href="/assets/airport-scene.css?v=20261026-mobile-wide" /><link rel="stylesheet" href="/assets/griffith-scene.css?v=20261027-griffith" /></head>
@@ -4471,7 +4471,6 @@
 
     <main>
       <section class="hero" aria-label="Mission overview">
-                      <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
         <div class="mission-head">
           <div class="mission-title">
             <p class="kicker" id="flight-kicker">Loading SY...</p>
@@ -4495,6 +4494,8 @@
             </div>
           </div>
         </div>
+
+        <button class="detail-action warning-action" type="button" data-panel="warning" id="warning-action" hidden aria-label="Open warnings"><span class="detail-action-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 5 29 27H3z"/><path d="M16 12v7"/><path d="M16 23h.01"/></svg></span><span class="detail-action-label">WARNING</span> <span class="detail-action-badge warning-badge" id="warning-count">0</span></button>
 
         <section class="report-page" id="report-page" aria-label="Report center" hidden>
           <div class="report-hero">
@@ -4680,12 +4681,12 @@
     <script src="/__/firebase/init.js"></script>
     <link rel="stylesheet" href="/has/charge-form.css?v=resizable-preview">
     <link rel="stylesheet" href="/has/departure-checklists.css?v=checklist-header-fields">
-    <link rel="stylesheet" href="/flight-forms.css?v=telex-etd">
+    <link rel="stylesheet" href="/flight-forms.css?v=form-order">
     <script defer src="/flight-form-copy.js?v=bilingual"></script>
-    <script defer src="/flight-forms.js?v=passenger-forms"></script>
+    <script defer src="/flight-forms.js?v=form-order"></script>
     <script defer src="/people-api.js?v=20261028-workspace"></script>
     <script defer src="/has/briefing-tools.js?v=blank-flight"></script>
-    <script defer src="/flight-telex.js?v=telex-etd"></script>
+    <script defer src="/flight-telex.js?v=telex-red"></script>
     <script src="/employee-profile-api.js?v=20261026-avatar-crop"></script>
     <script src="/has/dashboard-profile.js?v=dashboard-bootstrap"></script>
     <script>
