@@ -1,0 +1,82 @@
+.flight-forms .cl-content { overflow: auto; }
+.flight-forms nav [aria-pressed="true"] { background: #e6efff; color: #164e9a; }
+.flight-form-sheet {
+  box-sizing: border-box;
+  width: min(100%, 840px);
+  margin: 0 auto;
+  padding: 24px;
+  background: white;
+  color: #172236;
+  font: 14px/1.45 "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+.flight-form-sheet header { margin-bottom: 12px; text-align: center; }
+.flight-form-sheet img { display: block; width: 125px; height: auto; }
+.flight-form-sheet h1 { margin: 6px 0; font-size: 1.55em; }
+.flight-form-sheet h2 { margin: 12px 0 5px; font-size: 1.12em; }
+.flight-form-sheet p { margin: 4px 0; }
+.flight-form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 12px; margin: 8px 0; }
+.flight-form-fields label { min-width: 0; font-weight: 600; }
+.flight-form-sheet input:not([type="checkbox"], [type="radio"]) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  border: 1px solid #adbbce;
+  border-radius: 3px;
+  padding: 2px 4px;
+  background: #fff;
+  color: #172236;
+  font: inherit;
+}
+.flight-form-option { display: flex; align-items: baseline; gap: 6px; margin: 3px 0; }
+.flight-form-option input { margin: 0; }
+.flight-form-option input:not([type="checkbox"], [type="radio"]) { width: 9em; }
+.flight-form-sheet table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.flight-form-sheet td, .flight-form-sheet th { padding: 3px; border: 1px solid #a5b2c3; }
+.flight-form-sheet thead th { background: #eaf0f7; }
+.flight-form-sheet [contenteditable] { outline: 1px dashed #5b83b6; outline-offset: 1px; }
+.flight-print-frame { position: fixed; width: 0; height: 0; border: 0; }
+.flight-print-value { display: block; min-height: 1.2em; border-bottom: 1px solid #758295; white-space: pre-wrap; overflow-wrap: anywhere; }
+.flight-form-option .flight-print-value { display: inline-block; min-width: 5em; }
+.flight-print-check { flex: none; }
+.mission-grid { position: relative; z-index: 3; }
+.mission-grid summary {
+  width: 44px; height: 44px; display: grid; place-items: center; list-style: none;
+  cursor: pointer; border: 1px solid #6297ca; border-radius: 10px;
+  background: linear-gradient(140deg, #143862, #061022 55%, #174c80); color: #edf6ff;
+}
+.mission-grid summary::-webkit-details-marker { display: none; }
+.mission-grid svg { width: 20px; fill: currentColor; }
+.mission-shortcuts {
+  position: absolute; right: 0; top: calc(100% + 8px); min-width: 210px;
+  background: #040d1c; border: 1px solid #395371;
+}
+.mission-shortcuts a, .mission-shortcuts button, .flight-menu a,
+[data-open-flight-forms] {
+  display: block; border: 0; background: transparent; color: inherit;
+  padding: 12px 16px; font: inherit; font-weight: 750; text-align: left;
+  text-transform: uppercase; text-decoration: none; cursor: pointer;
+}
+.mission-shortcuts button { width: 100%; }
+.mission-shortcuts :is(a,button):hover, .flight-menu a:hover, [data-open-flight-forms]:hover { background: #25466c; }
+.flight-telex {
+  max-width: 740px; margin: 18px 0; padding: 14px; border: 1px solid #587da5;
+  border-radius: 12px; background: #0a192d; color: #eef6ff;
+}
+.flight-telex h2 { margin: 0 0 8px; font-size: 1rem; }
+.flight-telex label { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+.flight-telex label + label { border-top: 1px solid #304966; }
+.flight-telex small { display: block; color: #c3d9f1; }
+.flight-telex input { width: 1rem; height: 1rem; accent-color: #42c093; }
+@media screen and (max-width: 760px), screen and (pointer: coarse) {
+  .nav-row.mission-grid-tools { display: none !important; }
+  .flight-form-sheet { padding: 10px; font-size: 12px; }
+  .flight-form-sheet table { min-width: 410px; }
+}
+@media print {
+  body { margin: 0; }
+  .flight-form-sheet { width: 100%; padding: 0; font-size: 10pt; line-height: 1.3; }
+  .flight-form-sheet { color: #111; }
+  .flight-form-sheet tr, .flight-form-option { break-inside: avoid; }
+  .flight-form-sheet thead { display: table-header-group; }
+}

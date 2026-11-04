@@ -81,7 +81,7 @@
   new MutationObserver(updateReportEmpty).observe(reportPanel, {subtree: true, attributes: true, attributeFilter: ['hidden']});
   updateReportEmpty();
   if (new URLSearchParams(location.search).get('preview') === '1') {
-    document.querySelectorAll('a[href="/home"],a[href="/hr"],a[href="/has-checklist"],a[href="/info"]').forEach(link => link.href += '?preview=1');
+    document.querySelectorAll('a[href="/home"],a[href="/admin"],a[href="/has-checklist"],a[href="/info"]').forEach(link => link.href += '?preview=1');
   }
   const taskTabs = [...document.querySelectorAll('.home-task-tabs [role="tab"]')];
   function selectTaskTab(index, focus = false) {

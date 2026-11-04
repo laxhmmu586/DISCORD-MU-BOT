@@ -878,6 +878,17 @@ function baggageReportSheetNodes(values, headers, row = {}) {
   return nodes;
 }
 
+async function hasOutboundRushBaggage(flight, date) {
+  const rows = await getTestBaggageSheetRows();
+  return rows.some((values, index) => {
+    const row = testBaggageRowFromSheet(values, index + 1);
+    return String(row.direction).trim().toLowerCase() === 'outbound'
+      && String(row.flight).replace(/\s+/g, '').toUpperCase() === flight
+      && normalizeSheetDateToIso(row.date) === date
+      && (String(row.status).trim().toLowerCase() === 'outbound rush' || isValidTestBagTag(row.rushTagNumber));
+  });
+}
+
 async function getTestBaggageReportRows(options = {}) {
   const rows = await getTestBaggageSheetRows({ forceRefresh: true });
   const hasKnownHeaders = TEST_BAGGAGE_HEADERS.every((header, index) => String(rows?.[0]?.[index] || '').trim() === header);
@@ -5269,6 +5280,7 @@ module.exports = {
   pruneStoredReportRows,
   findTestBaggageByTag,
   getTestBaggageReportRows,
+  hasOutboundRushBaggage,
   appendTestBaggageRecord,
   updateTestBaggageRecord,
   updateFscExchangeRate,
@@ -5336,7 +5348,7 @@ module.exports = {
 // Serialize CBS read-modify-write operations across concurrent API requests.
 // Internal helper calls stay inside the same operation and never re-enter this queue.
 let cbsWriteQueue=Promise.resolve();
-const cbsReadMethods=new Set(['getCbsCases','getWrongBaggageSubmissions','getContactFormSubmissions','getCbsWorldTracerCases','getCbsUnresolvedBaggageCases','getTestBaggageReportRows','findTestBaggageByTag','getCbsDamageImage']);
+const cbsReadMethods=new Set(['getCbsCases','getWrongBaggageSubmissions','getContactFormSubmissions','getCbsWorldTracerCases','getCbsUnresolvedBaggageCases','getTestBaggageReportRows','hasOutboundRushBaggage','findTestBaggageByTag','getCbsDamageImage']);
 module.exports.correctCbsBagTag=correctCbsBagTag;
 for(const name of ['correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
  const original=module.exports[name];if(!original)continue;

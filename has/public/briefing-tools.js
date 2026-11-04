@@ -2,7 +2,7 @@
  const query=new URLSearchParams(location.search);
  const standalone=!query.has('quick')&&!query.has('embed');
  const tools=[
-  ['charge-form','charge-form','resize-columns','charge-form-model.js?v=20261101-charge-daily',d=>standalone&&d.direction==='departure'],
+  ['charge-form','charge-form','blank-flight-date','charge-form-model.js?v=20261101-charge-daily',d=>standalone&&d.direction==='departure'],
   ['express','arrival-express','20261102-on-demand',null,d=>standalone&&d.direction==='arrival'],
   ['checklists','departure-checklists','checklist-header-fields','departure-checklist-model.js?v=checklist-header-fields',d=>standalone&&d.direction==='departure'&&d.canUseChecklists]
  ];
@@ -23,11 +23,13 @@
  }
  for(const [id,name,version,model,available] of tools){
   const button=document.getElementById('briefing-'+id);
+  if(!button)continue;
   let loading=false;
   const label=button.textContent;
   button.onclick=async()=>{
    if(loading)return;
    const context=window.briefingToolContext;
+   if(!context?.ready)return;
    loading=true;
    button.textContent='Loading…';
    button.setAttribute('aria-busy','true');

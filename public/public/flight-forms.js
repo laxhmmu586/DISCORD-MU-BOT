@@ -1,0 +1,200 @@
+(() => {
+  const copy = window.FlightFormCopy;
+  const dialog = document.createElement("dialog");
+  dialog.className = "checklist-dialog flight-forms";
+  dialog.setAttribute("aria-labelledby", "flight-forms-title");
+  dialog.innerHTML = `
+    <aside class="cl-sidebar">
+      <div class="cl-brand"><span aria-hidden="true">☷</span><strong>Forms</strong></div>
+      <p class="cl-section-label">TEMPLATES</p>
+      <nav aria-label="Form templates">
+        <button type="button" id="briefing-charge-form" hidden>Charge Form</button>
+      </nav>
+    </aside>
+    <div class="cl-main">
+      <header class="cl-header">
+        <div><p class="cl-section-label">EDITABLE FORMS</p><h2 id="flight-forms-title">Release Form</h2></div>
+        <button type="button" data-form-close aria-label="Close Forms">×</button>
+      </header>
+      <div class="cl-toolbar">
+        <button type="button" data-form-edit aria-pressed="false">Edit wording</button>
+        <label>Paper <select aria-label="Form paper size"><option>A4</option><option>Letter</option></select></label>
+        <button type="button" data-form-print class="cl-primary">Print</button>
+      </div>
+      <p class="cl-status" role="status"></p>
+      <div class="cl-content flight-form-content"></div>
+    </div>`;
+  document.body.append(dialog);
+
+  const nav = dialog.querySelector("nav");
+  const content = dialog.querySelector(".flight-form-content");
+  const title = dialog.querySelector("h2");
+  const edit = dialog.querySelector("[data-form-edit]");
+  const status = dialog.querySelector("[role=status]");
+  const drafts = new Map();
+  let context = {};
+  let active;
+
+  const field = (label, value = "") =>
+    `<label><span data-wording>${label}</span><input aria-label="${label}" value="${value}"></label>`;
+  const input = label => `<input aria-label="${label}">`;
+  const text = value => `<p data-wording>${value}</p>`;
+  const options = (labels, name = "", prefix = "") => labels.map(label =>
+    `<label class="flight-form-option"><input type="${name ? "radio" : "checkbox"}" name="${name}" aria-label="${prefix}${label}"><span data-wording>${label}</span></label>`).join("");
+  const fields = (...items) => `<div class="flight-form-fields">${items.join("")}</div>`;
+  const table = (headers, rows) => `<table><thead><tr>${headers.map(name =>
+    `<th scope="col" data-wording>${name}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+  const header = (heading, subtitle = "") => `<header><img src="/has/assets/charge-form/china-eastern-logo.png" alt="China Eastern Airlines"><h1 data-wording>${heading}</h1>${subtitle ? text(subtitle) : ""}</header>`;
+
+  const templates = [
+    ["Release Form", () => `
+      ${header("Waiver of Claim Against China Eastern Airlines", "Release and Waiver Form")}
+      ${fields(field("Flight No.", context.flightNo), field("Flight date"), field("Passenger name"), field("BN"), field("Seat No."))}
+      <h2 data-wording>Declaration</h2>${text(copy.declaration)}
+      <h2 data-wording>Applicable Conditions</h2>${options(copy.conditions)}
+      <div class="flight-form-option"><input type="checkbox" aria-label="Meal condition applies"><span><span data-wording>I acknowledge and agree that no</span> ${input("Meal")} <span data-wording>meal will be served for this flight.</span></span></div>
+      <div class="flight-form-option"><input type="checkbox" aria-label="Other condition applies">${field("Other conditions")}</div>
+      <h2 data-wording>Acknowledgement and Signature</h2>${fields(field("Signed by passenger"), field("Date"))}`],
+    ["Under 21", () => `
+      ${header("不符合休息室入场条件旅客告知书", "Notice to Passengers Ineligible for Lounge Access")}
+      ${fields(field("BN #"))}
+      ${text("尊敬的旅客： / Dear Passenger:")}${copy.loungeIntro.map(text).join("")}
+      ${options(["人民币200元东航电子代金券 / CNY 200 China Eastern E-voucher", "东航2000积分补偿 / 2000 China Eastern Miles"], "lounge-compensation")}
+      <h2 data-wording>接收补偿会员信息 | Compensation Recipient Membership Information</h2>
+      ${fields(field("东航会员卡号 / China Eastern Membership #"), field("会员姓名 / Name"))}
+      ${copy.loungeNotes.map(text).join("")}
+      ${fields(field("旅客签名 / Signature"), field("证件号码 / Passport #"), field("客票号 / Ticket #"), field("联系电话 / Phone #"))}
+      ${text("*员工免优票不适用")}`],
+    ["Gate Bag", () => `
+      ${header("特殊服务交接单（GATE BAG）", "SPECIAL SERVICE INFORMATION LIST")}
+      ${fields(field("Route", "LAX – PVG"), field("航班号 / Flight No.", context.flightNo || "MU586"), field("日期 / Date"))}
+      ${table(["Tag number", "Seat number", "Description", "Pickup"], Array.from({length: 7}, (_, i) =>
+        `<tr><td>${input("Tag number " + (i + 1))}</td><td>${input("Seat number " + (i + 1))}</td><td>${options(["STRL 婴儿推车", "CARSEAT 安全座椅", "Wheelchair 轮椅", "WALKER 步行器/拐杖", "Guitar 乐器"], "", `Bag ${i + 1} · `)}</td><td data-wording>飞机旁提取行李</td></tr>`))}`],
+    ["STANDBY LIST", () => `
+      ${header("STANDBY PAX LIST")}
+      ${fields(field("Date"))}
+      ${table(["#", "Name", "Ticket number", "Class", "Time", "Remarks"], Array.from({length: 15}, (_, i) =>
+        `<tr><th scope="row">${i + 1}</th>${["Name", "Ticket number", "Class", "Time", "Remarks"].map(label =>
+          `<td>${input(`${label} ${i + 1}`)}</td>`).join("")}</tr>`))}`]
+  ];
+
+  const wordingKey = index => `mufc-form-wording:v1:${window.firebase?.auth().currentUser?.uid || "local"}:${templates[index][0]}`;
+
+  function select(index) {
+    active = index;
+    const [name, render] = templates[index];
+    title.textContent = name;
+    if (!drafts.has(index)) {
+      const sheet = document.createElement("article");
+      sheet.className = "flight-form-sheet";
+      sheet.innerHTML = render();
+      try {
+        const wording = JSON.parse(localStorage.getItem(wordingKey(index)));
+        const nodes = [...sheet.querySelectorAll("[data-wording]")];
+        if (Array.isArray(wording) && wording.length === nodes.length) {
+          nodes.forEach((node, i) => { if (typeof wording[i] === "string") node.textContent = wording[i]; });
+        }
+      } catch {
+        // The original wording is available when browser storage is unavailable.
+      }
+      drafts.set(index, sheet);
+    }
+    content.replaceChildren(drafts.get(index));
+    content.scrollTop = 0;
+    status.textContent = "";
+    for (const button of nav.querySelectorAll("[data-form-index]")) {
+      button.setAttribute("aria-pressed", String(Number(button.dataset.formIndex) === index));
+    }
+    setEditing(false);
+  }
+
+  function setEditing(enabled) {
+    edit.setAttribute("aria-pressed", String(enabled));
+    edit.textContent = enabled ? "Save wording" : "Edit wording";
+    for (const node of content.querySelectorAll("[data-wording]")) {
+      if (enabled) node.contentEditable = "plaintext-only";
+      else node.removeAttribute("contenteditable");
+    }
+  }
+
+  for (const [index, [name]] of templates.entries()) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.formIndex = index;
+    button.textContent = name;
+    button.onclick = () => select(index);
+    nav.append(button);
+  }
+
+  window.setFlightFormsContext = sy => {
+    const next = {
+      flightNo: /^[A-Z]{2}\d{1,4}$/.test(sy?.flightNo) ? sy.flightNo : "",
+      flightDate: /^\d{2}[A-Z]{3}\d{2}$/.test(sy?.flightDate) ? sy.flightDate : ""
+    };
+    if (next.flightNo === context.flightNo && next.flightDate === context.flightDate) return;
+    context = next;
+    drafts.clear();
+    if (dialog.open) select(0);
+    const detail = {ready: Boolean(context.flightNo && context.flightDate), direction: "departure", flight: context.flightNo, date: context.flightDate};
+    window.briefingToolContext = detail;
+    window.dispatchEvent(new CustomEvent("briefing-direction", {detail}));
+  };
+
+  for (const opener of document.querySelectorAll("[data-open-flight-forms]")) {
+    opener.onclick = () => {
+      if (dialog.open) return;
+      select(active ?? 0);
+      dialog.showModal();
+    };
+  }
+  dialog.querySelector("[data-form-close]").onclick = () => dialog.close();
+  edit.onclick = () => {
+    const editing = edit.getAttribute("aria-pressed") === "true";
+    setEditing(!editing);
+    if (!editing) {
+      status.textContent = "Click the outlined text to edit it.";
+      content.querySelector("[data-wording]").focus();
+      return;
+    }
+    try {
+      const wording = [...content.querySelectorAll("[data-wording]")].map(node => node.innerText);
+      localStorage.setItem(wordingKey(active), JSON.stringify(wording));
+      status.textContent = "Wording saved in this browser.";
+    } catch {
+      status.textContent = "Wording updated for this session.";
+    }
+  };
+
+  dialog.querySelector("[data-form-print]").onclick = () => {
+    const original = content.firstElementChild;
+    const sheet = original.cloneNode(true);
+    const inputs = [...original.querySelectorAll("input")];
+    sheet.querySelectorAll("input").forEach((input, index) => {
+      const source = inputs[index];
+      const output = document.createElement("span");
+      const check = source.type === "checkbox" || source.type === "radio";
+      output.className = check ? "flight-print-check" : "flight-print-value";
+      output.textContent = check ? (source.checked ? "☑" : "☐") : source.value;
+      input.replaceWith(output);
+    });
+    sheet.querySelectorAll("[contenteditable]").forEach(node => node.removeAttribute("contenteditable"));
+    const frame = document.createElement("iframe");
+    frame.className = "flight-print-frame";
+    frame.title = "Print " + title.textContent;
+    const paper = dialog.querySelector("select").value === "Letter" ? "Letter" : "A4";
+    const orientation = active === 3 ? "landscape" : "portrait";
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body>${sheet.outerHTML}</body></html>`;
+    frame.onload = async () => {
+      try {
+        await frame.contentDocument.fonts.ready;
+        frame.contentWindow.addEventListener("afterprint", () => frame.remove(), {once: true});
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } catch {
+        frame.remove();
+        status.textContent = "Print preview could not open. Please retry.";
+      }
+    };
+    document.body.append(frame);
+  };
+})();

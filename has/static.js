@@ -5,7 +5,8 @@ function router(){const result=express.Router();result.use('/has',express.static
  if(!['GET','HEAD'].includes(req.method))return next();
  let name=req.path.replace(/^\//,'');
  if(/^qa\/?$/i.test(name))name='qa.html';
- if(name==='admin')return res.redirect(302,'/hr');
+ if(/^hr(?:\.html|\/)?$/.test(name))return res.redirect(302,'/admin'+req.url.slice(req.path.length));
+ if(/^admin(?:\.html|\/)?$/.test(name))name='hr.html';
  if(!files.has(name)&&!path.extname(name)&&files.has(name+'.html'))name+='.html';
  if(!files.has(name))return next();const target=path.join(publicRoot,name);if(!fs.existsSync(target))return next();res.set('Cache-Control','no-store');return res.sendFile(target);
  });return result;}

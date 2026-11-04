@@ -251,7 +251,7 @@
     const own=data.employees.find(row=>row.id==='account-MU');if(own?.name==='MU Business Manager')own.name='Lake';$('#flight-account').innerHTML='<div class="hr-preview-account"><span class="hr-preview-scope">LAX / MU</span><a href="/profile?preview=1" class="hr-user" aria-label="Lake profile"><span class="hr-user-avatar">L</span><span>Lake</span></a></div>';
     loaded=true;$('#hr-preview-note').hidden=false;$('#demo-role-label').hidden=false;populateScopes();chooseScope(scope);openRequestedPerson();
     // Keep the complete local design journey in preview mode, including Home → HR.
-    document.querySelectorAll('a[href="/home"],a[href="/hr"]').forEach(link=>link.href+='?preview=1');
+    document.querySelectorAll('a[href="/home"],a[href="/admin"]').forEach(link=>link.href+='?preview=1');
   }else if(window.firebase?.apps?.length){
     const accountScript=document.createElement('script');accountScript.src='/flight-account.js?v=20261101-hr-account';document.head.append(accountScript);
     firebase.auth().onAuthStateChanged(async current=>{user=current;$('#person-dialog').close();permissionManager=false;personDirty=false;$('#person-dialog').classList.remove('hr-permission-manager');data={employees:[],accounts:[],access:null};loaded=false;render();if(!user){$('#hr-status').innerHTML='Sign in to view HR. <a href="/login.html">Sign in →</a>';return;}try{data=await api();loaded=true;populateScopes();chooseScope(scope);openRequestedPerson();}catch(error){$('#hr-status').textContent=error.message;}});

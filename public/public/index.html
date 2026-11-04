@@ -4503,19 +4503,18 @@
         <a href="/report.html" id="report-nav-link">Report</a>
         <a href="/baggage.html" id="test-nav-link">Baggage</a>
         <a href="cbs.html" id="cbs-nav-link">LBS</a>
-        <a class="boarding-nav-link" href="scan.html" id="boarding-nav-link">Boarding</a>
-        <a class="boarding-nav-link" href="240.html" id="transit-240-nav-link">240</a>
-        <a class="boarding-nav-link" href="/has-pbb.html">JET BRIDGE</a>
+        <button type="button" data-open-flight-forms>Form</button>
       </nav>
-      <div class="nav-row">
-        <form class="search" id="mission-search" aria-label="Search mission">
-          <input id="query" type="search" value="SY" autocomplete="off" />
-          <button type="submit" aria-label="Search">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-          </button>
-        </form>
+      <div class="nav-row mission-grid-tools">
+        <details class="mission-grid">
+          <summary aria-label="Flight shortcuts" title="Flight shortcuts"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></summary>
+          <div class="mission-shortcuts">
+            <button id="sales-report-button" type="button">Sales Report</button>
+            <a href="scan2.html">Emergency Boarding</a>
+            <a href="scan.html">Boarding</a>
+            <a href="240.html">240</a>
+          </div>
+        </details>
       </div>
       <div class="nav-actions">
         <button class="login-button" type="button" aria-label="Open login menu" aria-expanded="false">
@@ -4542,16 +4541,10 @@
     <button class="mobile-menu-fallback" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
 
     <aside class="mobile-panel" aria-hidden="true">
-      <form class="mobile-search" id="mobile-mission-search" aria-label="Mobile search mission">
-        <input id="mobile-query" type="search" value="SY" autocomplete="off" />
-        <button type="submit">Search</button>
-      </form>
       <a href="/report.html" id="mobile-report-nav-link">Report</a>
       <a href="/baggage.html" id="mobile-test-nav-link">Baggage</a>
       <a href="cbs.html" id="mobile-cbs-nav-link">LBS</a>
-      <a href="scan.html" id="mobile-boarding-nav-link">Boarding</a>
-      <a href="240.html" id="mobile-transit-240-nav-link">240</a>
-      <a href="/has-pbb.html">JET BRIDGE</a>
+      <button type="button" data-open-flight-forms>Form</button>
       <button class="mobile-logout-button" id="mobile-logout" type="button">Logout</button>
     </aside>
 
@@ -4574,12 +4567,18 @@
                 <span class="line-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
               </button>
               <div class="flight-menu" aria-hidden="true">
-                <button id="sales-report-button" type="button">Sales Report</button>
-                <button id="emergency-board-button" type="button" onclick="location.href='scan2.html'">Emergency Boarding</button>
+                <a href="scan.html">Boarding</a>
+                <a href="240.html">240</a>
+                <a href="/has-pbb.html">Jet Bridge</a>
               </div>
             </div>
           </div>
         </div>
+
+        <section id="flight-telex" class="flight-telex" aria-labelledby="flight-telex-title" hidden>
+          <h2 id="flight-telex-title">Telex checklist</h2>
+          <div data-telex-items></div>
+        </section>
 
         <section class="report-page" id="report-page" aria-label="Report center" hidden>
           <div class="report-hero">
@@ -4763,6 +4762,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
+    <link rel="stylesheet" href="/has/departure-checklists.css?v=checklist-header-fields">
+    <link rel="stylesheet" href="/flight-forms.css">
+    <script defer src="/flight-form-copy.js"></script>
+    <script defer src="/flight-forms.js"></script>
+    <script defer src="/people-api.js?v=20261028-workspace"></script>
+    <script defer src="/has/briefing-tools.js?v=flight-forms"></script>
+    <script defer src="/flight-telex.js"></script>
     <script src="/employee-profile-api.js?v=20261026-avatar-crop"></script>
     <script src="/has/dashboard-profile.js?v=dashboard-bootstrap"></script>
     <script>
@@ -4798,10 +4804,6 @@
       const timeline = document.querySelector(".timeline");
       const timelineShell = document.querySelector(".timeline-shell");
       const resultPanel = document.querySelector("#result-panel");
-      const searchForm = document.querySelector("#mission-search");
-      const mobileSearchForm = document.querySelector("#mobile-mission-search");
-      const queryInput = document.querySelector("#query");
-      const mobileQueryInput = document.querySelector("#mobile-query");
       const bagReportButton = document.querySelector("#bag-report-button");
       const salesReportButton = document.querySelector("#sales-report-button");
       const reportNavLink = document.querySelector("#report-nav-link");
@@ -4885,7 +4887,6 @@
       let timelinePointerId = null;
       let currentSy = null;
       let tomorrowMealRequestKey = "";
-      let latestQuery = "SY";
       let activeReportMode = "sales";
       let activeSyQuery = "SY";
       let currentWarningAckMap = {};
@@ -4924,53 +4925,6 @@
         updateFlightFromSy(sy);
       }
 
-      function clearSyDashboard() {
-        currentSy = null;
-        lastSyRenderSignature = "";
-        currentWarningAckMap = {};
-        setSyDetailsVisible(false);
-        setText("#flight-kicker", "Loading SY...");
-        setText("#active-flight", "SY");
-        setText("#metric-gate", "---");
-        setText("#metric-bdt", "----");
-        setText("#metric-etd", "----");
-        const reservationBookedEl = document.querySelector("#reservation-booked");
-        if (reservationBookedEl) reservationBookedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        ["", "tomorrow-"].forEach((prefix) => ["reservation-f", "reservation-j", "reservation-y", "meal-email-f", "meal-email-j", "meal-email-y", "meal-spml-f", "meal-spml-j", "meal-spml-y", "meal-pd-f", "meal-pd-j", "meal-pd-y"].forEach((id) => setText(`#${prefix}${id}`, "---")));
-        setText("#meal-order-tab-today", "---");
-        setText("#meal-order-tab-tomorrow", "---");
-        const checkinAcceptedEl = document.querySelector("#checkin-accepted");
-        if (checkinAcceptedEl) checkinAcceptedEl.innerHTML = tripleHtml(["---", "---", "---"]);
-        setBadgeText("#chd-count", 0);
-        setBadgeText("#gov-count", 0);
-        setBadgeText("#webedi-count", 0);
-        setBadgeText("#nbrd-count", 0);
-        setActionIssueState("#chd-action", false);
-        setActionIssueState("#gov-action", false);
-        setActionIssueState("#webedi-action", false);
-        setActionIssueState("#nbrd-action", false);
-        setText("#warning-count", "0");
-        const warningAction = document.querySelector("#warning-action");
-        const detailsManifest = document.querySelector(".details-manifest");
-        detailsManifest?.classList.add("is-warning-hidden");
-        if (warningAction) {
-          warningAction.hidden = true;
-          warningAction.classList.remove("is-critical-warning", "is-acknowledged-warning");
-        }
-        setBadgeText("#psm-count", 0);
-        const psmAction = document.querySelector("#psm-action");
-        if (psmAction) psmAction.hidden = true;
-        if (bagReportButton) bagReportButton.hidden = true;
-        if (salesReportButton) salesReportButton.hidden = true;
-        nodes.forEach((node) => {
-          node.dataset.status = "pending";
-          if (["WCH", "DUP_NAME", "PSM", "NBRD", "MISSING_BAG", "INITIAL_FLIGHT", "BDT_CHG"].includes(node.dataset.key)) node.hidden = true;
-          node.dataset.time = "----";
-          node.dataset.inputTime = "";
-          node.removeAttribute("data-alert");
-          node.removeAttribute("data-clear-locked");
-        });
-      }
 
       function loginUrl() {
         const url = new URL("login.html", window.location.href);
@@ -5917,7 +5871,7 @@
         }).filter(Boolean);
         const name = fieldMap.get("Name") || passengerName(data) || "Passenger";
         const bnNumber = data?.bn || fieldMap.get("BN") || "---";
-        const bn = data?.bn ? `BN${data.bn}` : (latestQuery || "PAX");
+        const bn = data?.bn ? `BN${data.bn}` : "SY";
         const seat = fieldMap.get("Seat") || "---";
         const cabin = fieldMap.get("Cabin") || "---";
         const status = fieldMap.get("Status") || (tone === "fail" ? "FAIL" : tone === "warning" ? "WARNING" : "ACTIVE");
@@ -6238,21 +6192,6 @@
       }
 
 
-      async function refreshSalesReportButton(sy) {
-        if (!salesReportButton) return;
-        salesReportButton.hidden = true;
-        const flightNo = sy?.flightNo || "";
-        const flightDate = sy?.flightDate || "";
-        if (!flightNo || !flightDate) return;
-        try {
-          const meta = await apiJson(`/sales-report/meta?flightNo=${encodeURIComponent(flightNo)}&flightDate=${encodeURIComponent(flightDate)}`);
-          if (currentSy !== sy) return;
-          salesReportButton.hidden = !(meta?.available === true || meta?.found === true || meta?.downloadUrl || meta?.url);
-        } catch (error) {
-          if (currentSy === sy) salesReportButton.hidden = true;
-        }
-      }
-
       function syRenderSignature(sy) {
         if (!sy) return "";
         const steps = (sy.crewApis?.steps || []).map((step) => [step.key || step.label, step.time || "", Boolean(step.complete), Boolean(step.searched)].join(":"));
@@ -6376,6 +6315,8 @@
         lastSyRenderSignature = signature;
         const sameFlight = currentSy?.flightNo === sy?.flightNo && currentSy?.flightDate === sy?.flightDate;
         currentSy = sy;
+        globalThis.renderFlightTelex?.(sy, auth?.currentUser?.uid);
+        globalThis.setFlightFormsContext?.(sy);
         // A backup reconciliation still replaces the in-memory payload, but it
         // should not rewrite the entire dashboard when nothing visible changed.
         // Repeated DOM updates were the main source of the periodic page hitch.
@@ -6436,7 +6377,6 @@
         if (duplicateBagsAction) duplicateBagsAction.hidden = true;
         if (duplicateNamesAction) duplicateNamesAction.hidden = duplicateNameCount === 0;
         if (bagReportButton) bagReportButton.hidden = !(sy.bagSheet?.hasData);
-        refreshSalesReportButton(sy);
         let previousStarted = true;
         const persistedGreenNodes = completedSyNodeState(sy);
         nodes.forEach((node) => {
@@ -6548,16 +6488,6 @@
         else if (title === "CKIN/NBRD") renderNbrdPanel();
         else if (title === "WARNING") renderWarningPanel();
         refreshOpenPassengerModal();
-      }
-
-      function renderSy(data) {
-        if (!data?.sy) throw new Error(data?.error || "No SY payload returned.");
-        resetPanelState();
-        updateFlightFromSy(data.sy);
-      }
-
-      function isSyQuery(value) {
-        return /^SY\+?(?:\s+[A-Z]{2}\d{1,4}[A-Z]?)?(?:\/\d{2}[A-Z]{3}(?:\d{2})?)?$/i.test(String(value || "").trim());
       }
 
       const syMonthMap = {
@@ -6699,41 +6629,6 @@
           return;
         }
         if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
-      }
-
-      async function searchPassenger() {
-        const raw = queryInput.value.trim();
-        if (!raw) return;
-        if (!isSyQuery(raw)) {
-          renderPanel("Search unavailable", "", `<p class="panel-muted">Only SY flight queries are supported. Passenger lookup is unavailable.</p>`);
-          return;
-        }
-        latestQuery = raw;
-        const isSySearch = isSyQuery(raw);
-        setLoadingState(true);
-        if (isSySearch) {
-          activeSyQuery = normalizeSyQuery(raw);
-          if (!isTodaySyQuery(activeSyQuery)) stopSyAutoRefresh();
-        } else resetPanelState();
-        try {
-          const data = await fetchSearch(raw);
-          if (data.error) throw new Error(data.error);
-          if (data.sy || isSySearch) {
-            renderSy(data);
-            activeSyQuery = normalizeSyQuery(raw);
-            if (isTodaySyQuery(activeSyQuery)) startSyAutoRefresh(activeSyQuery, { immediate: true });
-            else stopSyAutoRefresh();
-          } else throw new Error("Only SY flight queries are supported.");
-        } catch (error) {
-          if (isSySearch) {
-            clearSyDashboard();
-            resetPanelState();
-            return;
-          }
-          renderPanel("Search Error", raw, `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Search failed.")}</p>`);
-        } finally {
-          setLoadingState(false);
-        }
       }
 
       function renderChdPanel() {
@@ -8766,12 +8661,6 @@
         if (event.target.closest("button")) closeFlightMenu();
       });
 
-      function openFlightDashboard(flightNo) {
-        const query = `SY ${flightNo}`;
-        queryInput.value = query;
-        mobileQueryInput.value = query;
-        searchPassenger();
-      }
 
 
       document.addEventListener("click", (event) => {
@@ -8819,7 +8708,19 @@
       });
 
       bagReportButton?.addEventListener("click", closeFlightMenuAfterAction(renderBagReport));
-      salesReportButton?.addEventListener("click", closeFlightMenuAfterAction(downloadSalesReport));
+      const shortcutMenu = document.querySelector(".mission-grid");
+      salesReportButton?.addEventListener("click", () => {
+        shortcutMenu.open = false;
+        downloadSalesReport();
+      });
+      document.addEventListener("click", (event) => {
+        if (!shortcutMenu.contains(event.target)) shortcutMenu.open = false;
+      });
+      shortcutMenu.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        shortcutMenu.open = false;
+        shortcutMenu.querySelector("summary").focus();
+      });
       reportCloseButton.addEventListener("click", hideReportPage);
       baggageCloseButton?.addEventListener("click", hideReportPage);
       testCloseButton?.addEventListener("click", hideReportPage);
@@ -9025,24 +8926,6 @@
         }
       });
 
-      searchForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        passwordPage.hidden = true;
-        mobileQueryInput.value = queryInput.value;
-        searchPassenger();
-      });
-
-      mobileSearchForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        passwordPage.hidden = true;
-        queryInput.value = mobileQueryInput.value;
-        mobilePanel.classList.remove("is-open");
-        mobilePanel.setAttribute("aria-hidden", "true");
-        menuButton.setAttribute("aria-expanded", "false");
-        fallbackMenuButton.setAttribute("aria-expanded", "false");
-        searchPassenger();
-      });
-
       timeline.addEventListener("pointerdown", beginTimelineDrag);
       timeline.addEventListener("pointermove", moveTimelineDrag);
       timeline.addEventListener("pointerup", endTimelineDrag);
@@ -9099,8 +8982,6 @@
           else if(allOperationModulesComplete()){updateFlightFromSy({flightNo:selected.flightNo,flightDate:selected.flightDate,crewApis:{steps:[]}});setLoadingState(false);}
           startInactivityWatch();
           refreshMissingBagNode();
-          queryInput.value = "SY";
-          mobileQueryInput.value = "SY";
           startSyAutoRefresh();
         });
       }

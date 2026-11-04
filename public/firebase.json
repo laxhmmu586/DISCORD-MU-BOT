@@ -89,12 +89,12 @@
       },
       {
         "source": "/hr.html",
-        "destination": "/hr",
+        "destination": "/admin",
         "type": 301
       },
       {
         "source": "/hr/",
-        "destination": "/hr",
+        "destination": "/admin",
         "type": 301
       },
       {
@@ -118,8 +118,8 @@
         "type": 301
       },
       {
-        "source": "/admin",
-        "destination": "/hr",
+        "source": "/hr",
+        "destination": "/admin",
         "type": 302
       },
       {
@@ -370,7 +370,7 @@
       },
       {
         "source": "/admin",
-        "destination": "/has/admin.html"
+        "destination": "/has/hr.html"
       },
       {
         "source": "/hr",

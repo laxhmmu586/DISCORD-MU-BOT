@@ -72,6 +72,7 @@ const {
   pruneStoredReportRows,
   findTestBaggageByTag,
   getTestBaggageReportRows,
+  hasOutboundRushBaggage,
   appendTestBaggageRecord,
   updateTestBaggageRecord,
   updateFscExchangeRate,
@@ -4820,6 +4821,12 @@ app.get(
           return res.json({sy:syPayload,core:true});
         }
         const bagInfoPromise = isoDate ? getSyBagInfoByDate(isoDate, syInfo.flightDate) : Promise.resolve(null);
+        const outboundRushPromise = isoDate && syInfo.flightNo === 'MU586' && syInfo.flightDate === operationalDate()
+          ? hasOutboundRushBaggage('MU586', isoDate).catch(error => {
+            console.warn('Outbound rush check failed:', error?.message || error);
+            return false;
+          })
+          : Promise.resolve(false);
         const mealEmailPromise = getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
         const authContextPromise = resolveAuthContextFromRequest(req);
 
@@ -4837,10 +4844,11 @@ app.get(
             });
           });
         }
-        const [syBagInfo, mealEmail, authContext] = await Promise.all([
+        const [syBagInfo, mealEmail, authContext, hasOutboundRush] = await Promise.all([
           bagInfoPromise,
           mealEmailPromise,
-          authContextPromise
+          authContextPromise,
+          outboundRushPromise
         ]);
         try {
           syInfo.bagRoomUnloadAlert = await notifyBagRoomUnloadAfterCc(syInfo, isoDate);
@@ -4852,7 +4860,7 @@ app.get(
         syInfo.spml = spml;
         setImmediate(() => syncSalesDetailsFromTodaySy(isoDate)
           .catch((err) => console.warn('Sales details sync skipped:', err?.message || err)));
-        const syPayload = { ...syInfo, boardingNbrdVersion, bagSheet: syBagInfo, permissions: authContext.permissions };
+        const syPayload = { ...syInfo, boardingNbrdVersion, bagSheet: syBagInfo, hasOutboundRush, permissions: authContext.permissions };
         dashboardSySnapshot.put(syPayload);
         // Exclude per-user permissions from the shared change signature.  The
         // event contains no flight data and merely asks clients to reconcile.

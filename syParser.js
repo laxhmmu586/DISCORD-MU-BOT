@@ -1417,7 +1417,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     ).toUpperCase();
     if (!seat) continue;
 
-    const serviceCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
+    const serviceCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'INCP', 'PETC', 'PTEC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
     const nonPsmSection = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
@@ -1691,7 +1691,7 @@ ${section}`,
       destination: outboundMatch[5],
       status: /\bDELETED\b/i.test(outboundLineForRecord) ? 'DELETED' : ''
     } : null;
-    const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'PETC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
+    const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'INCP', 'PETC', 'PTEC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
     const nonPsmSection = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
     const specialServices = ssrCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
