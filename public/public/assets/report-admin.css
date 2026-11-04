@@ -92,3 +92,8 @@ body.report-admin-page.airport-scene::after {
   mask-image: none;
   -webkit-mask-image: none;
 }
+
+.report-admin-page .authorization-report-group td:nth-child(3) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

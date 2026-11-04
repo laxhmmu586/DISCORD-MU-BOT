@@ -1325,6 +1325,10 @@ async function appendSpmlReportRows() { return ({appended:0,disabled:true}); }
 async function appendVipReportRows(rows) { return appendStoredReportRows('vip',rows[0]?.date||rows[0]?.flightDate||'',rows); }
 
 function buildPsmMsgKey(row) {
+  if (row?.type === 'ASVC SEAT/PDUG') {
+    return ['psmMsg', row.flightDate, row.flightNo, row.bn, row.type, row.detail]
+      .map((value) => String(value || '').trim().toUpperCase()).join('|');
+  }
   return [
     'psmMsg',
     row?.flightDate || '',
