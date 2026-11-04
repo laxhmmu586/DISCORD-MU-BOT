@@ -312,7 +312,7 @@
     frame.title = "Print " + title.textContent;
     const paper = dialog.querySelector("[aria-label=\"Form paper size\"]").value === "Letter" ? "Letter" : "A4";
     const orientation = active === 3 ? "landscape" : "portrait";
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=form-order"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${title.textContent}</title><link rel="stylesheet" href="/flight-forms.css?v=telex-square"><style>@page{size:${paper} ${orientation};margin:10mm}</style></head><body class="flight-form-print-document ${paper.toLowerCase()}">${sheet.outerHTML}</body></html>`;
     frame.onload = async () => {
       try {
         await Promise.all([...frame.contentDocument.images].filter(img => !img.hidden).map(img => img.decode()));
