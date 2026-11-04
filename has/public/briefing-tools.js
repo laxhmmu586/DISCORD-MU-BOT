@@ -2,7 +2,7 @@
  const query=new URLSearchParams(location.search);
  const standalone=!query.has('quick')&&!query.has('embed');
  const tools=[
-  ['charge-form','charge-form','blank-flight','charge-form-model.js?v=20261101-charge-daily',d=>standalone&&d.direction==='departure'],
+  ['charge-form','charge-form','embedded-charge','charge-form-model.js?v=20261101-charge-daily',d=>standalone&&d.direction==='departure'],
   ['express','arrival-express','20261102-on-demand',null,d=>standalone&&d.direction==='arrival'],
   ['checklists','departure-checklists','checklist-header-fields','departure-checklist-model.js?v=checklist-header-fields',d=>standalone&&d.direction==='departure'&&d.canUseChecklists]
  ];
@@ -40,6 +40,8 @@
     ]);
     await loadAsset('script',name+'.js?v='+version);
     const latest=window.briefingToolContext;
+    const host=button.closest('.flight-forms')?.querySelector('[data-charge-form-host]');
+    if(host&&(host.hidden||!host.closest('dialog').open))return;
     if(latest?.ready&&!button.hidden&&!button.disabled&&context.date===latest.date&&context.flight===latest.flight&&context.direction===latest.direction)button.click();
    }catch{
     button.textContent=label+' (Retry)';
