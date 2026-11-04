@@ -1,5 +1,6 @@
 /* Keep calendar geometry independent of cached base theme versions. */
 .schedule-grid{overflow:auto;max-width:100%;box-sizing:border-box}
+@media(min-width:761px){.schedule-grid:not(.coverage-grid){max-height:none;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:auto}}
 .schedule-grid #schedule-table,.schedule-grid #coverage-table{table-layout:fixed;border-spacing:0}
 .schedule-grid col:not(.employee-column){width:54px}
 .schedule-grid .date-heading th:not(.employee-cell),.schedule-grid tbody tr:not(.team-heading)>td{padding:0;overflow:hidden;box-sizing:border-box}
