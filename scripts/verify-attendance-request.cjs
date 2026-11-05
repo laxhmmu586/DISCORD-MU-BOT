@@ -1,4 +1,4 @@
-// Local, sanitized UI verification. Never contacts Google Sheets or Discord.
+// Local, sanitized UI verification. Never contacts external services.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -13,7 +13,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   app.post('/attendance-api/requests', (req, res) => {
     submissions.push(req.body);
     if (submissions.length === 1) return res.status(400).json({ error:'Select an employee from the current employee list' });
-    if (submissions.length === 2) return res.status(503).json({ error:'Could not save your request to Google Sheets. Please retry.' });
+    if (submissions.length === 2) return res.status(503).json({ error:'Could not save your request. Please retry.' });
     res.status(201).json({ record:{ ...req.body, reference:'REQ-TEST', employeeName:'Test Employee', submittedAt:'2026-10-14T16:41:00Z' }, notificationPending:true });
   });
   const server = app.listen(0, '127.0.0.1');
@@ -119,7 +119,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.click('#submit');
     await page.locator('#sending').waitFor({ state:'hidden' });
     assert.equal(await page.locator('#success').isVisible(), false);
-    assert.match(await page.locator('#status').textContent(), /Google Sheets/);
+    assert.match(await page.locator('#status').textContent(), /save your request/);
     await page.goBack();
     await page.waitForFunction(() => document.getElementById('status').textContent.includes('retry this submission'));
     assert.equal(await page.locator('#review').isVisible(), true);

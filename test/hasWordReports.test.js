@@ -100,3 +100,21 @@ test('Recharge headings are scoped labels and do not change WWH manual hours or 
 test('all Word Account fields default to the active assigned workspace and retain saved text',async t=>{const {request}=await fixture(t),keys={investigation:'detail_1_0',cos:'department',paf:'employee_5',discussion:'detail_3_1'},headers={'X-Workspace-Account':JSON.stringify({station:'SFO',account:'XX'})};for(const [kind,key] of Object.entries(keys)){const form=await (await request('Supervisor','/word/'+kind,undefined,headers)).json();assert.equal(form.values[key],'SFO/XX');const saved=await request('Supervisor','/word/'+kind,{revision:0,values:{[key]:'Custom account text'}},headers);assert.equal(saved.status,200);assert.equal((await saved.json()).values[key],'Custom account text');assert.equal((await (await request('Supervisor','/word/'+kind,undefined,headers)).json()).values[key],'Custom account text');assert.equal((await (await request('Supervisor','/word/'+kind)).json()).values[key],'LAX/MU');}});
 
 test('PAF provides all 44 handbook rules and retains multiple rules in editable Word output',async()=>{const policies=require('../has/public/paf-company-policies');assert.equal(policies.items.length,44);assert.deepEqual(policies.items.map(p=>p.number),Array.from({length:44},(_,i)=>i+1));assert(policies.items[0].text.startsWith('Obtaining employment based on false or misleading information'));assert(policies.items[16].text.includes('at least 2 hours notice'));assert.equal(policies.items[43].text,'Any other violations of rules and policies of the Company.');assert(policies.items.every(p=>p.text&&!p.text.includes('Employee Handbook')&&!p.text.includes('6.8 Employee Counseling')));const text=policies.items.map(p=>p.number+'. '+p.text).join('\n\n');assert(text.length<Word.definition('paf').fields.find(f=>f.key==='narrative_17').maxLength);const bytes=await Word.exportWord('paf',{employee_5:'SFO/XX',narrative_17:text}),zip=await JSZip.loadAsync(bytes),xml=await zip.file('word/document.xml').async('string');assert(xml.includes('Obtaining employment based on false or misleading information'));assert(xml.includes('44. Any other violations of rules and policies of the Company.'));assert(xml.includes('SFO/XX'));});
+
+test('clear Word forms persists empty text, dates and checkboxes with permissions and revision checks',async t=>{
+ const {request}=await fixture(t);
+ for(const kind of Word.kinds){
+  const form=await(await request('Supervisor','/word/'+kind)).json();
+  const values=Object.fromEntries(form.fields.map(field=>[field.key,field.type==='checkbox'?true:field.type==='date'?'2026-11-05':'Filled']));
+  assert.equal((await request('Supervisor','/word/'+kind,{revision:0,values})).status,200);
+  const url='/word/'+kind+'/clear';
+  assert.equal((await request('Agent',url,{revision:1,confirmClear:true})).status,403);
+  assert.equal((await request('Supervisor',url,{revision:1})).status,400);
+  assert.equal((await request('Supervisor',url,{revision:0,confirmClear:true})).status,409);
+  assert.equal((await request('Supervisor',url,{revision:1,confirmClear:true})).status,200);
+  const cleared=await(await request('Supervisor','/word/'+kind)).json();
+  assert(Object.values(cleared.values).every(value=>value===''||value===false));
+  const other=await(await request('other','/word/'+kind)).json();assert.equal(other.revision,0);
+  assert.equal((await request('Supervisor','/word/'+kind+'/export')).status,200);
+ }
+});

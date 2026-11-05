@@ -1,26 +1,40 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {validate,createSheetsStorage,registerAttendance,HEADERS}=require('../attendanceRequests');
+const {validate,createSqliteStorage,registerAttendance}=require('../attendanceRequests');
 const employees={get:()=>({employees:[{id:'test-one',name:'Test Employee',email:'private@example.com',eid:'123',phone:'555',discordId:'123456789012345678'}]})};
 const body={requestId:'11111111-1111-4111-8111-111111111111',employeeId:'test-one',type:'late',date:'2026-10-14',arrivalTime:'10:15',scheduledStart:'08:00',reason:'Traffic',note:''};
 const record=()=>({...validate(body,employees),submittedAt:'2026-10-14T15:45:00Z'});
-function mockSheets(headers=[]){let rows=headers.length?[headers]:[],appends=0,updates=0;return{rows:()=>rows,appends:()=>appends,updates:()=>updates,spreadsheets:{get:async args=>{assert.equal(args.spreadsheetId,'12tZLWvQin1bhbWvALdnlAxkR0iD_6ScUVWEnL6IziDY');return{data:{sheets:[{properties:{sheetId:999,title:'Wrong tab'}},{properties:{sheetId:580541604,title:"Attendance's"}}]}};},values:{get:async()=>({data:{values:structuredClone(rows)}}),update:async args=>{assert.match(args.range,/^'Attendance''s'!A1:/);rows[0]=args.requestBody.values[0];updates++;},append:async args=>{assert.equal(args.valueInputOption,'RAW');assert.match(args.range,/^'Attendance''s'!/);rows.push(...args.requestBody.values);appends++;}}}};}
 test('validation uses current employee name and rejects unknown employees, dates and times',()=>{assert.equal(validate({...body,employeeName:'Forged'},employees).employeeName,'Test Employee');for(const patch of [{employeeId:'missing'},{type:'x'},{date:'2026-02-30'},{arrivalTime:'24:00'},{reason:[]},{note:'x'.repeat(1001)},{requestId:'x'}])assert.throws(()=>validate({...body,...patch},employees));});
 test('both request types reject absent, blank and whitespace-only reasons',()=>{for(const type of ['late','sick'])for(const reason of [undefined,'','   ','\n\t'])assert.throws(()=>validate({...body,type,reason},employees),/explain why|provide a reason/);assert.equal(validate({...body,reason:'  Traffic  '},employees).reason,'Traffic');});
 test('scheduled start is discarded even when supplied by an older client',()=>{assert.equal(validate(body,employees).scheduledStart,'');assert.equal(validate({...body,scheduledStart:'invalid'},employees).scheduledStart,'');});
 test('sick requests do not retain arrival or scheduled start',()=>{const r=validate({...body,type:'sick'},employees);assert.equal(r.arrivalTime,'');assert.equal(r.scheduledStart,'');});
-test('Sheets initializes an empty target and concurrent retries append once',async()=>{const sheets=mockSheets(),store=createSheetsStorage({sheets}),r=record();const saved=await Promise.all([store.save(r),store.save({...r,submittedAt:'2026-10-14T16:00:00Z'})]);assert.equal(sheets.appends(),1);assert.equal(sheets.updates(),1);assert.equal(saved[1].record.submittedAt,r.submittedAt);assert.equal(saved[1].duplicate,true);assert.equal(saved[1].history.length,1);assert.deepEqual(sheets.rows()[0],HEADERS);});
-test('Sheets preserves Google Form column order and stores formula-like text as RAW',async()=>{const sheets=mockSheets(['Why?','Name','Custom column','Call Type']),store=createSheetsStorage({sheets});const r={...record(),reason:'=HYPERLINK("bad")'};await store.save(r);assert.equal(sheets.rows()[1][0],r.reason);assert.equal(sheets.rows()[1][1],'Test Employee');assert.equal(sheets.rows()[1][2],'');});
-test('a narrow worksheet is expanded before writing new metadata columns',async()=>{
- const sheets=mockSheets(['Timestamp','Name','Call Type']);let expanded=false;
- sheets.spreadsheets.get=async()=>({data:{sheets:[{properties:{sheetId:580541604,title:"Attendance's",gridProperties:{columnCount:3}}}]}});
- const read=sheets.spreadsheets.values.get;sheets.spreadsheets.values.get=async args=>{assert.equal(args.range,"'Attendance''s'!A:C");return read(args);};
- sheets.spreadsheets.batchUpdate=async args=>{assert.deepEqual(args.requestBody.requests,[{appendDimension:{sheetId:580541604,dimension:'COLUMNS',length:9}}]);expanded=true;};
- const update=sheets.spreadsheets.values.update;sheets.spreadsheets.values.update=async args=>{assert.equal(expanded,true);return update(args);};
- await createSheetsStorage({sheets}).save(record());assert.equal(sheets.appends(),1);
+test('SQLite saves both types, deduplicates retries and isolates employee history',()=>{
+ const db=new Database(':memory:');try{
+  const store=createSqliteStorage({db}),r=record();assert.equal(store.save(r).duplicate,false);
+  assert.equal(store.save({...r,submittedAt:'later'}).record.submittedAt,r.submittedAt);
+  assert.equal(store.save(r).duplicate,true);
+  assert.throws(()=>store.save({...r,reason:'Changed'}),/already used/);
+  const sick={...r,id:'second',reference:'REQ-SECOND',type:'sick',arrivalTime:''};assert.equal(store.save(sick).history.length,2);
+  store.save({...r,id:'other',reference:'REQ-OTHER',employeeId:'other'});
+  assert.equal(store.list(r.employeeId).length,2);assert.equal(db.prepare('SELECT COUNT(*) n FROM attendance_delivery').get().n,3);
+  assert.equal(createSqliteStorage({db}).list(r.employeeId).length,2);
+ }finally{db.close();}
 });
-test('same request UUID cannot silently change employee, date or details',async()=>{const sheets=mockSheets(),store=createSheetsStorage({sheets}),r=record();await store.save(r);await assert.rejects(store.save({...r,date:'2026-10-15',reference:r.reference.replace('20261014','20261015')}),/already used/);await assert.rejects(store.save({...r,reason:'Changed'}),/already used/);assert.equal(sheets.appends(),1);});
-test('monthly history includes only the selected employee and month',async()=>{const sheets=mockSheets(),store=createSheetsStorage({sheets}),r=record();await store.save({...r,id:'previous',reference:'REQ-PREVIOUS',date:'2026-09-30'});await store.save({...r,id:'other',reference:'REQ-OTHER',employeeId:'other'});const result=await store.save(r);assert.equal(result.history.length,1);});
-test('attendance history reads all matching employee records without mutating the Sheet',async()=>{const sheets=mockSheets(),store=createSheetsStorage({sheets}),r=record();await store.save({...r,id:'old',reference:'REQ-OLD',date:'2026-09-30'});await store.save({...r,id:'other',reference:'REQ-OTHER',employeeId:'other'});await store.save(r);const updates=sheets.updates(),appends=sheets.appends(),rows=await store.list(r.employeeId);assert.equal(rows.length,2);assert.equal(rows[0].reason,'Traffic');assert.equal(rows[1].date,'2026-09-30');assert.equal(rows.some(row=>row.reference==='REQ-OTHER'),false);assert.equal(sheets.updates(),updates);assert.equal(sheets.appends(),appends);});
+test('SQLite rolls back request and notification when schedule update fails',()=>{
+ const db=new Database(':memory:');try{const store=createSqliteStorage({db,onSave:()=>{throw Error('schedule failed');}});
+ assert.throws(()=>store.save(record()),/schedule failed/);assert.equal(store.list(body.employeeId).length,0);assert.equal(db.prepare('SELECT COUNT(*) n FROM attendance_delivery').get().n,0);
+ }finally{db.close();}
+});
+test('SQLite recovers existing accepted requests from delivery ledger without resending',()=>{
+ const db=new Database(':memory:');try{db.exec('CREATE TABLE attendance_delivery(reference TEXT PRIMARY KEY,data TEXT NOT NULL,sent INTEGER NOT NULL DEFAULT 0)');
+ const r=record();db.prepare('INSERT INTO attendance_delivery VALUES(?,?,1)').run(r.reference,JSON.stringify({record:r,history:[]}));
+ const store=createSqliteStorage({db});assert.equal(store.list(r.employeeId).length,1);assert.equal(store.save(r).duplicate,true);assert.equal(db.prepare('SELECT sent FROM attendance_delivery').get().sent,1);
+ }finally{db.close();}
+});
+test('default API saves late and sick in SQLite without Google and retries only one notification',async t=>{
+ let sends=0;const s=await server(t,{employees:{get:()=>({employees:[{...employees.get().employees[0],station:'LAX',account:'MU'}]})},storage:undefined,client:{channels:{fetch:async()=>({send:async()=>{sends++;}})}}});
+ for(const patch of [{},{type:'sick',requestId:'22222222-2222-4222-8222-222222222222'}]){const payload={...body,...patch};assert.equal((await s.post(payload)).status,201);assert.equal((await s.post(payload)).status,200);}
+ assert.equal(s.db.prepare('SELECT COUNT(*) n FROM attendance_requests').get().n,2);assert.equal(sends,2);assert.equal(s.db.prepare('SELECT revision FROM staff_schedule_days WHERE date=?').get(body.date).revision,1);
+});
 test('attendance history requires authentication and ignores a forged employee selection',async t=>{const s=await server(t,{authenticate:async req=>{if(req.headers.authorization!=='Bearer test')throw Error('no');return {uid:'one'};},profiles:{linked:u=>u.uid==='one'?{id:'test-one',name:'Test Employee'}:null},storage:{list:async id=>{assert.equal(id,'test-one');return [record()];}}});assert.equal((await s.get('/attendance-api/history')).status,401);const response=await fetch(s.base+'/attendance-api/history?employeeId=other',{headers:{Authorization:'Bearer test'}});assert.equal(response.status,200);assert.equal((await response.json()).records[0].employeeId,'test-one');});
 async function server(t,overrides={}){const app=express();app.use(express.json());const db=new Database(':memory:');const service=registerAttendance(app,{employees,db,client:{channels:{fetch:async()=>({send:async()=>{}})}},storage:{save:async r=>({record:r,history:[r]})},renderCards:async()=>[],...overrides});const listener=app.listen(0,'127.0.0.1');await new Promise(r=>listener.once('listening',r));t.after(()=>{service.close();listener.close();db.close();});const base='http://127.0.0.1:'+listener.address().port;return{base,get:path=>fetch(base+path),post:b=>fetch(base+'/attendance-api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}),db,service};}
 test('public employee endpoint exposes only names and internal selection IDs',async t=>{const s=await server(t),r=await s.get('/attendance-api/employees');assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/no-store/);assert.deepEqual(await r.json(),{employees:[{id:'test-one',name:'Test Employee'}]});});
@@ -40,7 +54,7 @@ test('public selection list prefers trimmed nicknames, preserves order and IDs, 
  assert.equal(saved.record.employeeId,'second');
  assert.equal(saved.record.employeeName,'Second Full Name');
 });
-test('unavailable image dependencies cannot prevent employee API startup or Sheets saves',async t=>{
+test('unavailable image dependencies cannot prevent employee API startup or SQLite saves',async t=>{
  const {spawnSync}=require('node:child_process');
  const result=spawnSync(process.execPath,['-e',`
  const assert=require('node:assert/strict'),Module=require('node:module'),express=require('express'),Database=require('better-sqlite3');
@@ -64,7 +78,7 @@ test('attendance immediately reflects saved admin employee changes including non
  assert.equal((await fetch(base+'/employee-admin-api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(admin)})).status,200);
  assert.deepEqual(await(await fetch(base+'/attendance-api/employees')).json(),{employees:[{id:'one',name:'Updated Nickname'},{id:'new',name:'New Employee'}]});
 });
-test('Sheets failure never reports success or sends Discord messages',async t=>{let sends=0;const s=await server(t,{storage:{save:async()=>{throw Error('credentials unavailable');}},client:{channels:{fetch:async()=>{sends++;}}}});const r=await s.post(body);assert.equal(r.status,503);assert.match((await r.json()).error,/Google Sheets/);assert.equal(sends,0);});
+test('Storage failure never reports success or sends Discord messages',async t=>{let sends=0;const s=await server(t,{storage:{save:async()=>{throw Error('database unavailable');}},client:{channels:{fetch:async()=>{sends++;}}}});const r=await s.post(body);assert.equal(r.status,503);assert.match((await r.json()).error,/save your request/);assert.equal(sends,0);});
 test('invalid requests never reach storage',async t=>{let writes=0;const s=await server(t,{storage:{save:async()=>{writes++;}}});assert.equal((await s.post({...body,employeeId:'unknown'})).status,400);assert.equal(writes,0);});
 test('saved request with failed Discord delivery keeps durable pending job',async t=>{const s=await server(t,{client:{channels:{fetch:async()=>{throw Error('Discord unavailable');}}}});const r=await s.post(body);assert.equal(r.status,201);assert.equal((await r.json()).notificationPending,true);assert.equal(s.db.prepare('SELECT sent FROM attendance_delivery').get().sent,0);});
 test('retrying a saved request does not resend an already delivered notification',async t=>{let sends=0;const s=await server(t,{client:{channels:{fetch:async id=>{assert.equal(id,'1365021189998903418');return{send:async message=>{assert.deepEqual(message.allowedMentions,{parse:[],users:['123456789012345678']});sends++;}};}}}});await s.post(body);await s.post(body);assert.equal(sends,1);assert.equal(s.db.prepare('SELECT sent FROM attendance_delivery').get().sent,1);});
@@ -82,9 +96,9 @@ test('fallback send permission failure remains pending and recovers on retry',as
  const r=await s.post(body);assert.equal((await r.json()).notificationPending,true);assert.equal(s.db.prepare('SELECT sent FROM attendance_delivery').get().sent,0);
  fail=false;await s.service.retryPending();assert.equal(s.db.prepare('SELECT sent FROM attendance_delivery').get().sent,1);await s.service.retryPending();assert.equal(sends,2);
 });
-test('pending jobs from an earlier process recover without another Sheets submission',async()=>{
+test('pending jobs from an earlier process recover without another submission',async()=>{
  const db=new Database(':memory:');db.exec('CREATE TABLE attendance_delivery (reference TEXT PRIMARY KEY, data TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0)');const r=record();db.prepare('INSERT INTO attendance_delivery(reference,data) VALUES (?,?)').run(r.reference,JSON.stringify({record:r,history:[r]}));let sends=0;
- const service=registerAttendance(express(),{db,employees,storage:{save:()=>{throw Error('No new Sheets writes allowed');}},renderCards:async()=>{throw Error('Image unavailable');},client:{channels:{fetch:async()=>({send:async()=>{sends++;}})}}});
+ const service=registerAttendance(express(),{db,employees,storage:{save:()=>{throw Error('No new writes allowed');}},renderCards:async()=>{throw Error('Image unavailable');},client:{channels:{fetch:async()=>({send:async()=>{sends++;}})}}});
  try{await service.retryPending();assert.equal(sends,1);assert.equal(db.prepare('SELECT sent FROM attendance_delivery').get().sent,1);await service.retryPending();assert.equal(sends,1);}finally{service.close();db.close();}
 });
 test('native fallback handles maximum reasons and notes within Discord embed limits',()=>{

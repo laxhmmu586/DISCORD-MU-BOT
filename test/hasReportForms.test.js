@@ -40,6 +40,15 @@ test('form endpoints enforce Supervisor+, shared saves, conflicts, account/month
   assert.equal((await request('supervisor','/'+kind+'/2026-11')).data.cells[address].value,'');
   assert.equal((await request('supervisor',url,{revision:1,values:{A1:'Overwrite header'}})).status,400);
   const download=await request('supervisor',url+'/export');assert.equal(download.status,200);const book=new Excel.Workbook();await book.xlsx.load(download.data);assert.equal(book.worksheets[0].getCell(address).value,'Saved');
+  assert.equal((await request('agent',url+'/clear',{revision:1,confirmClear:true})).status,403);
+  assert.equal((await request('supervisor',url+'/clear',{revision:1})).status,400);
+  assert.equal((await request('supervisor',url+'/clear',{revision:0,confirmClear:true})).status,409);
+  assert.equal((await request('supervisor',url+'/clear',{revision:1,confirmClear:true})).status,200);
+  const cleared=(await request('supervisor',url)).data;
+  assert(Object.values(cleared.cells).filter(cell=>cell.editable).every(cell=>cell.value===''));
+  assert.equal(cleared.history.at(-1).action,'Cleared form');
+  assert.equal(cleared.cells.A1.value,(await forms.template(kind,'2026-10',{station:'LAX',account:'MU'})).cells.A1.value);
+
  }
 });
 
