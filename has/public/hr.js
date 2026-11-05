@@ -200,7 +200,7 @@
   function permissionMemberships(row){return [{station:row.station,account:row.account},...(row.additionalAccounts||[])].filter(value=>value.station&&value.account);}
   function permissionScopes(){const values=[{station:'HQ',account:'HQ'},...(data.accounts||[]),...data.employees.flatMap(permissionMemberships)];return [...new Map(values.filter(value=>value.station&&value.account).map(value=>[key(value),value])).values()];}
   function renderPermissionPeople(){
-    const scopes=permissionScopes(),stations=[...new Set(scopes.map(value=>value.station))].sort((a,b)=>a==='HQ'?-1:b==='HQ'?1:a.localeCompare(b));
+    const scopes=permissionScopes(),stations=[...new Set(scopes.map(value=>value.station))].sort((a,b)=>{const rank=value=>value==='HQ'?0:value==='LAX'?1:2;return rank(a)-rank(b)||a.localeCompare(b);});
     stationPane.querySelector('.hr-permission-scope-list').innerHTML=stations.map(station=>'<button type="button" data-permission-station="'+escape(station)+'" aria-pressed="'+(station===permissionStation)+'">'+escape(station==='HQ'?'Headquarter':station)+'</button>').join('');
     const accounts=scopes.filter(value=>value.station===permissionStation).sort((a,b)=>a.account.localeCompare(b.account));
     accountPane.querySelector('.hr-permission-scope-list').innerHTML=permissionStation?accounts.map(value=>'<button type="button" data-permission-account="'+escape(value.account)+'" aria-pressed="'+(value.account===permissionAccount)+'">'+escape(value.account)+'</button>').join('')||'<p>No accounts found.</p>':'<p>Select a Station first.</p>';

@@ -7,12 +7,14 @@
 
 /* Follow Station -> Account -> Employee before opening the settings. */
 .hr-permission-scope,.hr-permission-empty{display:none}
-.hr-person-dialog.hr-permission-manager{width:min(1500px,calc(100% - 36px))}
+.hr-person-dialog.hr-permission-manager{width:min(1680px,calc(100% - 36px))}
+@media(min-width:761px){.hr-person-dialog.hr-permission-manager{height:min(1100px,calc(100dvh - 40px))}}
 .hr-person-dialog.hr-permission-manager[open]{grid-template-columns:140px 140px 250px minmax(0,1fr)}
 .hr-permission-manager .hr-permission-scope{display:flex;flex-direction:column;min-height:0;min-width:0;padding:22px 12px;background:#dbeaffb0;border-right:1px solid #fff}
 .hr-permission-scope h2{margin:0 0 8px;color:#194274;font-size:19px}
 .hr-permission-scope p{color:#6484af;font-size:12px;line-height:1.6}
-.hr-permission-scope-list{overflow:auto;min-height:0}
+.hr-permission-scope-list{overflow:auto;min-height:0;scrollbar-width:none;-ms-overflow-style:none}
+.hr-permission-scope-list::-webkit-scrollbar{display:none;width:0;height:0}
 .hr-permission-scope-list button{display:block;width:100%;padding:12px 8px;margin:0 0 6px;border:1px solid transparent;border-radius:10px;background:transparent;color:#34577f;text-align:left;overflow-wrap:anywhere;cursor:pointer;font:600 12px 'Segoe UI',sans-serif}
 .hr-permission-scope-list button[aria-pressed=true]{background:#ffffffcd;border-color:#fff;box-shadow:0 3px 12px #417bb018}
 .hr-permission-manager .hr-permission-empty{position:relative;display:grid;align-content:center;padding:38px;text-align:center;color:#6484af;font-size:14px;line-height:1.8}
