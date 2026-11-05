@@ -47,4 +47,3 @@ const {chromium}=require('playwright');
   console.log('PASS browser foreground badge, actual service worker messages, native CacheStorage, concurrent push deduplication and awaited logout clear');
  }finally{await browser.close();await new Promise(r=>server.close(r));}
 })().catch(error=>{console.error(error);process.exitCode=1;});
-
