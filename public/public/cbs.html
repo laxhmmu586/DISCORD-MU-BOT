@@ -548,7 +548,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="/cbs-bag-tag-edit.js?v=tag-click"></script><script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
+  <script src="/cbs-bag-tag-edit.js?v=flight-edit"></script><script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
   <script>
     const baggageEditor=document.querySelector('#baggage-editor'),baggageEditForm=document.querySelector('#baggage-edit-form');
     document.querySelector('#baggage-edit-close').addEventListener('click',()=>baggageEditor.close());
@@ -1075,9 +1075,10 @@
         const pvg = pvgFields.get('PVG Filed') || pvgFields.get('PVG') || '-';
         const overdueNotice = isOpenOnHandOverdue(active || row) ? '<span class="on-hand-overdue" role="status">Overdue baggage – Rush back to PVG.</span>' : '';
         const statusCells = isBagRoomGroup ? `<td class="sheet-meta${bagRoomStatus === 'Rush' ? ' rush-status' : ''}">${bagRoomStatus}</td><td class="sheet-meta">${bagRoomTimerHtml(row)}</td>` : `<td class="sheet-meta"><span class="on-hand-status"><span>${escapeHtml(row.bagType || row.status || '-')}</span>${overdueNotice}</span></td>`;
-        const flight = String(row.flightNumber || row.flightNo || row.flight || '').trim().toUpperCase();
+        const flightRecord = active || row;
+        const flight = String(flightRecord.flightNumber || flightRecord.flightNo || flightRecord.flight || '').trim().toUpperCase();
         const flightColor = ({MU586:'blue', MU578:'purple', MU9586:'teal', MU583:'green', MU577:'orange'})[flight] || 'unknown';
-        const flightCell = isBagRoomGroup ? `<td class="sheet-meta"><span class="unload-flight unload-flight-${flightColor}">${escapeHtml(flight || 'Not recorded')}</span></td>` : '';
+        const flightCell = isBagRoomGroup ? `<td class="sheet-meta"><span class="unload-flight unload-flight-${flightColor}" data-edit-flight data-flight-row="${escapeHtml((active || row).rowNumber)}" data-flight-value="${escapeHtml(flight)}" tabindex="0" title="Double-click to edit flight">${escapeHtml(flight || 'Not recorded')}</span></td>` : '';
         const dateBand = dateBands.get(String(row.flightDate || '').trim() || 'unknown') === 0 ? 'date-band-a' : 'date-band-b';
         return `<tr class="case-summary-row ${dateBand}" data-toggle-unresolved-update role="button" tabindex="0" aria-expanded="false"><td class="sheet-meta">${escapeHtml(row.worldTracerFileNumber || '-')}</td><td class="sheet-meta">${escapeHtml(pvg)}</td><td class="sheet-meta"><span class="on-hand-tag-summary">${matchBadge}${tagDisplay}</span>${bagTagAction}</td>${rushTagCell}${flightCell}<td class="sheet-meta">${escapeHtml(row.flightDate || '-')}</td>${statusCells}</tr><tr class="case-detail-row" data-unresolved-detail hidden><td colspan="${columnCount}"><div class="case-detail-layout"><div class="case-progress-column">${unresolvedProgressHtml(progressRow)}</div><div class="case-detail-right">${row.bagIdentifications?.length ? BaggageGuide.cards(row.bagIdentifications, document.documentElement.lang) : ""}${formHtml}${commentsHtml}${historyHtml}${recordPanelHtml}</div></div></td></tr>`;
       }).join('')}</tbody></table></div>${listPaginationHtml(listKey, pagination)}`;
@@ -2658,7 +2659,7 @@
     let cbsRefreshTimer = null;
     let cbsLiveConnected = false;
     window.CbsBagTagEdit.install({
-      save:async({rowNumber,...payload})=>requestCaseUpdate(`cbs-bag-tags/${encodeURIComponent(rowNumber)}`,{...payload,updatedBy:await currentUpdater()}),
+      save:async({rowNumber,...payload})=>requestCaseUpdate(`${payload.field==='flightNumber'?'cbs-flights':'cbs-bag-tags'}/${encodeURIComponent(rowNumber)}`,{...payload,updatedBy:await currentUpdater()}),
       refresh:async()=>{window._forceCbsRefresh=true;await refreshCbsData();}
     });
     let cbsLastReconciliation = 0;
