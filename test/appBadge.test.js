@@ -154,3 +154,13 @@ test('unsupported browsers need no permission or badge initialization', () => {
   assert.deepEqual(f.badges, []);
   assert.deepEqual(f.messages, []);
 });
+
+test('New Access item keys match the authenticated push outbox source', async () => {
+  const f = page();
+  f.auth({uid:'alice'});
+  f.inbox({...inboxData(),rows:[{kind:'new-access',r:{id:'request',canReview:true}}],
+    reminderMessages:[],signCount:0,readSignMemos:[],scheduleItems:[]});
+  await settle();
+  assert.deepEqual(Array.from(f.messages.at(-1).keys), ['new_access:request']);
+  assert.equal(f.badges.at(-1), 1);
+});

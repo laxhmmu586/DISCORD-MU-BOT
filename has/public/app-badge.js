@@ -29,7 +29,7 @@
     const reminders = (data.reminderMessages || []).filter(row => !row.readAt);
     const schedule = data.scheduleItems || [];
     const keys = [
-      ...actionable.map(({kind,r}) => kind + ':' + r.id),
+      ...actionable.map(({kind,r}) => (kind === 'new-access' ? 'new_access' : kind) + ':' + r.id),
       ...reminders.map(row => row.badgeKey),
       ...(data.readSignMemos || []).filter(row => ['pending','overdue'].includes(row.myStatus)).map(row => 'read_sign:' + row.id),
       ...schedule.map(row => 'schedule:' + row.requestId)
