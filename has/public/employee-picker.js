@@ -1,7 +1,7 @@
 (() => {
-  const css=document.createElement('link');css.rel='stylesheet';css.href='/has/employee-picker.css?v=1';document.head.append(css);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='/has/employee-picker.css?v=20261105-scrollbars';document.head.append(css);
   const scopeLabel=value=>value==='HQ'?'Headquarter':value;
-  const sorted=values=>[...new Set(values)].sort((a,b)=>a==='HQ'?-1:b==='HQ'?1:a.localeCompare(b));
+  const sorted=(values,stations=false)=>[...new Set(values)].sort((a,b)=>{const rank=value=>value==='HQ'?0:stations&&value==='LAX'?1:2;return rank(a)-rank(b)||a.localeCompare(b);});
   window.EmployeePicker={open({people,title='Transfer request'}){
     return new Promise(resolve=>{
       let station='',account='',selected=null;
@@ -15,7 +15,7 @@
         host.replaceChildren(...values.map(value=>{const button=document.createElement('button');button.type='button';button.textContent=scopeLabel(value);button.setAttribute(attribute,value);button.setAttribute('aria-pressed',String(value===current));button.onclick=()=>choose(value);return button;}));
       }
       function draw(){
-        choices(list('[data-picker-stations]'),sorted(people.flatMap(person=>scopes(person).map(s=>s.station))),station,'data-picker-station',value=>{station=value;account='';selected=null;list('input').value='';draw();});
+        choices(list('[data-picker-stations]'),sorted(people.flatMap(person=>scopes(person).map(s=>s.station)),true),station,'data-picker-station',value=>{station=value;account='';selected=null;list('input').value='';draw();});
         choices(list('[data-picker-accounts]'),station?sorted(people.flatMap(person=>scopes(person).filter(s=>s.station===station).map(s=>s.account))):[],account,'data-picker-account',value=>{account=value;selected=null;list('input').value='';draw();});
         list('input').disabled=!account;
         const query=list('input').value.toLowerCase(),matches=account?people.filter(person=>scopes(person).some(s=>s.station===station&&s.account===account)&&(person.name+' '+(person.nickname||'')+' '+person.position).toLowerCase().includes(query)).sort((a,b)=>a.name.localeCompare(b.name)):[];

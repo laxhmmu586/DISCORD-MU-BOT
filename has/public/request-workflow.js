@@ -37,7 +37,7 @@
  }
  let employeePickerLoading;
  async function pickEmployee(options){
-  if(!window.EmployeePicker){employeePickerLoading||=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/has/employee-picker.js?v=1';script.onload=resolve;script.onerror=()=>{employeePickerLoading=null;reject(Error('Unable to load employee selection. Please retry.'));};document.head.append(script);});await employeePickerLoading;}
+  if(!window.EmployeePicker){employeePickerLoading||=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/has/employee-picker.js?v=20261105-scrollbars';script.onload=resolve;script.onerror=()=>{employeePickerLoading=null;reject(Error('Unable to load employee selection. Please retry.'));};document.head.append(script);});await employeePickerLoading;}
   return window.EmployeePicker.open(options);
  }
  window.RequestVisuals={person,icon,action,layout,pickEmployee};
