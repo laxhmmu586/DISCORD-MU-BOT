@@ -8,6 +8,24 @@ function fixture(t){
  const draft=()=>({requestId:randomUUID(),fields:{name:'NEW EMPLOYEE',eid:'001234',station:'LAX',account:'CI',email:'new@example.test'}});
  return {...args,rows,users,store,draft};
 }
+
+test('transfer grants only the selected reviewer access, keeps an audit, and survives revision and recall',t=>{
+ const f=fixture(t),r=f.store.create(f.users.bm,f.draft());
+ assert.throws(()=>f.store.transferOptions(f.users.sup,r.id),e=>e.status===403);
+ const options=f.store.transferOptions(f.users.owner,r.id);assert(options.people.some(p=>p.id==='sup'));assert(!options.people.some(p=>['bm','owner'].includes(p.id)));assert(!JSON.stringify(options).includes('loginId'));
+ for(const employeeId of ['missing','owner','bm'])assert.throws(()=>f.store.decide(f.users.owner,r.id,{revision:r.revision,action:'transfer',employeeId}),e=>e.status===400);
+ const moved=f.store.decide(f.users.owner,r.id,{revision:r.revision,action:'transfer',employeeId:'sup',note:'Please check this request'});
+ assert.equal(moved.canReview,false);assert.equal(moved.reviewerId,'sup');assert.equal(moved.history.at(-1).targetName,'SUP');assert.equal(moved.history.at(-1).note,'Please check this request');
+ assert.equal(f.store.read(f.users.sup,r.id).canReview,true);assert(f.store.list(f.users.sup).requests.some(row=>row.id===r.id));
+ assert.throws(()=>f.store.decide(f.users.owner,r.id,{revision:moved.revision,action:'approve'}),e=>e.status===403);
+ assert.throws(()=>f.store.decide(f.users.sup,r.id,{revision:1,action:'approve'}),e=>e.status===409);
+ const returned=f.store.decide(f.users.sup,r.id,{revision:moved.revision,action:'return',note:'Correct the name'});
+ const resubmitted=f.store.create(f.users.bm,{...f.draft(),requestId:r.id,revision:returned.revision});assert.equal(resubmitted.reviewerId,'sup');
+ const approved=f.store.decide(f.users.sup,r.id,{revision:resubmitted.revision,action:'approve'});assert.equal(approved.canRecall,true);
+ const recalled=f.store.recall(f.users.sup,r.id,{revision:approved.revision});assert.equal(recalled.canReview,true);
+ assert.deepEqual(recalled.history.filter(h=>['transfer','return'].includes(h.action)).map(h=>h.action),['transfer','return']);
+ assert.equal(f.store.read(f.users.sup,r.id).reviewer.name,'SUP');
+});
 test('only a station Main Account Business Manager can submit, with the server binding station/account',t=>{
  const f=fixture(t);for(const id of ['sup','owner','admin']){assert.equal(f.store.list(f.users[id]).canCreate,false);assert.throws(()=>f.store.create(f.users[id],f.draft()),e=>e.status===403);}
  for(const scope of [{station:'SFO',account:'MU'},{station:'LAX',account:'MU'},{station:'HQ',account:'HQ'}])assert.throws(()=>f.store.create(f.users.bm,{...f.draft(),fields:{...f.draft().fields,...scope}}),e=>e.status===403);

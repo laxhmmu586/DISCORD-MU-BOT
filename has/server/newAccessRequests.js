@@ -12,8 +12,9 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
  const administrator=(user,e)=>ADMIN_EMAILS.has(normalize(user.email))||ADMIN_EMAILS.has(normalize(e.loginId))||e.isServerOwner;
  const canCreate=e=>require('../public/employee-permissions').allowed(e,'request.newAccess')&&!accounts.isHeadquarter(e);
  const get=id=>{const row=db.prepare('SELECT data FROM new_access_requests WHERE id=?').get(id);if(!row)fail('Request not found.',404);return JSON.parse(row.data);};
- const visible=(r,user,e)=>r.status!=='deleted'&&(r.employee.id===e.id||administrator(user,e));
- const view=(r,user,e)=>({...r,employee:require('./requestEmployee')(r,employees),approvals:(r.approvals||[]).map(approval=>({...approval,...require('./requestPerson')(approval,employees)})),history:r.history.map(event=>({...event,...require('./requestPerson')(event,employees)})),viewerId:e.id,canEdit:r.status==='draft'&&r.employee.id===e.id,needsRevision:r.status==='draft'&&r.employee.id===e.id,canReview:r.status==='pending'&&owner(user,e),canComplete:r.status==='approved'&&r.employee.id===e.id,canDelete:r.status!=='deleted'&&(r.employee.id===e.id||administrator(user,e)),canRecall:['approved','rejected'].includes(r.status)&&r.approvals?.at(-1)?.employeeId===e.id&&owner(user,e),reviewDraft:r.reviewDraft?.employeeId===e.id?r.reviewDraft:undefined,autoCompleteAt:r.status==='approved'&&r.approvedAt?new Date(Date.parse(r.approvedAt)+7*86400000).toISOString():null});
+ const reviewer=(r,user,e)=>r.reviewerId?r.reviewerId===e.id:owner(user,e);
+ const visible=(r,user,e)=>r.status!=='deleted'&&(r.employee.id===e.id||administrator(user,e)||r.reviewerId===e.id||(r.history||[]).some(event=>event.action==='transfer'&&(event.employeeId===e.id||event.targetId===e.id)));
+ const view=(r,user,e)=>({...r,employee:require('./requestEmployee')(r,employees),approvals:(r.approvals||[]).map(approval=>({...approval,...require('./requestPerson')(approval,employees)})),history:r.history.map(event=>({...event,...require('./requestPerson')(event,employees)})),viewerId:e.id,canEdit:r.status==='draft'&&r.employee.id===e.id,needsRevision:r.status==='draft'&&r.employee.id===e.id,canReview:r.status==='pending'&&reviewer(r,user,e),canComplete:r.status==='approved'&&r.employee.id===e.id,canDelete:r.status!=='deleted'&&(r.employee.id===e.id||administrator(user,e)),canRecall:['approved','rejected'].includes(r.status)&&r.approvals?.at(-1)?.employeeId===e.id&&reviewer(r,user,e),reviewer:r.reviewerId?{id:r.reviewerId,name:r.reviewerName,position:r.reviewerPosition,...require('./requestPerson')({id:r.reviewerId},employees)}:undefined,reviewDraft:r.reviewDraft?.employeeId===e.id?r.reviewDraft:undefined,autoCompleteAt:r.status==='approved'&&r.approvedAt?new Date(Date.parse(r.approvedAt)+7*86400000).toISOString():null});
  const read=(user,id)=>{autoComplete();const e=employee(user),r=get(id);if(!visible(r,user,e))fail('Request not found.',404);return view(r,user,e);};
  const put=r=>{db.prepare('INSERT OR REPLACE INTO new_access_requests VALUES(?,?)').run(r.id,JSON.stringify(r));return r;};
  const event=(r,e,action,label,note='')=>{const at=now().toISOString();r.updatedAt=at;r.history.push({employeeId:e.id,name:e.name,action,label,note,at});return at;};
@@ -35,21 +36,29 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
   const position=positions.normalize(body.position||'Agent');if(!['Duty Manager','Senior Supervisor','Supervisor','Lead','Agent'].includes(position))fail('Choose a requested title below Business Manager.',403);
   return {name,...(eid?{eid}:{}),...scope,email,position};
  };
- return {db,get,read,autoComplete,list(user){autoComplete();const e=employee(user);return {employee:{id:e.id,name:e.name,...require('./requestPerson')(e,employees),position:e.position,...accounts.scope(e)},canCreate:canCreate(e),canManageRequests:Boolean(administrator(user,e)),requests:db.prepare('SELECT data FROM new_access_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,user,e)).map(r=>view(r,user,e))};},
+ return {db,get,read,autoComplete,
+  transferOptions(user,id){const e=employee(user),r=get(id);if(r.status!=='pending'||!reviewer(r,user,e))fail('Only the current reviewer can transfer this request.',403);return {revision:r.revision,people:employees.get().employees.filter(person=>person.name&&!person.accountDisabled&&person.id!==e.id&&person.id!==r.employee.id).map(person=>({id:person.id,name:person.name,position:person.position,station:accounts.isHeadquarter(person)?'HQ':person.station,account:accounts.isHeadquarter(person)?'HQ':person.account,...require('./requestPerson')(person,employees)}))};},
+  list(user){autoComplete();const e=employee(user);return {employee:{id:e.id,name:e.name,...require('./requestPerson')(e,employees),position:e.position,...accounts.scope(e)},canCreate:canCreate(e),canManageRequests:Boolean(administrator(user,e)),requests:db.prepare('SELECT data FROM new_access_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,user,e)).map(r=>view(r,user,e))};},
   create:db.transaction((user,body)=>{
    const e=employee(user);if(!canCreate(e))fail('Only the Main Account Business Manager can request new access.',403);
    if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(body.requestId||''))fail('Invalid request reference.');
    const fields=cleanFields(body.fields||{},e),existing=db.prepare('SELECT data FROM new_access_requests WHERE id=?').get(body.requestId);
-   if(existing){const old=JSON.parse(existing.data);if(old.status==='deleted')fail('This request was deleted. Start a new request.',409);if(old.employee.id!==e.id)fail('Only the requester can edit this request.',403);if(old.status==='draft'){if(body.revision!==old.revision)fail('Request changed. Reload before resubmitting.',409);old.fields=fields;old.status='pending';old.revision++;delete old.returnedTo;delete old.reviewDraft;old.submittedAt=event(old,e,'submit','Resubmitted to System Admin');put(old);return view(old,user,e);}if(JSON.stringify({...old.fields,position:old.fields.position||'Agent'})!==JSON.stringify(fields))fail('Request reference already used.',409);return view(old,user,e);}
+   if(existing){const old=JSON.parse(existing.data);if(old.status==='deleted')fail('This request was deleted. Start a new request.',409);if(old.employee.id!==e.id)fail('Only the requester can edit this request.',403);if(old.status==='draft'){if(body.revision!==old.revision)fail('Request changed. Reload before resubmitting.',409);old.fields=fields;old.status='pending';old.revision++;delete old.returnedTo;delete old.reviewDraft;old.submittedAt=event(old,e,'submit','Resubmitted for approval');put(old);return view(old,user,e);}if(JSON.stringify({...old.fields,position:old.fields.position||'Agent'})!==JSON.stringify(fields))fail('Request reference already used.',409);return view(old,user,e);}
    const scope=accounts.scope(e),r={id:body.requestId,title:scope.station+'/'+scope.account+' Request New Access',employee:{id:e.id,name:e.name,eid:e.eid||'',...scope},fields,status:'pending',revision:1,approvals:[],history:[]};
    r.submittedAt=event(r,e,'submit','Submitted to System Admin for approval');put(r);return view(r,user,e);
   }),
   decide:db.transaction((user,id,body)=>{
-   autoComplete();const e=employee(user);if(!owner(user,e))fail('Only a System Admin can approve new access requests.',403);
-   const r=get(id);if(body.revision!==r.revision)fail('Request changed. Refresh before reviewing.',409);
+   autoComplete();const e=employee(user),r=get(id);if(!reviewer(r,user,e))fail('Only the current reviewer can review this new access request.',403);
+   if(body.revision!==r.revision)fail('Request changed. Refresh before reviewing.',409);
    if(r.status!=='pending')fail('This request is no longer awaiting approval.',409);
-   if(!['approve','reject','return'].includes(body.action))fail('Choose approve, reject or return.');
+   if(!['approve','reject','return','transfer'].includes(body.action))fail('Choose approve, reject, return or transfer.');
    const note=String(body.note||'').trim()||(body.action==='approve'?'Approve':'');if(note.length>2000||['reject','return'].includes(body.action)&&!note)fail('Enter a reason for rejection or return (up to 2,000 characters).');
+   if(body.action==='transfer'){
+    const target=employees.get().employees.find(person=>person.id===body.employeeId&&person.name&&!person.accountDisabled);
+    if(!target||target.id===e.id||target.id===r.employee.id)fail('Choose another active employee, excluding the requester.');
+    event(r,e,'transfer','Transferred to '+target.name,note);Object.assign(r.history.at(-1),{targetId:target.id,targetName:target.name,position:e.position});
+    r.reviewerId=target.id;r.reviewerName=target.name;r.reviewerPosition=target.position;delete r.reviewDraft;r.revision++;put(r);return view(r,user,e);
+   }
    if(body.action==='return'){event(r,e,'return','Returned to requester for revision',note);r.status='draft';r.returnedTo=r.employee.id;r.approvals=[];delete r.approvedAt;delete r.reviewDraft;r.revision++;put(r);return view(r,user,e);}
    const at=event(r,e,body.action,body.action==='approve'?'Approved — awaiting requester completion':'Rejected',note);
    delete r.reviewDraft;delete r.autoCompleted;r.approvals.push({employeeId:e.id,name:e.name,position:e.position,action:body.action,note,at});r.status=body.action==='approve'?'approved':'rejected';if(r.status==='approved')r.approvedAt=at;r.revision++;
@@ -57,7 +66,7 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
   }),
   recall:db.transaction((user,id,body)=>{
    autoComplete();const e=employee(user),r=get(id),approval=r.approvals?.at(-1);
-   if(!owner(user,e)||approval?.employeeId!==e.id)fail('Only the person who submitted this review can recall it.',403);
+   if(!reviewer(r,user,e)||approval?.employeeId!==e.id)fail('Only the person who submitted this review can recall it.',403);
    if(body.revision!==r.revision)fail('Request changed. Refresh before recalling.',409);
    if(!['approved','rejected'].includes(r.status))fail('Only an unfinished review can be recalled.',409);
    r.reviewDraft={employeeId:e.id,note:approval.note||'',action:approval.action};
@@ -85,6 +94,7 @@ function registerNewAccess(app,{employees,profiles,authenticate,now}){
  app.get('/new-access-api',handle(req=>store.list(req.newAccessUser)));
  app.post('/new-access-api',handle(req=>store.create(req.newAccessUser,req.body)));
  app.get('/new-access-api/:id',handle(req=>store.read(req.newAccessUser,req.params.id)));
+ app.get('/new-access-api/:id/transfer-options',handle(req=>store.transferOptions(req.newAccessUser,req.params.id)));
  app.post('/new-access-api/:id/decision',handle(req=>store.decide(req.newAccessUser,req.params.id,req.body)));
  app.post('/new-access-api/:id/recall',handle(req=>store.recall(req.newAccessUser,req.params.id,req.body)));
  app.post('/new-access-api/:id/lifecycle',handle(req=>store.lifecycle(req.newAccessUser,req.params.id,req.body)));

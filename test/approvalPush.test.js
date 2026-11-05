@@ -10,6 +10,18 @@ function fixture(t){
  t.after(()=>{service.close();db.close();});return {db,employees,profiles,users,sent,service,device};
 }
 const uniformBody=()=>({workflowRevision:3,route:[{id:'template-3-0',position:'Supervisor',employeeId:'e1'},{id:'template-3-1',position:'Manager',employeeId:'e2'}],requestId:crypto.randomUUID(),reason:'annual',items:Array.from({length:6},(_,i)=>({size:i===0?'38':'',pieces:i===0?2:'',order:'',reusable:'',nonReusable:''}))});
+
+test('new access transfers notify only the assigned reviewer, including a later transfer back',async t=>{
+ const f=fixture(t),owner={...f.users[2],email:'lake@mu.com'},store=require('../has/server/newAccessRequests').createNewAccessStore(f);
+ const current=f.employees.get();f.employees.save({...current,employees:current.employees.map(person=>person.id==='e0'?{...person,position:'Business Manager'}:person)},{email:'lake@mu.com'});
+ attachPush(store,{db:f.db,source:'new_access',read:(user,id)=>store.read(user,id)});
+ f.device('e1','supervisor-phone');f.device('e3','other-reviewer');
+ let r=store.create(f.users[0],{requestId:crypto.randomUUID(),fields:{name:'NEW EMPLOYEE',station:'LAX',account:'MU',email:'new@example.test',position:'Agent'}});
+ r=store.decide(owner,r.id,{revision:r.revision,action:'transfer',employeeId:'e1'});await f.service.flush();assert.deepEqual(f.sent.map(row=>row.token),['supervisor-phone']);
+ r=store.decide(f.users[1],r.id,{revision:r.revision,action:'transfer',employeeId:'e3'});await f.service.flush();assert.deepEqual(f.sent.map(row=>row.token),['supervisor-phone','other-reviewer']);
+ r=store.decide(f.users[3],r.id,{revision:r.revision,action:'transfer',employeeId:'e1'});await f.service.flush();assert.deepEqual(f.sent.map(row=>row.token),['supervisor-phone','other-reviewer','supervisor-phone']);
+ assert.equal(store.read(f.users[1],r.id).canReview,true);assert.equal(store.read(f.users[3],r.id).canReview,false);
+});
 test('real approval permissions, multi-device, stage progression, retries and restarts do not broadcast or duplicate',async t=>{
  const f=fixture(t),store=require('../has/server/uniformRequests').createUniformStore(f);
  attachPush(store,{db:f.db,source:'uniform',read:(u,id)=>store.read(u,id)});
