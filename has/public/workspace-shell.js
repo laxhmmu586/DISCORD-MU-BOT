@@ -5,7 +5,7 @@
   const main = document.querySelector('main.profile-shell');
   const account = document.getElementById('flight-account');
   if (!header || !sidebar || !main || !account) return;
-  const current = location.pathname;
+  const current = location.pathname.startsWith('/has-report-dashboard') ? '/has-report' : location.pathname;
   const artwork = (name) => `<span class="art-icon icon-${name}" aria-hidden="true"></span>`;
   const menuIcon = '<svg class="menu-icon" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="workspace-menu-blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a8e4ff"/><stop offset=".42" stop-color="#469aff"/><stop offset="1" stop-color="#105bd4"/></linearGradient></defs><g fill="#175bc0" opacity=".22"><rect x="10" y="12" width="28" height="7" rx="3.5"/><rect x="10" y="23" width="28" height="7" rx="3.5"/><rect x="10" y="34" width="28" height="7" rx="3.5"/></g><g fill="url(#workspace-menu-blue)" stroke="#c6e7ff" stroke-width="1"><rect x="10" y="9" width="28" height="7" rx="3.5"/><rect x="10" y="20" width="28" height="7" rx="3.5"/><rect x="10" y="31" width="28" height="7" rx="3.5"/></g></svg>';
   header.classList.add('home-topbar');

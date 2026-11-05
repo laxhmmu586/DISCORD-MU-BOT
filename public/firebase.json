@@ -167,7 +167,7 @@
         ]
       },
       {
-        "source": "/{has-network.js,service-common.js,has-pbb-config.js}",
+        "source": "/{has-network.js,service-common.js,has-pbb-config.js,dashboard-charge.js}",
         "headers": [
           {
             "key": "Cache-Control",
@@ -1111,6 +1111,10 @@
       {
         "source": "/has-report-access.js",
         "destination": "/has/has-report-access.js"
+      },
+      {
+        "source": "/dashboard-charge.js",
+        "destination": "/has/dashboard-charge.js"
       },
       {
         "source": "/has-report-dashboard.css",
