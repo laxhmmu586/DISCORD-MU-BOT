@@ -17,3 +17,11 @@ for(const page of ['briefing','has-report','qa','has-pbb-dashboard','read-sign',
 test('legacy default-settings and report-grid root URLs remain valid for cached pages',()=>{
  for(const url of ['/briefing-defaults.js','/briefing-defaults.css','/has-report-grid.js','/dashboard-charge.js'])assert(hostedFile(url)&&fs.existsSync(hostedFile(url)),url);
 });
+
+test('dashboard entry pages and animation assets bypass stale caches',()=>{
+ const paths=['/QA','/qa.html','/has-report-dashboard.html','/has-report-dashboard.js','/has-report-dashboard.css','/has/dashboard-charge.js','/has/has-pbb-dashboard.js','/has/read-sign.js'];
+ for(const pathname of paths){
+  const policies=hosting.headers.filter(rule=>rule.source==='/has/**'?pathname.startsWith('/has/'):rule.source.startsWith('/{')?rule.source.slice(2,-1).split(',').some(name=>pathname==='/'+name):rule.source===pathname);
+  assert(policies.some(rule=>rule.headers.some(header=>header.key==='Cache-Control'&&header.value.includes('no-store'))),pathname);
+ }
+});

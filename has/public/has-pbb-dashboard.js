@@ -88,6 +88,12 @@
     '<section class="has-panel"><h2>Uncovered scheduled flights ('+missing.length+')</h2>'+
     (missing.length?'<div class="has-table-wrap"><table><thead><tr><th>Date</th><th>Flight</th><th>Operation</th></tr></thead><tbody>'+missing.map(r=>'<tr><td>'+esc(r.date)+'</td><td>'+esc(r.flightNo)+'</td><td>'+(r.type==='arrival'?'Arrival':'Departure')+'</td></tr>').join('')+'</tbody></table></div>':'<p>No uncovered scheduled flights for this date range.</p>')+'</section>');
   }
+  results.querySelectorAll('.has-totals strong,.has-chart-summary strong').forEach((number,index)=>{
+   if(number.dataset.chargeNumber!==undefined)return;
+   const value=Number(number.textContent.replaceAll(',','').trim());
+   if(!Number.isFinite(value))return;
+   number.dataset.chargeNumber=value;number.dataset.chargeKey='qa-count-'+index;
+  });
   fitChart(d);
   window.chargeDashboard?.(results);
   $('has-status').textContent='Updated '+new Date().toLocaleTimeString()+' · Refreshes every 30 seconds';

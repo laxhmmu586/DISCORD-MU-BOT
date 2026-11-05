@@ -3,6 +3,7 @@
  const hours=new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),counts=new Intl.NumberFormat('en-US',{maximumFractionDigits:0}),axis=new Intl.NumberFormat('en-US',{maximumFractionDigits:2});
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit'}).formatToParts(new Date()),currentMonth=today.find(p=>p.type==='year').value+'-'+today.find(p=>p.type==='month').value;
  const supplied=new URLSearchParams(location.search).get('year');$('dashboard-year').value=/^\d{4}$/.test(supplied||'')&&+supplied>=2026?supplied:currentMonth.slice(0,4);
+ const summaryLabels=['Budget hours','Actual hours','Recharge hours','Hours balance','Arrival delays','Departure delays'];
  let allowed=false,generation=0,data=null;
  const text=(tag,value,className)=>{const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;};
  const formatted=(value,integer=false)=>Number.isFinite(value)?(integer?counts:hours).format(value):'—';
@@ -15,7 +16,7 @@
  }
  function summary(){
   const comparable=data.months.filter(settled),savedWWH=data.months.filter(row=>row.hasWWH&&row.month<=currentMonth),sum=(rows,key)=>rows.reduce((n,row)=>n+(Number.isFinite(row[key])?row[key]:0),0),surplus=comparable.filter(row=>row.state==='surplus').length,overrun=comparable.filter(row=>row.state==='overrun').length;
-  const arrivals=data.months.filter(row=>row.month<=currentMonth&&row.flightDelays?.arrival.evaluated>0),departures=data.months.filter(row=>row.month<=currentMonth&&row.flightDelays?.departure.evaluated>0);const metrics=[['Budget hours',sum(comparable,'budgetHours'),'Months with DA and WWH'],['Actual hours',sum(comparable,'actualHours'),'Weighted regular-hour equivalents'],['Recharge hours',sum(savedWWH,'rechargeHours'),'Saved WWH · through current month'],['Hours balance',sum(comparable,'balanceHours'),surplus+' under · '+overrun+' over months'],['Arrival delays',arrivals.reduce((n,row)=>n+row.flightDelays.arrival.total,0),'DA · complete STA / ATA pairs',true],['Departure delays',departures.reduce((n,row)=>n+row.flightDelays.departure.total,0),'DA · complete STD / ATD pairs',true]];
+  const arrivals=data.months.filter(row=>row.month<=currentMonth&&row.flightDelays?.arrival.evaluated>0),departures=data.months.filter(row=>row.month<=currentMonth&&row.flightDelays?.departure.evaluated>0);const metrics=[[summaryLabels[0],sum(comparable,'budgetHours'),'Months with DA and WWH'],[summaryLabels[1],sum(comparable,'actualHours'),'Weighted regular-hour equivalents'],[summaryLabels[2],sum(savedWWH,'rechargeHours'),'Saved WWH · through current month'],[summaryLabels[3],sum(comparable,'balanceHours'),surplus+' under · '+overrun+' over months'],[summaryLabels[4],arrivals.reduce((n,row)=>n+row.flightDelays.arrival.total,0),'DA · complete STA / ATA pairs',true],[summaryLabels[5],departures.reduce((n,row)=>n+row.flightDelays.departure.total,0),'DA · complete STD / ATD pairs',true]];
   $('dashboard-summary').replaceChildren(...metrics.map(([label,value,note,integer],i)=>{const source=i<2||i===3?comparable:savedWWH,hasValue=i===4?arrivals.length>0:i===5?departures.length>0:source.some(row=>Number.isFinite(row[['budgetHours','actualHours','rechargeHours','balanceHours'][i]])),card=text('article','','dashboard-stat');const number=text('strong',formatted(hasValue?value:null,integer));if(hasValue){number.dataset.chargeNumber=value;number.dataset.chargeDigits=integer?'0':'2';number.dataset.chargeKey=$('dashboard-year').value+':'+label;}card.append(text('h2',label),number,text('p',note));if(i===3&&comparable.length)card.classList.add(value>=0?'is-surplus':'is-overrun');return card;}));
   $('dashboard-coverage').textContent=comparable.length+' comparable months through '+names[Number(currentMonth.slice(5))-1]+' '+currentMonth.slice(0,4)+'. Missing DA/WWH and formula errors are excluded from comparisons; future reports are excluded from annual totals. Recharge totals use saved WWH. Flight delay totals use complete DA time pairs. Current-month figures are provisional.';
  }
@@ -59,14 +60,25 @@
    }return tr;
   }));
  }
- function clear(){data=null;$('dashboard-summary').replaceChildren();$('dashboard-months').replaceChildren();for(const id of ['budget','balance','recharge','delay'])$('dashboard-'+id+'-chart').replaceChildren();$('dashboard-coverage').textContent='';$('dashboard-updated').textContent='';}
+ function clear(loading=false){
+  data=null;
+  $('dashboard-summary').replaceChildren(...summaryLabels.map((label,index)=>{
+   const card=text('article','','dashboard-stat');
+   card.append(text('h2',label),text('strong',loading?(index<4?'0.00':'0'):'—'),text('p',loading?'Loading saved reports…':'No data loaded.'));
+   return card;
+  }));
+  $('dashboard-months').replaceChildren();
+  for(const id of ['budget','balance','recharge','delay'])$('dashboard-'+id+'-chart').replaceChildren(text('p',loading?'Loading chart…':'No data loaded.','dashboard-loading-plot'));
+  $('dashboard-coverage').textContent='';$('dashboard-updated').textContent='';
+ }
  async function load(){
   const year=$('dashboard-year').value,request=++generation;if(!allowed)return;if(!/^\d{4}$/.test(year)||+year<2026){$('dashboard-status').textContent='Select a year from 2026 onward.';clear();return;}
-  $('dashboard-refresh').disabled=true;clear();$('dashboard-status').textContent='Loading '+year+' dashboard…';
+  $('dashboard-refresh').disabled=true;clear(true);$('dashboard-status').textContent='Loading '+year+' dashboard…';
   try{const next=await window.hasReportRequest('/dashboard/'+year);if(request!==generation||!allowed)return;data=next;summary();window.chargeDashboard?.($('dashboard-summary'),{replay:true});charts();table();$('dashboard-scope').textContent=data.scope.station+'/'+data.scope.account+' · Main Account';$('dashboard-status').textContent='';$('dashboard-updated').textContent='Updated '+new Date(data.generatedAt).toLocaleTimeString();history.replaceState(null,'','?year='+year);}
-  catch(error){if(request!==generation)return;$('dashboard-status').textContent=error.message;if([401,403].includes(error.status)){allowed=false;$('dashboard-controls').hidden=true;clear();}}
+  catch(error){if(request!==generation)return;clear();$('dashboard-status').textContent=error.message;if([401,403].includes(error.status)){allowed=false;$('dashboard-controls').hidden=true;clear();}}
   finally{if(request===generation){$('dashboard-refresh').disabled=false;}}
  }
+ clear(true);
  $('dashboard-year').addEventListener('change',load);$('dashboard-refresh').onclick=load;$('dashboard-delay-metric').onchange=()=>{if(data)charts();};
  window.addEventListener('has-report-context',event=>{const ctx=event.detail;generation++;allowed=Boolean(ctx.canDashboard&&!ctx.error);$('dashboard-controls').hidden=!allowed;clear();if(!allowed){$('dashboard-status').textContent=ctx.error||'Dashboard access requires Supervisor or above in your Main Account.';return;}$('dashboard-scope').textContent=ctx.scope.station+'/'+ctx.scope.account+' · Main Account';void load();});
  if(window.hasReportContext)window.dispatchEvent(new CustomEvent('has-report-context',{detail:window.hasReportContext}));

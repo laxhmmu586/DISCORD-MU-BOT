@@ -1,6 +1,7 @@
 (()=>{
  const $=id=>document.getElementById(id),status=$('rs-status');let data,selected,filter='all',busy=false,publishId=crypto.randomUUID(),draft=null,strokes=[],drawing=null,clockOffset=0,reportRefreshing=false,detailRevision=0;
  const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
+ const count=(value,key)=>{const span=node('span',String(value));span.dataset.chargeNumber=value;span.dataset.chargeKey=key;return span;};
  const date=(v,short=false)=>new Date(v).toLocaleString('en-US',{timeZone:'America/Los_Angeles',...(short?{month:'short',day:'numeric',year:'numeric'}:{dateStyle:'medium',timeStyle:'short'})})+(short?'':' PT');
  const badge=m=>node('span',{signed:'Signed',pending:'Awaiting your signature',overdue:'Overdue','not-required':'Not assigned'}[m.myStatus],'rs-badge '+m.myStatus);
  const api=async(path='',body,blob)=>{const result=await peopleApi('/read-sign-api'+path,body,blob);if(body){window.dispatchEvent(new Event('read-sign-changed'));try{localStorage.setItem('read-sign-updated',String(Date.now()));}catch{}}return result;};
@@ -25,7 +26,7 @@
   $('rs-completion-reports').hidden=!Array.isArray(memo.completionReports);
   const container=$('rs-report-list');container.replaceChildren();
   if(!memo.completionReports)return;
-  $('rs-report-count').textContent=`${memo.reportedAccounts} / ${memo.totalAccounts} accounts complete · ${memo.receivedAccounts} reports received`;
+  $('rs-report-count').replaceChildren(count(memo.reportedAccounts,memo.id+':complete-accounts'),' / ',count(memo.totalAccounts,memo.id+':total-accounts'),' accounts complete · ',count(memo.receivedAccounts,memo.id+':received-reports'),' reports received');
   const scopes=memo.completionScopes||[];
   const stations=[...new Set(scopes.map(scope=>scope.station))].sort((a,b)=>Number(b==='LAX')-Number(a==='LAX')||a.localeCompare(b));
   if(reportView.memoId!==memo.id){reportView.memoId=memo.id;reportView.station=stations[0];reportView.account=null;}
@@ -48,11 +49,11 @@
    card.append(ring);card.onclick=()=>{reportView.account=scope.account;reports(memo);};grid.append(card);
   }
   container.append(grid);
-  window.chargeDashboard?.(container);
+
   const report=memo.completionReports.find(report=>report.station===reportView.station&&report.account===reportView.account);
   const detail=node('section',null,'rs-report-detail');detail.append(node('h4',reportView.station+' / '+reportView.account));
-  if(!report){detail.append(node('p',accounts.find(scope=>scope.account===reportView.account)?.targeted?'Awaiting the Business Manager’s completion report.':'No employees assigned to this memo in this account.','rs-muted'));container.append(detail);return;}
-  detail.append(node('p',`${report.signed} / ${report.total} completed · Sent by ${report.submittedBy.name} · ${date(report.deliverAt)}`,'rs-muted'));
+  if(!report){detail.append(node('p',accounts.find(scope=>scope.account===reportView.account)?.targeted?'Awaiting the Business Manager’s completion report.':'No employees assigned to this memo in this account.','rs-muted'));container.append(detail);window.chargeDashboard?.($('rs-completion-reports'));return;}
+  const summary=node('p',null,'rs-muted');summary.append(count(report.signed,memo.id+':'+report.station+':'+report.account+':signed'),' / ',count(report.total,memo.id+':'+report.station+':'+report.account+':total'),` completed · Sent by ${report.submittedBy.name} · ${date(report.deliverAt)}`);detail.append(summary);
   const table=node('table',null,'rs-table'),head=node('tr');
   for(const title of ['Employee','Signature','Acknowledged'])head.append(node('th',title));
   const thead=node('thead'),tbody=node('tbody');thead.append(head);
@@ -61,14 +62,16 @@
    if(person.signature){const img=node('img');img.className='rs-signature';img.src=person.signature;img.alt='Signature of '+person.name;signature.append(img);}
    row.append(node('td',person.name),signature,node('td',person.signedAt?date(person.signedAt):'Awaiting signature'));tbody.append(row);
   }
-  table.append(thead,tbody);const wrap=node('div',null,'rs-table-wrap');wrap.append(table);detail.append(wrap);container.append(detail);
+  table.append(thead,tbody);const wrap=node('div',null,'rs-table-wrap');wrap.append(table);detail.append(wrap);container.append(detail);window.chargeDashboard?.($('rs-completion-reports'));
  }
  function list(){
   const q=$('rs-search').value.toLowerCase();$('rs-list').replaceChildren();
   const memos=data.memos.filter(m=>(filter==='all'||filter==='signed'&&m.myStatus==='signed'||filter==='pending'&&['pending','overdue'].includes(m.myStatus))&&(m.subject+' '+m.memoNumber).toLowerCase().includes(q));
-  for(const m of memos){const b=node('button',null,selected?.id===m.id?'is-selected':'');b.type='button';b.append(badge(m),node('h3',m.subject),node('p',`Deadline · ${date(m.deadline,true)}`));if(data.canPublish){const bar=node('span',null,'rs-progress'),fill=node('i');fill.style.width=(m.total?m.signed/m.total*100:0)+'%';bar.append(fill);b.append(bar,node('p',`${m.signed} / ${m.total} signed · ${m.total-m.signed} pending`));}if(m.reportedAccounts!==undefined)b.append(node('p',`${m.reportedAccounts} / ${m.totalAccounts} accounts reported complete`));b.onclick=()=>open(m.id).catch(e=>status.textContent=e.message);$('rs-list').append(b);}
+  for(const m of memos){const b=node('button',null,selected?.id===m.id?'is-selected':'');b.type='button';b.append(badge(m),node('h3',m.subject),node('p',`Deadline · ${date(m.deadline,true)}`));if(data.canPublish){const bar=node('span',null,'rs-progress'),fill=node('i');fill.dataset.chargeWidth=m.total?m.signed/m.total*100:0;fill.dataset.chargeKey=m.id;bar.append(fill);const counts=node('p');counts.append(count(m.signed,m.id+':signed'),' / ',count(m.total,m.id+':total'),' signed · ',count(m.total-m.signed,m.id+':pending'),' pending');b.append(bar,counts);}if(m.reportedAccounts!==undefined)b.append(node('p',`${m.reportedAccounts} / ${m.totalAccounts} accounts reported complete`));b.onclick=()=>open(m.id).catch(e=>status.textContent=e.message);$('rs-list').append(b);}
   if(!memos.length)$('rs-list').append(node('p','No Read & Sign records in this view.','rs-empty'));
   $('stat-pending').textContent=data.memos.filter(m=>['pending','overdue'].includes(m.myStatus)).length;$('stat-signed').textContent=data.memos.filter(m=>m.myStatus==='signed').length;$('stat-overdue').textContent=data.memos.filter(m=>m.myStatus==='overdue').length;
+  for(const id of ['stat-pending','stat-signed','stat-overdue']){$(id).dataset.chargeNumber=$(id).textContent;$(id).dataset.chargeKey=id;}
+  window.chargeDashboard?.(document.querySelector('.rs-stats'));window.chargeDashboard?.($('rs-list'));
   document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter===filter)));
  }
  async function load(){data=await api();$('publish-memo').hidden=!data.canPublish;document.querySelector('.rs-subtitle').textContent=data.mainAccount.station+' / '+data.mainAccount.account+' · Read, acknowledge and sign.';const account=$('memo-account');account.replaceChildren(...(data.canSelectAccounts?[new Option('All accounts','ALL')]:[]),...(data.recipientAccounts||[]).map(a=>new Option(a.station+' / '+a.account,JSON.stringify([a.station,a.account]))));account.disabled=!data.canSelectAccounts;list();return data;}

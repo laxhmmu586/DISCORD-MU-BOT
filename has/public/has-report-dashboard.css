@@ -39,3 +39,4 @@
  .workspace-glass .home-topbar .flight-account > .login-button { width: 44px; padding: 4px; justify-content: center; }
  .workspace-glass .home-topbar .login-button > .flight-account-name, .workspace-glass .home-topbar .login-button > span[aria-hidden=true]:not(.flight-user-avatar) { display: none; }
 }
+.dashboard-loading-plot { display: grid; place-items: center; min-height: 250px; padding: 20px; border-left: 1px solid #d6e3f3; border-bottom: 1px solid #d6e3f3; background: repeating-linear-gradient(to top, transparent 0 49px, #d6e3f360 49px 50px); color: #7b99c0; }

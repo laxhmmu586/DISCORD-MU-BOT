@@ -3,14 +3,16 @@
  window.chargeDashboard=(root,{replay=false}={})=>{
   if(!root)return;
   const previous=states.get(root);
-  if(previous?.frame){cancelAnimationFrame(previous.frame);previous.finish?.();}
+  previous?.dispose();
+  previous?.restore();
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const state={values:previous?.values||new Map(),frame:null},records=[];
   states.set(root,state);
-  function add(element,key,value,paint){
+  function add(element,key,value,paint,view=element){
    const changed=replay||state.values.get(key)!==value;
-   state.values.set(key,value);
-   paint(changed&&!matchMedia('(prefers-reduced-motion: reduce)').matches?0:1);
-   if(changed)records.push({element,paint});
+   paint(changed&&!reduced?0:1);
+   if(changed&&!reduced)records.push({element,view,key,value,paint,elapsed:0,last:null,visible:false,done:false});
+   else state.values.set(key,value);
   }
   root.querySelectorAll('svg[data-charge-percent]').forEach((svg,index)=>{
    if(svg.dataset.chargePercent==='')return;
@@ -26,7 +28,15 @@
    const target=Number(element.dataset.chargeNumber);if(!Number.isFinite(target))return;
    const digits=Number(element.dataset.chargeDigits||0);
    const formatter=new Intl.NumberFormat('en-US',{minimumFractionDigits:digits,maximumFractionDigits:digits});
-   add(element,'number:'+(element.dataset.chargeKey||index),target+':'+digits,progress=>{element.textContent=formatter.format(progress===0?0:target*progress)+(element.dataset.chargeSuffix||'');});
+   add(element,'number:'+(element.dataset.chargeKey||index),target+':'+digits,progress=>{
+    element.textContent=formatter.format(progress===0?0:target*progress)+(element.dataset.chargeSuffix||'');
+   });
+  });
+  root.querySelectorAll('[data-charge-width]').forEach((element,index)=>{
+   const target=Number(element.dataset.chargeWidth);if(!Number.isFinite(target))return;
+   add(element,'width:'+(element.dataset.chargeKey||index),String(target),progress=>{
+    element.style.width=Math.min(100,Math.max(0,target))*progress+'%';
+   },element.parentElement);
   });
   root.querySelectorAll('svg[data-charge-baseline]').forEach((svg,index)=>{
    const baseline=Number(svg.dataset.chargeBaseline);
@@ -41,16 +51,44 @@
     }
    });
   });
-  state.finish=()=>{for(const record of records)record.paint(1);};
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches||!records.length)return;
-  let started;
+  state.restore=()=>{for(const record of records)record.paint(1);};
+  let observer,appearance;
+  function schedule(){if(!state.frame)state.frame=requestAnimationFrame(frame);}
+  function visibility(){for(const record of records)record.last=null;schedule();}
+  state.dispose=()=>{
+   if(state.frame)cancelAnimationFrame(state.frame);
+   state.frame=null;observer?.disconnect();appearance?.disconnect();
+   document.removeEventListener('visibilitychange',visibility);
+  };
   function frame(at){
-   if(started===undefined)started=at;
-   const progress=Math.min(1,(at-started)/1100),charge=1-(1-progress)**3;
-   for(const record of records)if(record.element.isConnected)record.paint(charge);
-   if(progress<1&&root.isConnected)state.frame=requestAnimationFrame(frame);
-   else state.frame=null;
+   state.frame=null;
+   let active=false;
+   for(const record of records){
+    if(record.done)continue;
+    if(!record.element.isConnected){record.done=true;continue;}
+    if(document.hidden||!record.visible||getComputedStyle(record.element).visibility!=='visible'){record.last=null;continue;}
+    if(record.last!==null)record.elapsed+=at-record.last;
+    record.last=at;
+    const progress=Math.min(1,record.elapsed/1600);
+    record.paint(1-(1-progress)**3);
+    if(progress===1){record.done=true;state.values.set(record.key,record.value);}
+    else active=true;
+   }
+   if(records.every(record=>record.done))state.dispose();
+   else if(active)schedule();
   }
-  state.frame=requestAnimationFrame(frame);
+  if(!records.length)return;
+  document.addEventListener('visibilitychange',visibility);
+  if(typeof IntersectionObserver==='function'){
+   const byElement=new Map();
+   for(const record of records){const group=byElement.get(record.view)||[];group.push(record);byElement.set(record.view,group);}
+   observer=new IntersectionObserver(entries=>{
+    for(const entry of entries)for(const record of byElement.get(entry.target)){record.visible=entry.isIntersecting;if(!record.visible)record.last=null;}
+    schedule();
+   },{threshold:0.05});
+   for(const element of byElement.keys())observer.observe(element);
+  }else{for(const record of records)record.visible=true;schedule();}
+  appearance=new MutationObserver(schedule);
+  for(const element of [document.documentElement,document.body])appearance.observe(element,{attributes:true,attributeFilter:['class','style','data-permission-pending']});
  };
 })();
