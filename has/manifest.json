@@ -161,6 +161,7 @@
     "briefing.css",
     "briefing.html",
     "briefing.js",
+    "dashboard-charge.js",
     "dashboard-profile.js",
     "department-access.js",
     "download-filename.js",

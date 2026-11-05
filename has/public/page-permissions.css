@@ -14,7 +14,7 @@
 }
 .page-permission-dialog *, .page-permission-dialog *::before { box-sizing: border-box; }
 .page-permission-dialog::backdrop { background: #254f7c40; backdrop-filter: blur(5px); }
-.page-permission-dialog form { display: grid; grid-template-columns: 270px minmax(0, 1fr); height: 100%; margin: 0; }
+.page-permission-dialog form { display: grid; grid-template-columns: 230px minmax(0, 1fr); height: 100%; margin: 0; }
 .page-permission-dialog button { font: inherit; cursor: pointer; }
 .page-permission-dialog button:disabled { cursor: default; opacity: .55; }
 .page-permission-dialog :focus-visible { outline: 3px solid #176bef; outline-offset: 3px; }
@@ -33,7 +33,7 @@
 }
 .permission-sidebar [role=tab]:hover { background: #ffffff80; }
 .permission-sidebar [aria-selected=true] { background: #ffffffc9; border-color: #fff; box-shadow: 0 3px 12px #417bb018; }
-.permission-nav-icon, .permission-avatar {
+.permission-nav-icon {
   display: grid; place-items: center; flex: none; border-radius: 50%; border: 2px solid #fff;
   background: linear-gradient(140deg, #d2e5ff, #afcef5); color: #527fb5;
 }
@@ -50,39 +50,34 @@
 .permission-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; padding: 24px 30px 20px; }
 .permission-main > :not(.permission-audience) { flex-shrink: 0; }
 .page-permission-dialog .permission-main > header { display: flex; align-items: center; justify-content: space-between; }
-.permission-main > header > span { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #88a0bf; }
+.permission-main > header h3 { margin: 0; font-size: 18px; color: #24466f; }
 .page-permission-dialog .permission-close {
   display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
   border: 1px solid #fff; border-radius: 50%; background: #e4efff; color: #6081a9; font-size: 21px;
 }
-.permission-heading { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 25px 0 23px; gap: 9px; }
-.permission-avatar { width: 70px; height: 70px; border-width: 3px; font-size: 24px; font-weight: 600; box-shadow: 0 4px 12px #6b8fba0d; }
-.permission-heading h3 { font-size: 25px; font-weight: 650; letter-spacing: -.6px; color: #24466f; margin: 4px 0 0; }
-.permission-heading p { margin: 0; font-size: 13px; color: #7b92b1; }
-.permission-page-name { padding: 5px 10px; border-radius: 7px; background: #dceaff; color: #7292ba; font-size: 11px; }
 .permission-private {
-  display: flex; align-items: center; gap: 20px; padding: 16px;
+  display: flex; align-items: center; gap: 20px; padding: 10px 12px; margin: 14px 0 12px;
   background: #e1edffb0; border-radius: 11px; cursor: pointer;
 }
 .permission-private > span { flex: 1; }
 .permission-private strong, .permission-private small { display: block; }
 .permission-private strong { color: #426d9e; font-size: 13px; font-weight: 600; }
-.permission-private small { margin-top: 4px; font-size: 11px; color: #6887af; }
-.permission-help { color: #7593b7; font-size: 11px; margin: 22px 0 16px; }
+.permission-private small { display: none; }
 .permission-search { display: block; }
-.permission-search-label { display: block; font-size: 11px; color: #7590b2; margin-bottom: 7px; }
+.permission-search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .page-permission-dialog .permission-search input {
   width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #fff; border-radius: 10px;
   background: #ffffffa6; font: inherit; color: #315984;
 }
 .permission-audience { flex: 1; min-height: 100px; overflow: auto; margin-top: 10px; }
 .permission-audience fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
-.permission-row { display: flex; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid #c9daf0; cursor: pointer; }
+.permission-audience fieldset > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 18px; }
+.permission-row { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 9px 0; border-bottom: 1px solid #c9daf0; cursor: pointer; }
 .permission-row > span:first-child { flex: 1; min-width: 0; display: grid; gap: 6px; }
-.permission-row strong { color: #426d9e; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.permission-row small { color: #819ab9; font-size: 10px; }
-.permission-control { display: grid; justify-items: end; width: 76px; gap: 8px; flex: none; }
-.permission-control b { color: #96a7bc; font-size: 10px; font-weight: 500; }
+.permission-row strong { color: #426d9e; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.permission-row small { display: none; }
+.permission-control { display: grid; justify-items: end; width: 48px; flex: none; }
+.permission-control b { display: none; }
 .permission-control b.is-allowed { color: #239661; }
 .page-permission-dialog .permission-switch {
   appearance: none; -webkit-appearance: none; display: block; position: relative;
@@ -130,8 +125,10 @@ body[data-permission-pending] > :not(.workspace-permission-notice):not(.workspac
   .page-permission-dialog .permission-discard { margin: 0 8px; padding: 5px; font-size: 11px; }
   .permission-main { padding: 16px; }
   .permission-audience { flex: none; overflow: visible; }
-  .permission-heading { padding: 15px 0 20px; }
-  .permission-heading h3 { font-size: 23px; }
+  .permission-audience fieldset > div { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+}
+@media(max-width: 400px) {
+  .permission-audience fieldset > div { grid-template-columns: 1fr; }
 }
 @media(prefers-reduced-motion: no-preference) {
   .page-permission-dialog .permission-switch, .page-permission-dialog .permission-switch::before { transition: background .18s, border-color .18s, transform .18s; }

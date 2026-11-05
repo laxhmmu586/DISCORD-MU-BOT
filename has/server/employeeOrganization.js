@@ -2,6 +2,29 @@ const model=require('../public/organization-model');
 const positions=require('../public/employee-positions');
 const accountGroups=require('../public/employee-account-groups');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
+function organizationRows(store){
+ const db=store.db;
+ const table=name=>db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name)?db.prepare('SELECT * FROM '+name).all():[];
+ const edges=new Map(table('employee_reporting').map(edge=>[edge.employee_id,edge.manager_id]));
+ const flags=new Map(table('employee_organization_nodes').map(row=>[row.employee_id,row]));
+ const memberships=table('employee_membership_reporting');
+ const all=store.get().employees.filter(row=>!row.mergedInto).map(row=>({
+  ...row,
+  membershipReporting:memberships.filter(value=>value.employee_id===row.id).map(value=>({station:value.station,account:value.account,reportsTo:value.manager_id,unassigned:!!value.unassigned})),
+  reportsTo:edges.get(row.id)||row.reportsTo||'',
+  isInserted:!!flags.get(row.id)?.inserted,
+  createdForOrganization:!!flags.get(row.id)?.created,
+  unassigned:!!flags.get(row.id)?.unassigned,
+  isServerOwner:require('./serverOwners').isOwner(row.loginId),
+  isAdministrator:require('./employees').ADMIN_EMAILS.has(String(row.loginId||'').toLowerCase())
+ }));
+ for(const row of all){
+  const manager=all.find(person=>person.id===row.reportsTo);
+  if(positions.normalize(row.position)==='Agent'&&manager?.position==='Supervisor'&&row.station===manager.station&&row.account===manager.account)row.reportsTo=model.supervisorGroup(row);
+  if(positions.normalize(row.position)==='Agent'&&!row.reportsTo&&!row.unassigned&&all.some(manager=>manager.id!==row.id&&!manager.unassigned&&positions.normalize(manager.position)==='Supervisor'&&manager.station===row.station&&manager.account===row.account))row.reportsTo=model.supervisorGroup(row);
+ }
+ return model.applyDefaultReporting(all);
+}
 function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseDirectory}){
   const db=store.db;
   db.exec('CREATE TABLE IF NOT EXISTS employee_google_link_audit(id INTEGER PRIMARY KEY,uid TEXT NOT NULL,source_employee_id TEXT NOT NULL,target_employee_id TEXT NOT NULL,actor TEXT NOT NULL,at TEXT NOT NULL)');
@@ -9,7 +32,7 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseD
   db.exec('CREATE TABLE IF NOT EXISTS employee_reporting(employee_id TEXT PRIMARY KEY,manager_id TEXT NOT NULL)');
   db.exec('CREATE TABLE IF NOT EXISTS employee_organization_nodes(employee_id TEXT PRIMARY KEY,created INTEGER NOT NULL DEFAULT 0,inserted INTEGER NOT NULL DEFAULT 0,unassigned INTEGER NOT NULL DEFAULT 0)');
   db.exec('CREATE TABLE IF NOT EXISTS employee_membership_reporting(employee_id TEXT NOT NULL,station TEXT NOT NULL,account TEXT NOT NULL,manager_id TEXT NOT NULL,unassigned INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(employee_id,station,account))');
-  const rows=()=>{const edges=new Map(db.prepare('SELECT employee_id,manager_id FROM employee_reporting').all().map(e=>[e.employee_id,e.manager_id])),flags=new Map(db.prepare('SELECT * FROM employee_organization_nodes').all().map(row=>[row.employee_id,row]));const memberships=db.prepare('SELECT * FROM employee_membership_reporting').all();const all=store.get().employees.filter(row=>!row.mergedInto).map(row=>({...row,membershipReporting:memberships.filter(value=>value.employee_id===row.id).map(value=>({station:value.station,account:value.account,reportsTo:value.manager_id,unassigned:!!value.unassigned})),reportsTo:edges.get(row.id)||'',isInserted:!!flags.get(row.id)?.inserted,createdForOrganization:!!flags.get(row.id)?.created,unassigned:!!flags.get(row.id)?.unassigned,isServerOwner:require('./serverOwners').isOwner(row.loginId),isAdministrator:require('./employees').ADMIN_EMAILS.has(String(row.loginId||'').toLowerCase())}));for(const row of all){const manager=all.find(r=>r.id===row.reportsTo);if(positions.normalize(row.position)==='Agent'&&manager?.position==='Supervisor'&&row.station===manager.station&&row.account===manager.account)row.reportsTo=model.supervisorGroup(row);if(positions.normalize(row.position)==='Agent'&&!row.reportsTo&&!row.unassigned&&all.some(manager=>manager.id!==row.id&&!manager.unassigned&&positions.normalize(manager.position)==='Supervisor'&&manager.station===row.station&&manager.account===row.account))row.reportsTo=model.supervisorGroup(row);}return model.applyDefaultReporting(all);};
+  const rows=()=>organizationRows(store);
   const view=access=>{
     const avatars=new Map(db.prepare("SELECT 1 FROM sqlite_master WHERE name='employee_avatars'").get()?db.prepare('SELECT employee_id,data FROM employee_avatars').all().map(row=>[row.employee_id,row.data]):[]);
     const data=store.get(),all=rows(),scoped=scopedView({...data,employees:all},access),googleIds=new Set(access.canManagePending?googleAccounts().map(link=>link.employee_id):[]);
@@ -158,4 +181,4 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseD
     app.post('/employee-admin-api/organization/'+action,(req,res)=>{try{res.json(change(req));onChange();}catch(error){res.status(error.status||400).json({error:error.message});}});
   }
 }
-module.exports={registerOrganization};
+module.exports={registerOrganization,organizationRows};

@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),express=require('express'),Database=require('better-sqlite3');
 const {createReadSignStore,registerReadSign,mailContent,signatureSVG}=require('../has/server/readSign');
-function fixture(t){const db=new Database(':memory:');t.after(()=>db.close());const rows=['Agent','Supervisor','Manager','Lead'].map((position,i)=>({id:'e'+i,name:position+' EXAMPLE',eid:'100'+i,position,email:position.toLowerCase()+'@example.test'}));const employees={db,get:()=>({employees:rows})},profiles={linked:u=>rows.find(e=>e.id===u.uid)},users=rows.map(e=>({uid:e.id,email:e.email}));let time=new Date('2026-10-18T19:00:00Z');const args={employees,profiles,now:()=>time};return {...args,rows,users,store:createReadSignStore(args),setTime:v=>time=new Date(v)};}
+function fixture(t){const db=new Database(':memory:');t.after(()=>db.close());const rows=['Agent','Supervisor','Manager','Lead'].map((position,i)=>({id:'e'+i,name:position+' EXAMPLE',eid:'100'+i,position,email:position.toLowerCase()+'@example.test'}));rows[0].reportsTo='e1';rows[1].reportsTo='e2';rows[3].reportsTo='e1';const employees={db,get:()=>({employees:rows})},profiles={linked:u=>rows.find(e=>e.id===u.uid)},users=rows.map(e=>({uid:e.id,email:e.email}));let time=new Date('2026-10-18T19:00:00Z');const args={employees,profiles,now:()=>time};return {...args,rows,users,store:createReadSignStore(args),setTime:v=>time=new Date(v)};}
 const body=()=>({requestId:crypto.randomUUID(),subject:'Security alert: Data Protection',memoNumber:'SOP-2026-018',body:'Please review the attached SOP.\nBy signing you acknowledge the updated procedure.',deadline:'2026-10-25T23:59:00-07:00',attachments:[{name:'SOP.txt',type:'text/plain',data:Buffer.from('Example policy').toString('base64')}]});
 const signed={acknowledged:true,strokes:[[[.1,.7],[.2,.2],[.3,.8],[.4,.4],[.5,.6],[.7,.3],[.8,.5]]]};
 
@@ -16,7 +16,7 @@ test('Main Account isolation covers lists, detail, attachments, signing and reci
  assert.deepEqual(f.store.list(f.users[2]).memos,[]);assert.throws(()=>f.store.read(f.users[2],memo.id),e=>e.status===404);
  assert.equal(f.store.read(f.users[0],memo.id).subject,memo.subject);
  // A shared HQ memo is visible in both accounts, but its register stays account-local.
- f.rows.push({id:'hq',name:'HQ',position:'President',station:'HQ',account:'HQ',email:'hq@example.test'});
+ f.rows.push({id:'hq',name:'HQ',position:'HQ Safety & Security Manager',station:'HQ',account:'HQ',email:'hq@example.test'});
  const shared=f.store.publish({uid:'hq'},{...body(),targetAccount:'ALL'});
  const detail=f.store.read(f.users[2],shared.id);assert.deepEqual(detail.roster.map(p=>p.id),['e2']);assert.equal(detail.total,1);
  assert.equal(f.store.read(f.users[1],shared.id).total,3);
@@ -63,9 +63,9 @@ test('recipient additions validate the entire batch and accept overdue acknowled
 test('every pictured management title can publish, inspect counts and append old memo recipients',t=>{
  const f=fixture(t),positions=require('../has/public/employee-positions');
  for(const position of positions.readSignPublishers){
-  f.rows[1].position=position;const r=f.store.publish(f.users[1],body());assert.equal(f.store.list(f.users[1]).canPublish,true,position);
-  f.store.sign(f.users[0],r.id,signed);const view=f.store.read(f.users[1],r.id);assert.equal(view.total,4,position);assert.equal(view.signed,1,position);assert.equal(view.canManage,true,position);assert.equal(view.roster.length,4,position);
-  const id='extra-'+r.id;f.rows.push({id,name:'Fictional new recipient',email:'new@example.test',position:'Agent'});const result=f.store.addRecipients(f.users[1],r.id,{employeeIds:[id]});assert.equal(result.signed,1,position);assert.equal(result.total,5,position);f.rows.pop();
+  f.rows[1].position=position;const expected=position==='Business Manager'?3:4;const r=f.store.publish(f.users[1],body());assert.equal(f.store.list(f.users[1]).canPublish,true,position);
+  f.store.sign(f.users[0],r.id,signed);const view=f.store.read(f.users[1],r.id);assert.equal(view.total,expected,position);assert.equal(view.signed,1,position);assert.equal(view.canManage,true,position);assert.equal(view.roster.length,expected,position);
+  const id='extra-'+r.id;f.rows.push({id,name:'Fictional new recipient',email:'new@example.test',position:'Agent',reportsTo:'e1'});const result=f.store.addRecipients(f.users[1],r.id,{employeeIds:[id]});assert.equal(result.signed,1,position);assert.equal(result.total,expected+1,position);f.rows.pop();
  }
  for(const position of ['Agent','Lead','Accounting','Admin Assistant','HRIS Administrator','Unknown']){f.rows[1].position=position;assert.equal(f.store.list(f.users[1]).canPublish,false,position);assert.throws(()=>f.store.publish(f.users[1],{...body(),position:'President'}),e=>e.status===403);}
 });
@@ -73,7 +73,7 @@ test('every pictured management title can publish, inspect counts and append old
 
 test('Main Account publishers exclude secondary memberships and reject forged cross-account publish/add batches atomically',t=>{
  const f=fixture(t);for(const e of f.rows)Object.assign(e,{station:'LAX',account:'CZ'});
- f.rows[1].position='Business Manager';f.rows[1].additionalAccounts=[{station:'LAX',account:'MU'}];
+ f.rows[1].position='Business Manager';f.rows[1].reportsTo='';f.rows[2].position='Agent';f.rows[2].reportsTo='e1';f.rows[1].additionalAccounts=[{station:'LAX',account:'MU'}];
  f.rows[3].account='MU';f.rows[3].additionalAccounts=[{station:'LAX',account:'CZ'}];
  const info=f.store.list(f.users[1]);assert.equal(info.canSelectAccounts,false);assert.deepEqual(info.recipientAccounts,[{station:'LAX',account:'CZ'}]);
  const memo=f.store.publish(f.users[1],body());assert.deepEqual(memo.roster.map(p=>p.id),['e0','e1','e2']);
@@ -81,20 +81,20 @@ test('Main Account publishers exclude secondary memberships and reject forged cr
  const count=f.employees.db.prepare('SELECT count(*) n FROM read_sign_memos').get().n;
  for(const targetAccount of ['ALL',JSON.stringify(['LAX','MU']),JSON.stringify(['SFO','CZ'])])assert.throws(()=>f.store.publish(f.users[1],{...body(),targetAccount}),e=>e.status===403);
  assert.equal(f.employees.db.prepare('SELECT count(*) n FROM read_sign_memos').get().n,count);
- f.rows.push({id:'new-cz',name:'New CZ',email:'cz@example.test',station:'LAX',account:'CZ'});
+ f.rows.push({id:'new-cz',name:'New CZ',email:'cz@example.test',reportsTo:'e1',station:'LAX',account:'CZ'});
  const detail=f.store.read(f.users[1],memo.id);assert.deepEqual(detail.availableRecipients.map(p=>p.id),['new-cz']);
  assert.throws(()=>f.store.addRecipients(f.users[1],memo.id,{employeeIds:['new-cz','e3']}),e=>e.status===403);
  assert(!f.store.get(memo.id).roster.some(p=>p.id==='new-cz'));
  assert.equal(f.store.addRecipients(f.users[1],memo.id,{employeeIds:['new-cz']}).total,4);
 });
 
-test('Headquarter publisher chooses a single account or all accounts, including across stations',t=>{
- const f=fixture(t);Object.assign(f.rows[1],{station:'HQ',account:'HQ'});
+test('Safety publisher chooses a single account or all accounts, including across stations',t=>{
+ const f=fixture(t);Object.assign(f.rows[1],{station:'HQ',account:'HQ',position:'HQ Safety & Security Manager'});
  Object.assign(f.rows[0],{station:'LAX',account:'CZ'});Object.assign(f.rows[2],{station:'LAX',account:'MU'});Object.assign(f.rows[3],{station:'SFO',account:'CZ'});
  assert.equal(f.store.list(f.users[1]).canSelectAccounts,true);
  const one=f.store.publish(f.users[1],{...body(),targetAccount:JSON.stringify(['SFO','CZ'])});assert.deepEqual(one.roster.map(p=>p.id),['e3']);
  const all=f.store.publish(f.users[1],{...body(),targetAccount:'ALL'});assert.equal(all.total,4);
- f.rows.push({id:'new-mu',name:'New MU',email:'mu@example.test',station:'LAX',account:'MU'});
+ f.rows.push({id:'new-mu',name:'New SFO',email:'sfo@example.test',station:'SFO',account:'CZ'});
  assert(f.store.read(f.users[1],one.id).availableRecipients.some(p=>p.id==='new-mu'));
  assert.equal(f.store.addRecipients(f.users[1],one.id,{employeeIds:['new-mu']}).total,2);
  const draft={...body(),targetAccount:'ALL'},published=f.store.publish(f.users[1],draft);assert.equal(f.store.publish(f.users[1],draft).id,published.id);
@@ -129,4 +129,126 @@ test('queued Read & Sign mail skips an employee newly identified as the test acc
  const service=registerReadSign(express(),{...f,send:async(memo,address)=>sent.push(address),authenticate:async()=>f.users[1]});t.after(()=>service.close());
  await new Promise(setImmediate);await service.retry();assert(!sent.includes(f.rows[0].email));
  assert.equal(f.employees.db.prepare('SELECT status FROM read_sign_mail WHERE memo_id=? AND employee_id=?').get(memo.id,'e0').status,'excluded');
+});
+
+test('only Safety roles can publish across accounts; Business Managers use their reporting tree',t=>{
+ const f=fixture(t);
+ f.rows.forEach(person=>Object.assign(person,{station:'LAX',account:'MU'}));
+ Object.assign(f.rows[2],{position:'Business Manager'});
+ f.rows.push({id:'outsider',name:'Other manager team',position:'Agent',station:'LAX',account:'MU',email:'outside@example.test',reportsTo:'other-bm'});
+ f.rows.push({id:'other-bm',name:'Other BM',position:'Business Manager',station:'LAX',account:'MU',email:'otherbm@example.test'});
+ f.rows.push({id:'hq',name:'Generic HQ',position:'President',station:'HQ',account:'HQ',email:'hq@example.test'});
+ f.rows.push({id:'ci',name:'CI Agent',position:'Agent',station:'LAX',account:'CI',email:'ci@example.test',additionalAccounts:[{station:'LAX',account:'MU'}]});
+ const local=f.store.publish(f.users[2],body());
+ assert.deepEqual(local.roster.map(person=>person.id),['e0','e1','e2','e3']);
+ for(const actor of [f.users[2],{uid:'hq'}]){
+  assert.equal(f.store.list(actor).canSelectAccounts,false);
+  assert.throws(()=>f.store.publish(actor,{...body(),targetAccount:'ALL'}),error=>error.status===403);
+ }
+ assert.throws(()=>f.store.addRecipients(f.users[2],local.id,{employeeIds:['outsider']}),error=>error.status===403);
+ for(const actor of [{uid:'ci'},{uid:'hq'}]){
+  assert.deepEqual(f.store.list(actor).memos,[]);
+  for(const action of [()=>f.store.read(actor,local.id),()=>f.store.attachment(actor,local.id,local.attachments[0].id),()=>f.store.sign(actor,local.id,signed)])assert.throws(action,error=>error.status===404||error.status===403);
+ }
+ for(const position of ['Safety Advocate','HQ Safety & Security Manager']){
+  f.rows[1].position=position;
+  assert.equal(f.store.list(f.users[1]).canSelectAccounts,true);
+  const shared=f.store.publish(f.users[1],{...body(),targetAccount:'ALL'});
+  assert.equal(shared.allAccounts,true);
+  assert.equal(f.store.read({uid:'ci'},shared.id).myStatus,'pending');
+  assert.equal(f.store.read({uid:'hq'},shared.id).total,1);
+ }
+});
+
+test('account completion waits two minutes, survives restart, supports cancellation and exposes snapshots only to Safety',t=>{
+ const f=fixture(t);f.rows.forEach(person=>Object.assign(person,{station:'LAX',account:'MU'}));
+ f.rows.push({id:'safety',name:'Safety',position:'Safety Advocate',station:'HQ',account:'HQ',email:'safety@example.test'});
+ f.rows.push({id:'hq-safety',name:'HQ Safety',position:'HQ Safety & Security Manager',station:'HQ',account:'HQ',email:'hqsafety@example.test'});
+ f.rows.push({id:'ci-bm',name:'CI Manager',position:'Business Manager',station:'LAX',account:'CI',email:'cibm@example.test'});
+ const memo=f.store.publish({uid:'safety'},{...body(),targetAccount:'ALL'});
+ assert.equal(f.store.read(f.users[2],memo.id).completion.eligible,false);
+ assert.throws(()=>f.store.submitCompletion(f.users[2],memo.id,{action:'send'}),error=>error.status===409);
+ assert.throws(()=>f.store.submitCompletion(f.users[1],memo.id,{action:'send'}),error=>error.status===403);
+ for(const user of f.users)f.store.sign(user,memo.id,signed);
+ const queued=f.store.submitCompletion(f.users[2],memo.id,{action:'send'});
+ assert.equal(queued.completion.status,'queued');
+ assert.equal(queued.completion.deliverAt,'2026-10-18T19:02:00.000Z');
+ assert.equal(f.store.read({uid:'safety'},memo.id).reportedAccounts,0);
+ assert.deepEqual(f.store.read({uid:'hq-safety'},memo.id).completionReports,[]);
+ assert.equal(f.store.read({uid:'ci-bm'},memo.id).completion.status,'not-sent');
+ assert.equal(f.store.read(f.users[0],memo.id).completionReports,undefined);
+ assert.equal(f.store.submitCompletion(f.users[2],memo.id,{action:'send'}).completion.deliverAt,queued.completion.deliverAt);
+ f.setTime('2026-10-18T19:01:00Z');
+ assert.equal(f.store.submitCompletion(f.users[2],memo.id,{action:'cancel'}).completion.status,'not-sent');
+ assert.deepEqual(f.store.read({uid:'safety'},memo.id).completionReports,[]);
+ const retry=f.store.submitCompletion(f.users[2],memo.id,{action:'send'});
+ assert.equal(retry.completion.deliverAt,'2026-10-18T19:03:00.000Z');
+ f.setTime('2026-10-18T19:02:59.999Z');
+ const restarted=createReadSignStore(f);
+ assert.equal(restarted.read({uid:'safety'},memo.id).reportedAccounts,0);
+ f.setTime('2026-10-18T19:03:00Z');
+ for(const actor of [{uid:'safety'},{uid:'hq-safety'}]){
+  const detail=restarted.read(actor,memo.id);
+  assert.equal(detail.reportedAccounts,1);
+  assert.equal(detail.completionReports[0].station,'LAX');assert.equal(detail.completionReports[0].account,'MU');
+  assert.equal(detail.completionReports[0].signed,4);assert.equal(detail.completionReports[0].total,4);
+  assert(detail.completionReports[0].roster.every(person=>person.signedAt&&person.signature));
+ }
+ assert.equal(restarted.read(f.users[2],memo.id).completion.status,'sent');
+ assert.throws(()=>restarted.submitCompletion(f.users[2],memo.id,{action:'cancel'}),error=>error.status===409);
+ // Additional recipients supplement the same report without resetting signatures or requiring another send.
+ f.rows.push({id:'new-mu',name:'New MU Employee',position:'Agent',station:'LAX',account:'MU',email:'newmu@example.test',reportsTo:'e1'});
+ restarted.addRecipients({uid:'safety'},memo.id,{employeeIds:['new-mu']});
+ assert.equal(restarted.read({uid:'safety'},memo.id).reportedAccounts,0);
+ assert.equal(restarted.read(f.users[2],memo.id).completion.eligible,false);
+ assert.equal(restarted.read(f.users[2],memo.id).completion.status,'awaiting-signatures');
+ const supplement=restarted.read({uid:'safety'},memo.id).completionReports[0];
+ assert.equal(supplement.total,5);assert.equal(supplement.signed,4);assert.equal(supplement.deliverAt,retry.completion.deliverAt);
+ assert(supplement.roster.slice(0,4).every(person=>person.signedAt&&person.signature));
+ assert.equal(supplement.roster.find(person=>person.id==='new-mu').signedAt,null);
+ restarted.sign({uid:'new-mu'},memo.id,signed);
+ const completed=restarted.read({uid:'hq-safety'},memo.id);
+ assert.equal(completed.reportedAccounts,1);assert.equal(completed.completionReports[0].signed,5);
+ assert.equal(completed.completionReports[0].deliverAt,retry.completion.deliverAt);
+ assert.equal(restarted.read(f.users[2],memo.id).completion.status,'sent');
+});
+
+test('completion HTTP endpoints enforce authentication, current role and account completion',async t=>{
+ const f=fixture(t);f.rows.forEach(person=>Object.assign(person,{station:'LAX',account:'MU'}));
+ f.rows.push({id:'safety',name:'Safety',position:'Safety Advocate',station:'HQ',account:'HQ',email:'safe@example.test'});
+ const app=express(),service=registerReadSign(app,{...f,send:async()=>{},authenticate:async req=>{
+  const uid=String(req.headers.authorization||'').replace('Bearer ','');if(!f.rows.some(person=>person.id===uid))throw Error('Sign in');return {uid};
+ }});
+ t.after(service.close);
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+ t.after(()=>{server.closeAllConnections();server.close();});
+ const memo=service.store.publish({uid:'safety'},{...body(),targetAccount:'ALL'});
+ const call=(uid,action)=>fetch('http://127.0.0.1:'+server.address().port+'/read-sign-api/'+memo.id+'/completion',{method:'POST',headers:{Authorization:'Bearer '+uid,'Content-Type':'application/json'},body:JSON.stringify({action,station:'HQ',account:'HQ'})});
+ assert.equal((await call('unknown','send')).status,401);
+ assert.equal((await call('e0','send')).status,403);
+ assert.equal((await call('e2','send')).status,409);
+ for(const user of f.users)service.store.sign(user,memo.id,signed);
+ assert.equal((await call('e2','send')).status,200);
+ assert.equal(service.store.read({uid:'safety'},memo.id).completionReports.length,0);
+ f.rows[2].position='Agent';
+ assert.equal((await call('e2','cancel')).status,403);
+});
+
+test('recipients added during the countdown supplement the queued report without another manager send',t=>{
+ const f=fixture(t);f.rows.forEach(person=>Object.assign(person,{station:'LAX',account:'MU'}));
+ f.rows.push({id:'safety',name:'Safety',position:'Safety Advocate',station:'HQ',account:'HQ',email:'safety@example.test'});
+ const memo=f.store.publish({uid:'safety'},{...body(),targetAccount:'ALL'});
+ for(const user of f.users)f.store.sign(user,memo.id,signed);
+ const queued=f.store.submitCompletion(f.users[2],memo.id,{action:'send'});
+ f.rows.push({id:'extra',name:'Additional employee',position:'Agent',station:'LAX',account:'MU',email:'extra@example.test',reportsTo:'e1'});
+ f.store.addRecipients({uid:'safety'},memo.id,{employeeIds:['extra']});
+ assert.equal(f.store.read(f.users[2],memo.id).completion.status,'queued');
+ assert.equal(f.store.read(f.users[2],memo.id).completion.deliverAt,queued.completion.deliverAt);
+ f.setTime(queued.completion.deliverAt);
+ const pending=f.store.read({uid:'safety'},memo.id);
+ assert.equal(pending.reportedAccounts,0);assert.equal(pending.completionReports[0].signed,4);assert.equal(pending.completionReports[0].total,5);
+ const restarted=createReadSignStore(f);restarted.sign({uid:'extra'},memo.id,signed);
+ const completed=restarted.read({uid:'safety'},memo.id);
+ assert.equal(completed.reportedAccounts,1);assert.equal(completed.completionReports[0].signed,5);
+ assert.equal(completed.completionReports[0].deliverAt,queued.completion.deliverAt);
 });

@@ -3,6 +3,10 @@ const crypto = require('node:crypto');
 const emailOK = v => typeof v === 'string' && v.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(v);
 const fail = (message, status = 400) => { throw Object.assign(Error(message), { status }); };
 const accountGroups = require('../public/employee-account-groups');
+const positions = require('../public/employee-positions');
+const safetyRole = e => !e.accountDisabled && ['Safety Advocate','HQ Safety & Security Manager'].includes(positions.normalize(e.position));
+const businessManager = e => positions.normalize(e.position)==='Business Manager';
+const allAccounts = memo => memo.allAccounts===true || memo.recipientLabel==='All accounts';
 const publishRole = e => require('../public/employee-permissions').allowed(e,'readSign.publish');
 function signatureSVG(strokes) {
   if (!Array.isArray(strokes) || !strokes.length || strokes.length > 60) fail('Draw your handwritten signature.');
@@ -25,42 +29,85 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
   db.exec(`CREATE TABLE IF NOT EXISTS read_sign_memos(id TEXT PRIMARY KEY, request_id TEXT UNIQUE NOT NULL, publisher_id TEXT NOT NULL, data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS read_sign_attachments(id TEXT PRIMARY KEY, memo_id TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, bytes BLOB NOT NULL);
     CREATE TABLE IF NOT EXISTS read_sign_signatures(memo_id TEXT NOT NULL, employee_id TEXT NOT NULL, name TEXT NOT NULL, signed_at TEXT NOT NULL, svg TEXT NOT NULL, PRIMARY KEY(memo_id,employee_id));
-    CREATE TABLE IF NOT EXISTS read_sign_mail(memo_id TEXT NOT NULL, employee_id TEXT NOT NULL, recipient TEXT NOT NULL, status TEXT NOT NULL, error TEXT, sent_at TEXT, last_attempt TEXT, PRIMARY KEY(memo_id,employee_id));`);
+    CREATE TABLE IF NOT EXISTS read_sign_mail(memo_id TEXT NOT NULL, employee_id TEXT NOT NULL, recipient TEXT NOT NULL, status TEXT NOT NULL, error TEXT, sent_at TEXT, last_attempt TEXT, PRIMARY KEY(memo_id,employee_id));
+    CREATE TABLE IF NOT EXISTS read_sign_completion(memo_id TEXT NOT NULL, station TEXT NOT NULL, account TEXT NOT NULL, deliver_at TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(memo_id,station,account));`);
   const employee = user => { const e = profiles.linked(user); if (!e?.name) fail('Link your employee profile first.',403); return e; };
   const hasEmail=e=>!hiddenFromOperationalRosters(e)&&[e?.companyEmail,e?.email].some(emailOK);
-  const inScope=(actor,person)=>(actor.isServerOwner||accountGroups.isHeadquarter(actor))||accountGroups.same(accountGroups.scope(actor),accountGroups.scope(person));
-  const candidates=actor=>employees.get().employees.filter(p=>p.name&&hasEmail(p)&&inScope(actor,p));
+  const inScope=(actor,person)=>safetyRole(actor)||accountGroups.same(accountGroups.scope(actor),accountGroups.scope(person));
+  const candidates=actor=>{
+    let people=employees.get().employees.filter(p=>p.name&&hasEmail(p)&&inScope(actor,p));
+    if(businessManager(actor)){
+      const rows=require('./employeeOrganization').organizationRows(employees);
+      const below=require('../public/organization-model').descendants(actor.id,rows);
+      people=people.filter(person=>person.id===actor.id||below.has(person.id));
+    }
+    return people;
+  };
   const accountChoices=actor=>[...new Map(candidates(actor).map(p=>[accountGroups.key(p),accountGroups.scope(p)])).values()].sort((a,b)=>(a.station+a.account).localeCompare(b.station+b.account));
   const recipients=(actor,target)=>{
-    const own=accountGroups.key(actor),selected=target===undefined?((actor.isServerOwner||accountGroups.isHeadquarter(actor))?'ALL':own):target;
-    if(typeof selected!=='string'||(!(actor.isServerOwner||accountGroups.isHeadquarter(actor))&&selected!==own))fail('You can only send to your Main Account.',403);
+    const own=accountGroups.key(actor),selected=target===undefined?(safetyRole(actor)?'ALL':own):target;
+    if(typeof selected!=='string'||(!safetyRole(actor)&&selected!==own))fail('You can only send to your Main Account.',403);
     if(selected!=='ALL'&&!accountChoices(actor).some(a=>accountGroups.key(a)===selected))fail('Choose an available account.');
     const people=candidates(actor).filter(p=>selected==='ALL'||accountGroups.key(p)===selected);
     if(!people.length)fail('No eligible employees in this account.');
-    return {people,label:selected==='ALL'?'All accounts':JSON.parse(selected).join(' / ')};
+    return {people,allAccounts:selected==='ALL',label:selected==='ALL'?'All accounts':JSON.parse(selected).join(' / ')};
   };
 
   const visibleRoster=r=>{const eligible=new Set(employees.get().employees.filter(hasEmail).map(e=>e.id));return {...r,roster:r.roster.filter(p=>eligible.has(p.id))};};
   const get = id => { const r = db.prepare('SELECT data FROM read_sign_memos WHERE id=?').get(id); if (!r) fail('Read & Sign not found.',404); return visibleRoster(JSON.parse(r.data)); };
   // Old memos did not persist their target accounts; derive those from the saved roster.
   const memoAccounts=r=>{if(r.recipientAccounts)return r.recipientAccounts;const match=/^([^/]+) \/ ([^/]+)$/.exec(r.recipientLabel||'');if(match)return [{station:match[1].trim(),account:match[2].trim()}];return [...new Map(r.roster.map(p=>employees.get().employees.find(e=>e.id===p.id)).filter(Boolean).map(p=>[accountGroups.key(p),accountGroups.scope(p)])).values()];};
-  const canView=(e,r)=>(e.isServerOwner||accountGroups.isHeadquarter(e))||memoAccounts(r).some(a=>accountGroups.same(a,accountGroups.scope(e)));
+  const canView=(e,r)=>memoAccounts(r).some(a=>accountGroups.same(a,accountGroups.scope(e))) || safetyRole(e)&&(allAccounts(r)||r.publisher.id===e.id);
   const scopedMemo=(e,r)=>{
     if(!canView(e,r))fail('Read & Sign not found.',404);
-    if((e.isServerOwner||accountGroups.isHeadquarter(e)))return r;
-    const ids=new Set(employees.get().employees.filter(p=>inScope(e,p)).map(p=>p.id));
+    if(safetyRole(e))return r;
+    const ids=new Set(employees.get().employees.filter(p=>accountGroups.same(accountGroups.scope(e),accountGroups.scope(p))).map(p=>p.id));
     return {...r,roster:r.roster.filter(p=>ids.has(p.id))};
+  };
+  const completionRecord=(memo,scope)=>{
+    const row=db.prepare('SELECT deliver_at,data FROM read_sign_completion WHERE memo_id=? AND station=? AND account=?').get(memo.id,scope.station,scope.account);
+    if(!row)return null;
+    const previous=JSON.parse(row.data);
+    const ids=new Set(employees.get().employees.filter(person=>hasEmail(person)&&accountGroups.same(accountGroups.scope(person),scope)).map(person=>person.id));
+    const current=memo.roster.filter(person=>ids.has(person.id));
+    const signatures=new Map(db.prepare('SELECT * FROM read_sign_signatures WHERE memo_id=?').all(memo.id).map(signature=>[signature.employee_id,signature]));
+    const roster=current.map(person=>{
+      const signature=signatures.get(person.id);
+      return {...person,signedAt:signature?.signed_at||null,signature:signature?'data:image/svg+xml;base64,'+Buffer.from(signature.svg).toString('base64'):null};
+    });
+    const snapshot={...previous,total:roster.length,signed:roster.filter(person=>person.signedAt).length,roster};
+    const serialized=JSON.stringify(snapshot);
+    if(serialized!==row.data)db.prepare('UPDATE read_sign_completion SET data=? WHERE memo_id=? AND station=? AND account=? AND data=?').run(serialized,memo.id,scope.station,scope.account,row.data);
+    return {deliverAt:row.deliver_at,snapshot};
+  };
+  const readyReports=id=>{
+    const memo=get(id);
+    return db.prepare('SELECT station,account FROM read_sign_completion WHERE memo_id=? ORDER BY station,account').all(id)
+      .map(scope=>completionRecord(memo,scope)).filter(report=>report&&report.deliverAt<=now().toISOString()).map(report=>report.snapshot);
+  };
+  const completionInfo=(r,e,signed,total)=>{
+    if(!allAccounts(r))return {};
+    if(safetyRole(e)){
+      const reports=readyReports(r.id);
+      return {reportedAccounts:reports.filter(report=>report.total>0&&report.signed===report.total).length,receivedAccounts:reports.length,totalAccounts:memoAccounts(r).length};
+    }
+    if(!businessManager(e)||!publishRole(e))return {};
+    const scope=accountGroups.scope(e);
+    const report=completionRecord(r,scope);
+    let status='not-sent';
+    if(report)status=report.deliverAt>now().toISOString()?'queued':total>0&&signed===total?'sent':'awaiting-signatures';
+    return {completion:{eligible:total>0&&signed===total,status,deliverAt:report?.deliverAt||null}};
   };
   const summary = (r,e) => {
     const signatures = db.prepare('SELECT employee_id,signed_at FROM read_sign_signatures WHERE memo_id=?').all(r.id).filter(s=>r.roster.some(p=>p.id===s.employee_id));
     const mine = signatures.find(s => s.employee_id === e.id), required = r.roster.some(p => p.id === e.id);
     const {roster,body,attachments,publishHash,recipientHistory,recipientAccounts,...memo}=r;
-    return {...memo,required,...(publishRole(e)?{total:roster.length,signed:signatures.length}:{}),mySignedAt:mine?.signed_at||null,myStatus:mine?'signed':!required?'not-required':new Date(r.deadline)<now()?'overdue':'pending'};
+    return {...memo,serverNow:now().toISOString(),allAccounts:allAccounts(r),required,...(publishRole(e)?{total:roster.length,signed:signatures.length}:{}),...completionInfo(r,e,signatures.length,roster.length),mySignedAt:mine?.signed_at||null,myStatus:mine?'signed':!required?'not-required':new Date(r.deadline)<now()?'overdue':'pending'};
   };
   const read = (user,id) => {
     const e=employee(user),r=scopedMemo(e,get(id)),signatures=db.prepare('SELECT * FROM read_sign_signatures WHERE memo_id=?').all(id);
     const delivery=db.prepare('SELECT employee_id,status FROM read_sign_mail WHERE memo_id=?').all(id);
-    return {...summary(r,e),body:r.body,attachments:r.attachments,canPublish:publishRole(e),canManage:publishRole(e),canDownload:publishRole(e),...(publishRole(e)?{availableRecipients:candidates(e).filter(p=>!r.roster.some(person=>person.id===p.id)).map(({id,name,eid})=>({id,name,eid})),roster:r.roster.map(p=>{
+    return {...summary(r,e),body:r.body,attachments:r.attachments,canPublish:publishRole(e),canManage:publishRole(e),canDownload:publishRole(e),...(safetyRole(e)&&allAccounts(r)?{completionReports:readyReports(id),completionScopes:[...new Map([...accountGroups.catalog.map(accountGroups.scope),...memoAccounts(r)].map(scope=>[accountGroups.key(scope),scope])).values()].map(scope=>({...scope,targeted:memoAccounts(r).some(target=>accountGroups.same(target,scope))}))}:{}),...(publishRole(e)?{availableRecipients:candidates(e).filter(p=>!r.roster.some(person=>person.id===p.id)&&(allAccounts(r)||memoAccounts(r).some(scope=>accountGroups.same(scope,accountGroups.scope(p))))).map(({id,name,eid})=>({id,name,eid})),roster:r.roster.map(p=>{
       const s=signatures.find(s=>s.employee_id===p.id);return {...p,signedAt:s?.signed_at||null,signature:s?'data:image/svg+xml;base64,'+Buffer.from(s.svg).toString('base64'):null,late:s?new Date(s.signed_at)>new Date(r.deadline):false,emailStatus:delivery.find(d=>d.employee_id===p.id)?.status||'missing-email'};
     })}:{})};
   };
@@ -81,7 +128,7 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
     });
     const selection=recipients(e,body.targetAccount);
     const roster=selection.people.map(({id,name,eid})=>({id,name,eid}));
-    const r={id:crypto.randomUUID(),publishHash,recipientAccounts:[...new Map(selection.people.map(p=>[accountGroups.key(p),accountGroups.scope(p)])).values()],recipientLabel:selection.label,subject:body.subject.trim(),body:body.body.trim(),memoNumber:body.memoNumber.trim(),deadline:new Date(body.deadline).toISOString(),publishedAt:now().toISOString(),publisher:{id:e.id,name:e.name,position:e.position},roster,attachments:files.map(({bytes,...meta})=>meta)};
+    const r={id:crypto.randomUUID(),publishHash,allAccounts:selection.allAccounts,publisherAccount:accountGroups.scope(e),recipientAccounts:[...new Map(selection.people.map(p=>[accountGroups.key(p),accountGroups.scope(p)])).values()],recipientLabel:selection.label,subject:body.subject.trim(),body:body.body.trim(),memoNumber:body.memoNumber.trim(),deadline:new Date(body.deadline).toISOString(),publishedAt:now().toISOString(),publisher:{id:e.id,name:e.name,position:e.position},roster,attachments:files.map(({bytes,...meta})=>meta)};
     db.prepare('INSERT INTO read_sign_memos VALUES(?,?,?,?)').run(r.id,body.requestId,e.id,JSON.stringify(r));
     for(const f of files)db.prepare('INSERT INTO read_sign_attachments VALUES(?,?,?,?,?)').run(f.id,r.id,f.name,f.type,f.bytes);
     for(const person of selection.people){
@@ -94,13 +141,35 @@ function createReadSignStore({employees, profiles, now = () => new Date()}) {
     const actor=employee(user);if(!publishRole(actor))fail('Your position is not authorized to add recipients.',403);
     scopedMemo(actor,get(id));const ids=body.employeeIds;if(!Array.isArray(ids)||!ids.length||ids.length>500||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)fail('Select 1–500 different employees.');
     const people=ids.map(id=>employees.get().employees.find(p=>p.id===id));if(people.some(p=>!p?.name||!hasEmail(p)))fail('Each selected employee must have a valid Email or Company Email.');
-    if(people.some(p=>!inScope(actor,p)))fail('You can only add employees from your Main Account.',403);
+    const allowed=new Set(candidates(actor).map(person=>person.id));
+    const original=get(id);
+    if(people.some(p=>!allowed.has(p.id)||!allAccounts(original)&&!memoAccounts(original).some(scope=>accountGroups.same(scope,accountGroups.scope(p)))))fail('Choose employees in your reporting and memo account scope.',403);
     const r=JSON.parse(db.prepare('SELECT data FROM read_sign_memos WHERE id=?').get(id).data),added=[];
     for(const person of people){if(r.roster.some(p=>p.id===person.id))continue;const {id,name,eid}=person;r.roster.push({id,name,eid});added.push(id);db.prepare("INSERT OR IGNORE INTO read_sign_mail(memo_id,employee_id,recipient,status) VALUES(?,?,?,'pending')").run(r.id,id,[person.companyEmail,person.email].find(emailOK));}
-    if(added.length){r.recipientAccounts=[...new Map([...memoAccounts(r),...people.map(accountGroups.scope)].map(a=>[accountGroups.key(a),a])).values()];r.recipientHistory=[...(r.recipientHistory||[]),{at:now().toISOString(),employeeId:actor.id,added}];db.prepare('UPDATE read_sign_memos SET data=? WHERE id=?').run(JSON.stringify(r),id);}
+    if(added.length){
+      r.recipientAccounts=[...new Map([...memoAccounts(r),...people.map(accountGroups.scope)].map(a=>[accountGroups.key(a),a])).values()];r.recipientHistory=[...(r.recipientHistory||[]),{at:now().toISOString(),employeeId:actor.id,added}];db.prepare('UPDATE read_sign_memos SET data=? WHERE id=?').run(JSON.stringify(r),id);}
     return read(user,id);
   });
-  return {db,employee,get,read,publish,addRecipients,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position||'Agent'},canPublish:publishRole(e),canSelectAccounts:publishRole(e)&&(e.isServerOwner||accountGroups.isHeadquarter(e)),recipientAccounts:publishRole(e)?accountChoices(e):[],mainAccount:accountGroups.scope(e),memos:db.prepare('SELECT data FROM read_sign_memos ORDER BY rowid DESC').all().map(row=>visibleRoster(JSON.parse(row.data))).filter(r=>canView(e,r)).map(r=>summary(scopedMemo(e,r),e))};},
+  const submitCompletion=db.transaction((user,id,body={})=>{
+    const actor=employee(user);
+    if(!businessManager(actor)||!publishRole(actor))fail('Only the Business Manager can send account completion.',403);
+    const memo=read(user,id),scope=accountGroups.scope(actor);
+    if(!memo.allAccounts)fail('Completion reports are for all-account memos.');
+    const existing=db.prepare('SELECT deliver_at FROM read_sign_completion WHERE memo_id=? AND station=? AND account=?').get(id,scope.station,scope.account);
+    if(body.action==='cancel'){
+      if(existing&&existing.deliver_at<=now().toISOString())fail('This completion report has already been sent.',409);
+      db.prepare('DELETE FROM read_sign_completion WHERE memo_id=? AND station=? AND account=?').run(id,scope.station,scope.account);
+      return read(user,id);
+    }
+    if(body.action!=='send')fail('Choose Send or Cancel.');
+    if(existing)return memo;
+    if(!memo.completion?.eligible)fail('All assigned employees in this account must sign before sending completion.',409);
+    const deliverAt=new Date(now().getTime()+120000).toISOString();
+    const snapshot={...scope,total:memo.total,signed:memo.signed,roster:memo.roster,submittedBy:{id:actor.id,name:actor.name},submittedAt:now().toISOString(),deliverAt};
+    db.prepare('INSERT INTO read_sign_completion VALUES(?,?,?,?,?)').run(id,scope.station,scope.account,deliverAt,JSON.stringify(snapshot));
+    return read(user,id);
+  });
+  return {db,employee,get,read,publish,addRecipients,submitCompletion,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position||'Agent'},canPublish:publishRole(e),canSelectAccounts:publishRole(e)&&safetyRole(e),recipientAccounts:publishRole(e)?accountChoices(e):[],mainAccount:accountGroups.scope(e),memos:db.prepare('SELECT data FROM read_sign_memos ORDER BY rowid DESC').all().map(row=>visibleRoster(JSON.parse(row.data))).filter(r=>canView(e,r)).map(r=>summary(scopedMemo(e,r),e))};},
     sign:db.transaction((user,id,body)=>{const e=employee(user),r=scopedMemo(e,get(id));if(!r.roster.some(p=>p.id===e.id))fail('You were not assigned to this memo.',403);if(body.acknowledged!==true)fail('Confirm that you have read and understood this memo.');if(db.prepare('SELECT 1 FROM read_sign_signatures WHERE memo_id=? AND employee_id=?').get(id,e.id))return read(user,id);const svg=signatureSVG(body.strokes);db.prepare('INSERT INTO read_sign_signatures VALUES(?,?,?,?,?)').run(id,e.id,r.roster.find(p=>p.id===e.id).name,now().toISOString(),svg);return read(user,id);}),
     attachment(user,id,fileId){const e=employee(user);if(!publishRole(e))fail('Your position is not authorized to download attachments.',403);scopedMemo(e,get(id));const f=db.prepare('SELECT * FROM read_sign_attachments WHERE memo_id=? AND id=?').get(id,fileId);if(!f)fail('Attachment not found.',404);return f;}
   };
@@ -142,6 +211,8 @@ function registerReadSign(app,{employees,profiles,authenticate,now,send=sendRead
   app.get('/read-sign-api/:id',handle(req=>store.read(req.readSignUser,req.params.id)));
   app.post('/read-sign-api/:id/recipients',handle(req=>{const r=store.addRecipients(req.readSignUser,req.params.id,req.body);void retry().catch(e=>console.error('Read & Sign email retry:',e.message));return r;}));
   app.post('/read-sign-api/:id/sign',handle(req=>store.sign(req.readSignUser,req.params.id,req.body)));
+  app.post('/read-sign-api/:id/completion',handle(req=>store.submitCompletion(req.readSignUser,req.params.id,req.body)));
+
   app.get('/read-sign-api/:id/attachments/:file',handle((req,res)=>{const f=store.attachment(req.readSignUser,req.params.id,req.params.file);res.set('X-Content-Type-Options','nosniff').set('Content-Disposition',`attachment; filename="attachment"; filename*=UTF-8''${encodeURIComponent(f.name).replace(/'/g,'%27')}`).type(f.type).send(f.bytes);}));
   const timer=setInterval(()=>void retry().catch(e=>console.error('Read & Sign mail retry:',e.message)),60000);timer.unref();void retry();return {store,retry,close:()=>clearInterval(timer)};
 }
