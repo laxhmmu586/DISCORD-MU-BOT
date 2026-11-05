@@ -5133,7 +5133,7 @@
       function nextDayInfoDetailsFromSy(sy) {
         const ret = sy?.reservationTicketed;
         const rows = Array.isArray(sy?.jcsy?.rows) ? sy.jcsy.rows : [];
-        if (!Array.isArray(ret) || ret.length < 4 || !sy?.jcsy?.complete || !rows.length) return null;
+        if (!Array.isArray(ret) || ret.length < 4 || !sy?.jcsy?.complete || !sy.jcsy.paginationComplete || !rows.length) return null;
         const transfers = rows.reduce((totals, row) => {
           const total = Number(row?.total) || 0;
           const hasDeparture = Boolean(String(row?.departure || row?.depart || "").trim());
