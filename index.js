@@ -264,7 +264,7 @@ function retCountsFromSyInfo(syInfo) {
 
 function transferCountsFromJcsy(jcsy) {
   const rows = Array.isArray(jcsy?.rows) ? jcsy.rows : [];
-  if (!jcsy?.complete || !rows.length) return null;
+  if (!jcsy?.complete || !jcsy?.paginationComplete || !rows.length) return null;
   return rows.reduce((acc, row) => {
     const total = Number(row?.total) || 0;
     const hasDeparture = Boolean(String(row?.departure || row?.depart || '').trim());
@@ -5008,6 +5008,13 @@ app.post('/nextday-info/send', async (req, res) => {
       preferredFlightNo: flightNo,
       strictPreferredFlight: true
     }) : null;
+    if (syInfo?.jcsy?.complete && !syInfo.jcsy.paginationComplete) {
+      const jcsy = syInfo.jcsy;
+      const progress = jcsy.bookedTotal
+        ? `Read ${jcsy.parsedBookedTotal.total} of ${jcsy.bookedTotal.total} booked passengers; cabin totals must also match.`
+        : 'The final ##TOTAL## page has not been read.';
+      return res.status(400).json({ error: `JCSY pages are incomplete. ${progress} Run JCSY and continue PN1 through the final page, then retry.` });
+    }
     const details = nextDayInfoDetailsFromSyInfo(syInfo);
     if (!details) return res.status(400).json({ error: 'Current SY or JCSY figures are incomplete. Run SY and JCSY again, then retry.' });
     const text = buildNextDayInfoEmailBody(subjectDate, details);

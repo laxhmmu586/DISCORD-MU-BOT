@@ -486,6 +486,18 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
   const matches = dateCandidates.reduce((found, flightDateToken) => (found.length ? found : matchesForDate(flightDateToken)), []);
   const sectionObj = matches.sort((a, b) => parseSectionTimestamp(b.timestamp) - parseSectionTimestamp(a.timestamp))[0] || null;
   const rows = parseJcsyRows(sectionObj?.content || '');
+  // Rows arrive before PN has reached the final page. Keep them available for
+  // the dashboard, but never treat a first-page snapshot as ready to send.
+  const totalMatches = [...String(sectionObj?.content || '').matchAll(/^\s*##TOTAL##\s*\/\s*(\d{2}\/\d{2,3}\/\d{3})\b/gim)];
+  const bookedTotal = totalMatches.length ? parseJcsyCountTriple(totalMatches.at(-1)[1]) : null;
+  const parsedBookedTotal = rows.reduce((sum, row) => ({
+    first: sum.first + row.first,
+    business: sum.business + row.business,
+    economy: sum.economy + row.economy,
+    total: sum.total + row.total
+  }), { first: 0, business: 0, economy: 0, total: 0 });
+  const paginationComplete = Boolean(bookedTotal && rows.length &&
+    ['first', 'business', 'economy'].every((cabin) => parsedBookedTotal[cabin] === bookedTotal[cabin]));
   const groups = {
     domestic: rows.filter((row) => row.category === 'domestic'),
     international: rows.filter((row) => row.category === 'international'),
@@ -496,6 +508,9 @@ function findJcsyInfo(sections, flightNo, flightYmd, formatTime, fallbackYmd = '
   const international = groups.international.reduce((sum, row) => sum + row.total, 0);
   return {
     complete: Boolean(sectionObj),
+    paginationComplete,
+    bookedTotal,
+    parsedBookedTotal,
     time: formatTime(sectionObj?.commandTimestamp || sectionObj?.timestamp),
     timestamp: sectionObj?.timestamp || '',
     flightNo: jcsyFlightNo,
