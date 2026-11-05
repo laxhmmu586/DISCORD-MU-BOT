@@ -1,5 +1,6 @@
 const passengers = {};
 const { filterUnavailablePassengerSections, passengerBn } = require('./passengerRecordValidity');
+const { withoutContactDetails } = require('./passengerServiceText');
 
 
 function parseSectionTimestamp(timestamp) {
@@ -612,7 +613,7 @@ function parseIncrementalLog(log) {
       // it is not the passenger's current SSR payload.
       return !/^(?:ACC|API|BAB|BAG|BC|BDB|GOV|MOD)(?:\s|$)/i.test(normalized);
     };
-    const nonPsmSection = section
+    const nonPsmSection = withoutContactDetails(section)
       .split(/\r?\n/)
       .filter(isServiceExtractionLine)
       .join('\n');
