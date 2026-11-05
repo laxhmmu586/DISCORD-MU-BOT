@@ -5,6 +5,7 @@
   const storageKey='has-hr-design-v1';
   const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let permissionManager=false,personDirty=false,profileDirty=false;
+  let permissionStation='',permissionAccount='';
   let data={employees:[],accounts:[],access:null},user=null,scope='LAX|MU',selected=null,zoom=1,view='chart',saving=false,loaded=false;
   const collapsed=new Set();
   let assignmentId=null,mergeId=null,reportingWorkspace=null;
@@ -160,6 +161,12 @@
   function showPerson(id,requestedScope){
     if(permissionManager&&(personDirty||profileDirty)&&id!==selected){$('#person-status').textContent='Save your changes or discard edits before selecting another employee.';return;}personDirty=false;profileDirty=false;
     selected=id;const row=data.employees.find(r=>r.id===id);if(!row)return;
+    const memberships=permissionMemberships(row);
+    if(!memberships.some(value=>value.station===permissionStation&&value.account===permissionAccount)){
+      const chosen=memberships.find(value=>requestedScope&&key(value)===key(requestedScope))||memberships[0];
+      permissionStation=chosen.station;permissionAccount=chosen.account;
+    }
+    $('#person-form').hidden=false;permissionEmpty.hidden=true;
     if(!permissionManager){requestedScope||=chartScope();permissionManager=true;$('#person-dialog').classList.add('hr-permission-manager');peoplePane.querySelector('input').value='';}
     const candidate=requestedScope||(permissionManager?{station:row.station,account:row.account}:chartScope());reportingWorkspace=candidate&&model.membershipIndex(row,candidate)>=0?candidate:{station:row.station,account:row.account};const context=reportingContext(),access=role(),editable=context.editable,profileEditable=editable&&!context.secondary,form=$('#person-form');
     assignmentId=null;mergeId=null;$('#person-merge-action').hidden=true;$('#assignment-note').hidden=true;$('#employee-suggestions').hidden=true;form.elements.name.setAttribute('aria-expanded','false');$('#remove-level').hidden=!row.isInserted||!editable;
@@ -184,13 +191,38 @@
     $('#person-status').textContent='';$('#save-person').hidden=!editable;$('#save-person').disabled=false;
     if(!$('#person-dialog').open)$('#person-dialog').showModal();render();
   }
-  const peoplePane=document.createElement('section');peoplePane.className='hr-permission-people';peoplePane.setAttribute('aria-label','Employees');peoplePane.innerHTML='<div class="hr-permission-people-heading"><h2>Permission</h2><p>Employee settings</p><input type="search" aria-label="Find an employee" placeholder="Find an employee…"></div><div class="hr-permission-person-list"></div><button type="button" class="hr-discard-edits">Discard edits</button>';$('#person-dialog').prepend(peoplePane);
-  function renderPermissionPeople(){const query=peoplePane.querySelector('input').value.trim().toLowerCase(),rows=data.employees.filter(row=>(row.name+' '+(row.nickname||'')+' '+row.position).toLowerCase().includes(query)).sort((a,b)=>(a.name||'').localeCompare(b.name||'')),list=peoplePane.querySelector('.hr-permission-person-list');list.innerHTML=rows.map(row=>'<button type="button" data-permission-person="'+escape(row.id)+'" aria-pressed="'+(row.id===selected)+'">'+avatar(row)+'<span><strong>'+escape(row.name||row.nickname||'Unnamed employee')+'</strong><small>'+escape(row.position)+' · '+escape(label(key(row)))+'</small></span></button>').join('');if(!rows.length)list.textContent='No employees found.';}
+  const stationPane=document.createElement('section');stationPane.className='hr-permission-scope hr-permission-stations';stationPane.setAttribute('aria-label','Stations');stationPane.innerHTML='<h2 id="permission-manager-title">Permission</h2><p>1 · Station</p><div class="hr-permission-scope-list"></div>';
+  const accountPane=document.createElement('section');accountPane.className='hr-permission-scope hr-permission-accounts';accountPane.setAttribute('aria-label','Accounts');accountPane.innerHTML='<h2>Account</h2><p>2 · Choose account</p><div class="hr-permission-scope-list"></div>';
+  const peoplePane=document.createElement('section');peoplePane.className='hr-permission-people';peoplePane.setAttribute('aria-label','Employees');peoplePane.innerHTML='<div class="hr-permission-people-heading"><h2>Employees</h2><p>3 · Choose employee</p><input type="search" aria-label="Find an employee" placeholder="Find an employee…"></div><div class="hr-permission-person-list"></div><button type="button" class="hr-discard-edits">Discard edits</button>';
+  const permissionEmpty=document.createElement('section');permissionEmpty.className='hr-permission-empty';permissionEmpty.hidden=true;permissionEmpty.innerHTML='<button type="button" aria-label="Close permission manager">×</button><h2>Choose an employee</h2><p>Select a Station, then an Account, then an employee to view their settings.</p>';
+  $('#person-dialog').prepend(stationPane,accountPane,peoplePane,permissionEmpty);$('#person-dialog').setAttribute('aria-labelledby','permission-manager-title');
+  permissionEmpty.querySelector('button').onclick=()=>closePerson();
+  function permissionMemberships(row){return [{station:row.station,account:row.account},...(row.additionalAccounts||[])].filter(value=>value.station&&value.account);}
+  function permissionScopes(){const values=[{station:'HQ',account:'HQ'},...(data.accounts||[]),...data.employees.flatMap(permissionMemberships)];return [...new Map(values.filter(value=>value.station&&value.account).map(value=>[key(value),value])).values()];}
+  function renderPermissionPeople(){
+    const scopes=permissionScopes(),stations=[...new Set(scopes.map(value=>value.station))].sort((a,b)=>a==='HQ'?-1:b==='HQ'?1:a.localeCompare(b));
+    stationPane.querySelector('.hr-permission-scope-list').innerHTML=stations.map(station=>'<button type="button" data-permission-station="'+escape(station)+'" aria-pressed="'+(station===permissionStation)+'">'+escape(station==='HQ'?'Headquarter':station)+'</button>').join('');
+    const accounts=scopes.filter(value=>value.station===permissionStation).sort((a,b)=>a.account.localeCompare(b.account));
+    accountPane.querySelector('.hr-permission-scope-list').innerHTML=permissionStation?accounts.map(value=>'<button type="button" data-permission-account="'+escape(value.account)+'" aria-pressed="'+(value.account===permissionAccount)+'">'+escape(value.account)+'</button>').join('')||'<p>No accounts found.</p>':'<p>Select a Station first.</p>';
+    const search=peoplePane.querySelector('input'),query=search.value.trim().toLowerCase();search.disabled=!permissionAccount;
+    const rows=permissionAccount?data.employees.filter(row=>permissionMemberships(row).some(value=>value.station===permissionStation&&value.account===permissionAccount)&&(row.name+' '+(row.nickname||'')+' '+row.position).toLowerCase().includes(query)).sort((a,b)=>(a.name||'').localeCompare(b.name||'')):[],list=peoplePane.querySelector('.hr-permission-person-list');
+    list.innerHTML=rows.map(row=>'<button type="button" data-permission-person="'+escape(row.id)+'" aria-pressed="'+(row.id===selected)+'">'+avatar(row)+'<span><strong>'+escape(row.name||row.nickname||'Unnamed employee')+'</strong><small>'+escape(row.position)+' · '+escape(label(key(row)))+'</small></span></button>').join('');
+    if(!rows.length)list.textContent=permissionAccount?'No employees found.':'Select an Account first.';
+    peoplePane.querySelector('.hr-discard-edits').disabled=!selected||saving;
+  }
+  function choosePermissionScope(station,account){
+    if(saving)return;
+    if(station===permissionStation&&account===permissionAccount)return;
+    if(personDirty||profileDirty){$('#person-status').textContent='Save your changes or discard edits before selecting another Station or Account.';return;}
+    permissionStation=station;permissionAccount=account;selected=null;peoplePane.querySelector('input').value='';$('#person-form').hidden=true;permissionEmpty.hidden=false;renderPermissionPeople();
+  }
+  stationPane.onclick=event=>{const button=event.target.closest('[data-permission-station]');if(button&&button.dataset.permissionStation!==permissionStation)choosePermissionScope(button.dataset.permissionStation,'');};
+  accountPane.onclick=event=>{const button=event.target.closest('[data-permission-account]');if(button)choosePermissionScope(permissionStation,button.dataset.permissionAccount);};
   peoplePane.querySelector('input').oninput=renderPermissionPeople;
-  peoplePane.querySelector('.hr-permission-person-list').onclick=event=>{const button=event.target.closest('[data-permission-person]');if(!button||saving)return;const tab=$('.hr-profile-tabs [aria-selected=true]').id.split('-')[1];showPerson(button.dataset.permissionPerson);personTab(tab);};
+  peoplePane.querySelector('.hr-permission-person-list').onclick=event=>{const button=event.target.closest('[data-permission-person]');if(!button||saving)return;const tab=selected?$('.hr-profile-tabs [aria-selected=true]').id.split('-')[1]:'permission';showPerson(button.dataset.permissionPerson);personTab(tab);};
   peoplePane.querySelector('.hr-discard-edits').onclick=()=>{if(saving)return;const tab=$('.hr-profile-tabs [aria-selected=true]').id.split('-')[1];personDirty=false;showPerson(selected);personTab(tab);};
   const markPersonDirty=event=>{if(event.target.closest('#permission-list'))personDirty=true;else if(event.target.name!=='reportingScope')profileDirty=true;};$('#person-form').addEventListener('input',markPersonDirty);$('#person-form').addEventListener('change',markPersonDirty);
-  $('#hr-permissions').onclick=()=>{if(!loaded||!role()||!data.employees.length)return;permissionManager=true;personDirty=false;$('#person-dialog').classList.add('hr-permission-manager');peoplePane.querySelector('input').value='';const first=data.employees.find(row=>model.canEdit(row,role(),data.employees))||data.employees[0];showPerson(first.id);personTab('permission');};
+  $('#hr-permissions').onclick=()=>{if(!loaded||!role())return;permissionManager=true;personDirty=false;profileDirty=false;selected=null;permissionStation='';permissionAccount='';$('#person-dialog').classList.add('hr-permission-manager');peoplePane.querySelector('input').value='';$('#person-form').hidden=true;permissionEmpty.hidden=false;renderPermissionPeople();$('#person-dialog').showModal();};
   $('#person-form').elements.reportingScope.onchange=event=>{if(saving)return;const [station,account]=event.target.value.split('|');showPerson(selected,{station,account});};
   $('.hr-settings').onclick=event=>{event.preventDefault();setView('accounts');};
   const closePerson=()=>{if(saving)return;if(new URLSearchParams(location.search).get('embedded')==='1')parent.postMessage({type:'schedule-close-person'},location.origin);$('#person-dialog').close();permissionManager=false;personDirty=false;$('#person-dialog').classList.remove('hr-permission-manager');selected=null;render();};

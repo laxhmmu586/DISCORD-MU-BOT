@@ -173,3 +173,10 @@
  .request-manager.case-detail-open .request-manager-detail-toolbar,.request-manager.case-detail-open .request-manager-detail-body{transform:translateX(0);opacity:1}
 }
 @media(prefers-reduced-motion:reduce){.request-manager-detail-toolbar,.request-manager-detail-body{transition:none}}
+
+/* Keep the request subject and account beside the requester, inside each card. */
+.request-manager .request-mailbox .request-message{display:grid;grid-template-columns:minmax(90px,.9fr) minmax(0,1.1fr);align-items:center;column-gap:12px}
+.request-manager .request-message-header{min-width:0;align-content:center}
+.request-manager .request-message-header .request-person-chip>span:last-child{min-width:0;overflow-wrap:anywhere}
+.request-manager .request-message-open{grid-column:2;grid-row:1;margin:0!important;padding:0!important;min-width:0}
+.request-manager .request-message-open>span:first-child{min-width:0;width:100%;overflow-wrap:anywhere}

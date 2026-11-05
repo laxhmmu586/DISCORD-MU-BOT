@@ -63,7 +63,7 @@ function attachPush(store,{db,source,read,methods=['create','save','decide','upd
   if(kind==='read_sign')return r.required&&!r.mySignedAt?{stage:'published',r}:null;
   if(source==='schedule'&&r.canReceiveNotification)return {stage:'notified',r};
   if(!r.canReview&&!r.canApprove&&!r.canConfirm)return null;
-  return {stage:JSON.stringify([r.status,r.nodeIds?.[r.step]||r.step||r.status,r.submittedAt||r.createdAt,(r.history||[]).filter(h=>['Returned for revision','Withdrawn to draft'].includes(h.action)).length]),r};
+  return {stage:JSON.stringify([r.status,r.nodeIds?.[r.step]||r.step||r.status,r.submittedAt||r.createdAt,(r.history||[]).filter(h=>['Returned for revision','Withdrawn to draft'].includes(h.action)).length,...(source==='new_access'&&r.reviewerId?[r.reviewerId,(r.history||[]).filter(h=>h.action==='transfer').length]:[])]),r};
  };
  service.resolvers.set(source,resolve);
  for(const method of methods){if(typeof store[method]!=='function')continue;const original=store[method];store[method]=(...args)=>{
