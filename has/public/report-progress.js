@@ -5,7 +5,7 @@
  window.bindReportNodes=(host,r,data,{api,onSaved,onDecision})=>{
   const target=host.querySelector('.request-node-workbench');if(!target||!r||!data.reviewerDirectory)return;
   const route=r.approvalRoute?.length?r.approvalRoute:data.approvalRoute;
-  target.replaceWith(RequestWorkflow.render({record:{...r,employee:r.employee||data.employee,stages:route.map(n=>n.position),approvalRoute:route,step:r.step||0},directory:data.reviewerDirectory,defaultRoute:data.approvalRoute,showForm:false,stateKey:r.id,onDecision:onDecision|| (async(action,note,employeeId)=>{await api('/'+r.id+'/decision',{revision:r.revision,action,note,employeeId});await onSaved();}),
+  target.replaceWith(RequestWorkflow.render({onRefresh:onSaved,record:{...r,employee:r.employee||data.employee,stages:route.map(n=>n.position),approvalRoute:route,step:r.step||0},directory:data.reviewerDirectory,defaultRoute:data.approvalRoute,showForm:false,stateKey:r.id,onDecision:onDecision|| (async(action,note,employeeId)=>{await api('/'+r.id+'/decision',{revision:r.revision,action,note,employeeId});await onSaved();}),
    onDraftChange:route=>{r.approvalRoute=route;window.bindReportNodes(host,r,data,{api,onSaved,onDecision});},
    onSave:async(route,revision)=>{await api('/'+r.id+'/route',{route,revision});await onSaved();}
   }));
