@@ -387,6 +387,11 @@
     .bag-tag-edit-form{display:grid;gap:4px;min-width:130px;margin:0}
     .bag-tag-edit-form input{width:130px;padding:5px;border:1px solid #aac8ef;border-radius:5px;font:inherit;box-sizing:border-box}
     .bag-tag-edit-form small{font-size:11px;white-space:normal;color:#bd2440;max-width:220px}
+    .cbs-sheet :is([data-edit-bag-tag],[data-edit-flight]).is-inline-editing{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;outline:none!important;box-shadow:none!important}
+    .is-inline-editing .bag-tag-edit-form{display:inline-grid;gap:4px;min-width:0;margin:0;vertical-align:middle}
+    .is-inline-editing .bag-tag-edit-form input{width:116px;min-height:30px;padding:5px 8px;border:1px solid #1675e8!important;border-radius:7px;background:#fff;color:#17416e;font:inherit;outline:none!important;box-shadow:none!important}
+    [data-edit-flight].is-inline-editing .bag-tag-edit-form input{width:88px;text-align:center}
+    .is-inline-editing .bag-tag-edit-form small:empty{display:none}
     /* Briefing workspace palette and glass surfaces. */
     :root { --bg:#e7effc; --ink:#142f59; --muted:#526e93; --brand:#1c5eaf; --line:#cdddf3; --panel:#f4f8ff; }
     body { background:radial-gradient(ellipse at 90% 0%,#d3e4ff,transparent 55%),#e7effc; font-family:Inter,"Segoe UI",Arial,"Noto Sans SC",sans-serif; }
@@ -548,7 +553,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="/__/firebase/init.js"></script>
-  <script src="/cbs-bag-tag-edit.js?v=flight-edit"></script><script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
+  <script src="/cbs-bag-tag-edit.js?v=single-border"></script><script src="/pir-delivery.js"></script><script src="/baggage-guide.js?v=20261015-inline-details"></script>
   <script>
     const baggageEditor=document.querySelector('#baggage-editor'),baggageEditForm=document.querySelector('#baggage-edit-form');
     document.querySelector('#baggage-edit-close').addEventListener('click',()=>baggageEditor.close());

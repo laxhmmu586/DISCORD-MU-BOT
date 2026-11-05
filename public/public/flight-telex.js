@@ -10,6 +10,7 @@
   let nextRead = 0;
   let renderKey = "";
   let checked = new Set();
+  let found = new Set();
 
   function today() {
     return new Intl.DateTimeFormat("en-GB", {
@@ -54,32 +55,39 @@
       ++revision;
       scope = key ? {key, flightNo: sy.flightNo, flightDate: sy.flightDate} : undefined;
       checked = new Set();
+      try { found = new Set(JSON.parse(window.sessionStorage?.getItem('flight-telex-detected:'+key) || '[]').filter(code => services.includes(code) || code === 'RUSH BAG')); }
+      catch { found = new Set(); }
+      items.replaceChildren();
       saving = loaded = false;
       nextRead = 0;
       status.textContent = "";
     }
-    const found = new Set();
-    if (key && sy.permissions?.canViewSpecialService !== false) {
+    const allowed = key && sy.permissions?.canViewSpecialService !== false;
+    const missing = services.filter(code => !found.has(code));
+    const pattern = missing.length ? new RegExp('\\b(?:'+missing.map(code=>code==='PTEC'?'PTEC|PETC':code==='UM'?'UM\\d{0,2}':code).join('|')+')\\b','g') : null;
+    if (allowed && pattern) {
       for (const list of [sy.seatMapRecords, sy.bnAudit, sy.wchList, sy.psmList]) {
         for (const row of list || []) {
           if (row.isOffloaded || row.passengerRecord?.isOffloaded) continue;
           const record = row.passengerRecord || {};
           // Preserve the explicit VIP directive, not incidental words in remarks.
-          if ([row.psmLines, record.psmLines].flat().some(line => /^\s*PSM-\/VIP(?:\s|$)/i.test(String(line || '')))) found.add('VIP');
+          if (!found.has('VIP') && [row.psmLines, record.psmLines].flat().some(line => /^\s*PSM-\/VIP(?:\s|$)/i.test(String(line || '')))) found.add('VIP');
           // PSM/MSG is free text and can mention services that are not active.
           const values = [row.code, row.codes, row.specialServices,
             record.codes, record.specialServices].flat().filter(Boolean).join(" ").toUpperCase();
-          for (const code of values.match(/\b(?:VIP|INAD|INCP|WCHR|WCHC|AVIH|PTEC|PETC|UM\d{0,2})\b/g) || []) {
+          for (const code of values.match(pattern) || []) {
             found.add(code === "PETC" ? "PTEC" : code.replace(/^UM\d+$/, "UM"));
           }
         }
       }
     }
-    const detected = services.filter(code => found.has(code));
-    if (key && sy.flightNo === "MU586" && sy.flightDate === today() && (sy.hasOutboundRush || sy.bagSheet?.rushBags?.hasData)) {
-      detected.push("RUSH BAG");
+    const detected = allowed ? services.filter(code => found.has(code)) : [];
+    if (allowed && sy.flightNo === "MU586" && sy.flightDate === today() && (sy.hasOutboundRush || sy.bagSheet?.rushBags?.hasData)) {
+      found.add("RUSH BAG");
     }
 
+    if (allowed && sy.flightNo === 'MU586' && found.has('RUSH BAG')) detected.push('RUSH BAG');
+    if (key) try { window.sessionStorage?.setItem('flight-telex-detected:'+key, JSON.stringify([...found])); } catch {}
     const signature = JSON.stringify([key, detected]);
     if (signature === renderKey) {
       if (Date.now() >= nextRead) window.refreshFlightTelex();
@@ -87,7 +95,9 @@
     }
     renderKey = signature;
     panel.hidden = detected.length === 0;
+    const existing = new Map([...items.querySelectorAll('input')].map(input => [input.value, input.closest('label')]));
     items.replaceChildren(...detected.map(code => {
+      if (existing.has(code)) return existing.get(code);
       const label = document.createElement("label");
       const input = document.createElement("input");
       input.type = "checkbox";

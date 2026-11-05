@@ -1,4 +1,4 @@
-const fs=require('fs'),path=require('path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
+const fs=require('fs'),path=require('path'),assert=require('node:assert/strict'),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
  const context=await browser.newContext(),errors=[],posts=[];let bagTag='MU123456',revision=1,failNext=false;
  await context.route('**/*',async route=>{const url=new URL(route.request().url());
@@ -10,11 +10,11 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
  }
  if(url.hostname==='www.gstatic.com')return route.fulfill({contentType:'text/javascript',body:''});
  if(url.pathname==='/__/firebase/init.js')return route.fulfill({contentType:'text/javascript',body:`window.firebase={apps:[{}],auth:()=>({currentUser:{email:'test@example.com',getIdToken:async()=>'fixture'},onAuthStateChanged:fn=>{setTimeout(()=>fn({email:'test@example.com'}),0);return()=>{}}})};`});
- const file=path.join(process.cwd(),'public/public',decodeURIComponent(url.pathname));return fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.fulfill({status:404,body:''});
+ const file=path.join(process.env.CBS_WEB_ROOT||path.join(process.cwd(),'public/public'),decodeURIComponent(url.pathname));return fs.existsSync(file)&&fs.statSync(file).isFile()?route.fulfill({path:file}):route.fulfill({status:404,body:''});
  });
  const page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));await page.goto('http://localhost/cbs.html');
  const tag=page.locator('#cases-output [data-edit-bag-tag]').first();await tag.waitFor();assert.equal(await tag.getAttribute('data-tag-source'),'pir');
- await tag.dblclick();let input=tag.getByRole('textbox');await input.fill('MU999999');await input.press('Enter');await page.waitForFunction(()=>document.querySelector('#cases-output [data-edit-bag-tag]')?.textContent==='MU999999');assert.equal(posts.length,1);assert.equal(posts[0].oldTag,'MU123456');
+ await tag.dblclick();let input=tag.getByRole('textbox');const borders=await tag.evaluate(n=>({outer:getComputedStyle(n).borderTopWidth,outline:getComputedStyle(n).outlineStyle,inner:getComputedStyle(n.querySelector('input')).borderTopWidth,shadow:getComputedStyle(n.querySelector('input')).boxShadow}));assert.deepEqual(borders,{outer:'0px',outline:'none',inner:'1px',shadow:'none'});await input.fill('MU999999');await input.press('Enter');await page.waitForFunction(()=>document.querySelector('#cases-output [data-edit-bag-tag]')?.textContent==='MU999999');assert.equal(posts.length,1);assert.equal(posts[0].oldTag,'MU123456');
  await tag.dblclick();input=tag.getByRole('textbox');await input.fill('MU777777');await input.press('Escape');assert.equal(await tag.innerText(),'MU999999');assert.equal(posts.length,1);
  await tag.dblclick();input=tag.getByRole('textbox');await input.fill('bad');await input.press('Tab');assert.equal(posts.length,1);assert(await tag.locator('[role=status]').innerText());await input.focus();await input.fill('MU888888');await input.press('Tab');await page.waitForFunction(()=>document.querySelector('#cases-output [data-edit-bag-tag]')?.textContent==='MU888888');assert.equal(posts.length,2);
  failNext=true;await tag.dblclick();input=tag.getByRole('textbox');await input.fill('MU777777');await input.press('Tab');await tag.locator('[role=status]').filter({hasText:'Save failed'}).waitFor();assert.equal(bagTag,'MU888888');assert.equal(await page.evaluate(()=>window.cbsBagTagEditing),true);await input.press('Enter');await page.waitForFunction(()=>document.querySelector('#cases-output [data-edit-bag-tag]')?.textContent==='MU777777');
