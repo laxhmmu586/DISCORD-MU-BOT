@@ -936,7 +936,7 @@ async function getTestBaggageReportRows(options = {}) {
       const bTime = Date.parse(b.rawLastUpdated || b.lastUpdated || b.lastUpdatedAt || b.submittedAt || b.submitDate || '') || 0;
       return bTime - aTime;
     });
-  return hasSearch ? result : result.slice(0, 20);
+  return hasSearch || options.all ? result : result.slice(0, 20);
 }
 
 async function appendTestBaggageRecord(record) {
@@ -4261,6 +4261,8 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   } : null;
   const updateEvents = identification ? [{key:'bag-identification', title:'Baggage identification', at:saved.createdAt, by:saved.createdBy, bagIdentification:identification,
     fields:[['Color',identification.color],['Type',identification.type],['Descriptive elements',identification.descriptors]]}] : [];
+  const commentEvent = require('./cbsBaggageComments').initialBaggageComment(record);
+  if (commentEvent) updateEvents.push(commentEvent);
   saved.bagIdentifications = identification ? [identification] : [];
   saved.updateEvents = updateEvents;
   const response = await sheets.spreadsheets.values.append({
@@ -4272,6 +4274,27 @@ async function appendCbsUnresolvedBaggageCase(record = {}) {
   await appendCbsNotLoadBaggageCase({ ...record, ...saved });
   invalidateCbsUnresolvedBaggageCache();
   return { created: true, record: saved };
+}
+
+// Explicit repair for records created before initial comments were copied to CBS.
+async function backfillCbsBaggageComments({apply=false} = {}) {
+  const {initialBaggageComment,hasComment}=require('./cbsBaggageComments');
+  const records=await getTestBaggageReportRows({all:true});
+  const cases=await getCbsUnresolvedBaggageCases({includeResolved:true});
+  const byTag=new Map(records.map(record=>[String(record.bagTag).toUpperCase(),record]));
+  const title=await getCbsUnresolvedBaggageSheetTitle();
+  let matched=0,updated=0;
+  for(const row of cases){
+    const record=byTag.get(String(row.bagTag).toUpperCase());
+    if(!record||record.date!==row.flightDate||record.flight!==row.flightNumber||String(record.direction).toLowerCase()!==String(row.direction).toLowerCase())continue;
+    const comment=initialBaggageComment(record);if(!comment)continue;
+    matched++;
+    if(hasComment(row.updateEvents||[],comment))continue;
+    updated++;
+    if(apply)await sheets.spreadsheets.values.update({spreadsheetId:CBS_SHEET_ID,range:`${escapeSheetTitle(title)}!R${row.rowNumber}`,valueInputOption:'RAW',requestBody:{values:[[JSON.stringify([...(row.updateEvents||[]),comment])]]}});
+  }
+  if(apply)invalidateCbsUnresolvedBaggageCache();
+  return {matched,updated,applied:apply};
 }
 
 async function updateCbsUnresolvedBaggageDetails(rowNumber, update = {}) {
@@ -5299,6 +5322,7 @@ module.exports = {
   updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
   appendCbsUnresolvedBaggageCase,
+  backfillCbsBaggageComments,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
   updateCbsUnresolvedBaggageRush,
@@ -5351,7 +5375,7 @@ module.exports = {
 let cbsWriteQueue=Promise.resolve();
 const cbsReadMethods=new Set(['getCbsCases','getWrongBaggageSubmissions','getContactFormSubmissions','getCbsWorldTracerCases','getCbsUnresolvedBaggageCases','getTestBaggageReportRows','hasOutboundRushBaggage','findTestBaggageByTag','getCbsDamageImage']);
 module.exports.correctCbsBagTag=correctCbsBagTag;
-for(const name of ['correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','appendCbsUnresolvedBaggageCase','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
+for(const name of ['backfillCbsBaggageComments','correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','appendCbsUnresolvedBaggageCase','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
  const original=module.exports[name];if(!original)continue;
  module.exports[name]=(...args)=>{
   const pending=cbsWriteQueue.then(async()=>{

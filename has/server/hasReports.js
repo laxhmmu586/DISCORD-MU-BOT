@@ -64,8 +64,10 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  const read=(scope,kind,month)=>{const row=database().prepare('SELECT data FROM has_reports WHERE scope=? AND kind=? AND month=?').get(key(scope),kind,month);const data=row?JSON.parse(row.data):{revision:0,values:{}};if(['da','wwh'].includes(kind))delete data.values[kind==='wwh'?'B1':'C4'];if(kind==='wwh')for(const [old,target] of [['A31','A32'],['A38','A39'],['A47','A48'],['A50','A51'],['A53','B54']]){const value=data.values[old];if(typeof value==='string'&&!data.values[target]&&!/^(?:ADDITIONAL\s+)?COMMENTS:\s*(?:NIL)?$/i.test(value.trim()))data.values[target]=value.replace(/^(?:ADDITIONAL\s+)?COMMENTS:\s*/i,'');}return data;};
  const live=require('./hasReportLive').createReportLive({context,read,heartbeatMs:liveHeartbeatMs});
  const handler=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){const infrastructure=['ENOENT','EACCES','EPERM','ENOTDIR'].includes(e.code)||String(e.code||'').startsWith('SQLITE_');if(infrastructure)console.error('HAS report request:',e);const status=infrastructure?503:e.status||400;if(status===503)res.set('Retry-After','30');res.status(status).json({error:infrastructure?'Reports are temporarily unavailable. Please retry later.':e.message});}};
- const build=async req=>{const ctx=authorize(req);reportMonth(req.params.month);const saved=read(ctx.scope,req.params.kind,req.params.month),model=await template(req.params.kind,req.params.month,ctx.scope,saved.extraRows);return {ctx,model,saved};};
+ const build=async req=>{const ctx=authorize(req);reportMonth(req.params.month);const saved=read(ctx.scope,req.params.kind,req.params.month),model=await scopedTemplate(req.params.kind,req.params.month,ctx.scope,saved.extraRows);return {ctx,model,saved};};
  const apply=(model,values,stored=false)=>{if(!values||typeof values!=='object'||Array.isArray(values))fail('Invalid report values.');for(const [address,value] of Object.entries(values)){const cell=model.cells[address];if(!cell?.editable){if(stored)continue;fail('This template cell cannot be edited: '+address);}if(!['string','number'].includes(typeof value)||String(value).length>4000||typeof value==='number'&&!Number.isFinite(value))fail('Invalid cell value.');if(!stored&&cell.maxLength&&String(value).length>cell.maxLength)fail('Issued By must be 50 characters or fewer.');if(!stored&&cell.choices&&value!==''&&!cell.choices.includes(value))fail('Choose Compliment or Manager Direction.');if(cell.webOnly&&value!==''&&(!Number.isSafeInteger(Number(value))||Number(value)<0))fail('Wheelchair counts must be non-negative whole numbers.');setInput(cell,value);}return model;};
+ const {createHoursTemplate,hoursValues}=require('./hasReportHours');
+ const scopedTemplate=createHoursTemplate({template,read,apply});
  app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser),supervisor=canHrSafety(employee);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee),...Object.fromEntries(wordForms.kinds.map(kind=>[kind,supervisor]))},canChecklist:require('./hasChecklists').allowed(employee),canDashboard:canDashboard(employee),canAdmin:['Supervisor','Business Manager'].includes(positions.normalize(employee.position))||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
  wordForms.register(app,{context,database,read,key,handler,allowed:canHrSafety});
  require('./hasChecklists').register(app,{context,handler,supervisor:canChecklistManage,database,read,key,employees});
@@ -89,14 +91,14 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  app.get('/has-report-api/dashboard/:year',handler(async(req,res)=>{
   const ctx=context(req.reportUser);if(!canDashboard(ctx.employee))fail('Dashboard access requires Supervisor or above in your Main Account.',403);
   if(!/^\d{4}$/.test(req.params.year)||+req.params.year<2026)fail('Select a year from 2026 onward.');
-  const year=+req.params.year,months=[];
+  const year=+req.params.year,months=[],hoursCache=new Map();
   for(let m=1;m<=12;m++){
    const month=year+'-'+String(m).padStart(2,'0'),wwh=read(ctx.scope,'wwh',month),da=read(ctx.scope,'da',month);
    const row={month,hasDA:da.revision>0,hasWWH:wwh.revision>0||recharge.isLinked(read(ctx.scope,'rechargeable',month)),updatedAt:[da.updatedAt,wwh.updatedAt].filter(Boolean).sort().at(-1)||null};
    const metrics=['budgetHours','actualHours','rechargeHours','balanceHours','netActualHours','flights','pax'];for(const metric of metrics)row[metric]=null;
    row.rechargeBreakdown=null;row.flightDelays=null;row.state='not-started';row.errors=[];
    if(!row.hasDA&&!row.hasWWH){months.push(row);continue;}
-   const model=await template('wwh',month,ctx.scope);apply(model,wwh.values,true);const source=await linkDA(model,ctx.scope),calculated=calculate(model.cells);if(row.hasDA)row.flightDelays=flightDelays(source);
+   const model=await scopedTemplate('wwh',month,ctx.scope,undefined,hoursCache);apply(model,wwh.values,true);const source=await linkDA(model,ctx.scope),calculated=calculate(model.cells);if(row.hasDA)row.flightDelays=flightDelays(source);
    const numeric=address=>{const cell=model.cells[address],value=cell?.formula?calculated[address]:cell?.value;if(typeof value==='number'&&Number.isFinite(value))return value;row.errors.push(address);return null;};
    if(row.hasDA){row.flights=numeric('Z11');row.pax=numeric('AA11');}
    if(row.hasWWH){
@@ -124,7 +126,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   apply(model,body.values);calculate(model.cells);
   const at=new Date().toISOString(),name=ctx.employee.nickname||ctx.employee.name||ctx.employee.position;
   const history=[...(latest.history||[]),{at,name,action,cells:entries.map(([a])=>a)}].slice(-30);
-  const data={cleared:latest.cleared||false,revision:latest.revision+1,layoutRevision:latest.layoutRevision||0,extraRows:latest.extraRows||{},values:{...latest.values,...body.values},updatedAt:at,updatedBy:name,history};
+  const data={cleared:latest.cleared||false,revision:latest.revision+1,layoutRevision:latest.layoutRevision||0,extraRows:latest.extraRows||{},values:{...latest.values,...hoursValues(model),...body.values},updatedAt:at,updatedBy:name,history};
   db.prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),model.kind,model.month,JSON.stringify(data));return data;
  })();live.publish(ctx.scope,model.kind,model.month);return saved;};
  app.post('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model}=await build(req);res.json(write(ctx,model,req.reportUser,req.body));}));
@@ -169,8 +171,9 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   if(forms.kinds.includes(model.kind)){apply(model,read(ctx.scope,model.kind,model.month).values,true);return res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(model.kind+'_'+ctx.scope.station+'_'+ctx.scope.account+'_'+model.month+'.xlsx').send(await forms.exportForm(model));}
   // The originals are annual workbooks. Populate every monthly tab from this
   // Main Account's shared records, including the selected month's live totals.
+  const hoursCache=new Map();
   for(let m=1;m<=12;m++){
-   const month=year+'-'+String(m).padStart(2,'0'),stored=read(ctx.scope,model.kind,month),current=month===model.month?model:await template(model.kind,month,ctx.scope,stored.extraRows);
+   const month=year+'-'+String(m).padStart(2,'0'),stored=read(ctx.scope,model.kind,month),current=month===model.month?model:await scopedTemplate(model.kind,month,ctx.scope,stored.extraRows,hoursCache);
    apply(current,stored.values,true);const source=await linkDA(current,ctx.scope),results=calculate(current.cells),sheet=model.workbook.getWorksheet(current.sheetName);if(current!==model){prepareCalendar(sheet,model.kind,+year);if(model.kind==='da')applyExtraRows(sheet,stored.extraRows);}
    if(model.kind==='wwh')for(const row of [47,50,53])sheet.getCell('A'+row).value=row===47?'ADDITIONAL COMMENTS:':'COMMENTS:';
    const sourceName=month===model.month?'DA Source':'DA Source '+current.sheetName;
