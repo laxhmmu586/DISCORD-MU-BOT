@@ -5298,6 +5298,7 @@ module.exports = {
   getCbsWorldTracerCases,
   updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
+  appendCbsUnresolvedBaggageCase,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
   updateCbsUnresolvedBaggageRush,
@@ -5350,7 +5351,7 @@ module.exports = {
 let cbsWriteQueue=Promise.resolve();
 const cbsReadMethods=new Set(['getCbsCases','getWrongBaggageSubmissions','getContactFormSubmissions','getCbsWorldTracerCases','getCbsUnresolvedBaggageCases','getTestBaggageReportRows','hasOutboundRushBaggage','findTestBaggageByTag','getCbsDamageImage']);
 module.exports.correctCbsBagTag=correctCbsBagTag;
-for(const name of ['correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
+for(const name of ['correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','appendCbsUnresolvedBaggageCase','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
  const original=module.exports[name];if(!original)continue;
  module.exports[name]=(...args)=>{
   const pending=cbsWriteQueue.then(async()=>{

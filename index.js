@@ -89,6 +89,7 @@ const {
   getCbsWorldTracerCases,
   updateCbsWorldTracerCase,
   getCbsUnresolvedBaggageCases,
+  appendCbsUnresolvedBaggageCase,
   updateCbsUnresolvedBaggageWorldTracer,
   updateCbsUnresolvedBaggageDetails,
   updateCbsUnresolvedBaggageRush,
