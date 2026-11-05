@@ -42,3 +42,19 @@ test('WWH only exposes useful fields and preserves formula precision and clean e
  const exported=await request('manager','/wwh/2026-10/export'),book=new Excel.Workbook();assert.equal(exported.status,200);await book.xlsx.load(exported.data);const sheet=book.getWorksheet('Oct');assert.equal(sheet.getCell('B1').value,'LAX/MU');assert.equal(sheet.getCell('F5').formula,'SUM(60,2)');assert.equal(sheet.getCell('F5').result,62);assert.equal(sheet.getCell('G5').value,1.283);assert.equal(sheet.getCell('G5').numFmt,'0.00');assert.equal(sheet.getCell('A32').value,'Flight note');
  const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip'),zip=await JSZip.loadAsync(exported.data);assert(!Object.keys(zip.files).some(n=>/comments\d+\.xml/.test(n)));
 });
+
+test('WWH daily contract hours inherit previous month, remain editable, and freeze when saved',async t=>{
+ const request=await fixture(t),oct='/wwh/2026-10',nov='/wwh/2026-11';
+ assert.equal((await request('manager',oct,{revision:0,values:{C5:67,C6:68,C7:69,C8:70,C9:71,C10:72}})).status,200);
+ let model=(await request('manager',nov)).data;
+ for(let r=5;r<=9;r++){assert.equal(model.cells['C'+r].editable,true);assert.equal(model.cells['C'+r].value,62+r);}
+ assert.equal(model.cells.C10.value,'');
+ assert.equal((await request('manager',nov,{revision:0,values:{C6:80}})).status,200);
+ assert.equal((await request('manager',oct,{revision:1,values:{C5:90}})).status,200);
+ model=(await request('manager',nov)).data;assert.equal(model.cells.C5.value,67);assert.equal(model.cells.C6.value,80);
+ assert.equal((await request('manager',nov,{revision:1,values:{C5:'',C7:0}})).status,200);
+ model=(await request('manager',nov)).data;assert.equal(model.cells.C5.value,'');assert.equal(model.cells.C7.value,0);
+ const book=new Excel.Workbook();await book.xlsx.load((await request('manager',nov+'/export')).data);assert.equal(book.getWorksheet('Nov').getCell('C6').value,80);
+ const other=(await request('other',nov)).data;assert.notEqual(other.cells.C6.value,80);
+ assert.equal((await request('manager','/wwh/2027-01')).status,200);
+});

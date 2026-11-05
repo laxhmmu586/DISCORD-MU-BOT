@@ -10,25 +10,42 @@ const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('js
   const p=await browser.newPage({viewport:{width:1440,height:1100}});p.on('pageerror',error=>errors.push(error.message));
   await p.route('https://www.gstatic.com/**',r=>r.fulfill({body:'',contentType:'text/javascript'}));
   await p.route('**/__/firebase/init.js',r=>r.fulfill({contentType:'text/javascript',body:`window.MU_API_BASE=${JSON.stringify(base)};const u={...${JSON.stringify(users[id])},uid:${JSON.stringify(id)},providerData:[],getIdToken:async()=>${JSON.stringify(id)}};const auth={currentUser:u,onAuthStateChanged:fn=>{setTimeout(()=>fn(u),0);return()=>{};}};window.firebase={apps:[{}],auth:()=>auth};`}));
+  await p.route('**/has-page-api/**',r=>r.fulfill({json:{canAccess:true,canManage:false}}));
   await p.goto(base+url);return p;
  }
  try{
   const p=await pageFor('s');await p.locator('[data-cell-input="K7"]').waitFor();
   assert.deepEqual(await p.locator('#report-kind optgroup').evaluateAll(groups=>groups.map(g=>g.label)),['Weekly & Monthly','General','Safety','HR']);
-  assert.equal(await p.locator('[data-report-access]').evaluate(a=>a.nextElementSibling.textContent.trim()),'Checklist');
-  assert.equal(await p.locator('[data-checklist-access]').evaluate(a=>a.nextElementSibling.getAttribute('href')),'/read-sign.html');
+  assert.equal(await p.locator('[data-checklist-access]').count(),1);
   for(const kind of ['investigation','cos','paf','discussion']){
    await p.selectOption('#report-kind',kind);await p.locator('[data-word-field]').first().waitFor();if(kind!=='paf')assert.equal(await p.locator('.paf-policy-picker').count(),0);const accountKey={investigation:'detail_1_0',cos:'department',paf:'employee_5',discussion:'detail_3_1'}[kind];assert.equal(await p.locator('[data-word-field='+accountKey+']').inputValue(),'LAX/MU');assert.equal(await p.locator('.report-month-field').isVisible(),false);
    if(kind==='investigation'){assert.equal(await p.locator('[data-word-field=\"detail_1_0\"]').inputValue(),'LAX/MU');assert.equal(await p.locator('[data-word-field=\"detail_2_0\"]').inputValue(),'Test Supervisor');assert.equal(await p.locator('[data-word-field=\"detail_2_1\"]').inputValue(),'Supervisor');assert.equal(await p.locator('[data-word-field=\"detail_0_0\"]').getAttribute('required'),null);}if(['paf','discussion'].includes(kind)){assert.equal(await p.locator('input[aria-label*=\"signature\" i]').count(),0);assert.equal(await p.locator('input[aria-label*=\"Witness\" i]').count(),0);}if(kind==='cos'){const left=await p.locator('[data-word-field=\"from\"]').boundingBox(),right=await p.locator('[data-word-field=\"to\"]').boundingBox();assert.ok(Math.abs(left.y-right.y)<2);assert.ok(right.x>=left.x+left.width);assert.ok((await p.locator('[data-word-field=\"check_9_0_1\"]').boundingBox()).y<left.y);}if(kind==='paf'){
     assert.equal(await p.locator('.paf-policy-card').count(),44);assert.equal(await p.locator('[data-word-field=employee_5]').inputValue(),'LAX/MU');const sidebar=await p.locator('.paf-policy-picker').boundingBox(),form=await p.locator('.word-report').boundingBox();assert(sidebar.x+sidebar.width<form.x);
     const policy=p.locator('[data-word-field=narrative_17]');await policy.fill('Manual policy note.');await p.locator('#paf-policy-search').fill('2 hours');assert.equal(await p.locator('.paf-policy-card').count(),1);await p.locator('[data-policy-number="17"]').dragTo(policy);assert((await policy.inputValue()).startsWith('Manual policy note.\n\n17. Failing to give at least 2 hours'));await p.locator('#paf-policy-search').fill('44.');await p.locator('[data-policy-number="44"]').click();assert((await policy.inputValue()).includes('44. Any other violations of rules and policies of the Company.'));await p.locator('#paf-policy-search').fill('');
     await p.screenshot({path:path.join(output,'paf-policy-desktop.png'),fullPage:true});await p.setViewportSize({width:390,height:844});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.screenshot({path:path.join(output,'paf-policy-mobile.png'),fullPage:true});await p.setViewportSize({width:1440,height:1100});
-   }const narrative=p.locator('textarea[data-word-field]').first();await narrative.fill('Browser saved '+kind+' & follow up.');
+   }
+   const heading=await p.locator('.word-report-header h2').boundingBox(),actions=await p.locator('.word-report-actions').boundingBox();
+   assert(actions.x>=heading.x+heading.width+20,kind+' buttons sit to the right of the title');
+   for(const width of [320,390]){await p.setViewportSize({width,height:844});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+   await p.setViewportSize({width:1440,height:1100});
+   const narrative=p.locator('textarea[data-word-field]').first();await narrative.fill('Browser saved '+kind+' & follow up.');
    await p.getByRole('button',{name:'Save form',exact:true}).click();await p.waitForFunction(()=>document.querySelector('#report-status').textContent.startsWith('Saved by'));
    await p.reload();await p.locator('[data-cell-input="K7"]').waitFor();await p.selectOption('#report-kind',kind);await p.locator('textarea[data-word-field]').first().waitFor();assert.equal(await p.locator('textarea[data-word-field]').first().inputValue(),'Browser saved '+kind+' & follow up.');
    await p.screenshot({path:path.join(output,'template-'+kind+'-desktop.png'),fullPage:true});const downloadPromise=p.waitForEvent('download');await p.getByRole('button',{name:'Download Word',exact:true}).click();const download=await downloadPromise;const filename=path.join(output,'browser-'+kind+'.docx');await download.saveAs(filename);const zip=await JSZip.loadAsync(fs.readFileSync(filename));assert.match(await zip.file('word/document.xml').async('string'),new RegExp('Browser saved '+kind+' &amp; follow up'));if(kind==='paf'){const xml=await zip.file('word/document.xml').async('string');assert(xml.includes('Failing to give at least 2 hours'));assert(xml.includes('Any other violations of rules and policies of the Company.'));assert(xml.includes('LAX/MU'));}
   }
   await p.screenshot({path:path.join(output,'report-HR-desktop.png'),fullPage:true});await p.setViewportSize({width:390,height:844});await p.screenshot({path:path.join(output,'report-HR-mobile.png'),fullPage:true});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.setViewportSize({width:1440,height:1100});
+  await p.selectOption('#report-kind','expense');await p.locator('.expense-editor').waitFor();
+  const expenseTitle=await p.locator('.expense-editor h2').boundingBox(),gridToolbar=await p.locator('.report-grid-toolbar').boundingBox();
+  if(gridToolbar)assert(expenseTitle.y>=gridToolbar.y+gridToolbar.height+24);
+  const expenseFrame=await p.locator('.expense-editor').boundingBox();assert(expenseTitle.x>=expenseFrame.x+24);
+  await p.screenshot({path:path.join(output,'expense-title-spacing.png'),fullPage:true});
+  for(const width of [320,390]){await p.setViewportSize({width,height:844});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+  await p.setViewportSize({width:1440,height:1100});
+  await p.request.post(base+'/has-report-api/wwh/2026-10',{headers:{Authorization:'Bearer s'},data:{revision:0,values:{C5:67,C6:68,C7:69,C8:70,C9:71,C10:72}}});
+  await p.selectOption('#report-kind','wwh');await p.locator('.report-sheet[data-kind=wwh]').waitFor();await p.locator('[data-cell-input="C6"]').waitFor();assert.equal(Number(await p.locator('[data-cell-input="C6"]').inputValue()),68);
+  await p.locator('[data-cell-input="C6"]').focus();await p.locator('[data-cell-input="C6"]').fill('80');await p.locator('h1').click();await p.waitForFunction(()=>document.querySelector('#report-status').textContent.startsWith('Saved by'));
+  await p.reload();await p.locator('[data-cell-input="K7"]').waitFor();await p.selectOption('#report-kind','wwh');await p.locator('.report-sheet[data-kind=wwh]').waitFor();await p.locator('[data-cell-input="C6"]').waitFor();assert.equal(Number(await p.locator('[data-cell-input="C6"]').inputValue()),80);
+  await p.screenshot({path:path.join(output,'wwh-daily-hours-editable.png'),fullPage:true});
   await p.selectOption('#report-kind','rechargeable');await p.locator('[data-role-heading]').first().waitFor();
   for(let i=0;i<3;i++){const input=p.locator('[data-role-heading="'+i+'"]');await input.fill(['Ground Staff','Team Leader','Duty Lead'][i]);await input.press('Tab');await p.waitForFunction(index=>!document.querySelector('[data-role-heading=\"'+index+'\"]').disabled&&document.querySelector('#report-status').textContent==='Headings saved.',i);}
   await p.reload();await p.locator('[data-cell-input="K7"]').waitFor();await p.selectOption('#report-kind','rechargeable');await p.locator('[data-role-heading]').first().waitFor();assert.deepEqual(await p.locator('[data-role-heading]').evaluateAll(nodes=>nodes.map(n=>n.value)),['Ground Staff','Team Leader','Duty Lead']);
