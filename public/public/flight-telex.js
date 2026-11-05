@@ -64,7 +64,10 @@
         for (const row of list || []) {
           if (row.isOffloaded || row.passengerRecord?.isOffloaded) continue;
           const record = row.passengerRecord || {};
-          const values = [row.code, row.codes, row.specialServices, row.psmLines,
+          // Preserve the explicit VIP directive, not incidental words in remarks.
+          if ([row.psmLines, record.psmLines].flat().some(line => /^\s*PSM-\/VIP(?:\s|$)/i.test(String(line || '')))) found.add('VIP');
+          // PSM/MSG is free text and can mention services that are not active.
+          const values = [row.code, row.codes, row.specialServices,
             record.codes, record.specialServices].flat().filter(Boolean).join(" ").toUpperCase();
           for (const code of values.match(/\b(?:VIP|INAD|INCP|WCHR|WCHC|AVIH|PTEC|PETC|UM\d{0,2})\b/g) || []) {
             found.add(code === "PETC" ? "PTEC" : code.replace(/^UM\d+$/, "UM"));

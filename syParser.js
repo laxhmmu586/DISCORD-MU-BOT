@@ -1,4 +1,5 @@
 const { filterUnavailablePassengerSections, passengerBn } = require('./passengerRecordValidity');
+const { withoutContactDetails } = require('./passengerServiceText');
 const { checkVisa } = require('./visaRuntime');
 const { countryForAirport } = require('./visaDestinations');
 const { dateFromToken: visaDateFromToken } = require('./visaEngine');
@@ -152,7 +153,7 @@ function extractWheelchairCodes(section) {
   // line (for example `*GOV/FCL/CHN ... WCHR FBA/2PC*`).  Search the complete
   // active passenger payload, excluding history/PSM lines, so those wrapped
   // SSRs are not lost.
-  const activePayload = String(section || '')
+  const activePayload = withoutContactDetails(section)
     .split(/\r?\n/)
     .filter(isServiceExtractionLine)
     .join('\n');
@@ -1068,7 +1069,7 @@ function enrichInfantTicketAuditFromLog(log, syInfo, targetYmd = null) {
     }
 
     if (/\bPR:/i.test(section)) {
-      const activePayload = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
+      const activePayload = withoutContactDetails(section).split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
       const infantName = activePayload.match(/^\s*INF-\s*([^\s]+(?:\s+[^\s]+)?)/im)?.[1]?.replace(/\s+\d{1,2}[A-Z]{3}\d{2,4}.*$/i, '') || '';
       const passengerLine = getPassengerRecordLine(section);
       const adultName = getPassengerNameFromSection(section);
@@ -1418,7 +1419,7 @@ function enrichSeatMapRecordsFromLog(log, syInfo, targetYmd = null) {
     if (!seat) continue;
 
     const serviceCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'INCP', 'PETC', 'PTEC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
+    const nonPsmSection = withoutContactDetails(section).split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
     const specialServices = serviceCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const specialMeals = [...section.matchAll(/\bSPML-([A-Z]{4})\b/gi)].map((m) => m[1].toUpperCase());
     const ffMatch = section.match(/\bFF\/([A-Z0-9]{2})\s+([A-Z0-9]+)\/([VGSPE])\b/i);
@@ -1692,7 +1693,7 @@ ${section}`,
       status: /\bDELETED\b/i.test(outboundLineForRecord) ? 'DELETED' : ''
     } : null;
     const ssrCodes = ['VIP', 'AVIH', 'BLND', 'DEAF', 'INAD', 'INCP', 'PETC', 'PTEC', 'UM', 'STCR', 'MAAS', 'PPOC', 'WCHR', 'WCHS', 'WCHC'];
-    const nonPsmSection = section.split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
+    const nonPsmSection = withoutContactDetails(section).split(/\r?\n/).filter(isServiceExtractionLine).join('\n');
     const specialServices = ssrCodes.filter((code) => new RegExp(`(?:\\s|\\/|^)${code}(?:\\s|\\/|$)`, 'i').test(nonPsmSection));
     const umNumber = section.match(/\bUM(\d{1,2})\b/i)?.[1];
     if (umNumber && !specialServices.includes('UM')) specialServices.push('UM');

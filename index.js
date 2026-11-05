@@ -339,8 +339,9 @@ function cleanVipPassengerName(value) {
 }
 
 function hasVipServiceMarker(section) {
-  return /(?:^|\s)PSM-\/VIP(?:\s|$)/im.test(section)
-    || /(?:^|[\s/])VIP(?:[\s/]|$)/i.test(section);
+  const text = require('./passengerServiceText').withoutContactDetails(section);
+  return /(?:^|\s)PSM-\/VIP(?:\s|$)/im.test(text)
+    || /(?:^|[\s/])VIP(?:[\s/]|$)/i.test(text);
 }
 
 function extractVipNameCandidate(section) {
