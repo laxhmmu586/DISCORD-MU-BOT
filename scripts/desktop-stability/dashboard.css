@@ -1,0 +1,18 @@
+/* Title, metrics and Telex always share one stable row, including short windows. */
+body:has(.timeline) .mission-head{display:grid!important;grid-template-columns:minmax(0,.88fr) minmax(0,1.7fr)!important;align-items:center!important;gap:clamp(12px,1.4vw,26px)!important;padding-right:0!important;width:calc(100% - 64px)!important;min-height:160px}
+body:has(.timeline) .mission-title{width:auto!important;min-width:0}
+body:has(.timeline) #active-flight{font-size:clamp(22px,2.65vw,46px)!important;white-space:nowrap!important}
+body:has(.timeline) .kicker{font-size:clamp(9px,.85vw,13px)!important;letter-spacing:1.5px!important}
+body:has(.timeline) .mission-side{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,.88fr)!important;flex-wrap:nowrap!important;align-items:center!important;gap:clamp(12px,1.4vw,24px)!important;width:100%!important;min-height:140px}
+body:has(.timeline) .status-strip{display:flex!important;flex-wrap:nowrap!important;gap:clamp(10px,1.3vw,24px)!important;min-width:0!important;justify-content:center}
+body:has(.timeline) .status-metric{width:clamp(64px,6.4vw,104px)!important;height:clamp(64px,6.4vw,104px)!important;min-width:0!important;flex:none!important;padding:0!important}
+body:has(.timeline) .status-metric>span{top:24%!important;font-size:clamp(8px,.7vw,11px)!important;letter-spacing:1px!important}
+body:has(.timeline) .status-metric>strong{top:58%!important;font-size:clamp(18px,1.8vw,28px)!important}
+body:has(.timeline) .flight-telex-position{display:flex!important;align-items:center!important;width:100%!important;min-width:0!important;min-height:130px;padding-left:12px!important;box-sizing:border-box}
+body:has(.timeline) .flight-telex-position:not(:has(.flight-telex:not([hidden]))){border-color:transparent!important}
+body:has(.timeline) .flight-telex{grid-template-columns:24px minmax(0,1fr)!important;gap:8px!important;padding:10px!important}
+body:has(.timeline) .flight-telex h2{font-size:clamp(12px,1.2vw,17px)!important}
+body:has(.timeline) .telex-document-icon{width:24px!important}
+body:has(.timeline) .telex-control{width:46px!important}
+body:has(.timeline) [data-telex-items]{max-height:85px!important}
+@media(max-height:800px){body:has(.timeline) .mission-head{margin-top:24px!important}}
