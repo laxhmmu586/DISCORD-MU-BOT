@@ -67,3 +67,57 @@
 .workspace-glass .profile-shell .request-inbox-tabs button{min-height:68px!important;height:68px!important;grid-template-rows:20px 16px;align-content:center;position:relative}
 .workspace-glass .profile-shell .request-inbox-tabs strong,.workspace-glass .profile-shell .request-inbox-tabs small{margin:0!important}
 .request-mailbox .request-message-open{justify-content:space-between!important;align-items:center!important}
+
+/* Permission-style request manager: searchable list on the left, selected request on the right. */
+.request-manager{position:fixed;inset:0;margin:auto;width:min(1280px,calc(100% - 40px));max-width:calc(100% - 40px);height:min(900px,calc(100dvh - 40px));max-height:calc(100dvh - 40px);padding:0;border:1px solid white;border-radius:24px;background:linear-gradient(145deg,#f4f8ff,#e8f1ff);color:#2a4f7d;box-shadow:0 25px 85px #355f9133;overflow:hidden;box-sizing:border-box}
+.request-manager[open]{display:grid;grid-template-columns:290px minmax(0,1fr)}.request-manager::backdrop{background:#254f7c40;backdrop-filter:blur(6px)}
+.request-manager-sidebar{min-height:0;min-width:0;display:flex;flex-direction:column;border-right:1px solid #ffffffbd;padding:20px 12px;background:linear-gradient(155deg,#e3eeff,#d7e7fc)}
+.request-manager-views{display:flex;flex-wrap:wrap;gap:6px;padding:0 5px 15px}
+.request-manager .request-manager-views button{font:10px 'Segoe UI',sans-serif;padding:7px 8px;margin:0;border:1px solid #ffffffad;border-radius:8px;background:#ffffff40;color:#6684aa;box-shadow:none}
+.request-manager .request-manager-views [aria-pressed=true]{background:#fff;color:#2a75d0}
+.request-manager-list{min-height:0;flex:1;display:flex}.request-manager .request-dashboard-list{display:flex;flex-direction:column;min-height:0;min-width:0;width:100%;margin:0;padding:0;border:0;box-shadow:none;background:none}
+.request-manager .request-dashboard-list>.profile-panel-title{flex:none;padding:0 8px 10px;margin:0;display:flex;align-items:center;justify-content:space-between;gap:10px;border:0}
+.request-manager .request-dashboard-list>.profile-panel-title h2{font-size:18px;color:#234e80;margin:0;line-height:1.4}
+.request-manager .request-dashboard-list>.profile-panel-title button{font-size:10px;padding:6px 8px;margin:0;border:1px solid white;border-radius:8px;background:#ffffff80;color:#5c81af}
+.request-manager .request-mailbox-search{flex:none;margin:0 0 12px!important;padding:10px 12px!important;background:#ffffff80!important;font-size:11px!important}
+.request-manager .request-mailbox-messages{display:flex;flex-direction:column;overflow:auto;min-height:0;gap:5px;scrollbar-width:thin;flex:1}
+.request-manager .request-message{padding:11px 9px;margin:0;border:1px solid transparent;border-radius:12px;background:transparent;box-shadow:none;cursor:pointer}
+.request-manager .request-message.is-selected{background:#ffffffd4;border-color:#fff;box-shadow:0 4px 12px #3770a812}
+.request-manager .request-message:hover{background:#ffffff80}.request-manager .request-message-header{gap:6px;flex-wrap:wrap}.request-manager .request-message-header>div{flex-basis:100%}
+.request-manager .request-message-header time{display:none}.request-manager .request-message-header .request-person-avatar{width:32px;height:32px;flex-basis:32px}
+.request-manager .request-message-header .request-person-chip{font-size:12px;font-weight:600}
+.request-manager .request-message-state{font-size:8px;padding:3px 7px;margin-left:41px;border-radius:6px}
+.request-manager .request-message-open{margin:4px 0 0!important;padding:0 0 0 41px!important;min-height:0;border:0!important;box-shadow:none!important;background:transparent!important;color:#315a88;width:100%}
+.request-manager .request-message-open strong{font-size:10px;font-weight:600}.request-manager .request-message-open small{font-size:9px;line-height:1.5}.request-manager .request-message-open>span:first-child{gap:4px}
+.request-manager .request-message-arrow{display:none}.request-manager-detail{position:relative;min-width:0;min-height:0;overflow:auto;padding:50px 24px 24px;container-type:inline-size;container-name:request-detail;scrollbar-width:thin}
+.request-manager .request-manager-close{position:absolute;right:22px;top:18px;display:grid;place-items:center;width:28px;height:28px;margin:0;padding:0;border:1px solid white;border-radius:50%;background:#dceaff;color:#5d83b2;font-size:21px;line-height:1;z-index:2}
+.request-manager-empty{font-size:14px;text-align:center;color:#87a0be;padding:100px 20px}
+.request-manager #uniform-content>.profile-panel{margin:0;padding:0;background:none;border:0;box-shadow:none;max-width:none;width:100%;min-width:0}
+.request-manager .new-access-progress{margin-top:22px;padding-top:18px}.request-manager .current-approval{max-width:none}.request-manager .profile-panel-title h2{font-size:17px}
+.request-manager #uniform-content{min-width:0;width:100%}.request-manager .uniform-progress-panel{padding:0;background:none;border:0;box-shadow:none;max-width:none}
+.request-manager .request-person-avatar{position:relative;display:inline-grid;place-items:center;flex:none;width:30px;height:30px;border:2px solid white;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,#d7eaff,#a8ccf8);color:#4473aa;font-size:10px}
+@container request-detail (max-width:960px){.request-manager .timeline-event,.request-manager .timeline-event:has(.timeline-recall){grid-template-columns:minmax(120px,1fr) minmax(80px,.6fr) minmax(120px,1fr)}.request-manager .timeline-audit{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);grid-column:1/-1;gap:12px;padding:10px 0 0;border-top:1px solid #d5e2f3}.request-manager .timeline-audit>div{padding:0;border:0}.request-manager .timeline-recall{grid-column:3;grid-row:2}.request-manager .timeline-event:has(.timeline-recall) .timeline-audit{padding-right:70px}}
+@media(max-width:760px){.request-manager{width:calc(100% - 14px);max-width:calc(100% - 14px);height:calc(100dvh - 14px);max-height:calc(100dvh - 14px);border-radius:18px}.request-manager[open]{grid-template-columns:1fr;grid-template-rows:240px minmax(0,1fr)}.request-manager-sidebar{padding:12px;border-right:0;border-bottom:1px solid white}.request-manager-views{padding-bottom:9px;flex-wrap:nowrap;justify-content:space-between}.request-manager .request-manager-views button{font-size:9px;padding:5px 7px}.request-manager .request-dashboard-list>.profile-panel-title{padding-bottom:8px}.request-manager .request-dashboard-list>.profile-panel-title h2{font-size:16px}.request-manager .request-mailbox-search{margin-bottom:8px!important;padding:8px 10px!important}.request-manager .request-mailbox-messages{flex-direction:row;gap:6px;overflow:auto}.request-manager .request-message{flex:0 0 210px;padding:8px}.request-manager .request-message-header>div{flex-basis:auto}.request-manager .request-message-state{margin-left:0}.request-manager .request-message-open{padding-left:41px!important}.request-manager-detail{padding:48px 14px 18px}.request-manager .timeline-event,.request-manager .timeline-event:has(.timeline-recall){display:block}.request-manager .timeline-audit{padding-right:0!important}}
+
+/* Phone navigation shows all four entries without a horizontal rail. */
+@media(max-width:650px){
+ .workspace-glass .profile-shell .request-inbox-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;gap:6px!important;min-width:0;padding:6px}
+ .workspace-glass .profile-shell .request-inbox-tabs button{width:100%;min-width:0!important;max-width:100%;height:70px!important;min-height:70px!important;grid-template-columns:24px minmax(0,1fr);grid-template-rows:auto auto;column-gap:7px;padding:9px!important;white-space:normal;box-sizing:border-box}
+ .workspace-glass .profile-shell .request-inbox-tabs strong{font-size:11px;line-height:1.3;white-space:normal;overflow-wrap:anywhere;min-width:0}
+ .workspace-glass .profile-shell .request-inbox-tabs small{font-size:9px;line-height:1.3;white-space:normal;min-width:0;overflow-wrap:anywhere}
+ .workspace-glass .profile-shell .request-inbox-tabs .request-tab-icon{width:24px;height:28px}.workspace-glass .profile-shell .request-inbox-tabs .request-tab-icon img{width:26px;height:26px}
+ .request-inbox-tabs .request-card-alert{right:3px;top:2px}
+ .request-manager .request-mailbox-messages{flex-direction:column;overflow-x:hidden;overflow-y:auto;gap:4px}
+ .request-manager .request-message{flex:0 0 auto;box-sizing:border-box;width:100%;padding:8px 10px}
+ .request-manager .request-message-header{flex-wrap:nowrap;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px}
+ .request-manager .request-message-header>div{min-width:0}.request-manager .request-message-header .request-person-chip{font-size:11px;gap:8px}
+ .request-manager .request-message-state{grid-column:2;grid-row:1;margin:0;font-size:8px;max-width:100px;white-space:normal;text-align:center}
+ .request-manager .request-message-header time{display:block;grid-column:1/-1;grid-row:2;padding-left:40px;font-size:8px;margin:0;line-height:1.4;color:#89a0bb}
+ .request-manager .request-message-open{display:block!important;margin:4px 0 0!important;padding:0 0 0 40px!important;text-align:left!important}
+ .request-manager .request-message-open>span:first-child{display:grid;gap:3px;text-align:left}.request-manager .request-message-open strong{font-size:10px}.request-manager .request-message-open small{font-size:9px}
+}
+
+.request-manager-views [hidden]{display:none!important}
+@media(max-width:760px){.request-manager-views{flex-wrap:wrap;justify-content:flex-start;gap:4px}.request-manager .request-manager-views button{font-size:8px;padding:5px 6px}}
+
+@container request-detail (max-width:960px){.request-manager .timeline-event:has(.timeline-recall){grid-template-columns:minmax(120px,1fr) 100px minmax(130px,1fr) 58px}.request-manager .timeline-event:has(.timeline-recall) .timeline-recall{grid-column:4;grid-row:1}.request-manager .timeline-event:has(.timeline-recall) .timeline-audit{padding-right:0}}

@@ -1,9 +1,10 @@
+const isRequestAdmin=(user={},employee={})=>Boolean(employee?.isServerOwner||employee?.requestAdministrator||require('./employees').ADMIN_EMAILS.has(String(user?.email||'').trim().toLowerCase())||require('./employees').ADMIN_EMAILS.has(String(employee?.loginId||'').trim().toLowerCase()));
 // Shared owner actions retain a tombstone so stale submissions cannot recreate deleted requests.
 function requestLifecycle({db,employee,get,put,view,now}){
  const fail=(message,status)=>{throw Object.assign(Error(message),{status});};
  return db.transaction((user,id,body)=>{
   const e=employee(user),r=get(id);
-  if(r.employee.id!==e.id)fail('Only the requester can withdraw or delete this request.',403);
+  if(r.employee.id!==e.id&&!(body.action==='delete'&&isRequestAdmin(user,e)))fail('Only the requester can withdraw; the requester or a System Admin can delete.',403);
   if(body.revision!==r.revision)fail('Request changed. Refresh before continuing.',409);
   if(!['withdraw','delete'].includes(body.action))fail('Choose withdraw or delete.',400);
   if(body.action==='withdraw'&&r.status==='draft')fail('Request is already a draft.',409);
@@ -15,4 +16,4 @@ function requestLifecycle({db,employee,get,put,view,now}){
   return body.action==='delete'?{id:r.id,deleted:true}:view(r,e);
  });
 }
-module.exports={requestLifecycle};
+module.exports={requestLifecycle,isRequestAdmin};

@@ -55,3 +55,10 @@ test('transfer assigns the next node to a named person, records the operator and
  assert.throws(()=>store.decide(users[4],r.id,{revision:stale,action:'approve'}),e=>e.status===409);
  r=store.decide(users[4],r.id,{revision:r.revision,action:'approve'});assert.equal(r.step,2);assert.equal(r.approvals[1].action,'approve');
 });
+
+test('System Admin can see and delete an existing request without becoming its requester or withdrawing it',t=>{
+ const {store,users}=fixture(t),r=store.save(users[2],body());users[0].email='lake@mu.com';
+ // Deletion checks the authenticated admin identity, independently of the request's scope.
+ assert.throws(()=>store.lifecycle(users[0],r.id,{revision:r.revision,action:'withdraw'}),e=>e.status===403);
+ assert.deepEqual(store.lifecycle(users[0],r.id,{revision:r.revision,action:'delete'}),{id:r.id,deleted:true});assert.throws(()=>store.read(users[2],r.id));
+});
