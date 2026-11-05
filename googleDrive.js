@@ -4649,6 +4649,24 @@ async function getCbsCases() {
   return attachCbsUpdateHistory(cases);
 }
 
+async function correctCbsFlight(rowNumber, {oldFlight,flightNumber,updatedBy=''}={}) {
+  const normalize=value=>String(value||'').trim().toUpperCase().replace(/[\s-]+/g,'');
+  const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
+  flightNumber=normalize(flightNumber);oldFlight=normalize(oldFlight);
+  if(!/^(?:[A-Z][A-Z0-9]|[0-9][A-Z])\d{1,4}[A-Z]?$/.test(flightNumber))fail('Enter a flight number such as MU586.');
+  const rows=await getCbsUnresolvedBaggageCases({includeResolved:true,forceRefresh:true});
+  const current=rows.find(row=>cbsRecordMatchesId(row,rowNumber));if(!current)fail('Case not found.',404);
+  if(normalize(current.flightNumber)!==oldFlight)fail('This flight changed. Reload before editing.',409);
+  if(oldFlight===flightNumber)return {updated:false,record:current};
+  const event={key:'flight-correction',title:'Flight corrected',at:new Date().toISOString(),by:sanitizeSheetText(updatedBy,160)||'System',fields:[['Previous Flight',oldFlight],['Flight',flightNumber]]};
+  const updateEvents=[...(current.updateEvents||[]),event],title=await getCbsUnresolvedBaggageSheetTitle();
+  await sheets.spreadsheets.values.batchUpdate({spreadsheetId:CBS_SHEET_ID,requestBody:{valueInputOption:'RAW',data:[
+    {range:`${escapeSheetTitle(title)}!C${current.rowNumber}`,values:[[flightNumber]]},
+    {range:`${escapeSheetTitle(title)}!R${current.rowNumber}`,values:[[JSON.stringify(updateEvents)]]}
+  ]}});
+  invalidateCbsUnresolvedBaggageCache();return {updated:true,record:{...current,flightNumber,updateEvents}};
+}
+
 // Correct the entered identifier without creating an exchange or changing case status.
 async function correctCbsBagTag(rowNumber, {source='unresolved',field='bagTag',oldTag,bagTag,updatedBy=''}={}) {
   const normalize=value=>String(value||'').trim().toUpperCase().replace(/[\s-]+/g,'');
@@ -5375,7 +5393,8 @@ module.exports = {
 let cbsWriteQueue=Promise.resolve();
 const cbsReadMethods=new Set(['getCbsCases','getWrongBaggageSubmissions','getContactFormSubmissions','getCbsWorldTracerCases','getCbsUnresolvedBaggageCases','getTestBaggageReportRows','hasOutboundRushBaggage','findTestBaggageByTag','getCbsDamageImage']);
 module.exports.correctCbsBagTag=correctCbsBagTag;
-for(const name of ['backfillCbsBaggageComments','correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','appendCbsUnresolvedBaggageCase','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
+module.exports.correctCbsFlight=correctCbsFlight;
+for(const name of ['correctCbsFlight','backfillCbsBaggageComments','correctCbsBagTag','appendCbsCase','updateCbsCase','deleteCbsCaseComment','appendWrongBaggageSubmission','updateWrongBaggageSubmission','appendContactFormSubmission','appendCbsWorldTracerCase','updateCbsWorldTracerCase','appendTestBaggageRecord','updateTestBaggageRecord','appendCbsUnresolvedBaggageCase','updateCbsUnresolvedBaggageWorldTracer','updateCbsUnresolvedBaggageDetails','updateCbsUnresolvedBaggageRush','deleteCbsUnresolvedBaggageComment','changeCbsUnresolvedBaggageType','exchangeCbsUnresolvedBaggageTag','resolveCbsUnresolvedBaggageCase','reopenCbsUnresolvedBaggageCase','markCbsMissingBagCase','acknowledgeCbsMissingBag',...cbsReadMethods]){
  const original=module.exports[name];if(!original)continue;
  module.exports[name]=(...args)=>{
   const pending=cbsWriteQueue.then(async()=>{

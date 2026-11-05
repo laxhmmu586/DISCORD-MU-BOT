@@ -3495,6 +3495,7 @@ app.get('/cbs-damage-images/:ref', async (req, res) => {
 });
 
 require('./cbsBagTagEdit').register(app,require('./googleDrive').correctCbsBagTag);
+require('./cbsFlightEdit').register(app,require('./googleDrive').correctCbsFlight);
 
 app.get('/cbs-cases', async (req, res) => {
   try {
