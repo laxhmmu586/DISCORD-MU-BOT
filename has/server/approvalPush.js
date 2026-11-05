@@ -26,7 +26,7 @@ function createPushService({db,env=process.env,send}){
     if(require('./employeeAccountStatus').blocked(db,{uid:job.uid}))break;
     // Claim before sending: an ambiguous network response must never cause a duplicate.
     if(!db.prepare("INSERT OR IGNORE INTO approval_push_delivery VALUES(?,?,'sending',NULL)").run(job.event_key,device.token_id).changes)continue;
-    try{await transmit(device.token,JSON.parse(job.payload));db.prepare("UPDATE approval_push_delivery SET status='sent' WHERE event_key=? AND token_id=?").run(job.event_key,device.token_id);}
+    try{await transmit(device.token,{...JSON.parse(job.payload),badgeUid:job.uid,badgeKey:job.source+':'+job.request_id,badgeEventId:job.event_key});db.prepare("UPDATE approval_push_delivery SET status='sent' WHERE event_key=? AND token_id=?").run(job.event_key,device.token_id);}
     catch(error){const code=error.response?.data?.error?.details?.find(d=>d.errorCode)?.errorCode;if(code==='UNREGISTERED')db.prepare('UPDATE notification_tokens SET enabled=0 WHERE token_id=?').run(device.token_id);const detail=String(code||error.response?.status||'send-failed');db.prepare("UPDATE approval_push_delivery SET status='failed',error=? WHERE event_key=? AND token_id=?").run(detail,job.event_key,device.token_id);}
    }
    db.prepare("UPDATE approval_push_outbox SET status='processed' WHERE event_key=?").run(job.event_key);

@@ -16,6 +16,7 @@ test('real approval permissions, multi-device, stage progression, retries and re
  f.device('e1','supervisor-phone');f.device('e1','supervisor-desktop','Win32');f.device('e2','manager');f.device('e3','other-account');
  const body=uniformBody(),r=store.create(f.users[0],body);await f.service.flush();
  assert.deepEqual(f.sent.map(s=>s.token).sort(),['supervisor-phone']);
+ assert.equal(f.sent[0].payload.badgeUid,'e1');assert.equal(f.sent[0].payload.badgeKey,'uniform:'+r.id);assert.match(f.sent[0].payload.badgeEventId,/^[a-f0-9]{64}$/);
  store.create(f.users[0],body);store.list(f.users[1]);await f.service.flush();assert.equal(f.sent.length,1);
  assert.throws(()=>store.decide(f.users[2],r.id,{revision:1,action:'approve'}));assert.equal(f.db.prepare('SELECT COUNT(*) n FROM approval_push_outbox').get().n,1);
  store.decide(f.users[1],r.id,{revision:1,action:'approve'});await f.service.flush();assert.equal(f.sent[1].token,'manager');
