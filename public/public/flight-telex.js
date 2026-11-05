@@ -2,8 +2,6 @@
   const panel = document.querySelector("#flight-telex");
   const items = panel.querySelector("[data-telex-items]");
   const services = ["VIP", "INAD", "INCP", "WCHR", "WCHC", "AVIH", "PTEC", "UM"];
-  const separate = new Set(["VIP", "INAD", "INCP"]);
-  const recipients = "PVGKIMU, PVGKDMU, PVGTJMU";
   const status = panel.querySelector("[data-telex-status]");
   let scope;
   let revision = 0;
@@ -96,7 +94,7 @@
       name.textContent = code;
       const instruction = document.createElement("small");
       instruction.className = "telex-instruction";
-      instruction.textContent = separate.has(code) ? `Send a separate Telex to ${recipients}` : "Send Telex";
+      instruction.textContent = "Send Telex";
       const confirmation = document.createElement("span");
       confirmation.className = "telex-done";
       confirmation.textContent = "Done";
