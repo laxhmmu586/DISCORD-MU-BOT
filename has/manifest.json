@@ -362,6 +362,7 @@
     "reportExports.js",
     "reportRoutes.js",
     "requestEmployee.js",
+    "requestPerson.js",
     "requestLifecycle.js",
     "requestPdf.js",
     "returnForRevision.js",

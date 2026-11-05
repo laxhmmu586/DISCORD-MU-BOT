@@ -12,7 +12,7 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
  const canCreate=e=>require('../public/employee-permissions').allowed(e,'request.newAccess')&&!accounts.isHeadquarter(e);
  const get=id=>{const row=db.prepare('SELECT data FROM new_access_requests WHERE id=?').get(id);if(!row)fail('Request not found.',404);return JSON.parse(row.data);};
  const visible=(r,user,e)=>r.employee.id===e.id||owner(user,e);
- const view=(r,user,e)=>({...r,viewerId:e.id,canReview:r.status==='pending'&&owner(user,e),canComplete:r.status==='approved'&&r.employee.id===e.id});
+ const view=(r,user,e)=>({...r,employee:require('./requestEmployee')(r,employees),history:r.history.map(event=>({...event,...require('./requestPerson')(event,employees)})),viewerId:e.id,canReview:r.status==='pending'&&owner(user,e),canComplete:r.status==='approved'&&r.employee.id===e.id});
  const read=(user,id)=>{const e=employee(user),r=get(id);if(!visible(r,user,e))fail('Request not found.',404);return view(r,user,e);};
  const put=r=>{db.prepare('INSERT OR REPLACE INTO new_access_requests VALUES(?,?)').run(r.id,JSON.stringify(r));return r;};
  const event=(r,e,action,label,note='')=>{const at=now().toISOString();r.updatedAt=at;r.history.push({employeeId:e.id,name:e.name,action,label,note,at});return at;};
@@ -26,7 +26,7 @@ function createNewAccessStore({employees,profiles,now=()=>new Date()}){
   const position=positions.normalize(body.position||'Agent');if(!['Duty Manager','Senior Supervisor','Supervisor','Lead','Agent'].includes(position))fail('Choose a requested title below Business Manager.',403);
   return {name,...(eid?{eid}:{}),...scope,email,position};
  };
- return {db,get,read,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,position:e.position,...accounts.scope(e)},canCreate:canCreate(e),requests:db.prepare('SELECT data FROM new_access_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,user,e)).map(r=>view(r,user,e))};},
+ return {db,get,read,list(user){const e=employee(user);return {employee:{id:e.id,name:e.name,...require('./requestPerson')(e,employees),position:e.position,...accounts.scope(e)},canCreate:canCreate(e),requests:db.prepare('SELECT data FROM new_access_requests ORDER BY rowid DESC').all().map(row=>JSON.parse(row.data)).filter(r=>visible(r,user,e)).map(r=>view(r,user,e))};},
   create:db.transaction((user,body)=>{
    const e=employee(user);if(!canCreate(e))fail('Only the Main Account Business Manager can request new access.',403);
    if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(body.requestId||''))fail('Invalid request reference.');

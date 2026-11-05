@@ -13,3 +13,5 @@ input,select,textarea{background:#fff;color:#274668;border-color:#cbdcec;color-s
 .card-arrow{background:#ffffffaa}.progress i{background:#e0e9f4}
 .sending{background:#ffffffef}.sending p{color:#637c9a}
 .error{color:#b62c48}.text-button{color:#0875d0}
+
+.employee-picker #employee-name{display:block;min-height:76px;box-sizing:border-box;padding:33px 18px 13px 67px;font-size:17px;font-weight:700;line-height:1.5;color:#f3f6fc;overflow-wrap:anywhere}

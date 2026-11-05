@@ -13,7 +13,9 @@
  async function api(path,options={}){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
   try{
-   const response=await fetch(base+path,{...options,signal:controller.signal,cache:'no-store',headers:{'Content-Type':'application/json',...options.headers}});
+   const user=await signedInUser();
+   const response=await fetch(base+path,{...options,signal:controller.signal,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await user.getIdToken(),...options.headers}});
+   if(firebase.auth().currentUser!==user)throw Error('Your sign-in changed. Reload before submitting.');
    if([502,503,504].includes(response.status)){const error=Error(path.endsWith('/employees')?'The employee service is temporarily unavailable. Please try again shortly.':'Could not confirm your request was saved. Please retry with this page open.');error.status=response.status;throw error;}
    const data=await response.json().catch(()=>{throw Error('The service is unavailable. Please try again.');});
    if(!response.ok){const error=Error(data.error||'Could not complete your request. Please try again.');error.status=response.status;throw error;}
@@ -21,7 +23,8 @@
   }catch(error){if(controller.signal.aborted)throw Error('The service took too long to respond. Please retry with this page open; the same request reference will be used.');throw error;}
   finally{clearTimeout(timer);}
  }
- async function loadEmployees(){ $('employee').disabled=true;$('continue').disabled=true;$('retry-employees').hidden=true;try{const data=await api('/attendance-api/employees');employees=data.employees;if(!employees.length)throw Error('No employees are available. Please contact your supervisor.');$('employee').replaceChildren(new Option('Select your name',''),...employees.map(e=>new Option(e.name,e.id)));if(embedded&&employees.some(e=>e.id===params.get('employee')))$('employee').value=params.get('employee');$('employee').disabled=false;$('continue').disabled=false;$('status').textContent='';}catch(e){$('employee').replaceChildren(new Option('Unable to load employees',''));$('status').textContent=e.message;$('retry-employees').hidden=false;}}
+ async function signedInUser(){if(!window.firebase?.apps?.length)throw Error('Sign in required. Please reload.');const auth=firebase.auth();if(auth.currentUser)return auth.currentUser;return new Promise((resolve,reject)=>{let off;off=auth.onAuthStateChanged(user=>{off?.();user?resolve(user):reject(Error('Sign in required.'));});});}
+ async function loadEmployees(){ $('employee').disabled=true;$('continue').disabled=true;$('retry-employees').hidden=true;try{const data=await api('/attendance-api/employees');employees=data.employees;if(!employees.length)throw Error('No employees are available. Please contact your supervisor.');const employee=employees[0];$('employee').value=employee.id;$('employee-name').textContent=employee.name;$('continue').disabled=false;$('status').textContent='';}catch(e){$('employee').value='';$('employee-name').textContent='Profile unavailable';$('status').textContent=e.message;$('retry-employees').hidden=false;}}
  function updateTime(){if(!$('arrival').value)return;const[h,m]=$('arrival').value.split(':').map(Number);$('arrival-slider').value=h*60+m;const parts=timeLabel($('arrival').value).split(' ');$('time-display').replaceChildren(document.createTextNode(parts[0]+' '),Object.assign(document.createElement('small'),{textContent:parts[1]}));$('arrival-slider').style.setProperty('--arrival-progress',((h*60+m)/1439*100)+'%');}
  function refreshPastArrival(){
   const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Los_Angeles',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
@@ -30,7 +33,7 @@
   updateTime();
  }
  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- function reset(){requestId=crypto.randomUUID();pendingPayload=null;$('details-form').reset();$('note').value='';$('reason-count').textContent='0/1000';$('date').value=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());$('arrival').value='10:00';$('arrival-slider').value='600';updateTime();}
+ function reset(){const employeeId=$('employee').value;requestId=crypto.randomUUID();pendingPayload=null;$('details-form').reset();$('employee').value=employeeId;$('note').value='';$('reason-count').textContent='0/1000';$('date').value=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());$('arrival').value='10:00';$('arrival-slider').value='600';updateTime();}
  function fill(dl,fields){dl.replaceChildren(...fields.map(([name,value])=>{const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=name;dd.textContent=value;row.append(dt,dd);return row;}));}
  function payload(){return{requestId,employeeId:$('employee').value,type,date:type==='late'?today():$('date').value,arrivalTime:type==='late'?$('arrival').value:'',reason:$('reason').value.trim(),note:$('note').value.trim()};}
  document.querySelectorAll('[data-type]').forEach(button=>button.onclick=()=>{type=button.dataset.type;document.querySelector('.panel').classList.toggle('sick-theme',type==='sick');$('detail-title').textContent=label(type);$('type-icon').textContent=type==='late'?'◷':'✚';$('date-field').hidden=type==='late';if(type==='late'){$('date').value=today();refreshPastArrival();}$('late-fields').hidden=type!=='late';$('arrival').required=type==='late';$('reason-label').textContent=type==='late'?'Why?':'Reason';$('reason').placeholder=type==='sick'?'Any details you’d like to share…':'Anything you’d like your supervisor to know…';show('details');});

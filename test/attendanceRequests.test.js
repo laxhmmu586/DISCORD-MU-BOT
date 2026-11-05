@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),express=require('express'),Database=require('better-sqlite3');
-const {validate,createSqliteStorage,registerAttendance}=require('../attendanceRequests');
+const {validate,createSqliteStorage,registerAttendance:registerAttendanceReal}=require('../attendanceRequests');
+const registerAttendance=(app,options)=>registerAttendanceReal(app,{authenticate:async()=>({uid:'fixture'}),profiles:{linked:()=>options.employees.get().employees.find(e=>e.id==='test-one')||options.employees.get().employees[0]},...options});
 const employees={get:()=>({employees:[{id:'test-one',name:'Test Employee',email:'private@example.com',eid:'123',phone:'555',discordId:'123456789012345678'}]})};
 const body={requestId:'11111111-1111-4111-8111-111111111111',employeeId:'test-one',type:'late',date:'2026-10-14',arrivalTime:'10:15',scheduledStart:'08:00',reason:'Traffic',note:''};
 const record=()=>({...validate(body,employees),submittedAt:'2026-10-14T15:45:00Z'});
@@ -37,22 +38,19 @@ test('default API saves late and sick in SQLite without Google and retries only 
 });
 test('attendance history requires authentication and ignores a forged employee selection',async t=>{const s=await server(t,{authenticate:async req=>{if(req.headers.authorization!=='Bearer test')throw Error('no');return {uid:'one'};},profiles:{linked:u=>u.uid==='one'?{id:'test-one',name:'Test Employee'}:null},storage:{list:async id=>{assert.equal(id,'test-one');return [record()];}}});assert.equal((await s.get('/attendance-api/history')).status,401);const response=await fetch(s.base+'/attendance-api/history?employeeId=other',{headers:{Authorization:'Bearer test'}});assert.equal(response.status,200);assert.equal((await response.json()).records[0].employeeId,'test-one');});
 async function server(t,overrides={}){const app=express();app.use(express.json());const db=new Database(':memory:');const service=registerAttendance(app,{employees,db,client:{channels:{fetch:async()=>({send:async()=>{}})}},storage:{save:async r=>({record:r,history:[r]})},renderCards:async()=>[],...overrides});const listener=app.listen(0,'127.0.0.1');await new Promise(r=>listener.once('listening',r));t.after(()=>{service.close();listener.close();db.close();});const base='http://127.0.0.1:'+listener.address().port;return{base,get:path=>fetch(base+path),post:b=>fetch(base+'/attendance-api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}),db,service};}
-test('public employee endpoint exposes only names and internal selection IDs',async t=>{const s=await server(t),r=await s.get('/attendance-api/employees');assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/no-store/);assert.deepEqual(await r.json(),{employees:[{id:'test-one',name:'Test Employee'}]});});
-test('public selection list prefers trimmed nicknames, preserves order and IDs, and falls back for missing nicknames',async t=>{
- const rows=[
-  {id:'first',name:'First Full Name',nickname:'  Alex  ',email:'private@example.com'},
-  {id:'second',name:'Second Full Name',nickname:'Alex'},
-  {id:'third',name:'Third Full Name',nickname:'   '},
-  {id:'fourth',name:'Fourth Full Name'},
-  {id:'hidden',name:'',nickname:'No valid employee name'}
- ];
+test('authenticated employee endpoint exposes only names and internal selection IDs',async t=>{const s=await server(t),r=await s.get('/attendance-api/employees');assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/no-store/);assert.deepEqual(await r.json(),{employees:[{id:'test-one',name:'Test Employee'}]});});
+test('employee endpoint returns only the signed-in profile and prefers its nickname',async t=>{
+ const rows=[{id:'first',name:'First Full Name',nickname:'  Alex  '},{id:'second',name:'Second Full Name'}];
  const s=await server(t,{employees:{get:()=>({employees:rows})}});
- assert.deepEqual(await(await s.get('/attendance-api/employees')).json(),{employees:[
-  {id:'first',name:'Alex'},{id:'second',name:'Alex'},{id:'third',name:'Third Full Name'},{id:'fourth',name:'Fourth Full Name'}
- ]});
- const saved=await(await s.post({...body,employeeId:'second',employeeName:'Alex'})).json();
- assert.equal(saved.record.employeeId,'second');
- assert.equal(saved.record.employeeName,'Second Full Name');
+ assert.deepEqual(await(await s.get('/attendance-api/employees')).json(),{employees:[{id:'first',name:'Alex'}]});
+ assert.equal((await s.post({...body,employeeId:'second'})).status,403);
+ const saved=await(await s.post({...body,employeeId:'first'})).json();assert.equal(saved.record.employeeName,'First Full Name');
+});
+test('attendance identity requires sign-in and a linked profile; forged employees cannot submit',async t=>{
+ let writes=0;const unauth=await server(t,{authenticate:async()=>{throw Error('no auth');},storage:{save:()=>{writes++;}}});
+ assert.equal((await unauth.get('/attendance-api/employees')).status,401);assert.equal((await unauth.post(body)).status,401);
+ const unlinked=await server(t,{profiles:{linked:()=>null}});assert.equal((await unlinked.post(body)).status,403);
+ const linked=await server(t,{storage:{save:()=>{writes++;}}});assert.equal((await linked.post({...body,employeeId:'someone-else'})).status,403);assert.equal(writes,0);
 });
 test('unavailable image dependencies cannot prevent employee API startup or SQLite saves',async t=>{
  const {spawnSync}=require('node:child_process');
@@ -61,7 +59,7 @@ test('unavailable image dependencies cannot prevent employee API startup or SQLi
  const {registerAttendance}=require('./attendanceRequests');const original=Module._load;
  Module._load=function(id,...args){if(id==='./attendanceCards')throw Error('Image module unavailable');return original.call(this,id,...args);};
  const db=new Database(':memory:'),app=express();app.use(express.json());
- const service=registerAttendance(app,{db,employees:{get:()=>({employees:[{id:'test-one',name:'Full Name'}]})},storage:{save:async record=>({record,history:[]})},client:{}});
+ const service=registerAttendance(app,{authenticate:async()=>({uid:'fixture'}),profiles:{linked:()=>({id:'test-one',name:'Full Name'})},db,employees:{get:()=>({employees:[{id:'test-one',name:'Full Name'}]})},storage:{save:async record=>({record,history:[]})},client:{}});
  const listener=app.listen(0,'127.0.0.1',async()=>{try{const base='http://127.0.0.1:'+listener.address().port;const r=await fetch(base+'/attendance-api/employees');assert.deepEqual(await r.json(),{employees:[{id:'test-one',name:'Full Name'}]});const saved=await fetch(base+'/attendance-api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(${JSON.stringify(body)})});assert.equal(saved.status,201);assert.equal((await saved.json()).notificationPending,true);assert.equal(db.prepare('SELECT sent FROM attendance_delivery').get().sent,0);}catch(e){console.error(e);process.exitCode=1;}finally{service.close();listener.close();db.close();}});
  `],{cwd:require('node:path').join(__dirname,'..'),encoding:'utf8',timeout:15000});
  assert.equal(result.status,0,result.stderr);
@@ -76,10 +74,10 @@ test('attendance immediately reflects saved admin employee changes including non
  const admin=await(await fetch(base+'/employee-admin-api')).json();admin.employees[0].name='Updated Employee';admin.employees[0].nickname='Updated Nickname';admin.employees[0].email='private@example.com';
  admin.employees.push({id:'new',name:'New Employee',eid:'002',discordId:'',phone:'555',email:'other@example.com',attach:false,detach:false,spotter:false});
  assert.equal((await fetch(base+'/employee-admin-api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(admin)})).status,200);
- assert.deepEqual(await(await fetch(base+'/attendance-api/employees')).json(),{employees:[{id:'one',name:'Updated Nickname'},{id:'new',name:'New Employee'}]});
+ assert.deepEqual(await(await fetch(base+'/attendance-api/employees')).json(),{employees:[{id:'one',name:'Updated Nickname'}]});
 });
 test('Storage failure never reports success or sends Discord messages',async t=>{let sends=0;const s=await server(t,{storage:{save:async()=>{throw Error('database unavailable');}},client:{channels:{fetch:async()=>{sends++;}}}});const r=await s.post(body);assert.equal(r.status,503);assert.match((await r.json()).error,/save your request/);assert.equal(sends,0);});
-test('invalid requests never reach storage',async t=>{let writes=0;const s=await server(t,{storage:{save:async()=>{writes++;}}});assert.equal((await s.post({...body,employeeId:'unknown'})).status,400);assert.equal(writes,0);});
+test('invalid requests never reach storage',async t=>{let writes=0;const s=await server(t,{storage:{save:async()=>{writes++;}}});assert.equal((await s.post({...body,employeeId:'unknown'})).status,403);assert.equal(writes,0);});
 test('saved request with failed Discord delivery keeps durable pending job',async t=>{const s=await server(t,{client:{channels:{fetch:async()=>{throw Error('Discord unavailable');}}}});const r=await s.post(body);assert.equal(r.status,201);assert.equal((await r.json()).notificationPending,true);assert.equal(s.db.prepare('SELECT sent FROM attendance_delivery').get().sent,0);});
 test('retrying a saved request does not resend an already delivered notification',async t=>{let sends=0;const s=await server(t,{client:{channels:{fetch:async id=>{assert.equal(id,'1365021189998903418');return{send:async message=>{assert.deepEqual(message.allowedMentions,{parse:[],users:['123456789012345678']});sends++;}};}}}});await s.post(body);await s.post(body);assert.equal(sends,1);assert.equal(s.db.prepare('SELECT sent FROM attendance_delivery').get().sent,1);});
 test('main request sends as one plain PNG attachment with employee mention',async t=>{

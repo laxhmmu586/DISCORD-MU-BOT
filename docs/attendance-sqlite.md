@@ -4,6 +4,11 @@ Coming Late and Call Off / Sick use the server's existing PBB SQLite connection
 (`PBB_DB_PATH`, normally `data/pbb.db`). Neither submission nor history reads
 Google Sheets.
 
+Attendance submission and the employee identity endpoint require sign-in and a linked
+employee profile. The identity endpoint returns only that profile. Submissions are
+bound to the authenticated profile; a different employee ID is rejected with 403.
+The browser displays the employee nickname as read-only text.
+
 `attendance_requests` stores the validated request, indexed by employee and date.
 The request UUID is unique: unchanged retries return the original receipt;
 changed details with the same UUID return 409. Request insertion, Call Off / Sick
