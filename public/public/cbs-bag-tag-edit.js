@@ -25,9 +25,9 @@
    const previous=node.textContent.trim(),form=document.createElement('form'),input=document.createElement('input'),status=document.createElement('small');
    const flight=node.hasAttribute('data-edit-flight');
    input.value=flight?node.dataset.flightValue:previous;input.maxLength=8;input.required=true;input.pattern=flight?'(?:[A-Za-z][A-Za-z0-9]|[0-9][A-Za-z])[0-9]{1,4}[A-Za-z]?':'[A-Za-z0-9]{2}[0-9]{6}';input.setAttribute('aria-label',flight?'Flight number':'Bag tag number');input.autocomplete='off';
-   status.setAttribute('role','status');form.className='bag-tag-edit-form';form.append(input,status);node.replaceChildren(form);active=node;root.cbsBagTagEditing=true;
+   status.setAttribute('role','status');form.className='bag-tag-edit-form';form.append(input,status);node.classList.add('is-inline-editing');node.replaceChildren(form);active=node;root.cbsBagTagEditing=true;
    let saving=false,finished=false;
-   const finish=value=>{finished=true;node.textContent=value;active=null;root.cbsBagTagEditing=false;};
+   const finish=value=>{finished=true;node.classList.remove('is-inline-editing');node.textContent=value;active=null;root.cbsBagTagEditing=false;};
    const commit=async()=>{
     if(saving||finished)return;input.value=input.value.trim().toUpperCase().replace(/[\s-]+/g,'');
     if(input.value===(flight?node.dataset.flightValue:previous)){finish(previous);return;}
