@@ -99,4 +99,3 @@ const root=require('node:path').resolve(__dirname,'..');
   assert.deepEqual(errors,[]);console.log('PASS QA rings and account percentages charge from zero, annual totals and charts charge, missing data and reduced motion preserved.');
  }finally{await browser.close();server.closeAllConnections();server.close();}
 })().catch(error=>{console.error(error);process.exit(1)});
-
