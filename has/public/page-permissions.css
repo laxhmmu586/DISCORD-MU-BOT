@@ -4,31 +4,107 @@
 }
 [data-page-permissions][hidden], .page-permission-dialog [hidden] { display: none !important; }
 .page-permission-dialog {
-  box-sizing: border-box; width: min(680px, calc(100% - 24px)); max-height: 90dvh;
-  padding: clamp(16px, 4vw, 28px); border: 1px solid #c2d7ee; border-radius: 20px;
-  background: #f4f8ff; color: #143459; box-shadow: 0 24px 80px #102c5460;
+  box-sizing: border-box; width: min(1120px, calc(100% - 40px)); max-width: none;
+  height: min(850px, calc(100dvh - 40px)); max-height: calc(100dvh - 40px);
+  inset: 0; margin: auto; padding: 0; overflow: hidden;
+  border: 1px solid #fff; border-radius: 24px;
+  background: linear-gradient(145deg, #f4f8fff5, #e6effff5); color: #24466f;
+  box-shadow: 0 24px 80px #355d9238; backdrop-filter: blur(20px);
+  font: 13px/1.5 'Segoe UI', sans-serif;
 }
-.page-permission-dialog::backdrop { background: #10274488; }
-.page-permission-dialog header, .page-permission-dialog footer {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+.page-permission-dialog *, .page-permission-dialog *::before { box-sizing: border-box; }
+.page-permission-dialog::backdrop { background: #254f7c40; backdrop-filter: blur(5px); }
+.page-permission-dialog form { display: grid; grid-template-columns: 270px minmax(0, 1fr); height: 100%; margin: 0; }
+.page-permission-dialog button { font: inherit; cursor: pointer; }
+.page-permission-dialog button:disabled { cursor: default; opacity: .55; }
+.page-permission-dialog :focus-visible { outline: 3px solid #176bef; outline-offset: 3px; }
+.page-permission-dialog .permission-sidebar {
+  display: flex; flex-direction: column; gap: 24px; min-width: 0; padding: 22px 12px 20px;
+  background: linear-gradient(155deg, #e3eeffc9, #d3e5ffc4); border-right: 1px solid #ffffffbd;
 }
-.page-permission-dialog h2 { margin: 0; }
-.page-permission-dialog button {
-  border: 1px solid #b9d4f0; border-radius: 10px; padding: 8px 14px;
-  background: white; color: inherit; font: inherit; cursor: pointer;
+.permission-sidebar > div { padding: 0 8px; }
+.page-permission-dialog h2 { margin: 0 0 5px; color: #194274; font-size: 22px; letter-spacing: -.5px; }
+.permission-sidebar p { margin: 0; font-size: 12px; color: #6484af; }
+.permission-sidebar nav { display: grid; gap: 8px; }
+.permission-sidebar [role=tab] {
+  display: flex; gap: 11px; align-items: center; width: 100%; min-height: 72px;
+  border: 1px solid transparent; border-radius: 13px; padding: 12px 10px; color: #34577f;
+  background: transparent; text-align: left;
 }
-.page-permission-dialog footer { justify-content: flex-end; }
-.page-permission-dialog footer button { background: #1b5da4; color: white; }
-.page-permission-dialog .permission-private { margin-top: 18px; font-weight: 700; }
-.permission-audience { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.permission-audience fieldset { min-width: 0; margin: 0; border: 1px solid #c7daf0; border-radius: 12px; }
-.permission-audience fieldset div { max-height: 220px; overflow: auto; }
-.page-permission-dialog label { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; }
-.permission-audience input[type=search] { width: 100%; margin-bottom: 8px; }
-@media(max-width: 540px) {
-  .permission-audience { grid-template-columns: 1fr; }
-  .permission-audience fieldset div { max-height: 135px; }
+.permission-sidebar [role=tab]:hover { background: #ffffff80; }
+.permission-sidebar [aria-selected=true] { background: #ffffffc9; border-color: #fff; box-shadow: 0 3px 12px #417bb018; }
+.permission-nav-icon, .permission-avatar {
+  display: grid; place-items: center; flex: none; border-radius: 50%; border: 2px solid #fff;
+  background: linear-gradient(140deg, #d2e5ff, #afcef5); color: #527fb5;
 }
+.permission-nav-icon { width: 35px; height: 35px; font-size: 13px; font-weight: 600; }
+.permission-sidebar [role=tab] > span:nth-child(2) { flex: 1; min-width: 0; }
+.permission-sidebar strong, .permission-sidebar small { display: block; }
+.permission-sidebar strong { font-size: 13px; }
+.permission-sidebar small { margin-top: 4px; font-size: 10px; color: #7290b3; }
+.permission-sidebar b { font-size: 11px; color: #7290b3; font-weight: 500; }
+.page-permission-dialog .permission-discard {
+  margin: auto 8px 0; border: 1px solid #fff; border-radius: 10px;
+  background: #ffffff85; padding: 10px; color: #4b719a;
+}
+.permission-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; padding: 24px 30px 20px; }
+.permission-main > :not(.permission-audience) { flex-shrink: 0; }
+.page-permission-dialog .permission-main > header { display: flex; align-items: center; justify-content: space-between; }
+.permission-main > header > span { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #88a0bf; }
+.page-permission-dialog .permission-close {
+  display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
+  border: 1px solid #fff; border-radius: 50%; background: #e4efff; color: #6081a9; font-size: 21px;
+}
+.permission-heading { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 25px 0 23px; gap: 9px; }
+.permission-avatar { width: 70px; height: 70px; border-width: 3px; font-size: 24px; font-weight: 600; box-shadow: 0 4px 12px #6b8fba0d; }
+.permission-heading h3 { font-size: 25px; font-weight: 650; letter-spacing: -.6px; color: #24466f; margin: 4px 0 0; }
+.permission-heading p { margin: 0; font-size: 13px; color: #7b92b1; }
+.permission-page-name { padding: 5px 10px; border-radius: 7px; background: #dceaff; color: #7292ba; font-size: 11px; }
+.permission-private {
+  display: flex; align-items: center; gap: 20px; padding: 16px;
+  background: #e1edffb0; border-radius: 11px; cursor: pointer;
+}
+.permission-private > span { flex: 1; }
+.permission-private strong, .permission-private small { display: block; }
+.permission-private strong { color: #426d9e; font-size: 13px; font-weight: 600; }
+.permission-private small { margin-top: 4px; font-size: 11px; color: #6887af; }
+.permission-help { color: #7593b7; font-size: 11px; margin: 22px 0 16px; }
+.permission-search { display: block; }
+.permission-search-label { display: block; font-size: 11px; color: #7590b2; margin-bottom: 7px; }
+.page-permission-dialog .permission-search input {
+  width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #fff; border-radius: 10px;
+  background: #ffffffa6; font: inherit; color: #315984;
+}
+.permission-audience { flex: 1; min-height: 100px; overflow: auto; margin-top: 10px; }
+.permission-audience fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.permission-row { display: flex; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid #c9daf0; cursor: pointer; }
+.permission-row > span:first-child { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.permission-row strong { color: #426d9e; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.permission-row small { color: #819ab9; font-size: 10px; }
+.permission-control { display: grid; justify-items: end; width: 76px; gap: 8px; flex: none; }
+.permission-control b { color: #96a7bc; font-size: 10px; font-weight: 500; }
+.permission-control b.is-allowed { color: #239661; }
+.page-permission-dialog .permission-switch {
+  appearance: none; -webkit-appearance: none; display: block; position: relative;
+  width: 48px; height: 26px; min-height: 0; padding: 0; margin: 0; flex: none;
+  border: 1px solid #cdd2d9; border-radius: 999px; background: #f5f6f7;
+  box-shadow: inset 0 1px 2px #182a3f08; cursor: pointer;
+}
+.page-permission-dialog .permission-switch::before {
+  content: ''; position: absolute; left: 4px; top: 4px; width: 16px; height: 16px;
+  border-radius: 50%; background: #6a6d75; box-shadow: 0 1px 2px #0001;
+}
+.page-permission-dialog .permission-switch:checked { background: #2bb673; border-color: #2bb673; }
+.page-permission-dialog .permission-switch:checked::before { transform: translateX(22px); background: #fff; }
+.page-permission-dialog .permission-switch:disabled { cursor: default; opacity: .5; }
+.permission-empty, .permission-status { color: #6189b9; font-size: 12px; }
+.permission-status { min-height: 18px; margin: 16px 0 10px; }
+.page-permission-dialog footer { display: flex; justify-content: flex-end; }
+.page-permission-dialog footer button {
+  border: 1px solid #5a9ef3; border-radius: 10px; padding: 11px 20px;
+  background: linear-gradient(130deg, #4c98f5, #2575df); color: #fff; box-shadow: 0 5px 15px #3582df33;
+}
+.permission-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .workspace-permission-button {
   position: fixed; top: 12px; right: 12px; z-index: 40;
   box-shadow: 0 2px 8px #153d6620;
@@ -39,4 +115,24 @@
 }
 body[data-permission-pending] > :not(.workspace-permission-notice):not(.workspace-permission-button):not(.page-permission-dialog) {
   display: none !important;
+}
+@media(max-width: 760px) {
+  .page-permission-dialog { width: calc(100% - 14px); height: calc(100dvh - 14px); max-height: calc(100dvh - 14px); border-radius: 18px; }
+  .page-permission-dialog form { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .page-permission-dialog .permission-sidebar { padding: 14px 12px; gap: 12px; border-right: 0; border-bottom: 1px solid #fff; }
+  .permission-sidebar > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .page-permission-dialog h2 { font-size: 18px; }
+  .permission-sidebar > div p { display: none; }
+  .permission-sidebar nav { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .permission-sidebar [role=tab] { min-height: 46px; padding: 8px; gap: 5px; }
+  .permission-nav-icon, .permission-sidebar small { display: none; }
+  .permission-sidebar strong { font-size: 12px; }
+  .page-permission-dialog .permission-discard { margin: 0 8px; padding: 5px; font-size: 11px; }
+  .permission-main { padding: 16px; }
+  .permission-audience { flex: none; overflow: visible; }
+  .permission-heading { padding: 15px 0 20px; }
+  .permission-heading h3 { font-size: 23px; }
+}
+@media(prefers-reduced-motion: no-preference) {
+  .page-permission-dialog .permission-switch, .page-permission-dialog .permission-switch::before { transition: background .18s, border-color .18s, transform .18s; }
 }
