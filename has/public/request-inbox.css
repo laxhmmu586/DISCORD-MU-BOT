@@ -121,3 +121,55 @@
 @media(max-width:760px){.request-manager-views{flex-wrap:wrap;justify-content:flex-start;gap:4px}.request-manager .request-manager-views button{font-size:8px;padding:5px 6px}}
 
 @container request-detail (max-width:960px){.request-manager .timeline-event:has(.timeline-recall){grid-template-columns:minmax(120px,1fr) 100px minmax(130px,1fr) 58px}.request-manager .timeline-event:has(.timeline-recall) .timeline-recall{grid-column:4;grid-row:1}.request-manager .timeline-event:has(.timeline-recall) .timeline-audit{padding-right:0}}
+
+/* Large desktop workspace; phone navigation presents one screen at a time. */
+.request-manager{width:min(1800px,calc(100% - 40px));height:calc(100dvh - 40px);max-height:calc(100dvh - 40px)}
+.request-manager[open]{grid-template-columns:340px minmax(0,1fr)}
+.request-manager-views{flex-wrap:nowrap;gap:4px;padding:0 2px 15px;align-items:stretch}
+.request-manager .request-manager-views button{font-size:9px;line-height:1.3;white-space:nowrap;padding:7px 6px;min-width:0;flex:1 1 auto;text-align:center}
+.request-manager-list-caption,.request-manager-detail-toolbar{display:none}
+.request-manager-detail{display:flex;flex-direction:column;overflow:hidden;padding:0;min-height:0}
+.request-manager-detail-body{flex:1;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:48px 24px 24px}
+.request-manager-empty{margin:0;flex:1}.request-manager-detail:has(.request-manager-empty:not([hidden])) .request-manager-detail-body{display:none}
+.workspace-glass .request-manager .uniform-progress-panel.new-access-progress{padding:0!important;margin:20px 0 0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.workspace-glass .request-manager .current-approval{max-width:none;margin-bottom:18px}
+.request-manager .new-access-fields{max-width:none;gap:16px 20px}.request-manager .new-access-fields label{min-width:0}
+@media(min-width:1101px){
+ .workspace-glass .request-manager .timeline-event{display:grid;grid-template-columns:minmax(105px,1.2fr) minmax(70px,.75fr) minmax(115px,1fr) minmax(65px,.65fr) minmax(90px,1.25fr);gap:10px;align-items:center;padding:14px}
+ .workspace-glass .request-manager .timeline-event:has(.timeline-recall){grid-template-columns:minmax(105px,1.2fr) minmax(70px,.75fr) minmax(115px,1fr) minmax(65px,.65fr) minmax(90px,1.25fr) 58px}
+ .workspace-glass .request-manager .timeline-summary,.workspace-glass .request-manager .timeline-audit{display:contents!important}
+ .workspace-glass .request-manager .timeline-audit>div{display:grid;grid-template-columns:minmax(0,1fr);align-content:center;gap:5px;border:0;border-left:1px solid #d5e2f3;padding:0 0 0 10px;align-self:stretch}
+ .workspace-glass .request-manager .timeline-recall{grid-column:6;grid-row:1}.request-manager .timeline-person>strong{overflow-wrap:anywhere}
+}
+@media(min-width:761px) and (max-width:1100px){.request-manager[open]{grid-template-columns:290px minmax(0,1fr)}.request-manager .request-manager-views button{font-size:8px;padding:6px 4px}.request-manager-detail-body{padding:48px 18px 20px}}
+@media(max-width:760px){
+ .request-manager{width:calc(100% - 14px);max-width:calc(100% - 14px);height:calc(100dvh - 14px);max-height:calc(100dvh - 14px);border-radius:18px}
+ .request-manager[open]{display:block;position:fixed;overflow:hidden}
+ .request-manager-sidebar{position:absolute;inset:0;box-sizing:border-box;display:flex;flex-direction:column;width:100%;height:100%;padding:18px 12px 12px;border:0;transition:transform .24s ease,opacity .24s ease}
+ .request-manager-list-caption{display:block;margin:0 42px 14px 8px;font-size:20px;color:#244f80}
+ .request-manager-views{flex-wrap:nowrap!important;gap:3px;padding:0 0 13px;flex:none}
+ .request-manager .request-manager-views button{font-size:8px;line-height:1.2;padding:6px 4px;white-space:nowrap;min-width:0;flex:1 1 auto}
+ .request-manager .request-dashboard-list>.profile-panel-title h2{font-size:15px}.request-manager .request-mailbox-messages{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto}
+ .request-manager-detail{position:absolute;inset:0;box-sizing:border-box;width:100%;height:100%;overflow:hidden;z-index:3;background:linear-gradient(145deg,#f4f8ff,#e8f1ff);transform:translateX(100%);opacity:0;visibility:hidden;transition:transform .24s ease,opacity .24s ease,visibility .24s}
+ .request-manager.case-detail-open .request-manager-detail{transform:translateX(0);opacity:1;visibility:visible}
+ .request-manager.case-detail-open .request-manager-sidebar{transform:translateX(-18%);opacity:0;pointer-events:none}
+ .request-manager-detail-toolbar{display:flex;align-items:center;gap:10px;flex:none;min-height:56px;padding:10px 12px;box-sizing:border-box;border-bottom:1px solid #d4e2f4;background:#edf5fff5}
+ .request-manager-detail-toolbar strong{font-size:13px;color:#4972a1;margin-left:auto}
+ .request-manager .request-manager-back{display:flex;align-items:center;gap:3px;margin:0;padding:6px 5px;border:0;background:transparent;color:#397cc8;font-size:12px;box-shadow:none}
+ .request-manager-back svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+ .request-manager .request-manager-case-close{display:grid;place-items:center;flex:none;width:30px;height:30px;margin:0 0 0 7px;padding:0;border:1px solid #fff;border-radius:50%;background:#dceaff;color:#6086b5;font-size:21px;line-height:1;box-shadow:none}
+ .request-manager-detail-body{padding:16px 12px 20px;overflow-x:hidden}.request-manager .request-manager-close{top:17px;right:16px}
+ .request-manager .request-message{padding:12px;margin-bottom:5px;border-color:#ffffff80;background:#ffffff50}.request-manager .request-message-open strong{font-size:12px}.request-manager .request-message-open small{font-size:10px}.request-manager .request-message-header .request-person-chip{font-size:13px}.request-manager .request-message-header time{font-size:9px}
+ .workspace-glass .request-manager .timeline-event,.workspace-glass .request-manager .timeline-event:has(.timeline-recall){display:block}
+ .workspace-glass .request-manager .uniform-progress-panel.new-access-progress{margin-top:16px!important}.request-manager .current-approval-heading h3{font-size:19px}.request-manager .new-access-fields{grid-template-columns:1fr;gap:14px}
+}
+@media(prefers-reduced-motion:reduce){.request-manager-sidebar,.request-manager-detail{transition:none}}
+
+/* Keep the animated children inside a clipped viewport, avoiding horizontal overflow. */
+@media(max-width:760px){
+ .request-manager-detail{transform:none;opacity:1;background:transparent;pointer-events:none;transition:visibility .24s}
+ .request-manager.case-detail-open .request-manager-detail{transform:none;pointer-events:auto}
+ .request-manager-detail-toolbar,.request-manager-detail-body{transform:translateX(100%);transition:transform .24s ease,opacity .24s ease;opacity:0;background:#edf5ff}
+ .request-manager.case-detail-open .request-manager-detail-toolbar,.request-manager.case-detail-open .request-manager-detail-body{transform:translateX(0);opacity:1}
+}
+@media(prefers-reduced-motion:reduce){.request-manager-detail-toolbar,.request-manager-detail-body{transition:none}}

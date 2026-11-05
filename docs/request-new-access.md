@@ -19,7 +19,7 @@ Before requester completion, the person who submitted a review may recall it wit
 
 The requester and configured administrators can delete requests from any state. Deletion hides the record and retains a tombstone so stale submissions cannot recreate it. Administrator delete authority also applies to Uniform, Incident, Expense and Terrific requests; requester withdrawal authority is unchanged.
 
-Pending approvals, My requests and My approvals open a Permission-style manager with a searchable request list and a detail pane. Administrators also receive an All requests view. The four main entry buttons form a compact two-by-two grid on phones, without horizontal scrolling. Mobile request lists scroll vertically.
+Pending approvals, My requests and My approvals open a Permission-style manager with a searchable request list and a detail pane. Administrators also receive an All requests view. The four main entry buttons form a compact two-by-two grid on phones, without horizontal scrolling. Inside the manager, category buttons stay on one row. Desktop uses a larger dialog with separate right-side Action and Remarks columns. Phones first show a full-height Case List; selecting a case slides its details in from the right. Close/Back returns to the list without closing the manager or losing its scroll position. The unsubmitted New Request form does not show Your Review or a timeline.
 
 Existing Uniform, Incident, Expense and Terrific Business Manager nodes now show and authorize only Business Managers whose Main Account matches the requester’s current Main Account. Secondary membership does not qualify. Named assignments, route changes and transfers enforce the same rule; completed approvals retain their recorded history.
 
