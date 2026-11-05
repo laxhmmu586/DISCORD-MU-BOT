@@ -56,3 +56,10 @@ test('new access accepts a preferred username without EID and retains email subm
 });
 
 test('requested Position is retained after approval without changing actual employee titles',t=>{const f=fixture(t),draft=f.draft();draft.fields.position='Supervisor';const request=f.store.create(f.users.bm,draft);assert.equal(request.fields.position,'Supervisor');assert.equal(f.store.decide(f.users.owner,request.id,{revision:1,action:'approve'}).fields.position,'Supervisor');for(const position of ['President','Business Manager','Invalid'])assert.throws(()=>f.store.create(f.users.bm,{...f.draft(),fields:{...f.draft().fields,position}}),error=>error.status===403);assert.equal(f.rows[0].position,'Business Manager');});
+
+test('request views use current nickname and avatar without exposing login or contact fields',t=>{
+ const f=fixture(t);f.db=f.employees.db;f.db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT NOT NULL)');f.rows[0].nickname='Lake';
+ f.db.prepare('INSERT INTO employee_avatars VALUES(?,?)').run('bm','data:image/png;base64,AA==');
+ const r=f.store.create(f.users.bm,f.draft());assert.equal(r.employee.name,'BM');assert.equal(r.employee.nickname,'Lake');assert.equal(r.employee.avatar,'data:image/png;base64,AA==');
+ assert.equal(r.history[0].nickname,'Lake');assert.equal(r.history[0].avatar,r.employee.avatar);assert.equal(r.employee.loginId,undefined);assert.equal(r.employee.phone,undefined);
+});

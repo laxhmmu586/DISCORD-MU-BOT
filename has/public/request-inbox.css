@@ -34,3 +34,36 @@
 .request-node-workbench.request-node-workbench .oa-track li>small,.request-node-workbench.request-node-workbench .oa-track li:has(>.oa-node-audit)>small,.request-node-workbench.request-node-workbench .oa-track li:has(.request-review-controls)>small{grid-column:2;grid-row:2}
 .request-node-workbench.request-node-workbench .oa-track li>.oa-node-audit,.request-node-workbench.request-node-workbench .oa-track li>.request-review-controls{grid-column:3;grid-row:1/3}
 @media(max-width:1000px){.request-node-workbench.request-node-workbench .oa-track li,.request-node-workbench.request-node-workbench .oa-track li:has(>.oa-node-audit),.request-node-workbench.request-node-workbench .oa-track li:has(.request-review-controls){display:grid;grid-template-columns:minmax(110px,.8fr) minmax(0,1fr);column-gap:12px}.request-node-workbench.request-node-workbench .oa-track li>.oa-node-audit,.request-node-workbench.request-node-workbench .oa-track li>.request-review-controls{grid-column:1/-1;grid-row:3;margin-top:14px}}
+
+/* Compact inbox navigation and messages, matching the rest of the light workspace. */
+.workspace-glass .request-inbox-tabs{display:flex;gap:6px!important;padding:6px;border-radius:18px;border:1px solid white;background:#ffffff65;overflow:auto}
+.workspace-glass .request-inbox-tabs button{display:grid;grid-template-columns:26px auto;grid-template-rows:auto auto;column-gap:9px;align-items:center;flex:1;min-width:155px;padding:12px 16px!important;border:0;box-shadow:none;border-radius:12px!important;background:transparent;white-space:nowrap;text-align:left}
+.workspace-glass .request-inbox-tabs .request-tab-icon{grid-column:1;grid-row:1/3;width:26px;height:32px;margin:0}
+.workspace-glass .request-inbox-tabs .request-tab-icon img{width:30px;height:30px}
+.workspace-glass .request-inbox-tabs strong{font-size:12px;grid-column:2;grid-row:1}
+.workspace-glass .request-inbox-tabs small{font-size:10px;grid-column:2;grid-row:2;margin:4px 0 0;color:#7b96b7}
+.workspace-glass .request-inbox-tabs button[aria-pressed=true]{background:#fff;box-shadow:0 3px 12px #3565a414;color:#196bd5}
+.request-inbox-tabs .request-card-alert{position:absolute;right:6px;top:4px;width:14px;height:14px;font-size:9px}
+.request-mailbox-search{width:100%;box-sizing:border-box;margin:10px 0 20px!important;padding:12px 16px!important;border:1px solid #d8e5f6!important;border-radius:12px!important;background:#ffffffac!important;color:#315a88!important;font:12px 'Segoe UI',sans-serif!important}
+.request-mailbox-messages{display:grid;gap:12px}
+.request-mailbox .request-message{display:block;margin:0;padding:18px 20px;border:1px solid #fff;border-radius:15px;background:#ffffffa6;box-shadow:0 4px 16px #3c6da50a}
+.request-mailbox .request-message[hidden]{display:none}
+.request-message-header{display:flex;align-items:center;gap:12px;min-width:0}
+.request-message-header>div{flex:1;min-width:0}
+.request-message-header time{font-size:10px;color:#839bb9;white-space:nowrap}
+.request-message-state{display:inline-flex;align-items:center;gap:6px;border-radius:7px;padding:5px 9px;font-size:10px;font-weight:600;color:#5378aa;background:#eaf2ff;white-space:nowrap}
+.request-message-state[data-state=approved],.request-message-state[data-state=completed]{color:#397e6c;background:#e4f4ed}
+.request-message-state[data-state=rejected]{color:#a35870;background:#f9e9ee}
+.request-message-state[data-state=revision]{color:#9a772b;background:#fff4da}
+.request-mailbox .request-message-open{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;border:0!important;background:transparent!important;box-shadow:none!important;margin:12px 0 0!important;padding:6px 0 2px 43px!important;min-height:0!important;color:#315a88;border-radius:8px}
+.request-message-open>span:first-child{min-width:0;display:grid;gap:7px}
+.request-message-open strong{font-size:14px;color:#2e537f;line-height:1.5}
+.request-message-open small{font-size:11px;line-height:1.6;color:#7b95b6;overflow-wrap:anywhere}
+.request-message-arrow{font-size:20px;color:#6c9bd7;padding-left:12px}
+.request-message:hover{background:#fff;box-shadow:0 5px 20px #3c6da512}
+.request-message-open:focus-visible{outline:2px solid #438be8;outline-offset:5px}
+@media(max-width:650px){.workspace-glass .request-inbox-tabs button{min-width:145px;padding:10px 12px!important}.request-mailbox .request-message{padding:14px}.request-message-header{flex-wrap:wrap;gap:8px}.request-message-header>div{flex-basis:55%}.request-message-header time{order:3;flex-basis:100%;padding-left:43px}.request-mailbox .request-message-open{padding-left:43px!important}.request-message-state{font-size:9px}.request-message-open strong{font-size:13px}}
+
+.workspace-glass .profile-shell .request-inbox-tabs button{min-height:68px!important;height:68px!important;grid-template-rows:20px 16px;align-content:center;position:relative}
+.workspace-glass .profile-shell .request-inbox-tabs strong,.workspace-glass .profile-shell .request-inbox-tabs small{margin:0!important}
+.request-mailbox .request-message-open{justify-content:space-between!important;align-items:center!important}

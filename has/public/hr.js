@@ -160,6 +160,7 @@
   function showPerson(id,requestedScope){
     if(permissionManager&&(personDirty||profileDirty)&&id!==selected){$('#person-status').textContent='Save your changes or discard edits before selecting another employee.';return;}personDirty=false;profileDirty=false;
     selected=id;const row=data.employees.find(r=>r.id===id);if(!row)return;
+    if(!permissionManager){requestedScope||=chartScope();permissionManager=true;$('#person-dialog').classList.add('hr-permission-manager');peoplePane.querySelector('input').value='';}
     const candidate=requestedScope||(permissionManager?{station:row.station,account:row.account}:chartScope());reportingWorkspace=candidate&&model.membershipIndex(row,candidate)>=0?candidate:{station:row.station,account:row.account};const context=reportingContext(),access=role(),editable=context.editable,profileEditable=editable&&!context.secondary,form=$('#person-form');
     assignmentId=null;mergeId=null;$('#person-merge-action').hidden=true;$('#assignment-note').hidden=true;$('#employee-suggestions').hidden=true;form.elements.name.setAttribute('aria-expanded','false');$('#remove-level').hidden=!row.isInserted||!editable;
     $('#person-summary').innerHTML=`<div class="hr-person-heading">${avatar(row)}${context.secondary?'<span class="org-membership-badge">'+(context.shown.membershipSlot===1?'2nd Acc':'3rd Acc')+'</span>':''}<h2 id="person-name">${escape(row.name||row.nickname||'Unnamed employee')}</h2><p>${escape(employeePositions.normalize(row.position))}</p><small>${escape(label(key(row)))}</small></div>`;

@@ -47,6 +47,7 @@ function registerAttendance(app, { employees, client, db, profiles, authenticate
   const sqliteStorage=!storage;
   storage ||= createSqliteStorage({db,onSave:record=>require('./has/server/scheduleRequests').applyAttendanceToSchedule({db,employees,record})});
   const active = new Map();
+  async function currentEmployee(req){let user;try{user=await authenticate(req);}catch{throw Object.assign(Error('Sign in required.'),{status:401});}const employee=profiles?.linked(user);if(!employee?.name)throw Object.assign(Error('Link your employee profile first.'),{status:403});return employee;}
   app.get('/attendance-api/history', async (req,res) => {
     res.set('Cache-Control','private, no-store');
     let user;
@@ -92,12 +93,14 @@ function registerAttendance(app, { employees, client, db, profiles, authenticate
     })().finally(() => active.delete(reference));
     active.set(reference, work); return work;
   }
-  app.get('/attendance-api/employees', (_req, res) => { res.set('Cache-Control', 'no-store').json({ employees: employees.get().employees.filter(e => e.name).map(({ id, name, nickname }) => ({ id, name: String(nickname || '').trim() || name })) }); });
+  app.get('/attendance-api/employees', async (req,res)=>{res.set('Cache-Control','private, no-store');try{const e=await currentEmployee(req);res.json({employees:[{id:e.id,name:String(e.nickname||'').trim()||e.name}]});}catch(error){res.status(error.status||503).json({error:error.message});}});
   app.post('/attendance-api/requests', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     let saved;
     try {
-      const record = { ...validate(req.body, employees), submittedAt: now().toISOString() };
+      const employee=await currentEmployee(req);
+      if(req.body?.employeeId&&req.body.employeeId!==employee.id)throw Object.assign(Error('You can only submit attendance for your own employee profile.'),{status:403});
+      const record = { ...validate({...req.body,employeeId:employee.id}, employees), submittedAt: now().toISOString() };
       saved = await storage.save(record);
       if(!sqliteStorage)require('./has/server/scheduleRequests').applyAttendanceToSchedule({db,employees,record:saved.record});
     } catch (e) {
