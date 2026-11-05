@@ -1,4 +1,4 @@
-const assert=require('node:assert/strict'),fs=require('node:fs');
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const express=require('express');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=require('node:path').resolve(__dirname,'..');
@@ -13,7 +13,14 @@ const root=require('node:path').resolve(__dirname,'..');
  app.get('/profile-api',(_,res)=>res.json({state:'ready',profile:{id:'test',name:'Fixture Supervisor',position:'Supervisor',...scope}}));
  app.get('/has-report-api/context',(_,res)=>res.json({canDashboard:true,permissions:{da:true,wwh:true},scope}));
  app.get('/has-report-api/dashboard/2026',(_,res)=>res.json({scope,generatedAt:new Date().toISOString(),months}));
- app.use(require(root+'/has/static').withShared(root+'/public/public'));
+ require('node:child_process').execFileSync(process.execPath,['has/build.cjs'],{cwd:root});
+ const publicRoot=path.join(root,'public/public'),hosting=require(root+'/public/firebase.json').hosting;
+ app.use(express.static(publicRoot));
+ app.use((req,res,next)=>{
+  const rule=hosting.rewrites.find(rule=>rule.source===req.path);
+  if(!rule?.destination?.startsWith('/has/'))return next();
+  res.sendFile(path.resolve(publicRoot,'.'+rule.destination));
+ });
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));const base='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({channel:'msedge',headless:true}),errors=[];
  async function pageFor(url,reduced=false){
@@ -30,6 +37,9 @@ const root=require('node:path').resolve(__dirname,'..');
   await page.goto(base+url);return page;
  }
  try{
+  for(const url of ['/dashboard-charge.js?v=charge-1','/has/dashboard-charge.js?v=charge-2']){
+   const response=await fetch(base+url);assert.equal(response.status,200,url);assert.match(response.headers.get('content-type'),/javascript/);assert.match(await response.text(),/window.chargeDashboard/);
+  }
   const qaPage=await pageFor('/QA');
   const ring=qaPage.locator('.has-chart-card svg[data-charge-percent="21"]');
   await ring.waitFor();assert.equal(await ring.locator('text').first().textContent(),'0%');
@@ -48,10 +58,21 @@ const root=require('node:path').resolve(__dirname,'..');
   assert.equal(await ring.locator('text').first().textContent(),'21%','unchanged background data stays settled');
   const annual=await pageFor('/has-report-dashboard.html?year=2026');
   await annual.locator('#dashboard-months tr').first().waitFor();
+  assert.equal(await annual.locator('body').evaluate(body=>body.classList.contains('workspace-glass')),true);
+  assert.equal(await annual.locator('.app-frame .home-topbar .top-nav a[href="/home"]').count(),1);
+  assert.equal(await annual.locator('.home-sidebar a[href="/has-report"]').getAttribute('aria-current'),'page');
   const budget=annual.locator('#dashboard-summary strong').first();assert.equal(await budget.textContent(),'0.00');
   const bar=annual.locator('#dashboard-budget-chart rect[data-charge-plot]').first();assert.equal(Number(await bar.getAttribute('height')),0);
   await annual.evaluate(()=>{chargeTestFrame(0);chargeTestFrame(500);});const value=Number((await budget.textContent()).replaceAll(',',''));assert(value>0&&value<200);assert(Number(await bar.getAttribute('height'))>0);
   await annual.evaluate(()=>chargeTestFrame(1200));assert.equal(await budget.textContent(),'200.00');
+  const out=path.join(root,'.verification/dashboard-home-style');fs.mkdirSync(out,{recursive:true});
+  for(const width of [1440,390]){
+   await annual.setViewportSize({width,height:1000});
+   assert.equal(await annual.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Dashboard page overflow');
+   await annual.screenshot({path:path.join(out,'dashboard-'+width+'.png'),fullPage:true});
+  }
+  await annual.locator('.menu-toggle').click();assert.equal(await annual.locator('body').evaluate(body=>body.classList.contains('sidebar-open')),true);
+  await annual.keyboard.press('Escape');assert.equal(await annual.locator('body').evaluate(body=>body.classList.contains('sidebar-open')),false);
   assert.equal(await annual.locator('tr[data-month="2026-01"] [data-metric=balanceHours]').textContent(),'-20.00');
   const reduce=await pageFor('/QA',true);await reduce.locator('[data-qa-scope=MU] svg').waitFor();assert.equal(await reduce.locator('[data-qa-scope=MU] svg text').textContent(),'86%');
   assert.deepEqual(errors,[]);console.log('PASS QA rings and account percentages charge from zero, annual totals and charts charge, missing data and reduced motion preserved.');
