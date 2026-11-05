@@ -66,11 +66,17 @@
    const next=await window.hasReportRequest('/word/'+kind);if(version!==generation)return;state=next;
    root.append(el('h2',state.title));const toolbar=el('div');toolbar.className='word-report-actions';
    const save=el('button','Save form');save.type='button';save.onclick=()=>void flush().catch(()=>{});
+   const clear=el('button','Clear form');clear.type='button';clear.onclick=async()=>{
+    if(!confirm('Clear all filled fields in '+state.title+'? This also clears the saved form for this account.'))return;
+    save.disabled=download.disabled=clear.disabled=true;root.inert=true;const form=state;
+    try{await saveQueue.catch(()=>{});const saved=await window.hasReportRequest('/word/'+kind+'/clear',{revision:form.revision,confirmClear:true});if(version!==generation)return;Object.assign(form,saved);pending=false;for(const field of form.fields){const input=inputs[field.key];if(field.type==='checkbox')input.checked=false;else input.value='';}message('Form cleared.');}
+    catch(error){message(error.message);}finally{if(version===generation&&root)root.inert=false;save.disabled=download.disabled=clear.disabled=false;}
+   };
    const download=el('button','Download Word');download.type='button';download.onclick=async()=>{
-    save.disabled=download.disabled=true;
+    save.disabled=download.disabled=clear.disabled=true;
     try{await flush();const blob=await window.hasReportRequest('/word/'+kind+'/export');if(version!==generation)return;const url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=state.title.replace(/[^a-zA-Z0-9]+/g,'_')+'.docx';link.click();setTimeout(()=>URL.revokeObjectURL(url),10000);message('Word document downloaded.');}
-    catch(error){message(error.message);}finally{save.disabled=download.disabled=false;}
-   };toolbar.append(save,download);root.append(toolbar,el('p','Complete the fields below. Download Word uses the supplied document layout.'));
+    catch(error){message(error.message);}finally{save.disabled=download.disabled=clear.disabled=false;}
+   };toolbar.append(save,download,clear);root.append(toolbar,el('p','Complete the fields below. Download Word uses the supplied document layout.'));
    const form=el('form');form.className='word-report-fields';form.onsubmit=e=>e.preventDefault();
    if(state.layout){form.className='word-template-scroll';const page=el('div');page.className='word-template word-template-'+kind;page.append(...state.layout.map(templateNode));form.append(page);}
    else for(const field of state.fields){const label=el('label'),input=inputFor(field);if(field.type==='textarea')label.className='word-report-narrative';if(field.type==='checkbox'){label.className='word-report-check';label.append(input,document.createTextNode(field.label));}else label.append(document.createTextNode(field.label+(field.key==='detail_0_0'?' (optional)':'')),input);form.append(label);}

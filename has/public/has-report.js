@@ -4,9 +4,10 @@
  const col=n=>{let s='';while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26);}return s;};
  const coord=a=>{const [,c,r]=a.match(/^([A-Z]+)(\d+)$/);return {r:+r,c:[...c].reduce((n,x)=>n*26+x.charCodeAt(0)-64,0)};};
  function updateDashboard(){
+  $('report-clear').hidden=!['terrific','expense'].includes(model?.kind)||$('report-kind').value!==model?.kind;
   $('report-dashboard').hidden=!dashboardAllowed||$('report-kind').value!=='wwh';
  }
- function setBusy(value){busy=value;updateDashboard();for(const id of ['report-kind','report-month','report-month-name','report-year','report-export','report-dashboard'])$(id).disabled=value;editor.querySelectorAll('[data-add-day],[data-remove-day],[data-terrific-row]').forEach(b=>b.disabled=value||(b.dataset.terrificRow!==undefined&&model?.kind==='terrific'&&(Number(b.dataset.terrificRow)>0?model.rows>=202:model.rows<=3)));grid?.update();if(!value)flushRevision();}
+ function setBusy(value){busy=value;updateDashboard();for(const id of ['report-kind','report-month','report-month-name','report-year','report-export','report-dashboard','report-clear'])$(id).disabled=value;editor.querySelectorAll('[data-add-day],[data-remove-day],[data-terrific-row]').forEach(b=>b.disabled=value||(b.dataset.terrificRow!==undefined&&model?.kind==='terrific'&&(Number(b.dataset.terrificRow)>0?model.rows>=202:model.rows<=3)));grid?.update();if(!value)flushRevision();}
  function stopUpdates(){stopLive?.();stopLive=null;liveKey='';pendingRevision=null;}
  function flushRevision(){if(!pendingRevision||!model||busy||dirty||document.hidden)return;const latest=pendingRevision;pendingRevision=null;if(latest.revision!==model.revision||model.kind==='wwh'&&latest.daRevision!==model.daRevision||model.kind==='wwh'&&latest.rechargeRevision!==model.rechargeRevision)void load();}
  function startUpdates(){
@@ -61,7 +62,7 @@
  function render(){
   grid.reset();
   previewDefaults.clear();touchedRows.clear();
-  if(model.kind==='terrific')for(let r=3;r<=model.rows;r++)for(const [column,key] of [['E','issuedBy'],['G','message']]){const address=column+r,cell=model.cells[address],value=model.defaults?.[key];if(cell?.editable&&!cell.value&&value){previewDefaults.set(address,{original:cell.value,value});cell.value=value;}}
+  if(model.kind==='terrific'&&!model.cleared)for(let r=3;r<=model.rows;r++)for(const [column,key] of [['E','issuedBy'],['G','message']]){const address=column+r,cell=model.cells[address],value=model.defaults?.[key];if(cell?.editable&&!cell.value&&value){previewDefaults.set(address,{original:cell.value,value});cell.value=value;}}
   $('report-instructions').hidden=model.kind!=='wwh';
   editor.replaceChildren();invalid.clear();computed=math.calculate(model.cells);for(const [address,cell] of Object.entries(model.cells))cell.address=address;
   editor.classList.toggle('report-expense-mode',model.kind==='expense');
@@ -120,6 +121,15 @@
  $('report-month-name').addEventListener('change',changeMonth);$('report-year').addEventListener('change',changeMonth);
  $('report-kind').addEventListener('change',()=>load());$('report-month').addEventListener('change',()=>{setReportMonth($('report-month').value);load();});
  $('report-dashboard').onclick=async()=>{if(busy||!model||model.kind!=='wwh'||!dashboardAllowed)return;setBusy(true);editor.inert=true;try{if(dirty)await save();location.href='/has-report-dashboard.html?year='+model.month.slice(0,4);}catch(error){saveError(error);}finally{editor.inert=false;setBusy(false);}};
+ $('report-clear').onclick=async()=>{
+  if(busy||!model||!['terrific','expense'].includes(model.kind))return;
+  if(!confirm('Clear all filled fields in this '+model.kind+' report for '+model.month+'? This also clears saved values for this account.'))return;
+  clearTimeout(saveTimer);setBusy(true);editor.inert=true;
+  try{
+   const cleared=await window.hasReportRequest('/'+model.kind+'/'+model.month+'/clear',{revision:model.revision,layoutRevision:model.layoutRevision||0,confirmClear:true});
+   model.revision=cleared.revision;pendingRevision=null;dirty=false;invalid.clear();paused=false;saveConflict=false;setBusy(false);await load();status.textContent='Form cleared.';
+  }catch(error){saveError(error);}finally{editor.inert=false;setBusy(false);}
+ };
  $('report-instructions').onclick=()=>$('report-instructions-dialog').showModal();$('report-instructions-close').onclick=()=>$('report-instructions-dialog').close();
  $('report-export').onclick=async()=>{if(busy||!model)return;setBusy(true);editor.inert=true;try{if(dirty)await save();const blob=await window.hasReportRequest('/'+model.kind+'/'+model.month+'/export'),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=model.kind.toUpperCase()+'_'+model.scope.station+'_'+model.scope.account+'_'+(['terrific','expense'].includes(model.kind)?model.month:model.month.slice(0,4))+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);status.textContent='';}catch(error){status.textContent=error.message;}finally{editor.inert=false;setBusy(false);if(dirty&&!paused)scheduleSave(5000);}};
  function accessError(message){window.dispatchEvent(new CustomEvent('has-report-context',{detail:{error:message}}));}

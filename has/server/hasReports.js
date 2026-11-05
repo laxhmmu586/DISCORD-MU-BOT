@@ -124,10 +124,22 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   apply(model,body.values);calculate(model.cells);
   const at=new Date().toISOString(),name=ctx.employee.nickname||ctx.employee.name||ctx.employee.position;
   const history=[...(latest.history||[]),{at,name,action,cells:entries.map(([a])=>a)}].slice(-30);
-  const data={revision:latest.revision+1,layoutRevision:latest.layoutRevision||0,extraRows:latest.extraRows||{},values:{...latest.values,...body.values},updatedAt:at,updatedBy:name,history};
+  const data={cleared:latest.cleared||false,revision:latest.revision+1,layoutRevision:latest.layoutRevision||0,extraRows:latest.extraRows||{},values:{...latest.values,...body.values},updatedAt:at,updatedBy:name,history};
   db.prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),model.kind,model.month,JSON.stringify(data));return data;
  })();live.publish(ctx.scope,model.kind,model.month);return saved;};
  app.post('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model}=await build(req);res.json(write(ctx,model,req.reportUser,req.body));}));
+ app.post('/has-report-api/:kind/:month/clear',handler(async(req,res)=>{
+  const {ctx,model}=await build(req);if(!forms.kinds.includes(model.kind))fail('This report cannot be cleared.');
+  const saved=database().transaction(()=>{
+   const latest=read(ctx.scope,model.kind,model.month);
+   if(req.body.confirmClear!==true)fail('Confirm before clearing this report.');
+   if(req.body.revision!==latest.revision||(req.body.layoutRevision||0)!==(latest.layoutRevision||0))fail('This report changed. Reload before clearing.',409);
+   const at=new Date().toISOString(),name=ctx.employee.nickname||ctx.employee.name||ctx.employee.position;
+   const values=Object.fromEntries(Object.entries(model.cells).filter(([,cell])=>cell.editable).map(([address])=>[address,'']));
+   const data={...latest,cleared:true,revision:latest.revision+1,values,updatedAt:at,updatedBy:name,history:[...(latest.history||[]),{at,name,action:'Cleared form',cells:Object.keys(values)}].slice(-30)};
+   database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),model.kind,model.month,JSON.stringify(data));return data;
+  })();live.publish(ctx.scope,model.kind,model.month);res.json(saved);
+ }));
  app.post('/has-report-api/:kind/:month/rows',handler(async(req,res)=>{
   const {ctx,model}=await build(req);const delta=req.body.delta??1;if(delta!==1&&delta!==-1)fail('Choose add or remove row.');
   if(model.kind==='terrific'){

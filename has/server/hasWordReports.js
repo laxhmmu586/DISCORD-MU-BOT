@@ -44,8 +44,8 @@ function register(app,{context,database,read,key,handler,allowed}){
  const visibleValues=(kind,values)=>Object.fromEntries(Object.entries(values).filter(([key])=>!definition(kind).fields.find(field=>field.key===key)?.printOnly));
  const defaults=(kind,ctx,values)=>{
   const result={...values},account=ctx.scope.station+'/'+ctx.scope.account;
-  for(const field of definition(kind).fields)if(field.type==='text'&&/account/i.test(field.label)&&!String(result[field.key]||'').trim())result[field.key]=account;
-  if(kind==='investigation'){result.detail_2_0=result.detail_2_0||ctx.employee.name||ctx.employee.nickname||'';result.detail_2_1=result.detail_2_1||require('../public/employee-positions').normalize(ctx.employee.position)||'';}
+  for(const field of definition(kind).fields)if(field.type==='text'&&/account/i.test(field.label)&&result[field.key]==null)result[field.key]=account;
+  if(kind==='investigation'){result.detail_2_0=result.detail_2_0??(ctx.employee.name||ctx.employee.nickname||'');result.detail_2_1=result.detail_2_1??(require('../public/employee-positions').normalize(ctx.employee.position)||'');}
   return result;
  };
  app.get('/has-report-api/word/:form',handler(async(req,res)=>{
@@ -59,6 +59,17 @@ function register(app,{context,database,read,key,handler,allowed}){
    if(req.body.revision!==saved.revision)fail('This form changed. Reload before saving.',409);
    const data={revision:saved.revision+1,values,updatedAt:new Date().toISOString(),updatedBy:ctx.employee.nickname||ctx.employee.name||ctx.employee.position};
    database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),storage(req.params.form),'draft',JSON.stringify(data));return data;
+  })();res.json(data);
+ }));
+ app.post('/has-report-api/word/:form/clear',handler(async(req,res)=>{
+  const ctx=auth(req),kind=req.params.form;
+  const data=database().transaction(()=>{
+   const saved=read(ctx.scope,storage(kind),'draft');
+   if(req.body.confirmClear!==true)fail('Confirm before clearing this form.');
+   if(req.body.revision!==saved.revision)fail('This form changed. Reload before clearing.',409);
+   const values=Object.fromEntries(definition(kind).fields.filter(field=>!field.printOnly).map(field=>[field.key,field.type==='checkbox'?false:'']));
+   const data={revision:saved.revision+1,values,updatedAt:new Date().toISOString(),updatedBy:ctx.employee.nickname||ctx.employee.name||ctx.employee.position};
+   database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),storage(kind),'draft',JSON.stringify(data));return data;
   })();res.json(data);
  }));
  app.get('/has-report-api/word/:form/export',handler(async(req,res)=>{
