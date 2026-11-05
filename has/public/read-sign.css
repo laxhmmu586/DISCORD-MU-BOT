@@ -125,3 +125,19 @@
 #rs-recipient-editor p,#rs-recipient-editor label{font-size:12px;line-height:1.7}
 #rs-add-recipients{display:block;width:100%;max-width:100%;min-width:0;margin:10px 0 16px;padding:8px;border:1px solid var(--profile-border);border-radius:7px;background:transparent;color:inherit;font:inherit}
 @media print{#rs-recipient-editor{display:none!important}}
+
+.rs-completion { margin: 20px 0; padding: 16px; border: 1px solid #c9dcf4; border-radius: 13px; background: #eaf3ffb3; }
+.rs-completion h3 { margin: 0 0 10px; color: #315984; }
+.rs-completion p { font-size: 12px; line-height: 1.6; }
+.rs-completion .rs-table-wrap { margin-top: 10px; }
+@media print { .rs-completion { display: none !important; } }
+.rs-report-toolbar { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-size: 12px; color: #426d9e; }
+.rs-report-toolbar select { width: auto; min-width: 100px; margin: 0; }
+.rs-report-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 6px; }
+.rs-report-grid .rs-account-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 86px; padding: 5px; border: 1px solid #d9e7f8; border-radius: 8px; background: #fff; color: #205f9e; }
+.rs-account-card strong { font-size: 13px; overflow-wrap: anywhere; }
+.rs-report-grid .rs-account-card svg { display: block; width: 57px; height: 57px; max-width: none; flex: none; margin: auto; }
+.rs-report-grid .rs-account-card[data-received=true], .rs-report-grid .rs-account-card[aria-pressed=true] { background: #eaf4ff; border-color: #77b4f3; }
+.rs-report-grid .rs-account-card:hover { border-color: #258be8; }
+.rs-report-detail { margin-top: 16px; padding: 12px; border: 1px solid #d1e0f2; border-radius: 10px; background: #ffffff85; }
+.rs-report-detail h4 { margin: 0 0 8px; color: #315984; }

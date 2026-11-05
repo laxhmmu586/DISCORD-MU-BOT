@@ -13,7 +13,7 @@
  const positions=[...selectablePositions,'Manager'];
  const normalize=value=>value==='CSA'?'Agent':value==='Manager'?'Business Manager':value;
  const choices=current=>selectablePositions;
- const readSignPublishers=['Regional Manager','General Manager','Interim General Manager','Airport Manager','Airport Operations Manager','Business Manager','Duty Manager','Senior Supervisor','Supervisor','President','CFO','Senior Vice President Commercial','Vice President of Operations','Senior Vice President Human Resources','Director of Cash Management & Internal Control','Director of Sales & Marketing','Director Training & Compliance','Senior Manager Airport Services','Quality Assurance Manager & Project Coordinator','HQ Safety & Security Manager','HR Director','HR Manager'];
+ const readSignPublishers=['Regional Manager','General Manager','Interim General Manager','Airport Manager','Airport Operations Manager','Business Manager','Duty Manager','Senior Supervisor','Supervisor','President','CFO','Senior Vice President Commercial','Vice President of Operations','Senior Vice President Human Resources','Director of Cash Management & Internal Control','Director of Sales & Marketing','Director Training & Compliance','Senior Manager Airport Services','Quality Assurance Manager & Project Coordinator','HQ Safety & Security Manager','HR Director','HR Manager','Safety Advocate'];
  const canPublishReadSign=position=>readSignPublishers.includes(normalize(position));
  const valid=value=>positions.includes(normalize(value));
  const same=(left,right)=>normalize(left)===normalize(right);
