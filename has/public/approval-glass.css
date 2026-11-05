@@ -108,3 +108,12 @@
 .timeline-summary>time{font-size:11px;line-height:1.7;white-space:normal}
 @media(max-width:1100px){.timeline-event{grid-template-columns:minmax(150px,1fr) minmax(85px,.7fr) minmax(135px,1fr);gap:14px}.timeline-audit{display:grid;grid-template-columns:1fr 1fr;grid-column:1/-1;gap:18px;border-top:1px solid #d5e2f3;padding:12px 0 0}.timeline-audit>div{border:0;padding:0}}
 @media(max-width:760px){.workspace-glass .current-approval{padding:14px}.workspace-glass .current-approval-body{padding:12px}.timeline-event{display:block}.timeline-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.timeline-identity{grid-column:1/-1;gap:10px}.timeline-state{grid-column:1}.timeline-summary>time{grid-column:2;align-self:center}.timeline-audit{display:grid;margin-top:12px;gap:12px}.timeline-marker svg{width:19px;height:19px}.workspace-glass .request-node-workbench .oa-track.approval-timeline>li:before{left:-24px!important;top:32px!important;bottom:-50px!important}}
+
+/* Refresh belongs to the timeline header on desktop and mobile. */
+.workspace-glass .uniform-progress-panel>.profile-panel-title :is([data-progress-refresh],#refresh-uniform-progress){display:none}
+.request-timeline-heading{display:grid;grid-template-columns:36px auto minmax(0,1fr) 36px;align-items:center;gap:12px}
+.request-timeline-heading>img{grid-column:1;grid-row:1}.request-timeline-heading>h3{grid-column:2;grid-row:1}.request-timeline-heading>p{grid-column:3;grid-row:1;min-width:0}
+.workspace-glass .request-timeline .timeline-refresh{grid-column:4;grid-row:1;display:grid;place-items:center;justify-self:end;box-sizing:border-box;width:36px;height:36px;min-width:36px;min-height:36px;margin:0!important;padding:8px!important;border:1px solid #fff!important;border-radius:11px!important;background:#ffffffa6!important;box-shadow:0 3px 9px #3978bc12!important;color:#3a86de!important;cursor:pointer}
+.workspace-glass .request-timeline .timeline-refresh svg{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.timeline-refresh:hover{color:#1469cb!important}.timeline-refresh:focus-visible{outline:2px solid #3684df;outline-offset:3px}.timeline-refresh:disabled{opacity:.5;cursor:wait}
+@media(max-width:760px){.request-timeline-heading{grid-template-columns:36px minmax(0,1fr) 36px;gap:8px}.workspace-glass .request-timeline .timeline-refresh{grid-column:3;grid-row:1}.request-timeline-heading>p{grid-column:2/-1;grid-row:2;margin:0!important}}
