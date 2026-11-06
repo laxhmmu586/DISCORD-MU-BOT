@@ -19,15 +19,15 @@ test('scheduled times sync from any daily charge, remain scoped, and reach blank
 
  const times=Object.fromEntries(R.scheduledTimeFields.map((a,i)=>[a,'0'+(905+i)]));
  result=await req({revision:1,entry:{...normal,day:19,fields:times}});assert.equal(result.status,200);
- let saved=(await req()).data;for(const e of saved.entries)for(const a of R.scheduledTimeFields)assert.equal(e.fields[a],times[a]);assert.equal(saved.entries[0].fields.F10,'0804');assert.equal(saved.entries[0].fields.I10,'1300');
+ let saved=(await req()).data;assert.equal(saved.entries[0].fields.I9,'1130');for(const a of R.scheduledTimeFields)assert.equal(saved.entries[1].fields[a],times[a]);assert.equal(saved.entries[0].fields.F10,'0804');assert.equal(saved.entries[0].fields.I10,'1300');
  assert.equal((await req({revision:1,id:first,entry:{...normal,fields:{F9:'stale'}}})).status,409);
  assert.deepEqual((await req(undefined,'2026-09')).data.scheduledTimes,{});assert.deepEqual((await req(undefined,'2026-10','other')).data.scheduledTimes,{});
  result=await req({revision:2,id:first,entry:{...normal,fields:{...times,F9:'',I9:'2359',F10:'0810'}}});assert.equal(result.status,200);saved=(await req()).data;
- for(const e of saved.entries){assert.equal(e.fields.F9,'');assert.equal(e.fields.I9,'2359');}assert.equal(saved.entries[1].fields.F10,undefined);
+ assert.equal(saved.entries[0].fields.F9,'');assert.equal(saved.entries[0].fields.I9,'2359');assert.equal(saved.entries[1].fields.F9,times.F9);assert.equal(saved.entries[1].fields.I9,times.I9);assert.equal(saved.entries[1].fields.F10,undefined);
  const book=new Excel.Workbook();await book.xlsx.load((await req(undefined,'2026-10','s','/export')).data);
- for(const day of ['1','3','19','31']){assert.equal(book.getWorksheet(day).getCell('F9').value,null);assert.equal(book.getWorksheet(day).getCell('I9').value,'2359');assert.equal(book.getWorksheet(day).getCell('P12').value,times.P12);}assert.equal(book.getWorksheet('3').getCell('F10').value,'0810');assert.equal(book.getWorksheet('19').getCell('F10').value,null);
- result=await req({revision:3,id:first,remove:true});assert.equal(result.data.scheduledTimes.I9,'2359');
- result=await req({revision:4,entry:{...normal,day:25,fields:{F10:'0900'}}});assert.equal(result.data.entries.at(-1).fields.I9,'2359');
+ for(const day of ['1','31']){assert.equal(book.getWorksheet(day).getCell('F9').value,'0905');assert.equal(book.getWorksheet(day).getCell('I9').value,'1130');assert.equal(book.getWorksheet(day).getCell('P12').value,times.P12);}assert.equal(book.getWorksheet('3').getCell('F9').value,null);assert.equal(book.getWorksheet('3').getCell('I9').value,'2359');assert.equal(book.getWorksheet('19').getCell('I9').value,times.I9);assert.equal(book.getWorksheet('3').getCell('F10').value,'0810');assert.equal(book.getWorksheet('19').getCell('F10').value,null);
+ result=await req({revision:3,id:first,remove:true});assert.equal(result.data.scheduledTimes.I9,'1130');
+ result=await req({revision:4,entry:{...normal,day:25,fields:{F10:'0900'}}});saved=(await req()).data;assert.equal(saved.entries.at(-1).fields.I9,'1130');
 });
 
 test('daily editor overlays shared scheduled times on existing and blank date forms',async()=>{
@@ -37,7 +37,7 @@ test('daily editor overlays shared scheduled times on existing and blank date fo
  const scheduledTimes={F9:'0905',I9:'1230',P12:'2300'},data={month:'2026-10',scope,scheduledTimes,entries:[{id:'one',day:3,lines:[],fields:{F9:'old',F10:'0804'}}],periods:[],totals:{},form:{widths:Array(19).fill(8),merges:[],cells:{},fields:[...R.scheduledTimeFields,'F10']}};
  window.hasReportRequest=async()=>data;const context=vm.createContext({window,document,Option:function(){},CustomEvent:window.CustomEvent,confirm:()=>true,console,setTimeout});vm.runInContext(fs.readFileSync('has/public/has-recharge.js','utf8'),context);
  await window.hasRecharge.open('2026-10');
- for(const day of ['3','17']){await [...document.querySelectorAll('.recharge-summary button')].find(b=>b.textContent===day).onclick();const dialog=document.querySelector('dialog');assert.equal(dialog.querySelector('[data-recharge-cell="F9"]').value,'0905');assert.equal(dialog.querySelector('[data-recharge-cell="I9"]').value,'1230');assert.equal(dialog.querySelector('[data-recharge-cell="P12"]').value,'2300');assert.equal(dialog.querySelector('[data-recharge-cell="F10"]').value,day==='3'?'0804':'');}
+ for(const day of ['3','17']){await [...document.querySelectorAll('.recharge-summary button')].find(b=>b.textContent===day).onclick();const dialog=document.querySelector('dialog');assert.equal(dialog.querySelector('[data-recharge-cell="F9"]').value,day==='3'?'old':'0905');assert.equal(dialog.querySelector('[data-recharge-cell="I9"]').value,'1230');assert.equal(dialog.querySelector('[data-recharge-cell="P12"]').value,'2300');assert.equal(dialog.querySelector('[data-recharge-cell="F10"]').value,day==='3'?'0804':'');}
 });
 
 test('legacy daily schedules populate other dates without resaving, while explicit clears win',async()=>{

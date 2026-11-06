@@ -98,7 +98,7 @@
   for(const [key,label] of [['undo','Undo'],['redo','Redo'],['copy','Copy'],['paste','Paste'],['fill','Fill down'],['clear','Clear']]){
    const button=document.createElement('button');button.type='button';button.textContent=label;button.onclick=()=>{if(key==='undo'||key==='redo'||selected())Promise.resolve().then(actions[key]).catch(notice);};toolbar.append(button);buttons[key]=button;
   }
-  const help=document.createElement('span');help.textContent='Tab → · Shift+Tab ← · Enter ↓ · Shift+click to select · Drag the corner to fill';toolbar.append(help);editor.before(toolbar);
+  window.hasReportAlignment?.mount(toolbar);editor.before(toolbar);
   editor.addEventListener('focusin',event=>{const a=event.target.dataset.cellInput;if(a&&(!range||range.focus!==a)){choose(a);}});
   editor.addEventListener('dblclick',event=>{if(event.target.dataset.cellInput)editing=true;});
   editor.addEventListener('keydown',event=>{
