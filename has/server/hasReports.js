@@ -167,7 +167,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   res.json(write(ctx,model,req.reportUser,{revision:req.body.revision,layoutRevision:req.body.layoutRevision||0,values},'Imported Excel'));
  }));
  app.get('/has-report-api/:kind/:month/export',handler(async(req,res)=>{
-  const {ctx,model}=await build(req),year=model.month.slice(0,4),filename=`${model.kind.toUpperCase()}_${ctx.scope.station}_${ctx.scope.account}_${year}`;
+  const {ctx,model}=await build(req),year=model.month.slice(0,4),filename=`${model.kind.toUpperCase()}_${ctx.scope.station}_${ctx.scope.account}_${model.month}`;
   if(forms.kinds.includes(model.kind)){apply(model,read(ctx.scope,model.kind,model.month).values,true);return res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(model.kind+'_'+ctx.scope.station+'_'+ctx.scope.account+'_'+model.month+'.xlsx').send(await forms.exportForm(model));}
   // The originals are annual workbooks. Populate every monthly tab from this
   // Main Account's shared records, including the selected month's live totals.
