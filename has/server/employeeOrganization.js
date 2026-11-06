@@ -70,8 +70,8 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseD
     const nextRows=all.map(row=>row.id===next.id?next:row);
     const managerId=model.validateLine(next,String(next.reportsTo||''),nextRows);
     if(access.mode!=='admin'&&(!managerId||!model.managersFor(next,access,all).some(r=>r.id===managerId)))fail('Choose a manager within your reporting team.',403);
-    // Reassignment must not move descendants out of their main account without review.
-    if((next.station!==original.station||next.account!==original.account)&&model.descendants(next.id,all).size)fail('Reassign direct reports before moving this person to another account.');
+    // Changing account order retains the existing team when the old account is kept.
+    if((next.station!==original.station||next.account!==original.account)&&model.membershipIndex(next,original)<0&&model.descendants(next.id,all).size)fail('Keep the current account as a 2nd or 3rd account, or reassign direct reports before removing it.');
     for(const child of all.filter(r=>model.reportingManagers(r,all).some(manager=>manager.id===next.id)))model.validateLine(child,child.reportsTo,nextRows);
     store.save({revision:current.revision,employees:current.employees.map(row=>row.id===next.id?{...row,...Object.fromEntries(allowed.filter(key=>key!=='reportsTo').map(key=>[key,next[key]]))}:row)},req.employeeAdmin);
     if(managerId)db.prepare('INSERT OR REPLACE INTO employee_reporting VALUES(?,?)').run(next.id,managerId);else db.prepare('DELETE FROM employee_reporting WHERE employee_id=?').run(next.id);

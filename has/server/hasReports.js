@@ -185,7 +185,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
    require('./hasReportFormatting').apply(sheet,stored.formats);if(model.kind==='da'){const summary=model.workbook.getWorksheet('Summary Page'),value=results['M'+current.rows];summary.getCell(m,2).value={formula:current.sheetName+'!M'+current.rows,result:typeof value==='string'?{error:value}:value};}
   }
   model.workbook.calcProperties.fullCalcOnLoad=true;
-  res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(filename+'.xlsx').send(await exportWorkbook(model.workbook));
+  res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(filename+'.xlsx').send(await exportWorkbook(model.workbook,model.sheetName));
  }));
  const wheelchairMailer=require('./hasWheelchairMail').createMailer({database,read,template});
  return {context,startWheelchairMail:()=>wheelchairMailer.start(),close(){wheelchairMailer.close();live.close();if(ownsDatabase&&db?.open)db.close();db=undefined;ownsDatabase=false;}};

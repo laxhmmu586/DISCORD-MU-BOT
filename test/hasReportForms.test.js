@@ -20,8 +20,10 @@ test('forms retain template structure and formulas with blank private inputs',as
   assert.equal(sheet.getCell(address).value,'Entered & checked <value>');
   assert.deepEqual(sheet.model.merges,model.workbook.worksheets[0].model.merges);
   assert.deepEqual(sheet.pageSetup,model.workbook.worksheets[0].pageSetup);
+  assert.equal(sheet.views[0].activeCell,'A1');
   if(kind==='expense'){assert(Math.abs(sheet.getCell('J72').result-108.2)<1e-9);assert.equal(sheet.getCell('J72').formula,'J68-J70');}
   const original=await JSZip.loadAsync(await fs.readFile('has/resources/has-report-templates/'+kind+'.xlsx')),exported=await JSZip.loadAsync(result);
+  assert.doesNotMatch(await exported.file('xl/worksheets/sheet1.xml').async('string'),/topLeftCell="(?!A1")/);
   for(const name of Object.keys(original.files))if(!original.files[name].dir&&name!=='xl/worksheets/sheet1.xml')assert.deepEqual(await exported.file(name).async('nodebuffer'),await original.file(name).async('nodebuffer'),name+' preserved');
  }
 });
