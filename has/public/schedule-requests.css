@@ -117,3 +117,5 @@
 #schedule-request-list .request-action:disabled{opacity:.45;cursor:wait}
 
 .off-calendar-months th{white-space:nowrap!important;min-width:128px;text-align:left}.off-calendar-table:has(.off-calendar-months th[colspan="1"]){min-width:132px}
+
+.request-card-note .request-rejection-reason{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;color:#b53d4c}
