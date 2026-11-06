@@ -22,7 +22,7 @@ test('completed requests expose the approving name to authorized viewers and ret
 });
 test('historical approvals and denials resolve their reviewer from employee IDs and audit records',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:C});const approved=(await f.submit('one','timesheet',{category:'report_time'})).data;await f.request('sup','/requests/'+approved.id,{action:'approve'});
- const denied=(await f.submit('one','timesheet',{category:'request_fix_time'})).data;await f.request('sup','/requests/'+denied.id,{action:'decline'});
+ const denied=(await f.submit('one','timesheet',{category:'request_fix_time'})).data;await f.request('sup','/requests/'+denied.id,{action:'decline',reason:'Unable to accommodate this request'});
  for(const id of [approved.id,denied.id]){const r=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(id).data);delete r.completedByName;delete r.approvalMode;if(id===denied.id){delete r.completedBy;delete r.completedAt;}f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(r),id);}
  const requests=(await f.request('one','/requests')).data.requests;for(const r of requests){assert.equal(r.completedBy,'sup');assert.equal(r.completedByName,'Sue');assert(r.completedAt);}
 });
@@ -75,7 +75,7 @@ test('I Can Work requires a qualified supervisor-selected shift; approval cannot
 });
 test('submission retries are idempotent, dates and partner restrictions are enforced, and declines do not change shifts',async t=>{
  const f=await fixture(t);f.seed(DATE,{one:C,two:F});const body={requestId:crypto.randomUUID(),type:'trade',date:DATE,note:'',partnerId:'two'};const first=await f.request('one','/requests',body);assert.equal((await f.request('one','/requests',body)).data.id,first.data.id);assert.equal((await f.request('one','/requests',{...body,date:add(DATE,1)})).status,409);
- assert.equal((await f.request('two','/requests/'+first.data.id,{action:'decline'})).data.status,'declined');assert.deepEqual(f.read(DATE).assignments,{one:C,two:F});assert.equal((await f.submit('one','trade',{partnerId:'other'})).status,403);assert.equal((await f.submit('one','trade',{partnerId:'one'})).status,400);
+ assert.equal((await f.request('two','/requests/'+first.data.id,{action:'decline',reason:'Unable to accommodate this request'})).data.status,'declined');assert.deepEqual(f.read(DATE).assignments,{one:C,two:F});assert.equal((await f.submit('one','trade',{partnerId:'other'})).status,403);assert.equal((await f.submit('one','trade',{partnerId:'one'})).status,400);
 });
 test('settings protect against stale edits and require explicit finite weekly hours',async t=>{
  const f=await fixture(t),config=(await f.request('sup','/requests/settings?period='+DATE)).data,body={revision:config.revision,employeeId:'one',period:DATE,capabilities:[],secondaryHours:0};assert.equal((await f.request('one','/requests/settings',body)).status,403);assert.equal((await f.request('sup','/requests/settings',{...body,secondaryHours:-1})).status,400);assert.equal((await f.request('sup','/requests/settings',body)).status,200);assert.equal((await f.request('sup','/requests/settings',body)).status,409);
@@ -93,7 +93,7 @@ test('approve and deny create private persistent employee notifications with own
  let inbox=(await f.request('one','/requests')).data;assert.equal(inbox.unread,1);assert.equal(inbox.notifications[0].action,'approved');assert.equal(f.read(DATE).assignments.one.color,'#ff0000');
  const notice=inbox.notifications[0];await f.request('three','/requests/notifications/read',{ids:[notice.id]});assert.equal((await f.request('one','/requests')).data.unread,1);
  await f.request('one','/requests/notifications/read',{ids:[notice.id]});assert.equal((await f.request('one','/requests')).data.unread,0);
- const work=(await f.submit('one','work')).data;await f.request('sup','/requests/'+work.id,{action:'decline'});inbox=(await f.request('one','/requests')).data;assert.equal(inbox.unread,1);assert.equal(inbox.notifications[0].action,'declined');assert.equal((await f.request('three','/requests')).data.notifications.length,0);
+ const work=(await f.submit('one','work')).data;await f.request('sup','/requests/'+work.id,{action:'decline',reason:'Unable to accommodate this request'});inbox=(await f.request('one','/requests')).data;assert.equal(inbox.unread,1);assert.equal(inbox.notifications[0].action,'declined');assert.equal((await f.request('three','/requests')).data.notifications.length,0);
 });
 
 
@@ -131,10 +131,10 @@ test('legacy color-specific skills merge into per-duty skills without changing w
 });
 
 
-test('request inbox retains three days of resolved results while preserving pending requests and audit data',async t=>{
- const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one','off')).data;await f.request('sup','/requests/'+r.id,{action:'decline'});
- const old=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(r.id).data);old.updatedAt='2026-10-20T00:00:00Z';old.completedAt=old.updatedAt;f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(old),r.id);f.db.prepare('UPDATE schedule_request_notifications SET at=? WHERE request_id=?').run('2026-10-20T00:00:00Z',r.id);
- const pending=(await f.submit('one','trade')).data;const data=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(pending.id).data);data.createdAt='2026-10-20T00:00:00Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(data),pending.id);
+test('request inbox retains two years of resolved results while preserving pending requests and audit data',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one','off')).data;await f.request('sup','/requests/'+r.id,{action:'decline',reason:'Unable to accommodate this request'});
+ const old=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(r.id).data);old.updatedAt='2024-10-29T17:59:59Z';old.completedAt=old.updatedAt;f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(old),r.id);f.db.prepare('UPDATE schedule_request_notifications SET at=? WHERE request_id=?').run('2024-10-29T17:59:59Z',r.id);
+ const pending=(await f.submit('one','trade')).data;const data=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(pending.id).data);data.createdAt='2024-10-29T17:59:59Z';f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(data),pending.id);
  const list=(await f.request('one','/requests')).data;assert(!list.requests.some(row=>row.id===r.id));assert(list.requests.some(row=>row.id===pending.id));assert.equal(list.unread,0);assert(f.db.prepare('SELECT 1 FROM schedule_requests WHERE id=?').get(r.id));
 });
 test('recurring second-account total needs no week, is supervisor-only and counts in every future period',async t=>{
@@ -206,7 +206,7 @@ test('Report Time validation, denial and cancellation preserve unrelated schedul
  const f=await fixture(t);f.seed(DATE,{one:C});await f.submit('one','off');
  for(const extra of [{category:'invalid'},{note:'   '},{date:'2026-02-30'}])assert.equal((await f.submit('one','timesheet',{category:'report_time',...extra})).status,400);
  const result=await f.submit('one','timesheet',{category:'request_fix_time'});assert.equal(result.status,200);
- const denied=await f.request('sup','/requests/'+result.data.id,{action:'decline'});assert.equal(denied.status,200);assert.equal(denied.data.status,'declined');assert.deepEqual(f.read(DATE).assignments,{one:C});
+ const denied=await f.request('sup','/requests/'+result.data.id,{action:'decline',reason:'Unable to accommodate this request'});assert.equal(denied.status,200);assert.equal(denied.data.status,'declined');assert.deepEqual(f.read(DATE).assignments,{one:C});
  assert.equal((await f.request('one','/requests')).data.notifications[0].action,'declined');
  const next=await f.submit('one','timesheet',{category:'report_time'});const cancelled=await f.request('one','/requests/'+next.data.id,{action:'cancel'});assert.equal(cancelled.status,200);assert.equal(cancelled.data.status,'cancelled');assert.equal((await f.request('sup','/requests/'+next.data.id,{action:'approve'})).status,409);
 });
@@ -251,4 +251,17 @@ test('all Supervisors can review Request Off even without schedule editing; dele
  assert.equal((await f.request('sup','/requests')).data.requests.find(p=>p.id===r.id).canApprove,true);
  assert([403,404].includes((await f.request('three','/requests/'+r.id,{action:'approve',days:{[DATE]:'X'}})).status));
  assert.equal((await f.request('sup','/requests/'+r.id,{action:'approve',days:{[DATE]:'VAC'}})).data.status,'approved');assert.equal(f.read(DATE).assignments.one.code,'VAC');
+});
+
+test('rejection requires a reason and preserves it privately with its audit record',async t=>{
+ const f=await fixture(t);f.seed(DATE,{one:C,two:F});const r=(await f.submit('one')).data;
+ for(const reason of [undefined,'','   ',42,'x'.repeat(1001)]){assert.equal((await f.request('two','/requests/'+r.id,{action:'decline',reason})).status,400);assert.equal((await f.request('one','/requests')).data.requests[0].status,'awaiting_partner');}
+ assert.equal((await f.request('three','/requests/'+r.id,{action:'decline',reason:'Private'})).status,404);
+ const result=await f.request('two','/requests/'+r.id,{action:'decline',reason:'  Cannot cover this shift  '});assert.equal(result.data.rejectionReason,'Cannot cover this shift');assert.deepEqual(f.read(DATE).assignments,{one:C,two:F});
+ assert.equal((await f.request('one','/requests')).data.requests[0].rejectionReason,'Cannot cover this shift');const audit=f.db.prepare("SELECT data FROM schedule_request_audit WHERE request_id=? AND action='decline'").get(r.id);assert.equal(JSON.parse(audit.data).rejectionReason,'Cannot cover this shift');
+ const manager=(await f.submit('one','timesheet',{category:'report_time'})).data;assert.equal((await f.request('sup','/requests/'+manager.id,{action:'decline'})).status,400);assert.equal((await f.request('sup','/requests/'+manager.id,{action:'decline',reason:'Incorrect time'})).data.rejectionReason,'Incorrect time');
+});
+test('two-year history includes its exact boundary and notifications, with pending history preserved',async t=>{
+ const f=await fixture(t);const r=(await f.submit('one','timesheet',{category:'report_time'})).data;await f.request('sup','/requests/'+r.id,{action:'decline',reason:'Incorrect time'});
+ for(const at of ['2026-10-20T00:00:00Z','2024-10-29T18:00:00Z']){const saved=JSON.parse(f.db.prepare('SELECT data FROM schedule_requests WHERE id=?').get(r.id).data);saved.completedAt=at;f.db.prepare('UPDATE schedule_requests SET data=? WHERE id=?').run(JSON.stringify(saved),r.id);f.db.prepare('UPDATE schedule_request_notifications SET at=? WHERE request_id=?').run(at,r.id);const inbox=(await f.request('one','/requests')).data;assert(inbox.requests.some(row=>row.id===r.id));assert(inbox.notifications.some(row=>row.requestId===r.id));}
 });

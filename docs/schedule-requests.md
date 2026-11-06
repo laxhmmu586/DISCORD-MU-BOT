@@ -40,13 +40,13 @@ Authenticated live connections invalidate open Schedule views within approximate
 
 Supervisor editing view has a standard **Add/Edit** dropdown button beside Refresh with three actions: Add next month, Announcement and Edit Shift. Edit Skill remains separate. The selected-duty toolbar button and request actions inside manager shift menus are removed. Clicking the top avatar opens the account menu, including Logout; Profile remains a menu action.
 
-Resolved request cards and outcome notifications remain visible for three days; pending requests remain until processed. Stored request/audit data is retained for history integrity. Result cards are compact, and visible outcome cards automatically mark their own notifications read while the manual Mark read action remains available.
+Resolved request cards and outcome notifications remain visible for two years; pending requests remain until processed. Stored request/audit data is retained for history integrity. Result cards are compact, and visible outcome cards automatically mark their own notifications read while the manual Mark read action remains available.
 
 Employee desktop and mobile views retain the default-collapsed Clock-in Time card and collapsible Duty legend below the roster. Viewing the full team does not hide these reference panels. Unread Announcements remain above the roster with the existing per-employee Got it flow.
 
 Pending Off Req and Work Req badges briefly sway every three seconds in desktop and mobile views. The animation pauses for users who prefer reduced motion; clicking and positioning are unchanged.
 
-Request Off, Trade Shift and I Can Work now open their named form directly from a schedule cell; no request-type dropdown or second type selection appears. The generic New request entry offers compact type buttons. The inbox uses compact type icons, dates and outcome badges, and approved time off shows a red X. Eligibility, approvals, private notifications and three-day result retention are unchanged.
+Request Off, Trade Shift and I Can Work now open their named form directly from a schedule cell; no request-type dropdown or second type selection appears. The generic New request entry offers compact type buttons. The inbox uses compact type icons, dates and outcome badges, and approved time off shows a red X. Eligibility, approvals, private notifications and two-year result retention are unchanged.
 
 The shared header notification bell includes schedule approvals/partner confirmations that need the viewer’s action, and their unread decision notices. Pending requests merely awaiting somebody else are not counted. Links open the corresponding request directly on Schedule; decisions and read receipts update the badge without losing existing form or Read & Sign reminders. Mobile Friday–Thursday periods use the same red Friday boundary as desktop, including the frozen own row.
 
@@ -70,3 +70,5 @@ Double-click a duty to edit its display text, color and remark. Supervisors can 
 On mobile, each remark badge is an independent accessible button. Tapping it opens a read-only dialog with the employee nickname, date and full remark, including remarks on colleagues' shifts; the duty/request action remains on the shift itself. Text is rendered literally, and closing the dialog keeps the roster position.
 
 Supervisor-and-higher mobile views include Coverage details with the same role counts, Daily Hour, budgets and period totals as desktop. Coverage labels stay frozen while dates scroll, and horizontal date positions follow the mobile roster in either direction. The coverage table can independently reach its last date. Employee views continue to omit coverage and manager-only totals. The request status button uses blue paper/check artwork when clear and clipboard/clock artwork when pending, retaining pending counts, animation and reduced-motion behavior.
+
+Rejecting any request, including a trade partner declining, requires a nonblank reason of at most 1,000 characters. The reason is saved in the request and audit trail and shown to authorized viewers on the completed card. Completed records and outcome notifications use a rolling two-calendar-year visibility window; pending requests remain visible until processed. Older stored request/audit records are preserved.
