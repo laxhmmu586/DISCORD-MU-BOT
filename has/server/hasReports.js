@@ -119,14 +119,14 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  const write=(ctx,model,user,body,action='Edited')=>{const saved=database().transaction(()=>{
   const latest=read(ctx.scope,model.kind,model.month);if((body.layoutRevision||0)!==(latest.layoutRevision||0))fail('Daily rows changed. Reload the report before continuing.',409);apply(model,latest.values,true);
   if(model.kind==='wwh')recharge.link(model,read(ctx.scope,'rechargeable',model.month));
-  const entries=Object.entries(body.values||{});if(!entries.length)fail('No cell changes to save.');
+  const entries=Object.entries(body.values||{}),formats=require('./hasReportFormatting').validate(body.formats||{},model.cells);if(!entries.length&&!Object.keys(formats).length)fail('No cell changes to save.');if(Object.keys(formats).length&&body.revision!==latest.revision)fail('Report changed. Reload before formatting.',409);
   if(body.revision!==latest.revision){
    if(!body.baseValues||entries.some(([a])=>!Object.hasOwn(body.baseValues,a)||body.baseValues[a]!==model.cells[a]?.value))fail('Another editor changed these cells. Your changes have not been overwritten. Reload to review the latest report.',409);
   }
-  apply(model,body.values);calculate(model.cells);
+  apply(model,body.values||{});calculate(model.cells);
   const at=new Date().toISOString(),name=ctx.employee.nickname||ctx.employee.name||ctx.employee.position;
-  const history=[...(latest.history||[]),{at,name,action,cells:entries.map(([a])=>a)}].slice(-30);
-  const data={cleared:latest.cleared||false,revision:latest.revision+1,layoutRevision:latest.layoutRevision||0,extraRows:latest.extraRows||{},values:{...latest.values,...hoursValues(model),...body.values},updatedAt:at,updatedBy:name,history};
+  const history=[...(latest.history||[]),{at,name,action,cells:[...new Set([...entries.map(([a])=>a),...Object.keys(formats)])]}].slice(-30);
+  const data={formats:{...latest.formats,...formats},cleared:latest.cleared||false,revision:latest.revision+1,layoutRevision:latest.layoutRevision||0,extraRows:latest.extraRows||{},values:{...latest.values,...hoursValues(model),...body.values},updatedAt:at,updatedBy:name,history};
   db.prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),model.kind,model.month,JSON.stringify(data));return data;
  })();live.publish(ctx.scope,model.kind,model.month);return saved;};
  app.post('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model}=await build(req);res.json(write(ctx,model,req.reportUser,req.body));}));
@@ -154,7 +154,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   }
   if(model.kind!=='da')fail('Rows can only be changed in DA or Terrific Ten.');const day=Number(req.body.day),block=model.days.find(d=>d.day===day);if(!block)fail('Choose a date in this month.');
   const saved=database().transaction(()=>{const latest=read(ctx.scope,'da',model.month);if(req.body.revision!==latest.revision||(req.body.layoutRevision||0)!==(latest.layoutRevision||0))fail('Report changed. Wait for the latest version before changing rows.',409);if(delta<0&&!(latest.extraRows?.[day]>0))fail('Only added rows can be removed.');apply(model,latest.values,true);if(delta<0&&req.body.confirmRemoval!==true&&Object.entries(model.cells).some(([address,cell])=>Number(address.match(/\d+$/)[0])===block.end&&cell.editable&&cell.value!==''&&cell.value!=null))fail('This row contains data. Confirm removal before deleting it.',409);const extraRows=validateRows({...latest.extraRows,[day]:(latest.extraRows?.[day]||0)+delta}),at=new Date().toISOString(),name=ctx.employee.nickname||ctx.employee.name||ctx.employee.position;
-   const data={...latest,revision:latest.revision+1,layoutRevision:(latest.layoutRevision||0)+1,extraRows,values:moveValues(latest.values,block.end+(delta>0?1:0),delta,model),updatedAt:at,updatedBy:name,history:[...(latest.history||[]),{at,name,action:(delta>0?'Added row to day ':'Removed row from day ')+day,cells:['A'+block.start]}].slice(-30)};database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),'da',model.month,JSON.stringify(data));return data;
+   const data={...latest,revision:latest.revision+1,layoutRevision:(latest.layoutRevision||0)+1,extraRows,formats:moveValues(latest.formats||{},block.end+(delta>0?1:0),delta,model),values:moveValues(latest.values,block.end+(delta>0?1:0),delta,model),updatedAt:at,updatedBy:name,history:[...(latest.history||[]),{at,name,action:(delta>0?'Added row to day ':'Removed row from day ')+day,cells:['A'+block.start]}].slice(-30)};database().prepare('INSERT OR REPLACE INTO has_reports VALUES(?,?,?,?)').run(key(ctx.scope),'da',model.month,JSON.stringify(data));return data;
   })();live.publish(ctx.scope,'da',model.month);res.json({revision:saved.revision,layoutRevision:saved.layoutRevision,extraRows:saved.extraRows});
  }));
  app.get('/has-report-api/:kind/:month/updates',handler(async(req,res)=>{const ctx=authorize(req);const saved=read(ctx.scope,req.params.kind,req.params.month);res.json({scope:ctx.scope,revision:saved.revision,updatedBy:saved.updatedBy,daRevision:req.params.kind==='wwh'?read(ctx.scope,'da',req.params.month).revision:0,rechargeRevision:req.params.kind==='wwh'?read(ctx.scope,'rechargeable',req.params.month).revision:0});}));
@@ -168,7 +168,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  }));
  app.get('/has-report-api/:kind/:month/export',handler(async(req,res)=>{
   const {ctx,model}=await build(req),year=model.month.slice(0,4),filename=`${model.kind.toUpperCase()}_${ctx.scope.station}_${ctx.scope.account}_${model.month}`;
-  if(forms.kinds.includes(model.kind)){apply(model,read(ctx.scope,model.kind,model.month).values,true);return res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(model.kind+'_'+ctx.scope.station+'_'+ctx.scope.account+'_'+model.month+'.xlsx').send(await forms.exportForm(model));}
+  if(forms.kinds.includes(model.kind)){apply(model,read(ctx.scope,model.kind,model.month).values,true);model.formats=read(ctx.scope,model.kind,model.month).formats||{};return res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(model.kind+'_'+ctx.scope.station+'_'+ctx.scope.account+'_'+model.month+'.xlsx').send(await forms.exportForm(model));}
   // The originals are annual workbooks. Populate every monthly tab from this
   // Main Account's shared records, including the selected month's live totals.
   const hoursCache=new Map();
@@ -182,7 +182,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
    for(const [address,cell] of Object.entries(current.cells)){if(cell.webOnly)continue;if(cell.sourceFormula)sheet.getCell(address).value={formula:cell.sourceFormula.replace("'DA Source'","'"+sourceName+"'"),result:typeof cell.value==='string'?{error:cell.value}:cell.value};else if(cell.formula)sheet.getCell(address).value={formula:cell.formula,result:typeof results[address]==='string'?{error:results[address]}:results[address]};else if(cell.linked||cell.editable||cell.accountLocked||model.kind==='wwh'&&['T4','U4','V4','W4','X4'].includes(address))sheet.getCell(address).value=cell.value===''?null:cell.value;if(cell.unit)sheet.getCell(address).style={...sheet.getCell(address).style,numFmt:cell.numFmt};if(cell.type==='time')sheet.getCell(address).style={...sheet.getCell(address).style,numFmt:'hh:mm'};if(cell.monthLabel)monthFormat(sheet.getCell(address),current.sheetName);}
    // Cells in different dates can share template styles; band each cell independently.
    if(model.kind==='da')for(const day of current.days)for(let row=day.start;row<=day.end;row++)for(let column=1;column<=13;column++){const cell=sheet.getCell(row,column);cell.style={...cell.style,fill:{type:'pattern',pattern:'solid',fgColor:{argb:day.day%2?'FFFFFFFF':'FFEDF5FF'}}};}
-   if(model.kind==='da'){const summary=model.workbook.getWorksheet('Summary Page'),value=results['M'+current.rows];summary.getCell(m,2).value={formula:current.sheetName+'!M'+current.rows,result:typeof value==='string'?{error:value}:value};}
+   require('./hasReportFormatting').apply(sheet,stored.formats);if(model.kind==='da'){const summary=model.workbook.getWorksheet('Summary Page'),value=results['M'+current.rows];summary.getCell(m,2).value={formula:current.sheetName+'!M'+current.rows,result:typeof value==='string'?{error:value}:value};}
   }
   model.workbook.calcProperties.fullCalcOnLoad=true;
   res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(filename+'.xlsx').send(await exportWorkbook(model.workbook));

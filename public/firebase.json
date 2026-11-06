@@ -309,6 +309,10 @@
     ],
     "rewrites": [
       {
+        "source": "/has-report-alignment.js",
+        "destination": "/has/has-report-alignment.js"
+      },
+      {
         "source": "/assets/charge-form/china-eastern-logo.png",
         "destination": "/has/assets/charge-form/china-eastern-logo.png"
       },

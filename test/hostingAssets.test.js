@@ -15,7 +15,7 @@ for(const page of ['briefing','has-report','qa','has-pbb-dashboard','read-sign',
  }
 });
 test('legacy default-settings and report-grid root URLs remain valid for cached pages',()=>{
- for(const url of ['/briefing-defaults.js','/briefing-defaults.css','/has-report-grid.js','/dashboard-charge.js'])assert(hostedFile(url)&&fs.existsSync(hostedFile(url)),url);
+ for(const url of ['/briefing-defaults.js','/briefing-defaults.css','/has-report-grid.js','/has-report-alignment.js','/dashboard-charge.js'])assert(hostedFile(url)&&fs.existsSync(hostedFile(url)),url);
 });
 
 test('dashboard entry pages and animation assets bypass stale caches',()=>{
