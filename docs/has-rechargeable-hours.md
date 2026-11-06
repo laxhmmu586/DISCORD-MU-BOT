@@ -29,3 +29,5 @@ The SUMMARY page ends at TOTAL and does not display the Charge sheets list. Date
 Set flight numbers applies one value to every summary date and the primary flight on existing daily charge sheets in the current account/month, including new dated forms and Excel exports. Other flight groups, times and charges are preserved. Revision checks prevent overwriting concurrent edits.
 
 Print for signature uses A4 portrait with 8mm margins. The complete 71-row Daily Log / Rechargeable Hours form fits on a single vertical sheet.
+
+STA and STD for each of the four flight groups are shared across dates within the current account/month. Saving a daily charge updates those same positions on existing forms, new dated forms, print views and every daily Excel sheet. Explicitly clearing a scheduled time clears it across the month. ATA, ATD and other daily details remain independent; revision conflicts reject the whole save. Legacy times remain as saved until a form supplies shared values. Deleting a charge retains the shared schedule.
