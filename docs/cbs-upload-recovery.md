@@ -1,0 +1,11 @@
+# CBS upload rejection — 2026-11-06
+
+Production PIR SQLite rows and Nginx access/error logs agree: four passenger submissions were saved on November 6 (two DPR, two AHL). Later POST /cbs-cases requests at 18:58:49, 19:02:18 and 19:02:20 UTC returned 413 before reaching Node. Request bodies were 1,665,429 and 1,691,965 bytes, above Nginx's default 1 MiB limit. No rejected request content was stored in the case database. The reported success screen could not be reproduced from the logs.
+
+With explicit user approval, production Nginx now has an exact `location = /cbs-cases` cloned from the existing proxy location with `client_max_body_size 60m;`. This matches Node's JSON envelope limit (base64 encoding, signatures and damage sketches also occupy request space). Existing CORS/preflight and proxy headers are preserved. Other routes retain their limits. The previous configuration is backed up under `/home/ubuntu/deploy-backups/cbs-upload-20261106T194430Z/mu-bot.nginx.conf`. `nginx -t` passed, followed by a graceful reload. A 2 MB request with an intentionally invalid email returned the application's 400 validation response instead of Nginx 413; no case or notification was created.
+
+The passenger attachment policy is six files total, including boarding pass, baggage receipts, damage photos and optional files, with each file at most 3 MiB (labelled 3 MB in the UI). Selection and server validation enforce it. The 60 MiB proxy envelope is not a per-file allowance. Existing per-category requirements still apply.
+
+The form requires both a successful HTTP response and an explicit `created: true` with a saved row number before showing the result page. Upload, network, unreadable-file, malformed-response and validation failures keep the form visible. A confirmed save with email/Discord delivery errors stays on the form with an explicit saved-but-delivery-failed message and disables resubmission to prevent duplicate cases. Pending notifications are labelled as pending after a confirmed save.
+
+The frontend/backend changes in this PR take effect when deployed. The Nginx correction above is already live. Rejected submissions require resubmission; do not fabricate cases from access logs.

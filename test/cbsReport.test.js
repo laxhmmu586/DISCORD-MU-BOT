@@ -16,6 +16,15 @@ test('staff baggage correction persists through fresh sheet read and keeps histo
 test('shared email shell preserves existing instructions, escapes subject and adds report summary',()=>{const html=Report.emailShell({subject:'Update <test>',html:'<p>Existing <strong>instructions</strong></p>'});assert.ok(html.includes('<strong>instructions</strong>'));assert.ok(html.includes('Update &lt;test&gt;'));assert.ok(html.includes('role="presentation"'));assert.ok(Report.emailSummary({passengerName:'<test>',flightRows:[],formVersion:2}).includes('&lt;test&gt;'));});
 async function create(body){let handler,saved;const context=vm.createContext({CbsReport:Report,PirDelivery:require('../public/public/pir-delivery'),console,process:{env:{}},Buffer,app:{post:(_p,h)=>handler=h},appendCbsCase:async r=>saved=r,createPirPdf:()=>Buffer.from('PDF'),buildCbsEmailHtml:()=>'<p>Fixture</p>',sendCbsCaseEmail:async()=>[],sendCbsAttachmentsToDiscord:async()=>({sent:true}),setTimeout:()=>0});for(const name of ['sanitizeCbsText','isValidEmail','normalizeCbsBagTag','normalizeCbsBagTags','sanitizeCbsAttachments','missingRequiredCbsAttachmentTypes','buildCbsFlightRoute','buildCbsContentsRows','cbsContentsText'])vm.runInContext(source(server,name),context);vm.runInContext(server.slice(server.indexOf("app.post('/cbs-cases',"),server.indexOf("app.post('/cbs-cases/:rowNumber/update'")),context);let status=200,result;await handler({body},{status:n=>{status=n;return {json:r=>result=r};},json:r=>result=r});return {status,result,saved};}
 const body={formVersion:2,caseType:'AHL',passengerName:'TEST/TRAVELER',email:'test@example.com',phone:'123456789',ticketNumber:'7810000000000',flightRows:[{flightNo:'MU583',flightDate:'2026-10-15'}],bagIdentifications:[bag],bagTags:[],issueDate:'2026-10-15',passengerSignature:'fixture',deliveryPreference:'pickup',attachments:[{attachmentType:'bagTag',filename:'tag.jpg',mimeType:'image/jpeg',contentBase64:'YWJj'},{attachmentType:'boardingPass',filename:'pass.pdf',mimeType:'application/pdf',contentBase64:'YWJj'}]};
+test('passenger submission accepts six attachments including a 3 MB file and rejects excess before saving',async()=>{
+ const extra={attachmentType:'other',filename:'extra.jpg',mimeType:'image/jpeg',contentBase64:'YWJj'};
+ const six=[...body.attachments,...Array.from({length:4},()=>({...extra}))];
+ six[2].contentBase64=Buffer.alloc(3*1024*1024).toString('base64');
+ assert.equal((await create({...body,attachments:six})).status,201);
+ for(const attachments of [[...six,extra],six.map((a,i)=>i===2?{...a,contentBase64:Buffer.alloc(3*1024*1024+1).toString('base64')}:a)]){
+  const r=await create({...body,attachments});assert.equal(r.status,400);assert.equal(r.saved,undefined);assert.match(r.result.error,/6 attachments|3 MB/);
+ }
+});
 test('new evidence flow requires boarding pass for AHL and DPR without requiring a ticket number',async()=>{
  const receipt={attachmentType:'bagTag',bagNumber:1,filename:'receipt.pdf',mimeType:'application/pdf',contentBase64:'YWJj'};
  const boardingPass=body.attachments.find(a=>a.attachmentType==='boardingPass');
