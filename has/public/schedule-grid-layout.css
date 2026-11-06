@@ -1,4 +1,22 @@
 /* Keep calendar geometry independent of cached base theme versions. */
+/* Desktop date scrolling uses the workspace blue palette, above and below the roster. */
+.schedule-shell{--schedule-scrollbar-thumb:#6474ef;--schedule-scrollbar-track:#e8edff}
+.schedule-top-scroll{position:relative;z-index:0;box-sizing:border-box;max-width:100%;height:16px;margin-bottom:8px;overflow-x:scroll;overflow-y:hidden;border-radius:8px;background:var(--schedule-scrollbar-track)}
+.schedule-top-scroll[hidden]{display:none}
+.schedule-top-scroll>div{height:1px}
+.schedule-top-scroll:focus-visible{outline:2px solid #5264df;outline-offset:3px}
+.schedule-grid,.schedule-top-scroll{scrollbar-color:var(--schedule-scrollbar-thumb) var(--schedule-scrollbar-track)}
+@supports selector(::-webkit-scrollbar){.schedule-grid,.schedule-top-scroll{scrollbar-color:auto}}
+.schedule-grid::-webkit-scrollbar,.schedule-top-scroll::-webkit-scrollbar{width:14px;height:14px}
+.schedule-grid::-webkit-scrollbar-track,.schedule-top-scroll::-webkit-scrollbar-track{background:var(--schedule-scrollbar-track);border-radius:8px}
+.schedule-grid::-webkit-scrollbar-thumb,.schedule-top-scroll::-webkit-scrollbar-thumb{background:var(--schedule-scrollbar-thumb);border:3px solid var(--schedule-scrollbar-track);border-radius:8px}
+.schedule-grid::-webkit-scrollbar-thumb:hover,.schedule-top-scroll::-webkit-scrollbar-thumb:hover{background:#4e5ed6}
+.schedule-grid::-webkit-scrollbar-button,.schedule-top-scroll::-webkit-scrollbar-button{background:var(--schedule-scrollbar-track)}
+@media(max-width:760px){
+ .schedule-top-scroll{display:none}
+ html:has(body[data-workspace-page=schedule]),body[data-workspace-page=schedule],body[data-workspace-page=schedule] *{scrollbar-width:none!important}
+ html:has(body[data-workspace-page=schedule])::-webkit-scrollbar,body[data-workspace-page=schedule]::-webkit-scrollbar,body[data-workspace-page=schedule] *::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+}
 .schedule-grid{overflow:auto;max-width:100%;box-sizing:border-box}
 @media(min-width:761px){.schedule-grid:not(.coverage-grid){max-height:none;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:auto}}
 .schedule-grid #schedule-table,.schedule-grid #coverage-table{table-layout:fixed;border-spacing:0}
