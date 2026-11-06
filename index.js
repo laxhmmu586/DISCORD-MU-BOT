@@ -4094,9 +4094,10 @@ app.post('/cbs-cases', async (req, res) => {
     if (!body.passengerSignature) return res.status(400).json({ error: 'Passenger signature is required' });
     const now = new Date().toISOString();
     let attachments = sanitizeCbsAttachments(body.attachments);
-    if (!Array.isArray(body.attachments) || body.attachments.length > 65 || attachments.length !== body.attachments.length) {
-      return res.status(400).json({ error: 'Use no more than 65 attachments and no more than 22 MB total after photo optimization.' });
+    if (!Array.isArray(body.attachments) || body.attachments.length > 6 || attachments.length !== body.attachments.length) {
+      return res.status(400).json({ error: 'Use no more than 6 attachments in total, including bag tags, boarding pass and all photos, with each file no larger than 3 MB.' });
     }
+    if (attachments.some(attachment => Buffer.from(attachment.contentBase64, 'base64').length > 3 * 1024 * 1024)) return res.status(400).json({ error: 'Each attachment must be 3 MB or smaller.' });
     const missingAttachmentTypes = missingRequiredCbsAttachmentTypes(attachments, caseType, body.evidenceVersion);
     if (missingAttachmentTypes.length) return res.status(400).json({ error: 'Missing required baggage attachments: ' + missingAttachmentTypes.join(', ') });
     const requiredBagTypes = caseType === 'DPR' ? ['bagtag', 'damagephoto', 'tagonbag'] : ['bagtag'];

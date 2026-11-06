@@ -200,7 +200,7 @@
               <label class="attachment-tile attachment-upload"><span class="attachment-preview"></span><span class="attachment-title"><span class="en">Others</span><span class="zh">其他附件</span></span><span class="attachment-filename"></span><input name="otherAttachment" data-attachment-input data-attachment-type="other" type="file" accept="image/*,.pdf" multiple /></label>
             </div>
           </div>
-          <span class="attachment-hint"><span class="en">Optional: up to 4 other files. Total attachments must be under 22 MB after photo optimization.</span><span class="zh">选填：最多4个其他附件，所有附件经照片优化后共不超过22 MB。</span></span>
+          <span class="attachment-hint"><span class="en">Maximum 6 attachments in total, 3 MB per file, including bag tags, boarding pass and all photos. Up to 4 other files.</span><span class="zh">所有附件合计最多6个，每个最多3 MB，包含行李牌、登机牌及所有照片。其他附件最多4个。</span></span>
         </section>
 
         <section class="case-fields is-active" data-step="5">
@@ -445,7 +445,17 @@
       return Array.from(bag.querySelectorAll('.contents-row')).map(row => ({ category:row.querySelector('[name="contentCategory"]').value.trim(), description:row.querySelector('[name="contentDescription"]').value.trim() })).filter(row => row.category || row.description);
     }
 
-    async function parseJson(res) { const text = await res.text(); try { return JSON.parse(text); } catch { throw new Error(`API returned non-JSON (${res.status}). Please check API base: ${apiBase}`); } }
+    let reportSaved = false;
+    async function parseJson(res) {
+      const en = document.documentElement.lang === 'en';
+      if (res.status === 413) throw new Error(en ? 'Upload failed: attachments are too large. Please use smaller files and try again. Your report was not saved.' : '上传失败：附件过大，请缩小文件后重试。报告尚未保存。');
+      let data;
+      try { data = JSON.parse(await res.text()); }
+      catch { throw new Error(en ? 'The server did not confirm submission. Please contact staff before submitting again.' : '服务器未确认提交结果，请联系工作人员核对后再重试。'); }
+      if (!res.ok) throw new Error(data?.error || (en ? 'Submission failed. Please try again.' : '提交失败，请重试。'));
+      if (data?.created !== true || !Number.isInteger(data?.record?.rowNumber) || data.record.rowNumber < 2) throw new Error(en ? 'The server did not confirm that your report was saved. Please contact staff before submitting again.' : '服务器未确认报告已保存，请联系工作人员核对后再重试。');
+      return data;
+    }
     function syncEvidenceSlots(){const dpr=typeSelect.value==='DPR';document.querySelector('#dpr-address-field').hidden=!dpr;form.elements.dprAddress.disabled=!dpr;document.querySelectorAll('.bag-upload-grid [data-attachment-group]').forEach(group=>{const type=group.dataset.attachmentType;const special=['damagePhoto','tagOnBag'].includes(type);if(!special)return;group.dataset.requiredAttachment=String(dpr);group.querySelector('input').accept=dpr?'image/*':'image/*,.pdf';group.querySelector('.attachment-title').innerHTML=dpr?(type==='damagePhoto'?'<span class="en">Damage photo *</span><span class="zh">破损照片 *</span>':'<span class="en">Tag on this bag *</span><span class="zh">行李牌在此行李上 *</span>'):'<span class="en">Other</span><span class="zh">其他</span>';});}
     function setTypeFields() { const isAhl = typeSelect.value === 'AHL'; syncEvidenceSlots(); const artwork = document.querySelector('.report-heading-baggage'); artwork.src = isAhl ? '/assets/cbs-3d-delayed-header.webp' : '/assets/cbs-3d-damaged-header.webp'; artwork.dataset.kind = isAhl ? 'delayed' : 'damaged'; bagSelectorGrid.dataset.caseType = typeSelect.value; dprFields.classList.toggle('is-active', !isAhl); typeSelect.disabled = false; bagSelectorGrid.querySelectorAll('input,button').forEach((control) => { control.disabled = false; }); document.querySelector('#delivery-fields').hidden = !isAhl; }
     function setAddressFields() {
@@ -545,6 +555,7 @@
     }
 
     async function fileToAttachment(file, attachmentType) {
+      if (file.size > 3 * 1024 * 1024) throw new Error(document.documentElement.lang === 'en' ? 'Each attachment must be 3 MB or smaller.' : '每个附件最多3 MB。');
       let optimized = false;
       let dataUrl;
       if (file.type?.startsWith('image/')) {
@@ -560,7 +571,10 @@
       }
       const base64 = dataUrl.split(',')[1] || '';
       const mimeType = optimized ? 'image/jpeg' : (file.type || 'application/octet-stream');
-      return base64 ? { filename:file.name, mimeType, contentBase64:base64, attachmentType } : null;
+      if (!base64) throw new Error(document.documentElement.lang === 'en' ? 'An attachment could not be read. Please select the file again.' : '附件读取失败，请重新选择文件。');
+      const bytes = atob(base64).length;
+      if (bytes > 3 * 1024 * 1024) throw new Error(document.documentElement.lang === 'en' ? 'Each attachment must be 3 MB or smaller.' : '每个附件最多3 MB。');
+      return { filename:file.name, mimeType, contentBase64:base64, attachmentType };
     }
 
 
@@ -630,9 +644,21 @@
     function updateAttachmentPreview(input) {
       const files = Array.from(input.files || []);
       if (!files.length) return;
+      if (files.some(file => file.size > 3 * 1024 * 1024)) {
+        document.querySelector('#step-error').textContent = document.documentElement.lang === 'en' ? 'Each attachment must be 3 MB or smaller. Please choose a smaller file.' : '每个附件最多3 MB，请选择较小的文件。';
+        input.value = '';
+        return;
+      }
       const key = attachmentKey(input);
       const maxAttachments = Number(input.closest('[data-attachment-group]')?.dataset.maxAttachments) || Infinity;
-      selectedAttachments.set(key, [...(selectedAttachments.get(key) || []), ...files].slice(0, maxAttachments));
+      const nextFiles = [...(selectedAttachments.get(key) || []), ...files].slice(0, maxAttachments);
+      const otherCount = Array.from(selectedAttachments.entries()).reduce((total, [id, items]) => total + (id === key ? 0 : items.length), 0);
+      if (otherCount + nextFiles.length > 6) {
+        document.querySelector('#step-error').textContent = document.documentElement.lang === 'en' ? 'Maximum 6 attachments in total, including bag tags, boarding pass and all photos. Remove a file before adding another.' : '所有附件合计最多6个，包含行李牌、登机牌及所有照片。请先删除一个附件。';
+        input.value = '';
+        return;
+      }
+      selectedAttachments.set(key, nextFiles);
       renderAttachmentGroup(input);
       input.value = '';
     }
@@ -648,7 +674,7 @@
     async function collectRequiredAttachments() {
       const output = [];
       const selectedCount = Array.from(selectedAttachments.values()).reduce((total, files) => total + files.length, 0);
-      if (selectedCount > 65) throw new Error(document.documentElement.lang === 'en' ? 'You may upload up to 65 files.' : '最多可上传 65 个文件。');
+      if (selectedCount > 6) throw new Error(document.documentElement.lang === 'en' ? 'Maximum 6 attachments in total, including bag tags, boarding pass and all photos.' : '所有附件合计最多6个，包含行李牌、登机牌及所有照片。');
       for (const input of attachmentInputs()) {
         const files = selectedAttachments.get(attachmentKey(input)) || [];
         if (!files.length && input.closest('[data-attachment-group]')?.dataset.requiredAttachment === 'true') throw new Error(document.documentElement.lang === 'en' ? 'Upload your boarding pass, bag tag receipt and required baggage photos.' : '请上传登机牌、托运行李凭证及必填的行李照片。');
@@ -671,7 +697,7 @@
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (submitting) return;
+      if (submitting || reportSaved) return;
       if (currentStep < lastStep) { advanceStep(); return; }
       for (let step = 0; step <= lastStep; step++) { const error = validateStep(step); if (error) { displayStepError(error, step); return; } }
       formStatus.className = 'status';
@@ -710,28 +736,30 @@
         payload.attachments = await collectRequiredAttachments();
         const res = await fetch(`${apiBase}/cbs-cases`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const data = await parseJson(res);
-        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        reportSaved = true;
         const deliveryErrors = [data.emailError && `email failed: ${data.emailError}`, data.discordError && `Discord failed: ${data.discordError}`].filter(Boolean);
-        formStatus.className = deliveryErrors.length ? 'status err' : 'status ok';
-        formStatus.textContent = deliveryErrors.length
-          ? `Created, but ${deliveryErrors.join('; ')}`
-          : data.deliveryPending
+        if (deliveryErrors.length) throw new Error(document.documentElement.lang === 'en' ? 'Your report is saved, but notification or attachment delivery failed. Please contact staff. Do not submit again.' : '报告已保存，但通知或附件发送失败。请联系工作人员，请勿重复提交。');
+        formStatus.className = 'status ok';
+        formStatus.textContent = data.deliveryPending
             ? (document.documentElement.lang === 'en' ? 'Created. Attachments are still being delivered.' : '提交成功，附件仍在发送中。')
             : (document.documentElement.lang === 'en' ? 'Created, email sent, and attachments posted to Discord' : '提交成功，邮件及附件已发送。');
         thanks.classList.add('is-active');
-        document.querySelector('#delivery-status').textContent = deliveryErrors.length ? (document.documentElement.lang==='en'?'Your report is saved. Some notifications could not be sent; our team will follow up.':'报告已保存，部分通知暂未发出，工作人员将继续跟进。') : data.deliveryPending ? (document.documentElement.lang==='en'?'Your report is saved. Notifications are being delivered.':'报告已保存，通知正在发送中。') : '';
+        document.querySelector('#delivery-status').textContent = data.deliveryPending ? (document.documentElement.lang==='en'?'Your report is saved. Notifications are being delivered.':'报告已保存，通知正在发送中。') : '';
         form.closest('.card').hidden=true;document.querySelector('.page-title').hidden=true;
         thanks.scrollIntoView({behavior:'smooth',block:'center'});
       } catch (error) {
+        thanks.classList.remove('is-active');
+        form.closest('.card').hidden = false;
+        document.querySelector('.page-title').hidden = false;
         formStatus.className = 'status err';
-        const failedFetch = /failed to fetch|load failed|network request failed/i.test(error.message || '');
+        const failedFetch = /\b(?:failed to fetch|load failed|network request failed)\b/i.test(error.message || '');
         formStatus.textContent = failedFetch
           ? (document.documentElement.lang === 'en' ? 'Submit failed. Please check the network or try smaller attachment files.' : '提交失败。请检查网络，或尝试上传较小的附件文件。')
           : error.message;
       } finally {
         if (submittingDialog.open) submittingDialog.close();
         submitting = false;
-        form.querySelector('button[type="submit"]').disabled = false;
+        form.querySelector('button[type="submit"]').disabled = reportSaved;
       }
     });
     form.addEventListener('reset', () => setTimeout(() => { if (requestedType === 'AHL' || requestedType === 'DPR') typeSelect.value = requestedType; clearAttachmentPreviews(); damageEntries.clear();activeDamageId=''; sketchDirty = false; damageMarks.clear();damageDirtyViews.clear();damageView='front';drawBagBase(); clearSignature(); resetBagCards(); issueDateInput.valueAsDate = new Date(); setTypeFields(); setAddressFields(); showStep(0, 'replace'); }, 0));
