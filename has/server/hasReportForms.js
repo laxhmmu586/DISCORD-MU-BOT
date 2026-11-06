@@ -49,6 +49,6 @@ async function exportForm(model){
   const column=cell=>[...cell.match(/\br="([A-Z]+)\d+"/)[1]].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0);
   return start+cells.sort((a,b)=>column(a)-column(b)).join('')+body.replace(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g,'')+end;
  });
- zip.file(name,xml);return zip.generateAsync({type:'nodebuffer'});
+ zip.file(name,xml);const buffer=await zip.generateAsync({type:'nodebuffer'});if(!Object.keys(model.formats||{}).length)return buffer;const Excel=require('exceljs'),book=new Excel.Workbook();await book.xlsx.load(buffer);require('./hasReportFormatting').apply(book.worksheets[0],model.formats);return book.xlsx.writeBuffer();
 }
 module.exports={kinds,field,template,exportForm};

@@ -309,7 +309,8 @@
     "arrival-express.js",
     "departure-checklist-model.js",
     "departure-checklists.js",
-    "departure-checklists.css"
+    "departure-checklists.css",
+    "has-report-alignment.js"
   ],
   "server": [
     "briefingDefaults.js",
@@ -386,7 +387,8 @@
     "expressConnections.js",
     "expressModel.js",
     "expressPdf.js",
-    "departureChecklists.js"
+    "departureChecklists.js",
+    "hasReportFormatting.js"
   ],
   "resources": [
     "data/has-checklists",

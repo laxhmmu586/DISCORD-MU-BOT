@@ -47,8 +47,9 @@
   }
   return {changes,range:{anchor:address(b.top,b.left),focus:address(lastRow,b.right)}};
  }
- function attach({editor,getModel,applyValues,format,onNotice=()=>{},isBusy=()=>false}){
-  let range=null,drag=null,frame,lastCopy=null,typing=null,editing=false;
+ function attach({editor,getModel,applyValues,format,onNotice=()=>{},isBusy=()=>false,onFormats=()=>{}}){
+  const aborter=new AbortController(),listen=(target,type,fn)=>target.addEventListener(type,fn,{signal:aborter.signal});
+  let formatting,range=null,drag=null,frame,lastCopy=null,typing=null,editing=false;
   const undo=[],redo=[],toolbar=document.createElement('div');toolbar.className='report-grid-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Report editing');toolbar.hidden=true;
   const buttons={};
   const handle=document.createElement('button');handle.type='button';handle.tabIndex=-1;handle.className='report-fill-handle';handle.title='Drag down to copy selected cells';handle.setAttribute('aria-label','Drag down to fill report cells');
@@ -57,7 +58,7 @@
   const current=a=>getModel()?.cells[a]?.value??'';
   const selected=()=>range&&getModel()&&!isBusy()&&!editor.inert;
   function notice(error){onNotice(error.message||String(error));}
-  function update(){toolbar.hidden=!getModel();for(const button of Object.values(buttons))button.disabled=!selected();buttons.undo.disabled=!getModel()||isBusy()||!undo.length;buttons.redo.disabled=!getModel()||isBusy()||!redo.length;}
+  function update(){toolbar.hidden=!getModel();for(const button of Object.values(buttons))button.disabled=!selected();buttons.undo.disabled=!getModel()||isBusy()||!undo.length;buttons.redo.disabled=!getModel()||isBusy()||!redo.length;formatting?.update();}
   function paint(preview){
    const b=range?bounds(range):null,p=preview&&bounds(preview);
    for(const el of editor.querySelectorAll('[data-cell-input]')){
@@ -83,6 +84,7 @@
   }
   function travel(back){
    const source=back?undo:redo,target=back?redo:undo,entry=source.at(-1);if(!entry||isBusy()||!getModel())return;
+   if(entry.beforeFormats){onFormats(back?entry.beforeFormats:entry.afterFormats);source.pop();target.push(entry);paint();return;}
    const expected=back?entry.after:entry.before,values=back?entry.before:entry.after;
    if(Object.entries(expected).some(([a,value])=>current(a)!==value))throw Error('These cells changed since this edit. Reload and review the report.');
    applyValues(values);source.pop();target.push(entry);typing=null;editing=false;paint();
@@ -95,13 +97,13 @@
    rows||=window.hasRechargeGrid.parseTSV(text);const plan=planPaste(getModel(),range,rows);apply(plan.changes,plan.range);onNotice(Object.keys(plan.changes).length+' cells pasted. Saving changes…');
   }
   const actions={undo:()=>travel(true),redo:()=>travel(false),copy:async()=>{lastCopy=copied();await navigator.clipboard.writeText(lastCopy.text);},paste:async()=>{const model=getModel(),selection=JSON.stringify(range),text=await navigator.clipboard.readText();if(model!==getModel()||selection!==JSON.stringify(range)||!selected())return;paste(text,lastCopy?.text===text?lastCopy.rich:'');},fill:fillDown,clear};
-  for(const [key,label] of [['undo','Undo'],['redo','Redo'],['copy','Copy'],['paste','Paste'],['fill','Fill down'],['clear','Clear']]){
-   const button=document.createElement('button');button.type='button';button.textContent=label;button.onclick=()=>{if(key==='undo'||key==='redo'||selected())Promise.resolve().then(actions[key]).catch(notice);};toolbar.append(button);buttons[key]=button;
+  for(const [key,label] of [['undo','Undo'],['redo','Redo']]){
+   const button=document.createElement('button');button.type='button';button.setAttribute('aria-label',label);button.title=label;button.textContent=key==='undo'?'↶':'↷';button.className='report-history-button';button.onclick=()=>{if(key==='undo'||key==='redo'||selected())Promise.resolve().then(actions[key]).catch(notice);};toolbar.append(button);buttons[key]=button;
   }
-  window.hasReportAlignment?.mount(toolbar);editor.before(toolbar);
-  editor.addEventListener('focusin',event=>{const a=event.target.dataset.cellInput;if(a&&(!range||range.focus!==a)){choose(a);}});
-  editor.addEventListener('dblclick',event=>{if(event.target.dataset.cellInput)editing=true;});
-  editor.addEventListener('keydown',event=>{
+  formatting=window.hasReportAlignment?.mount(toolbar,{root:editor,getTargets:()=>{if(!range)return [];const b=bounds(range),out=[];for(let r=b.top;r<=b.bottom;r++)for(let c=b.left;c<=b.right;c++){const a=address(r,c);if(getModel()?.cells[a]?.editable)out.push(a);}return out;},getFormats:()=>getModel()?.formats||{},isBusy,onChange:changes=>{const before=Object.fromEntries(Object.keys(changes).map(a=>[a,getModel()?.formats?.[a]||{}]));onFormats(changes);undo.push({beforeFormats:before,afterFormats:changes});redo.length=0;update();}});editor.before(toolbar);
+  listen(editor,'focusin',event=>{const a=event.target.dataset.cellInput;if(a&&(!range||range.focus!==a)){choose(a);}});
+  listen(editor,'dblclick',event=>{if(event.target.dataset.cellInput)editing=true;});
+  listen(editor,'keydown',event=>{
    const a=event.target.dataset.cellInput;if(!a||!selected()||event.isComposing)return;
    const key=event.key,mod=event.ctrlKey||event.metaKey;
    try{
@@ -123,11 +125,11 @@
     else if(key==='Enter')event.preventDefault();
    }catch(error){event.preventDefault();notice(error);}
   });
-  editor.addEventListener('copy',event=>{
+  listen(editor,'copy',event=>{
    if(!selected()||!event.clipboardData||editing&&range.anchor===range.focus&&event.target.selectionStart!==event.target.selectionEnd)return;
    try{lastCopy=copied();event.clipboardData.setData('text/plain',lastCopy.text);event.clipboardData.setData(mime,lastCopy.rich);event.preventDefault();}catch(error){notice(error);}
   });
-  editor.addEventListener('paste',event=>{
+  listen(editor,'paste',event=>{
    if(!selected()||!event.target.dataset.cellInput||!event.clipboardData)return;
    const text=event.clipboardData.getData('text/plain'),rich=event.clipboardData.getData(mime)||(lastCopy?.text===text?lastCopy.rich:'');
    if(!rich&&!/[\t\r\n]/.test(text)&&range.anchor===range.focus)return;
@@ -137,17 +139,17 @@
   function stop(){if(frame)cancelAnimationFrame(frame);frame=null;drag=null;paint();}
   function preview(){if(!drag)return;const a=cellAt(drag.x,drag.y);if(!a)return;if(drag.fill){const last=Math.max(bounds(drag.source).bottom,coordinate(a).row);if(last!==drag.last){drag.last=last;paint({anchor:drag.source.anchor,focus:address(drag.last,bounds(drag.source).right)});}}else if(a!==range.focus){range.focus=a;drag.moved=true;editing=false;window.getSelection()?.removeAllRanges();paint();}}
   function scroll(){if(!drag||!editor.isConnected){stop();return;}const rect=editor.getBoundingClientRect(),edge=28;if(drag.x>rect.right-edge)editor.scrollLeft+=16;else if(drag.x<rect.left+edge)editor.scrollLeft-=16;if(drag.y>rect.bottom-edge)editor.scrollTop+=12;else if(drag.y<rect.top+edge)editor.scrollTop-=12;preview();frame=requestAnimationFrame(scroll);}
-  editor.addEventListener('pointerdown',event=>{
+  listen(editor,'pointerdown',event=>{
    if(!getModel()||isBusy()||editor.inert||event.button!==0||event.pointerType==='touch')return;
    if(event.target===handle&&range){event.preventDefault();drag={id:event.pointerId,fill:true,source:{...range},last:bounds(range).bottom,x:event.clientX,y:event.clientY};handle.setPointerCapture(event.pointerId);}
    else{const a=cellAt(event.clientX,event.clientY);if(!a)return;const anchor=event.shiftKey&&range?range.anchor:a;if(event.shiftKey){event.preventDefault();focus(a);}range={anchor,focus:a};typing=null;editing=false;paint();drag={id:event.pointerId,x:event.clientX,y:event.clientY};}
    frame=requestAnimationFrame(scroll);
   });
-  document.addEventListener('pointermove',event=>{if(drag&&event.pointerId===drag.id){drag.x=event.clientX;drag.y=event.clientY;preview();if(drag.moved||drag.fill)event.preventDefault();}});
-  document.addEventListener('pointerup',event=>{if(!drag||event.pointerId!==drag.id)return;try{preview();if(drag.fill){const plan=planFill(getModel(),drag.source,drag.last);apply(plan.changes,plan.range);onNotice('Cells filled. Saving changes…');}}catch(error){notice(error);}finally{stop();}});
-  document.addEventListener('pointercancel',()=>{if(drag)stop();});
-  document.addEventListener('pointerdown',event=>{if(!editor.contains(event.target)&&!toolbar.contains(event.target)){range=null;typing=null;paint();}});
-  return {record,update,reset(){stop();range=null;typing=null;editing=false;undo.length=0;redo.length=0;lastCopy=null;paint();}};
+  listen(document,'pointermove',event=>{if(drag&&event.pointerId===drag.id){drag.x=event.clientX;drag.y=event.clientY;preview();if(drag.moved||drag.fill)event.preventDefault();}});
+  listen(document,'pointerup',event=>{if(!drag||event.pointerId!==drag.id)return;try{preview();if(drag.fill){const plan=planFill(getModel(),drag.source,drag.last);apply(plan.changes,plan.range);onNotice('Cells filled. Saving changes…');}}catch(error){notice(error);}finally{stop();}});
+  listen(document,'pointercancel',()=>{if(drag)stop();});
+  listen(document,'pointerdown',event=>{if(!editor.contains(event.target)&&!toolbar.contains(event.target)){range=null;typing=null;paint();}});
+  update();return {record,update,destroy(){stop();aborter.abort();toolbar.remove();handle.remove();},reset(){stop();range=null;typing=null;editing=false;undo.length=0;redo.length=0;lastCopy=null;paint();}};
  }
  return {coordinate,bounds,shiftFormula,copy,planPaste,planFill,attach};
 });

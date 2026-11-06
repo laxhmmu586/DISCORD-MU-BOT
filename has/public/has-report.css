@@ -35,3 +35,7 @@
 :is(.report-editor,.recharge-form,.word-report-fields,.word-template-scroll) :is(input:not([type=checkbox]),textarea,select){font-family:Arial,sans-serif!important;font-weight:400!important;text-align:var(--report-edit-align,center)!important}
 :is(.report-editor,.recharge-form,.word-template-scroll) td:has(input,textarea,select){vertical-align:var(--report-edit-valign,middle)!important}
 @media print{.report-alignment-toolbar{display:none!important}}
+.report-grid-toolbar{padding:7px;border:1px solid #d7e2ef;border-radius:9px;background:#f8fafc;position:sticky;top:0;z-index:4}.recharge-dialog .report-grid-toolbar{top:70px}
+.report-alignment-toolbar{border:0;background:transparent;margin:0;padding:0 4px;border-left:1px solid #d7e2ef;border-radius:0}.report-color-control{display:inline-flex;align-items:center;justify-content:center;position:relative;width:30px;height:30px;border-bottom:3px solid #d7d700;cursor:pointer;font:700 16px Arial}.report-color-control:last-child{border-color:#d33}.report-color-control input[type=color]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0}
+@media(max-width:760px){.recharge-dialog .report-grid-toolbar{top:105px}}
+@media print{.report-grid-toolbar{display:none!important}}
