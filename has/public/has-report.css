@@ -39,3 +39,14 @@
 .report-alignment-toolbar{border:0;background:transparent;margin:0;padding:0 4px;border-left:1px solid #d7e2ef;border-radius:0}.report-color-control{display:inline-flex;align-items:center;justify-content:center;position:relative;width:30px;height:30px;border-bottom:3px solid #d7d700;cursor:pointer;font:700 16px Arial}.report-color-control:last-child{border-color:#d33}.report-color-control input[type=color]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0}
 @media(max-width:760px){.recharge-dialog .report-grid-toolbar{top:105px}}
 @media print{.report-grid-toolbar{display:none!important}}
+/* Blue glass tool glyphs follow the workspace sidebar artwork. */
+.report-grid-toolbar{gap:6px;padding:8px 10px;border:1px solid #d0e3fb;border-radius:12px;background:linear-gradient(135deg,#f7fcffed,#eaf3ffcf);box-shadow:inset 0 1px 0 #fff,0 3px 12px #2168b909;backdrop-filter:blur(12px)}
+.report-alignment-toolbar{gap:5px;padding:0 0 0 8px;border-left:1px solid #c9dff8}
+.report-grid-toolbar .report-history-button,.report-alignment-toolbar button,.recharge-dialog .report-alignment-toolbar button,.report-color-control{display:inline-flex;align-items:center;justify-content:center;position:relative;box-sizing:border-box;width:38px;height:38px;min-height:38px;padding:4px;margin:0;border:1px solid transparent;border-radius:9px;background:transparent;box-shadow:none;color:#1875d3;transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}
+.report-tool-icon{display:block;flex:none;width:27px;height:27px;overflow:visible;pointer-events:none}
+.report-grid-toolbar button:not(:disabled):hover,.report-color-control:not(:has(input:disabled)):hover{background:linear-gradient(#fff,#e0f1ff);border-color:#b8d9fb;box-shadow:inset 0 1px 0 #fff,0 2px 6px #247bd41a;transform:translateY(-1px)}
+.report-alignment-toolbar button[aria-pressed=true]{background:linear-gradient(145deg,#f4fcff,#cce7ff);border-color:#9bc9fa;box-shadow:inset 0 1px 1px #fff,0 2px 6px #1877d51c}
+.report-grid-toolbar button:disabled,.report-color-control:has(input:disabled){opacity:.38;cursor:default}.report-grid-toolbar button:focus-visible,.report-color-control:focus-within{outline:2px solid #348af0;outline-offset:2px}
+.report-color-control{border-bottom:1px solid transparent;cursor:pointer}.report-color-control:last-child{border-bottom-color:transparent}.report-color-control::after{content:'';position:absolute;bottom:3px;left:10px;right:10px;height:3px;border-radius:3px;background:var(--report-swatch,#159bff);box-shadow:0 0 0 1px #215b8a19}.report-color-control .report-tool-icon{transform:translateY(-2px);width:25px;height:25px}
+@media(prefers-reduced-motion:reduce){.report-grid-toolbar button,.report-color-control{transition:none}.report-grid-toolbar button:not(:disabled):hover,.report-color-control:hover{transform:none}}
+.report-color-control:last-child{border-color:transparent}
