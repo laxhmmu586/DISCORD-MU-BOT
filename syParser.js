@@ -1101,12 +1101,21 @@ function enrichInfantTicketAuditFromLog(log, syInfo, targetYmd = null) {
   return [...rows.values()].filter((row) => row.hasInfant).sort((a, b) => a.adultName.localeCompare(b.adultName));
 }
 
+function passportDobKey(value) {
+  const raw = String(value || '').toUpperCase();
+  const date = raw.match(/^(\d{2})([A-Z]{3})(\d{2}|\d{4})$/);
+  if (!date) return raw;
+  const month = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].indexOf(date[2]) + 1;
+  return month ? `${date[3].slice(-2)}${String(month).padStart(2, '0')}${date[1]}` : raw;
+}
+
 function enrichGovAqqFromLog(log, syInfo, targetYmd = null) {
   if (!log || !syInfo?.flightNo || !syInfo?.flightDate) {
     return { duplicatePassports: [], aqqTclBnList: [], govDtaBnList: [], passportExpBnList: [], passportExpiringSoonBnList: [], wrongPassportBnList: [], missingApiBnList: [], infApiBnList: [], passportCodeIssues: [] };
   }
   const sections = splitLogicalSections(log);
   const paxRecords = [];
+  const infantPassports = [];
   const issueByBn = new Map();
   const latestSectionByBn = new Map();
   const passportExpBnList = [];
@@ -1213,6 +1222,17 @@ ${section}`,
       infApiIssues.push({ bn, ...infApiIssue });
     }
 
+    // Infant PSPT documents belong to the accompanying adult's BN, but use
+    // the infant's identity and ticket rather than the adult's PAX INFO.
+    for (const match of section.matchAll(/^\s*PSPT-([A-Z0-9]+)\/([^/\r\n]*)\/([^/\r\n]*)\/[^/\r\n]*\/\/INF\b/gim)) {
+      infantPassports.push({
+        bn, passportNo: match[1].toUpperCase(), dobKey: passportDobKey(match[3]),
+        passportExpiryKey: '', isInfant: true,
+        bookingName: section.match(/^\s*INF-\s*([^\r\n]+)/im)?.[1]?.trim() || '',
+        ticketNo: section.match(/\bTKNE\/INF(\d{10,})/i)?.[1] || ''
+      });
+    }
+
     paxRecords.push({
       bn,
       bookingName,
@@ -1236,44 +1256,51 @@ ${section}`,
   }
 
   const byPassportIdentity = new Map();
-  for (const p of paxRecords) {
+  for (const p of [...paxRecords, ...infantPassports]) {
     if (!p.passportNo) continue;
-    const key = `${p.passportNo}|${p.dobKey || ''}|${p.passportExpiryKey || ''}`;
+    const key = p.passportNo;
     const arr = byPassportIdentity.get(key) || [];
-    arr.push(p.bn);
+    arr.push(p);
     byPassportIdentity.set(key, arr);
   }
   const duplicatePassports = [];
   const duplicateReviewPairs = [];
-  for (const [identityKey, bns] of byPassportIdentity.entries()) {
-    const [passportNo, dobKey, passportExpiryKey] = identityKey.split('|');
-    const unique = [...new Set(bns)].sort();
-    const duplicateBns = new Set();
-    const getIdentityRecord = (bn) => paxRecords.find((p) => p.bn === bn && p.passportNo === passportNo && (p.dobKey || '') === dobKey && (p.passportExpiryKey || '') === passportExpiryKey);
-    if (unique.length > 1) {
-      for (let i = 0; i < unique.length; i += 1) {
-        for (let j = i + 1; j < unique.length; j += 1) {
-          const p1 = getIdentityRecord(unique[i]);
-          const p2 = getIdentityRecord(unique[j]);
+  for (const [passportNo, records] of byPassportIdentity.entries()) {
+    const matches = new Map();
+    if (records.length > 1) {
+      for (let i = 0; i < records.length; i += 1) {
+        for (let j = i + 1; j < records.length; j += 1) {
+          const p1 = records[i];
+          const p2 = records[j];
+          if (p1.bn === p2.bn) continue;
+          const infantPair = p1.isInfant || p2.isInfant;
+          const dobKey = infantPair ? passportDobKey(p1.dobKey || p2.dobKey) : p1.dobKey || '';
+          const passportExpiryKey = p1.passportExpiryKey || p2.passportExpiryKey || '';
+          if (infantPair) {
+            if (p1.dobKey && p2.dobKey && passportDobKey(p1.dobKey) !== passportDobKey(p2.dobKey)) continue;
+          } else if ((p1.dobKey || '') !== (p2.dobKey || '') || (p1.passportExpiryKey || '') !== (p2.passportExpiryKey || '')) continue;
           if (isSameKnownTicket(p1?.ticketNo, p2?.ticketNo)) continue;
-          duplicateBns.add(unique[i]);
-          duplicateBns.add(unique[j]);
+          const identityKey = `${dobKey}|${passportExpiryKey}`;
+          const duplicateBns = matches.get(identityKey) || new Set();
+          duplicateBns.add(p1.bn);
+          duplicateBns.add(p2.bn);
+          matches.set(identityKey, duplicateBns);
           if (isReversedNamePair(p1?.bookingName, p2?.bookingName)) {
             duplicateReviewPairs.push({
               passportNo,
               dob: dobKey,
               passportExpiry: passportExpiryKey,
-              bnA: unique[i],
-              bnB: unique[j],
+              bnA: [p1.bn, p2.bn].sort()[0],
+              bnB: [p1.bn, p2.bn].sort()[1],
               reason: 'name reversed / possible name correction'
             });
           }
         }
       }
     }
-    const duplicateUnique = [...duplicateBns].sort();
-    if (duplicateUnique.length > 1) {
-      duplicatePassports.push({ passportNo, dob: dobKey, passportExpiry: passportExpiryKey, bns: duplicateUnique });
+    for (const [identityKey, duplicateBns] of matches) {
+      const [dob, passportExpiry] = identityKey.split('|');
+      duplicatePassports.push({ passportNo, dob, passportExpiry, bns: [...duplicateBns].sort() });
     }
   }
 
@@ -1937,21 +1964,13 @@ ${section}`,
     return { bn, apiStatus, tkStatus, visaStatus, visaDecision, bagStatus, apiReason: apiReasons.join('; '), tkReason, visaReason, bagReason, passportNo, dobKey, passportExpiryKey: expField, passengerRecord, offloaded: false };
   });
 
-  const passportBnMap = new Map();
-  auditRows.forEach((row) => {
-    if (row.offloaded || !row.passportNo) return;
-    const key = `${row.passportNo}|${row.dobKey || ''}|${row.passportExpiryKey || ''}`;
-    const arr = passportBnMap.get(key) || [];
-    arr.push(row.bn);
-    passportBnMap.set(key, arr);
-  });
+  const duplicateGroups = syInfo.govAqq?.duplicatePassports || [];
   const govIssueBns = govAqqIssueBnSet(syInfo.govAqq);
   auditRows.forEach((row) => {
     if (row.offloaded) return;
-    const dupKey = row.passportNo ? `${row.passportNo}|${row.dobKey || ''}|${row.passportExpiryKey || ''}` : '';
-    const dupList = dupKey ? (passportBnMap.get(dupKey) || []) : [];
-    if (dupList.length > 1 && row.apiStatus !== 'fail') {
-      row.apiStatus = 'review';
+    const dupList = [...new Set(duplicateGroups.filter(group => group.bns.includes(row.bn)).flatMap(group => group.bns))].sort();
+    if (dupList.length > 1) {
+      if (row.apiStatus !== 'fail') row.apiStatus = 'review';
       row.apiReason = row.apiReason ? `${row.apiReason}; Duplicate Passport (${dupList.join(',')})` : `Duplicate Passport (${dupList.join(',')})`;
     }
     if (!govIssueBns.has(row.bn)) {

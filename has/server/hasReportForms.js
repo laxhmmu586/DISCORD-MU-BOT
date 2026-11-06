@@ -49,6 +49,8 @@ async function exportForm(model){
   const column=cell=>[...cell.match(/\br="([A-Z]+)\d+"/)[1]].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0);
   return start+cells.sort((a,b)=>column(a)-column(b)).join('')+body.replace(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g,'')+end;
  });
+ // Single-sheet forms should also open at their heading, not the template's saved scroll position.
+ xml=xml.replace(/(<sheetView\b[^>]*\btopLeftCell=")[^"]*"/g,'$1A1"').replace(/(<selection\b[^>]*\bactiveCell=")[^"]*"/g,'$1A1"').replace(/(<selection\b[^>]*\bsqref=")[^"]*"/g,'$1A1"');
  zip.file(name,xml);const buffer=await zip.generateAsync({type:'nodebuffer'});if(!Object.keys(model.formats||{}).length)return buffer;const Excel=require('exceljs'),book=new Excel.Workbook();await book.xlsx.load(buffer);require('./hasReportFormatting').apply(book.worksheets[0],model.formats);return book.xlsx.writeBuffer();
 }
 module.exports={kinds,field,template,exportForm};

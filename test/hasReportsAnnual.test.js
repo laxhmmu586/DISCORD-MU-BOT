@@ -24,3 +24,21 @@ test('annual downloads include all twelve months from the selected year without 
  const wwh=await request('/wwh/2027-01/export');assert.equal(wwh.status,200);assert.match(wwh.headers.get('Content-Disposition'),/WWH_LAX_MU_2027-01\.xlsx/);const wb=new Excel.Workbook();await wb.xlsx.load(wwh.data);assert.equal(wb.getWorksheet('Jan').getCell('AA11').result,200);assert.equal(wb.getWorksheet('Feb').getCell('AA11').result,300);assert.equal(wb.getWorksheet('Jan').getCell('B5').value,'1-7 JAN');assert.equal(wb.getWorksheet('Dec').getCell('O2').value.getUTCFullYear(),2027);assert.equal(wb.getWorksheet('Feb').getCell('AA5').formula,"SUM('DA Source Feb'!K6:K25)");
  assert.equal((await request('/da/2026-01')).data.cells.K7.value,100);
 });
+
+test('DA and WWH exports open the requested month at the top rather than the saved template month',async t=>{
+ const request=await fixture(t);
+ for(const kind of ['da','wwh']){const month='2026-11';
+  const response=await request('/'+kind+'/'+month+'/export');assert.equal(response.status,200);
+  const book=new Excel.Workbook();await book.xlsx.load(response.data);
+  const name=reportMonth(month).name,index=book.worksheets.findIndex(sheet=>sheet.name===name);
+  assert.equal(book.views[0].activeTab,index);assert.equal(book.views[0].firstSheet,index);
+  const sheet=book.getWorksheet(name),view=sheet.views[0];
+  assert.equal(view.activeCell,kind==='da'?'A6':'A1');
+  if(kind==='da'){assert.equal(view.ySplit,5);assert.equal(view.topLeftCell,'A6');}
+  const JSZip=require('node:module').createRequire(require.resolve('exceljs'))('jszip'),zip=await JSZip.loadAsync(response.data);
+  for(let i=0;i<book.worksheets.length;i++){
+   const xml=await zip.file('xl/worksheets/sheet'+book.worksheets[i].id+'.xml').async('string');
+   assert.equal(/tabSelected="1"/.test(xml),i===index);
+  }
+ }
+});

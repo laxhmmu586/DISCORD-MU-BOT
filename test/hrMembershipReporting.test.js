@@ -1,6 +1,18 @@
 const test=require('node:test'),assert=require('node:assert/strict'),model=require('../has/public/organization-model'),{createMembershipFixture}=require('./fixtures/hr-memberships.cjs');
 const MU={station:'LAX',account:'MU'},CZ={station:'LAX',account:'CZ'};
 async function fixture(t){const f=await createMembershipFixture();t.after(()=>f.close());return f;}
+
+test('changing Main account retains direct reports when the former account is kept',async t=>{
+ const f=await fixture(t),save=changes=>f.request('owner','',{id:'bm',revision:f.store.get().revision,changes});
+ const result=await save({station:'LAX',account:'CZ',additionalAccounts:[MU]});
+ assert.equal(result.status,200,JSON.stringify(result.data));
+ assert.equal(result.data.employees.find(p=>p.id==='existing').reportsTo,'bm');
+ assert.equal(result.data.employees.find(p=>p.id==='existing').account,'MU');
+ assert.equal(result.data.employees.find(p=>p.id==='bm').account,'CZ');
+ assert.deepEqual(result.data.employees.find(p=>p.id==='bm').additionalAccounts,[MU]);
+ const blocked=await save({account:'MU',additionalAccounts:[]});
+ assert.equal(blocked.status,400);assert.match(blocked.data.error,/Keep the current account/);
+});
 test('second/third Agents project into MU Supervisor team without changing canonical Main Account',async t=>{
  const f=await fixture(t),data=(await f.request('owner')).data,projected=model.forWorkspace(data.employees,MU);
  for(const [id,slot] of [['second',1],['third',2]]){const row=projected.find(p=>p.id===id);assert.equal(row.membershipSlot,slot);assert.equal(row.reportsTo,'team:LAX:MU:Supervisor');assert.deepEqual(model.reportingManagers(row,projected).map(p=>p.id),['sup-mu']);const choices=model.managersFor(row,data.access,projected);assert.equal(choices.length,1);assert.equal(choices[0].id,'team:LAX:MU:Supervisor');}
