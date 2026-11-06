@@ -12,11 +12,16 @@ test('scheduled times sync from any daily charge, remain scoped, and reach blank
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{reports.close();server.close();db.close();});
  const req=async(body,month='2026-10',user='s',suffix='')=>{const response=await fetch('http://127.0.0.1:'+server.address().port+'/has-report-api/rechargeable/'+month+suffix,{headers:{authorization:user,'content-type':'application/json'},...(body?{method:'POST',body:JSON.stringify(body)}:{})});return {status:response.status,data:suffix?Buffer.from(await response.arrayBuffer()):await response.json()};};
  let result=await req({revision:0,entry:{...normal,fields:{F10:'0804',I10:'1300'}}});assert.equal(result.status,200);const first=result.data.entries[0].id;
+ // Simulate a report persisted before shared schedules existed.
+ const record=db.prepare("SELECT rowid,data FROM has_reports WHERE kind='rechargeable'").get(),legacy=JSON.parse(record.data);delete legacy.scheduledTimes;legacy.entries[0].fields.F9='0905';legacy.entries[0].fields.I9='1130';db.prepare('UPDATE has_reports SET data=? WHERE rowid=?').run(JSON.stringify(legacy),record.rowid);
+ const migrated=(await req()).data;assert.equal(migrated.scheduledTimes.F9,'0905');assert.equal(migrated.scheduledTimes.I9,'1130');
+ const legacyBook=new Excel.Workbook();await legacyBook.xlsx.load((await req(undefined,'2026-10','s','/export')).data);assert.equal(legacyBook.getWorksheet('5').getCell('F9').value,'0905');assert.equal(legacyBook.getWorksheet('7').getCell('I9').value,'1130');
+
  const times=Object.fromEntries(R.scheduledTimeFields.map((a,i)=>[a,'0'+(905+i)]));
  result=await req({revision:1,entry:{...normal,day:19,fields:times}});assert.equal(result.status,200);
  let saved=(await req()).data;for(const e of saved.entries)for(const a of R.scheduledTimeFields)assert.equal(e.fields[a],times[a]);assert.equal(saved.entries[0].fields.F10,'0804');assert.equal(saved.entries[0].fields.I10,'1300');
  assert.equal((await req({revision:1,id:first,entry:{...normal,fields:{F9:'stale'}}})).status,409);
- assert.equal((await req(undefined,'2026-09')).data.scheduledTimes,undefined);assert.equal((await req(undefined,'2026-10','other')).data.scheduledTimes,undefined);
+ assert.deepEqual((await req(undefined,'2026-09')).data.scheduledTimes,{});assert.deepEqual((await req(undefined,'2026-10','other')).data.scheduledTimes,{});
  result=await req({revision:2,id:first,entry:{...normal,fields:{...times,F9:'',I9:'2359',F10:'0810'}}});assert.equal(result.status,200);saved=(await req()).data;
  for(const e of saved.entries){assert.equal(e.fields.F9,'');assert.equal(e.fields.I9,'2359');}assert.equal(saved.entries[1].fields.F10,undefined);
  const book=new Excel.Workbook();await book.xlsx.load((await req(undefined,'2026-10','s','/export')).data);
@@ -33,4 +38,12 @@ test('daily editor overlays shared scheduled times on existing and blank date fo
  window.hasReportRequest=async()=>data;const context=vm.createContext({window,document,Option:function(){},CustomEvent:window.CustomEvent,confirm:()=>true,console,setTimeout});vm.runInContext(fs.readFileSync('has/public/has-recharge.js','utf8'),context);
  await window.hasRecharge.open('2026-10');
  for(const day of ['3','17']){await [...document.querySelectorAll('.recharge-summary button')].find(b=>b.textContent===day).onclick();const dialog=document.querySelector('dialog');assert.equal(dialog.querySelector('[data-recharge-cell="F9"]').value,'0905');assert.equal(dialog.querySelector('[data-recharge-cell="I9"]').value,'1230');assert.equal(dialog.querySelector('[data-recharge-cell="P12"]').value,'2300');assert.equal(dialog.querySelector('[data-recharge-cell="F10"]').value,day==='3'?'0804':'');}
+});
+
+test('legacy daily schedules populate other dates without resaving, while explicit clears win',async()=>{
+ const saved={entries:[{day:1,updatedAt:'2026-11-01',fields:{F9:'0905',I9:'1130',F10:'0804'}},{day:5,updatedAt:'2026-11-05',fields:{F9:'',P9:'2300'}},{day:7,updatedAt:'2026-11-07',fields:{I9:'1200'}}]};
+ const times=R.sharedScheduledTimes(saved);assert.deepEqual(times,{F9:'0905',I9:'1200',P9:'2300'});
+ assert.equal(R.sharedScheduledTimes({...saved,scheduledTimes:{F9:''}}).F9,'');
+ assert.equal(R.sharedScheduledTimes(saved,{fields:{I9:'1230'}}).F9,'0905');
+ const book=await R.workbook('2026-11',scope,[],{},undefined,times);for(const day of ['1','5','7','30']){assert.equal(book.getWorksheet(day).getCell('F9').value,'0905');assert.equal(book.getWorksheet(day).getCell('I9').value,'1200');assert.equal(book.getWorksheet(day).getCell('F10').value,null);}
 });
