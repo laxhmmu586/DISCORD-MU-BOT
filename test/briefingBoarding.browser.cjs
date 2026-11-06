@@ -1,0 +1,31 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),express=require('express'),Database=require('better-sqlite3');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),{registerBriefing}=require('../has/server/briefing'),{createEmployeeStore}=require('../has/server/employees');
+(async()=>{
+ const date='2026-10-28',db=new Database(':memory:');db.exec('CREATE TABLE employee_avatars(employee_id TEXT PRIMARY KEY,data TEXT);CREATE TABLE staff_schedule_days(date TEXT PRIMARY KEY,revision INTEGER,data TEXT)');
+ const photo='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#badcf6"/><circle cx="30" cy="22" r="12" fill="#9c705c"/><path d="M8 60a22 25 0 0 1 44 0" fill="#354e6e"/></svg>');
+ const rows=[['agent','Yogesh','Agent'],['peer','George','Agent'],['third','Terry','Agent'],['sup','Lake','Supervisor'],['rest','Rest Employee','Agent'],['lead','Lead Employee','Lead']].map(([id,name,position],i)=>({id,name,position,eid:String(1000+i),station:'LAX',account:'MU',nickname:i===0?'Yogi':''}));
+ rows.find(row=>row.id==='peer').account='CZ';rows.find(row=>row.id==='peer').additionalAccounts=[{station:'LAX',account:'MU'}];
+ const employees={...createEmployeeStore(db,{seed:rows}),db};db.prepare('INSERT INTO employee_avatars VALUES(?,?)').run('agent',photo);db.prepare('INSERT INTO staff_schedule_days VALUES(?,0,?)').run(date,JSON.stringify({assignments:{agent:{code:'A'},peer:{code:'C'},third:{code:'B'},sup:{code:'A'},rest:{code:'X'}}}));
+ let serverStamp=Date.parse(date+'T18:00:00Z');let mode='sup',sourceStatus='available',departureTime='1130L';const app=express();app.use(express.json());const auth=async req=>({uid:String(req.headers.authorization||'').replace('Bearer ','')});
+ const briefing=registerBriefing(app,{employees,now:()=>new Date(serverStamp),profiles:{linked:user=>employees.get().employees.find(e=>e.id===user.uid)},authenticate:auth,etab:{read:async(date,flight)=>flight==='MU586'&&sourceStatus==='available'?{status:'available',date,flight,etd:departureTime,receivedAt:date+'T16:00:00Z'}:flight==='MU583'&&sourceStatus==='available'?{status:'available',date,flight,registration:'B-7369',eta:'12:17',gate:'154',pax:'306/01',crew:'4/17',receivedAt:date+'T16:00:00Z'}:{status:'unavailable',message:'No matching ETAB for this flight and date.'}}});
+ app.get('/profile-api',(req,res)=>res.json({state:'ready',profile:{name:mode==='sup'?'Lake':'Yogesh',station:'LAX',account:mode==='peer'?'CZ':'MU',canViewOperations:true}}));app.get('/has-report-api/context',(req,res)=>res.json({permissions:{},canAdmin:false}));app.use(require('../has/static').withShared(path.join(process.cwd(),'public/public')));
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({channel:'msedge',headless:true}),context=await browser.newContext(),page=await context.newPage(),errors=[];
+ try{
+  page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(15000);
+  page.on('pageerror',error=>errors.push(error.message));await page.clock.setFixedTime(new Date(date+'T18:00:00Z'));
+  await context.route('**/www.gstatic.com/**',route=>route.fulfill({body:'',contentType:'text/javascript'}));
+  await context.route('**/__/firebase/init.js',route=>route.fulfill({contentType:'text/javascript',body:'window.MU_API_BASE='+JSON.stringify(origin)+';const user={uid:"sup",providerData:[],getIdToken:async()=>"sup"};window.firebase={apps:[{}],auth:()=>({currentUser:user,onAuthStateChanged:fn=>{setTimeout(()=>fn(user),0);return ()=>{};}})};'}));
+  db.prepare('INSERT INTO briefing_records VALUES(?,?,?,?,?)').run(date,'MU586',JSON.stringify({__direction:'departure',boardingTime:'1145L'}),null,null);
+  await page.setViewportSize({width:1440,height:1000});await page.goto(origin+'/briefing.html');await page.locator('#arrival-content').waitFor({state:'visible'});await page.locator('#departure-tab').click();
+  const boarding=page.locator('[data-field=boardingTime]'),etd=page.locator('#etab-etd');
+  await page.waitForFunction(()=>document.querySelector('#etab-etd').value==='1130L');assert.equal(await boarding.inputValue(),'1045L');assert(await boarding.evaluate(el=>el.readOnly));
+  departureTime='1200L';await page.waitForFunction(()=>document.querySelector('[data-field=boardingTime]').value==='1115L');
+  await etd.fill('00:15L');assert.equal(await boarding.inputValue(),'2330L');await etd.blur();await page.locator('#briefing-status').filter({hasText:'All changes saved.'}).waitFor();
+  await page.reload();await page.locator('#arrival-content').waitFor({state:'visible'});await page.locator('#departure-tab').click();await page.waitForFunction(()=>document.querySelector('#etab-etd').value==='00:15L');assert.equal(await boarding.inputValue(),'2330L');
+  await etd.fill('1130L');await etd.blur();await page.locator('#briefing-status').filter({hasText:'All changes saved.'}).waitFor();
+  fs.mkdirSync('.verification/briefing-boarding',{recursive:true});
+  for(const width of [1440,390]){await page.setViewportSize({width,height:1000});assert.equal(await boarding.inputValue(),'1045L');assert(await boarding.evaluate(el=>el.readOnly));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:'.verification/briefing-boarding/'+width+'.png'});}
+  await etd.fill('TBA');assert.equal(await boarding.inputValue(),'');await etd.blur();await page.locator('#briefing-status').filter({hasText:'All changes saved.'}).waitFor();assert.deepEqual(errors,[]);
+  console.log('PASS: Boarding Time = effective ETD minus 45 minutes; live ETAB updates, manual ETD, reload, legacy default, midnight, invalid ETD, readonly and responsive views.');
+ }catch(error){console.log('UI:',await page.locator('#briefing-status').textContent(),'ETD:',await page.locator('#etab-etd').inputValue(),'Boarding:',await page.locator('[data-field=boardingTime]').inputValue(),'errors:',errors);throw error;}finally{await browser.close();server.closeAllConnections();server.close();db.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

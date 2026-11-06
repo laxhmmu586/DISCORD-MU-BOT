@@ -307,3 +307,22 @@ test('Departure photo reads saved Price reference without changing Arrival photo
  assert.equal((await request('lead','/photo?date='+DATE+'&flight=MU586&direction=departure')).status,200);assert.equal(captured[0].snapshot.priceReference.values['price.2'],'$222');assert.equal(captured[0].snapshot.priceReference.boxes.price[0].text,'USD 25');assert.equal(captured[0].options.photo,true);
  assert.equal((await request('lead','/photo?date='+DATE+'&flight=MU583&direction=arrival')).status,200);assert(!('priceReference' in captured[1].snapshot));
 });
+
+
+test('Boarding Time derives from effective ETD, ignores legacy defaults and freezes into reports',async t=>{
+ let exported;const {request,db,etab}=await fixture(t,{buildPdf:async snapshot=>{exported=snapshot;return Buffer.from('%PDF-fixture');}}),key={date:DATE,flight:'MU586',direction:'departure'},path='?date='+DATE+'&flight=MU586&direction=departure';
+ db.prepare('INSERT INTO briefing_records VALUES(?,?,?,?,?)').run(DATE,'MU586',JSON.stringify({__direction:'departure',boardingTime:'1145L'}),null,null);
+ const report=async expected=>{const state=(await request('sup',path)).data;assert.equal(state.fields.boardingTime,'');assert.equal((await request('sup','/reports',{...key,expected:state.fields})).status,200);assert.equal(exported.fields.boardingTime,expected);};
+ await report('');
+ etab.accept({date:DATE,arrival:{flight:'MU583'},departure:{flight:'MU586',time:'1130L'}},{discordMessageId:'boarding-fixture'});
+ await report('1045L');
+ assert.equal((await request('sup','',{...key,field:'boardingTime',previous:'',value:'1145L'})).status,400);
+ assert.equal((await request('sup','',{...key,field:'etd',previous:null,value:'00:15L'})).status,200);await report('2330L');
+ assert.equal((await request('sup','',{...key,field:'etd',previous:'00:15L',value:null})).status,200);await report('1045L');
+ etab.accept({date:DATE,arrival:{flight:'MU583'},departure:{flight:'MU586',time:'1230L'}},{discordMessageId:'boarding-refresh',received:Date.now()+1000});await report('1145L');
+});
+
+test('Boarding Time parses local ETD and wraps midnight without inventing invalid times',()=>{
+ const {boardingTime}=require('../has/public/briefing-fields');
+ for(const [etd,expected] of [['1130L','1045L'],['1130','1045L'],['11:30L','1045L'],[' 11:30 l ','1045L'],['1230L','1145L'],['0015','2330L'],['0000','2315L'],['0045','0000L'],['9:05','0820L'],['2400',''],['1260',''],['TBA',''],['',''],[null,'']])assert.equal(boardingTime(etd),expected,String(etd));
+});
