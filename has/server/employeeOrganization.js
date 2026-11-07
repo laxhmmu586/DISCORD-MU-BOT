@@ -124,7 +124,7 @@ function registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseD
     const groups=require('../public/employee-account-groups'),memberships=[...new Map([...groups.memberships(target),...groups.memberships(source)].map(scope=>[groups.key(scope),scope])).values()],additionalAccounts=memberships.filter(scope=>!groups.same(scope,target));
     if(additionalAccounts.length>2)fail('The merged employee would have more than three accounts. Adjust the account memberships first.',409);
     const links=googleAccounts();if(links.some(link=>link.employee_id===source.id)&&links.some(link=>link.employee_id===target.id))fail('Both employees already have a Google login. Resolve the duplicate Google logins before merging.',409);
-    const merged={...target,additionalAccounts};for(const field of ['nickname','phone','email','companyEmail','code','eid'])if(!merged[field]&&source[field])merged[field]=source[field];
+    const merged={...target,additionalAccounts};for(const field of ['nickname','phone','email','companyEmail','code'])if(!merged[field]&&source[field])merged[field]=source[field];
     for(const [id,expiry] of [['pbbId','pbbExpiry'],['pbbMscId','pbbMscExpiry']])if(!merged[id]&&source[id]){merged[id]=source[id];merged[expiry]=source[expiry];}
     const manager=target.reportsTo===source.id?(source.reportsTo||''):target.reportsTo,next=all.filter(row=>row.id!==source.id).map(row=>row.id===target.id?{...merged,reportsTo:manager}:row.reportsTo===source.id?{...row,reportsTo:target.id}:row);
     for(const person of next)if(person.reportsTo)model.validateLine(person,person.reportsTo,next);

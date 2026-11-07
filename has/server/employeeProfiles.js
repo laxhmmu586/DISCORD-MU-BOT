@@ -12,15 +12,15 @@ function createProfileStore(employees){
  CREATE TABLE IF NOT EXISTS employee_link_attempts(uid TEXT PRIMARY KEY,count INTEGER NOT NULL,started INTEGER NOT NULL);`);
  const account=uid=>db.prepare('SELECT * FROM employee_accounts WHERE uid=?').get(uid);
  const linked=user=>{const link=account(user.uid);const row=link&&employees.get().employees.find(row=>row.id===(employees.resolveId?.(link.employee_id)||link.employee_id));return row&&{...row,isServerOwner:require('./serverOwners').isOwner(user)};};
- const profile=row=>({id:row.id,canOpenFlights:require('../public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'}),canViewOperations:row.isServerOwner||(require('../public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'})&&!require('../public/employee-account-groups').isHeadquarter(row)),canViewForm:require('./staffSchedule').canEdit(null,row)||require('../public/employee-permissions').allowed(row,'request.newAccess')||require('../public/employee-positions').normalize(row.position)==='Lead',name:row.name,nickname:row.nickname||'',eid:row.eid||'',station:row.station,account:row.account,pbbId:row.pbbId||'',pbbExpiry:row.pbbExpiry||'',pbbMscId:row.pbbMscId||'',pbbMscExpiry:row.pbbMscExpiry||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
- function candidate(user,eid,allowMissing=false){
+ const profile=row=>({id:row.id,canOpenFlights:require('../public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'}),canViewOperations:row.isServerOwner||(require('../public/employee-account-groups').belongs(row,{station:'LAX',account:'MU'})&&!require('../public/employee-account-groups').isHeadquarter(row)),canViewForm:require('./staffSchedule').canEdit(null,row)||require('../public/employee-permissions').allowed(row,'request.newAccess')||require('../public/employee-positions').normalize(row.position)==='Lead',name:row.name,nickname:row.nickname||'',station:row.station,account:row.account,pbbId:row.pbbId||'',pbbExpiry:row.pbbExpiry||'',pbbMscId:row.pbbMscId||'',pbbMscExpiry:row.pbbMscExpiry||'',phone:formatEmployeePhone(row.phone),email:row.email||'',avatar:db.prepare('SELECT data FROM employee_avatars WHERE employee_id=?').get(row.id)?.data||''});
+ function candidate(user,allowMissing=false){
   requireProfileAccess(user);if(require('./employeeAccountStatus').blocked(db,user))fail('This employee account is disabled.',403);
   if(user.provider==='google.com'&&!user.emailVerified)fail('A verified Google email is required.',403);
   const rows=(employees.getAll?.()||employees.get()).employees;
   const emailRows=rows.filter(row=>normalize(user.email)&&[normalize(row.email),normalize(row.loginId)].includes(normalize(user.email)));
-  const candidates=emailRows.length?emailRows:(eid?rows.filter(row=>row.eid&&row.eid===String(eid).trim()):[]),matches=[...new Map(candidates.map(row=>{const target=rows.find(person=>person.id===(row.mergedInto||row.id));return [target.id,target];})).values()];
+  const candidates=emailRows,matches=[...new Map(candidates.map(row=>{const target=rows.find(person=>person.id===(row.mergedInto||row.id));return [target.id,target];})).values()];
   if(allowMissing&&matches.length===0)return null;
-  if(matches.length!==1){if(!eid&&!emailRows.length)return null;fail('Employee record not found or ambiguous. Please contact an administrator.',403);}
+  if(matches.length!==1){if(!emailRows.length)return null;fail('Employee record not found or ambiguous. Please contact an administrator.',403);}
   const row=matches[0];if(row.accountDisabled)fail('This employee account is disabled.',403);
   if(user.provider==='google.com'){
    const owner=db.prepare("SELECT uid FROM employee_accounts WHERE employee_id=? AND provider='google.com'").get(row.id);
@@ -35,7 +35,7 @@ function createProfileStore(employees){
   if(row)return {state:'ready',profile:profile(row),revision:employees.get().revision};
   const original=employees.get().employees.filter(item=>normalize(item.loginId)&&normalize(item.loginId)===normalize(user.email));
   if(original.length>1)fail('Original Login ID is ambiguous. Please contact an administrator.',403);
-  if(original.length===1&&(user.provider==='password'||!user.provider||/^[^@\s]+@mu\.com$/i.test(user.email))){candidate(user);return link(user,{revision:employees.get().revision,eid:original[0].eid});}
+  if(original.length===1&&(user.provider==='password'||!user.provider||/^[^@\s]+@mu\.com$/i.test(user.email))){candidate(user);return link(user,{revision:employees.get().revision});}
   if(/^[^@\s]+@mu\.com$/i.test(user.email))return {state:'external'};
   if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
   const match=candidate(user);
@@ -43,7 +43,7 @@ function createProfileStore(employees){
  }
  function attempt(user){
   const now=Date.now(),old=db.prepare('SELECT * FROM employee_link_attempts WHERE uid=?').get(user.uid);
-  if(old&&now-old.started<900000&&old.count>=5)fail('Too many employee ID attempts. Try again in 15 minutes or contact an administrator.',429);
+  if(old&&now-old.started<900000&&old.count>=5)fail('Too many account linking attempts. Try again in 15 minutes or contact an administrator.',429);
   db.prepare('INSERT OR REPLACE INTO employee_link_attempts VALUES(?,?,?)').run(user.uid,old&&now-old.started<900000?old.count+1:1,old&&now-old.started<900000?old.started:now);
  }
  const link=db.transaction((user,body)=>{
@@ -51,26 +51,11 @@ function createProfileStore(employees){
   if(linked(user))return status(user);
   if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
   if(body.revision!==employees.get().revision)fail('Employee details changed. Check your details again.',409);
-  const row=candidate(user,body.eid);if(!row)fail('Enter your employee ID. Please contact an administrator if it cannot be found.',403);
+  const row=candidate(user);if(!row)fail('Please contact an administrator to link your employee account.',403);
   db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run(user.uid,row.id,user.provider||'password',new Date().toISOString());
   return status(user);
  });
- const register=db.transaction((user,body)=>{
-  requireProfileAccess(user);
-  if(linked(user))return status(user);
-  if(account(user.uid))fail('Employee record is unavailable. Please contact an administrator.',403);
-  const current=employees.get(),eid=String(body.eid||'').trim();
-  if(body.revision!==current.revision)fail('Employee details changed. Check your details again.',409);
-  if(!/^\d{1,12}$/.test(eid))fail('Enter a valid employee ID.');
-  if(candidate(user,eid,true))fail('This employee already exists. Check your EID and confirm the existing record.',409);
-  const scope=current.accounts.find(a=>a.station===body.station&&a.account===body.account);
-  if(!scope||scope.station==='HQ'||scope.account==='HQ')fail('Choose an existing Main Account.');
-  const id=require('node:crypto').randomUUID();
-  current.employees.push({id,eid,...scope,name:'',email:user.email||'',position:'Agent',attach:false,detach:false,spotter:false});
-  employees.save(current,user);
-  db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run(user.uid,id,user.provider||'password',new Date().toISOString());
-  return status(user);
- });
+ const register=(user,body)=>selectAccount(user,body);
  const selectAccount=db.transaction((user,body)=>{
   requireProfileAccess(user);
   if(linked(user))return status(user);
@@ -81,7 +66,7 @@ function createProfileStore(employees){
   const scope=current.accounts.find(a=>a.station===body.station&&a.account===body.account&&a.station!=='HQ'&&a.account!=='HQ');
   if(!scope)fail('Choose an existing Main Account.');
   const id=require('node:crypto').randomUUID();
-  current.employees.push({id,eid:'',...scope,name:'',loginId:user.email||'',position:'Agent',attach:false,detach:false,spotter:false});
+  current.employees.push({id,...scope,name:'',loginId:user.email||'',position:'Agent',attach:false,detach:false,spotter:false});
   employees.save(current,user,{editableLoginIds:new Set([id])});
   db.prepare('INSERT INTO employee_accounts VALUES(?,?,?,?)').run(user.uid,id,user.provider||'password',new Date().toISOString());return status(user);
  });
@@ -107,7 +92,7 @@ function createProfileStore(employees){
    return status(user);
   })();
  }
- return {status,linked,link,register,selectAccount,update,preview(user,eid){attempt(user);eid=String(eid||'').trim();if(!/^\d{1,12}$/.test(eid))fail('Enter a valid employee ID.');const row=candidate(user,eid,true);if(!row)return {state:'register',eid,accounts:employees.get().accounts.filter(a=>a.station!=='HQ'&&a.account!=='HQ'),revision:employees.get().revision};return {state:'confirm',profile:profile(row),revision:employees.get().revision};},attempt};
+ return {status,linked,link,register,selectAccount,update,preview(user){attempt(user);const row=candidate(user,true);if(!row)return {state:'select_account',accounts:employees.get().accounts.filter(a=>a.station!=='HQ'&&a.account!=='HQ'),revision:employees.get().revision};return {state:'confirm',profile:profile(row),revision:employees.get().revision};},attempt};
 }
 function registerProfiles(app,{employees,authenticate,onChange=()=>{}}){
  const profiles=createProfileStore(employees);
@@ -118,7 +103,7 @@ function registerProfiles(app,{employees,authenticate,onChange=()=>{}}){
  app.get('/profile-api/workspace',handler(req=>{const employee=profiles.linked(req.profileUser);if(!employee)fail('Link your employee profile first.',403);const groups=require('../public/employee-account-groups');return {accounts:groups.memberships(employee).filter((scope,i,rows)=>rows.findIndex(other=>groups.same(scope,other))===i),main:groups.scope(employee)};}));
  app.get('/profile-api',handler(req=>profiles.status(req.profileUser)));
  app.post('/profile-api/select-account',handler(req=>{profiles.attempt(req.profileUser);const saved=profiles.selectAccount(req.profileUser,req.body);onChange();return saved;}));
- app.post('/profile-api/lookup',handler(req=>profiles.preview(req.profileUser,req.body.eid)));
+ app.post('/profile-api/lookup',handler(req=>profiles.preview(req.profileUser)));
  app.post('/profile-api/link',handler(req=>{profiles.attempt(req.profileUser);return profiles.link(req.profileUser,req.body);}));
  app.post('/profile-api/register',handler(req=>{profiles.attempt(req.profileUser);const saved=profiles.register(req.profileUser,req.body);onChange();return saved;}));
  app.post('/profile-api',handler(async req=>{const saved=await profiles.update(req.profileUser,req.body);onChange();return saved;}));

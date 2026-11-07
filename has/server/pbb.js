@@ -58,7 +58,7 @@ function createStore(filename=process.env.PBB_DB_PATH||path.join(require('node:p
    // Confirm and sign this role atomically, independent of the peer.
    const confirmation={at:now().toISOString(),uid:user.uid,role};r.checklistDone ||= {};r.checklistDone[role]=confirmation;r.signals ||= {};
    for(const [phase,group] of groups){r.signals[phase]=confirmation;for(const itemId of group.items)r.answers[role][itemId]='Y';}
-   r.signatures[role]={name,eid:String(body.eid||''),employeeId:body.employeeId,strokes,at:now().toISOString(),uid:user.uid};
+   r.signatures[role]={name,employeeId:body.employeeId,strokes,at:now().toISOString(),uid:user.uid};
   }else fail('Unknown operation');
   r.participants ||= {driver:[],spotter:[]};if(!r.participants[role].includes(user.uid))r.participants[role].push(user.uid);r.owners[role]=user.uid;r.revision++;r.updatedAt=now().toISOString();
   if(roles.every(x=>r.signatures[x]))r.completedAt=r.updatedAt;
@@ -152,12 +152,12 @@ function registerPbb(app,{client,authenticate=require('./pbbAuth').authenticate,
    const linked=arrivalSpotter?null:accountEmployee(req.pbbUser);
    if(!arrivalSpotter&&!linked)fail('Link your employee account in My Profile before signing.',403);
    const employee=arrivalSpotter&&body.employeeId==='has-ops-ramp'
-    ?{id:'has-ops-ramp',name:'HAS OPS RAMP',eid:''}
+    ?{id:'has-ops-ramp',name:'HAS OPS RAMP'}
     :employees.eligible(body.role,arrivalSpotter?body.employeeId:linked.id,existing.type);
    if(!employee)fail('Your account is not authorized for this role');
    if(!arrivalSpotter&&body.employeeId&&body.employeeId!==employee.id)fail('Sign using your current account.',403);
    if(Object.values(existing.signatures).some(s=>s.employeeId===employee.id))fail('Driver and spotter must be different employees');
-   body.employeeId=employee.id;body.name=employee.name;body.eid=employee.eid;
+   body.employeeId=employee.id;body.name=employee.name;
   }
   const r=store.mutate(req.params.id,req.pbbUser,body);publish(r);res.json(r);if(r.completedAt)void deliver(r.id);
  }));

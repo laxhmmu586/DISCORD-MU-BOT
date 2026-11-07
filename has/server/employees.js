@@ -11,7 +11,7 @@ function loginIdForbidden(){throw Object.assign(new Error('Only authorized Lake 
 function createEmployeeStore(db,{seed,importCatalog=seed===undefined}={}){
  seed=seed??require('./employeeSeed')();
  db.exec('CREATE TABLE IF NOT EXISTS pbb_employees (singleton INTEGER PRIMARY KEY CHECK(singleton=1), data TEXT NOT NULL)');
- db.prepare('INSERT OR IGNORE INTO pbb_employees(singleton,data) VALUES (1,?)').run(JSON.stringify({revision:1,employees:seed.map(row=>({...row,station:row.station??'LAX',account:row.account??'MU'}))}));
+ db.prepare('INSERT OR IGNORE INTO pbb_employees(singleton,data) VALUES (1,?)').run(JSON.stringify({revision:1,employees:seed.map(({eid,...row})=>({...row,station:row.station??'LAX',account:row.account??'MU'}))}));
  const initial=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);
  if(initial.employees.some(row=>row.station===undefined||row.account===undefined)){
   initial.employees=initial.employees.map(row=>({...row,station:row.station??'LAX',account:row.account??'MU'}));initial.revision++;
@@ -29,10 +29,18 @@ function createEmployeeStore(db,{seed,importCatalog=seed===undefined}={}){
   if(added){const current=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);current.revision++;db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(current));}
   db.prepare('INSERT INTO employee_catalog_migrations VALUES(?)').run(id);
  })();
+ // Retire EID from persisted employee records and retained merge snapshots.
+ db.transaction(()=>{
+  const current=JSON.parse(db.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get().data);
+  if(current.employees.some(row=>Object.hasOwn(row,'eid'))){current.employees=current.employees.map(({eid,...row})=>row);current.revision++;db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(current));}
+ })();
  const accounts=()=>db.prepare('SELECT station,account FROM employee_account_groups ORDER BY station,account').all();
  const permissions=row=>({attach:row.attach===undefined?row.driver:row.attach,detach:row.detach===undefined?row.driver:row.detach});
  db.exec('CREATE TABLE IF NOT EXISTS employee_permission_overrides(employee_id TEXT PRIMARY KEY,data TEXT NOT NULL)');
  db.exec('CREATE TABLE IF NOT EXISTS employee_profile_merges(source_employee_id TEXT PRIMARY KEY,target_employee_id TEXT NOT NULL,source_snapshot TEXT NOT NULL,actor TEXT NOT NULL,at TEXT NOT NULL)');
+ for(const row of db.prepare('SELECT source_employee_id,source_snapshot FROM employee_profile_merges').all()){
+  const snapshot=JSON.parse(row.source_snapshot);if(Object.hasOwn(snapshot,'eid')){delete snapshot.eid;db.prepare('UPDATE employee_profile_merges SET source_snapshot=? WHERE source_employee_id=?').run(JSON.stringify(snapshot),row.source_employee_id);}
+ }
  const mergeMap=()=>new Map(db.prepare('SELECT source_employee_id,target_employee_id FROM employee_profile_merges').all().map(row=>[row.source_employee_id,row.target_employee_id]));
  const resolve=(id,map)=>{const seen=new Set();while(map.has(id)){if(seen.has(id))throw Error('Invalid employee merge chain.');seen.add(id);id=map.get(id);}return id;};
  const resolveId=id=>resolve(id,mergeMap());
@@ -60,15 +68,15 @@ function createEmployeeStore(db,{seed,importCatalog=seed===undefined}={}){
    const previousLoginId=normalizeLoginId(old?.loginId),loginId=normalizeLoginId(row.loginId??previousLoginId);if(!canEditLoginId&&loginId!==previousLoginId&&!options.editableLoginIds?.has(row.id))loginIdForbidden();
    if(loginId&&(loginId.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginId)||loginIds.has(loginId)))throw new Error('Original Login IDs must be valid, unique sign-in email addresses');
    if(code.length>40||phone.length>40||email.length>254||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw new Error('Check employee codes, phone numbers and email addresses');
-   const id=String(row.id||''),name=String(row.name||'').trim(),eid=String(row.eid||'').trim(),discordId=String(row.discordId||'').trim();
-   if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||name.length>100||(eid&&!/^\d{1,12}$/.test(eid))||(discordId&&!/^\d{17,20}$/.test(discordId))||(discordId&&discordIds.has(discordId))||(typeof row.attach!=='boolean'||typeof row.detach!=='boolean')||typeof row.spotter!=='boolean'||((row.attach||row.detach||row.spotter)&&!name))throw new Error('Check employee names, EIDs and unique Discord IDs');
+   const id=String(row.id||''),name=String(row.name||'').trim(),discordId=String(row.discordId||'').trim();
+   if(!/^[a-zA-Z0-9-]{1,80}$/.test(id)||ids.has(id)||name.length>100||(discordId&&!/^\d{17,20}$/.test(discordId))||(discordId&&discordIds.has(discordId))||(typeof row.attach!=='boolean'||typeof row.detach!=='boolean')||typeof row.spotter!=='boolean'||((row.attach||row.detach||row.spotter)&&!name))throw new Error('Check employee names and unique Discord IDs');
    try{employeeFont.encodeText(name);}catch{throw new Error('Use employee names in English spelling for the original PDF');}
    ids.add(id);if(discordId)discordIds.add(discordId);if(loginId)loginIds.add(loginId);
    const additionalAccounts=row.additionalAccounts===undefined?(old?.additionalAccounts||[]):row.additionalAccounts;
    if(!Array.isArray(additionalAccounts)||additionalAccounts.length>2)throw Error('Choose at most two additional accounts.');
    if(additionalAccounts.some(a=>!a||typeof a.station!=='string'||typeof a.account!=='string'||!a.station.trim()||!a.account.trim()))throw Error('Choose existing additional accounts.');const normalizedAccounts=additionalAccounts.map(employeeAccounts.scope),memberships=[...(employeeAccounts.isHeadquarter({position,station,account})?[]:[{station,account}]),...normalizedAccounts];
    if(new Set(memberships.map(employeeAccounts.key)).size!==memberships.length||normalizedAccounts.some(s=>!accounts().some(a=>employeeAccounts.same(a,s))||employeeAccounts.isHeadquarter(s)))throw Error('Choose distinct existing additional accounts.');
-   return {...(old?.accountDisabled?{accountDisabled:true}:{}),...(old?.accountStatusPending?{accountStatusPending:true}:{}),...(old?.accountAuthAfter?{accountAuthAfter:old.accountAuthAfter}:{}),additionalAccounts:normalizedAccounts,id,code,position,name,nickname,eid,phone,email,companyEmail,discordId,loginId,station,account,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,attach:row.attach,detach:row.detach,spotter:row.spotter};
+   return {...(old?.accountDisabled?{accountDisabled:true}:{}),...(old?.accountStatusPending?{accountStatusPending:true}:{}),...(old?.accountAuthAfter?{accountAuthAfter:old.accountAuthAfter}:{}),additionalAccounts:normalizedAccounts,id,code,position,name,nickname,phone,email,companyEmail,discordId,loginId,station,account,pbbId,pbbExpiry,pbbMscId,pbbMscExpiry,attach:row.attach,detach:row.detach,spotter:row.spotter};
   });
   const next={revision:current.revision+1,employees,updatedAt:new Date().toISOString(),updatedBy:user.email};db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(next));syncAccounts(employees);return {...next,accounts:accounts()};
  });
@@ -84,7 +92,7 @@ function createEmployeeStore(db,{seed,importCatalog=seed===undefined}={}){
   }else{if(existing)throw Object.assign(Error('This station/account already exists.'),{status:409});db.prepare('INSERT INTO employee_account_groups VALUES(?,?)').run(station,account);}
   const {accounts:ignored,...data}=current;data.revision++;data.updatedAt=new Date().toISOString();data.updatedBy=user.email;db.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(data));return get();
  });
- return {db,get,getAll,save,changeAccount,resolveId,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&!e.mergedInto&&e.name&&e[permission]);},options(){return get().employees.filter(e=>!e.mergedInto&&e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,eid,attach,detach,spotter})=>({id,name,eid,attach,detach,spotter}));}};
+ return {db,get,getAll,save,changeAccount,resolveId,eligible(role,id,type){const permission=role==='spotter'?'spotter':role==='driver'?(type==='arrival'?'attach':type==='departure'?'detach':null):null;return permission&&get().employees.find(e=>e.id===id&&!e.mergedInto&&e.name&&e[permission]);},options(){return get().employees.filter(e=>!e.mergedInto&&e.name&&(e.attach||e.detach||e.spotter)).map(({id,name,attach,detach,spotter})=>({id,name,attach,detach,spotter}));}};
 }
 function registerEmployees(app,{store,authenticate,profiles,onChange=()=>{},firebaseDirectory}){
  store={...store,get:store.getAll||store.get};
@@ -100,20 +108,33 @@ function registerEmployees(app,{store,authenticate,profiles,onChange=()=>{},fire
  const scopedView=(data,access)=>{const hidden=new Set(store.db?store.db.prepare('SELECT source_employee_id FROM employee_profile_merges').all().map(row=>row.source_employee_id):[]);data={...data,employees:data.employees.filter(row=>!hidden.has(row.id))};return access.mode==='admin'?{...data,access}:{...data,access:{...access,editableEmployeeIds:data.employees.filter(row=>editableBy(row,access)).map(row=>row.id)},accountChoices:access.canAssignAccounts?data.accounts||[]:[employeeAccounts.scope(access)],accounts:(data.accounts||[]).filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope))),employees:data.employees.filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)))};};
  app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);if(require('./employeeAccountStatus').blocked(store.db,req.employeeAdmin))throw Error('Account disabled');req.employeeAccess=accessFor(req.employeeAdmin);if(!req.employeeAccess&&req.path==='/access'&&require('./notificationAccess').accessFor(req.employeeAdmin,profiles?.linked(req.employeeAdmin)))return res.json({canAccess:true,notificationOnly:true});if(!req.employeeAccess)return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
  app.get('/employee-admin-api',(req,res)=>res.json(scopedView(store.get(),req.employeeAccess)));
+ const pbbView=req=>{
+  const data=store.get(),access=req.employeeAccess,scope=req.query.station&&req.query.account?employeeAccounts.scope(req.query):null;
+  const visible=scopedView(data,access).employees.filter(row=>!row.accountDisabled&&(!scope||employeeAccounts.belongs(row,scope)));
+  return {revision:data.revision,employees:visible.map(row=>({id:row.id,name:row.name,position:row.position,station:row.station,account:row.account,canEdit:access.mode==='admin'||editableBy(row,access)||(access.pbbPositions||[]).includes(employeePositions.normalize(row.position))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)),...Object.fromEntries(['pbbId','pbbExpiry','pbbMscId','pbbMscExpiry'].map(key=>[key,row[key]||'']))}))};
+ };
+ app.get('/employee-admin-api/pbb',(req,res)=>res.json(pbbView(req)));
+ app.post('/employee-admin-api/pbb',(req,res)=>{try{
+  const view=pbbView(req),input=req.body;
+  if(view.revision!==input.revision)throw Object.assign(Error('Employee details changed. Reload before saving.'),{status:409});
+  if(!view.employees.some(row=>row.id===input.id&&row.canEdit))throw Object.assign(Error('You cannot edit this employee’s PBB settings.'),{status:403});
+  const data=store.get(),row=data.employees.find(row=>row.id===input.id);
+  for(const key of ['pbbId','pbbExpiry','pbbMscId','pbbMscExpiry']){if(typeof input[key]!=='string')throw Error('Enter both PBB IDs and valid-through dates.');row[key]=input[key];}
+  store.save(data,req.employeeAdmin);onChange();res.json(pbbView(req));
+ }catch(error){res.status(error.status||400).json({error:error.message});}});
  app.get('/employee-admin-api/access',(req,res)=>res.json({canAccess:true}));
  if(store.db)require('./employeeOrganization').registerOrganization(app,{store,accessFor,scopedView,onChange,firebaseDirectory});
  if(store.db)require('./employeePending').registerEmployeePending(app,{store:{...store,get:()=>{const data=store.get();return {...data,employees:data.employees.filter(row=>!row.accountDisabled)};}},onChange,directory:firebaseDirectory});
  for(const [path,remove] of [['/accounts',false],['/accounts/delete',true]])app.post('/employee-admin-api'+path,(req,res)=>{try{if(req.employeeAccess.mode!=='admin')return res.status(403).json({error:'Only an employee administrator can add or delete accounts.'});const saved=store.changeAccount(req.body,req.employeeAdmin,remove);res.json({...saved,access:req.employeeAccess});onChange();}catch(e){res.status(e.status||400).json({error:e.message});}});
  const employeeTarget=(req,body)=>{if(req.employeeAccess.mode!=='admin'&&!req.employeeAccess.canAddEmployee)throw Object.assign(Error('Business Managers can only manage existing employees in their Main Account.'),{status:403});if(!body||typeof body.station!=='string'||typeof body.account!=='string'||!body.station.trim()||!body.account.trim())throw Error('Choose an account.');const scope=employeeAccounts.scope(body);if(!store.get().accounts.some(a=>employeeAccounts.same(a,scope)))throw Error('Account not found.');if(req.employeeAccess.mode!=='admin'&&!(req.employeeAccess.scopes||[req.employeeAccess]).some(a=>employeeAccounts.same(a,scope)))throw Object.assign(Error('Choose one of your own accounts.'),{status:403});return scope;};
- const findEmployee=(data,eid)=>{if(!/^\d{1,12}$/.test(String(eid||'')))throw Error('Enter a valid Employee ID.');const matches=[...new Map(data.employees.filter(e=>e.eid===String(eid)).map(row=>{const canonical=data.employees.find(person=>person.id===(row.mergedInto||row.id));return [canonical.id,canonical];})).values()];if(matches.length>1)throw Object.assign(Error('Multiple records use this Employee ID. Ask an administrator to resolve them.'),{status:409});return matches[0];};
- app.post('/employee-admin-api/employee-check',(req,res)=>{try{const scope=employeeTarget(req,req.body),data=store.get(),existing=findEmployee(data,req.body.eid);if(existing&&employeePositions.normalize(existing.position)!=='Agent')throw Object.assign(Error('Ask an administrator to manage this employee record.'),{status:403});res.json({revision:data.revision,existing:existing?{id:existing.id,name:existing.name,eid:existing.eid,alreadyMember:employeeAccounts.belongs(existing,scope),full:(existing.additionalAccounts||[]).length>=2,slot:(existing.additionalAccounts||[]).length?'third':'second'}:null});}catch(e){res.status(e.status||400).json({error:e.message});}});
- app.post('/employee-admin-api/add-employee',(req,res)=>{try{const scope=employeeTarget(req,req.body),data=store.get();if(data.revision!==req.body.revision)throw Object.assign(Error('Employee list changed. Check the Employee ID again.'),{status:409});const existing=req.body.eid?findEmployee(data,req.body.eid):null;let id;
-  if(existing){if(!req.body.existingId||existing.id!==req.body.existingId)throw Object.assign(Error('This employee already exists. Check the Employee ID and confirm adding an account.'),{status:409});if(employeePositions.normalize(existing.position)!=='Agent')throw Object.assign(Error('Ask an administrator to manage this employee record.'),{status:403});if(!employeeAccounts.belongs(existing,scope)){if((existing.additionalAccounts||[]).length>=2)throw Object.assign(Error('This employee already has three accounts. Ask an administrator to update them.'),{status:409});existing.additionalAccounts=[...(existing.additionalAccounts||[]),scope];}id=existing.id;
-  }else{if(req.body.existingId)throw Object.assign(Error('Employee record changed. Check the Employee ID again.'),{status:409});const name=String(req.body.name||'').trim();if(!name)throw Error('Enter the full employee name.');id=require('node:crypto').randomUUID();data.employees.push({id,name,eid:String(req.body.eid||''),phone:String(req.body.phone||''),position:'Agent',...scope,additionalAccounts:[],attach:false,detach:false,spotter:false});}
+ app.post('/employee-admin-api/employee-check',(req,res)=>{try{employeeTarget(req,req.body);res.status(410).json({error:'Employee ID lookup has been retired. Select an employee from the directory.'});}catch(error){res.status(error.status||400).json({error:error.message});}});
+ app.post('/employee-admin-api/add-employee',(req,res)=>{try{const scope=employeeTarget(req,req.body),data=store.get();if(data.revision!==req.body.revision)throw Object.assign(Error('Employee list changed. Reload the employee list.'),{status:409});const existing=req.body.existingId?data.employees.find(row=>row.id===req.body.existingId&&!row.mergedInto):null;let id;
+  if(existing){if(employeePositions.normalize(existing.position)!=='Agent')throw Object.assign(Error('Ask an administrator to manage this employee record.'),{status:403});if(!employeeAccounts.belongs(existing,scope)){if((existing.additionalAccounts||[]).length>=2)throw Object.assign(Error('This employee already has three accounts. Ask an administrator to update them.'),{status:409});existing.additionalAccounts=[...(existing.additionalAccounts||[]),scope];}id=existing.id;
+  }else{if(req.body.existingId)throw Object.assign(Error('Employee record changed. Reload the employee list.'),{status:409});const name=String(req.body.name||'').trim();if(!name)throw Error('Enter the full employee name.');id=require('node:crypto').randomUUID();data.employees.push({id,name,phone:String(req.body.phone||''),position:'Agent',...scope,additionalAccounts:[],attach:false,detach:false,spotter:false});}
   const saved=store.save(data,req.employeeAdmin);res.json({...scopedView(saved,req.employeeAccess),employeeAddedId:id});onChange();
  }catch(e){res.status(e.status||400).json({error:e.message});}});
  app.post('/employee-admin-api',(req,res)=>{try{
-  if(req.employeeAccess.mode==='admin'){const existing=new Map(store.get().employees.map(row=>[row.id,row.eid]));const body={...req.body,employees:req.body.employees?.map(row=>({...row,eid:existing.get(row.id)||''}))};const saved=store.save(body,req.employeeAdmin);res.json({...saved,access:req.employeeAccess});onChange();return;}
+  if(req.employeeAccess.mode==='admin'){const body=req.body;const saved=store.save(body,req.employeeAdmin);res.json({...saved,access:req.employeeAccess});onChange();return;}
   const current=store.get();if(req.body.revision!==current.revision){const e=new Error('Employee list changed. Reload before saving.');e.status=409;throw e;}
   if(!Array.isArray(req.body.employees))throw new Error('Invalid employee list');
   const updates=new Map(req.body.employees.map(row=>[String(row.id||''),row]));
