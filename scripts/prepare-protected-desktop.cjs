@@ -80,6 +80,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  for(const target of ['web/assets','web/has/assets'])fs.cpSync(path.join(root,'has/public/assets'),path.join(source,target),{recursive:true});
  write('web/desktop-session.js',fs.readFileSync(path.join(__dirname,'desktop-protection/session.js')));
  server=read('src/server.js').replace('<script src="/flight-session.js"></script>','<script src="/flight-session.js"></script><script defer src="/desktop-session.js"></script>');write('src/server.js',server);
+ require('./desktop-protection/navigation-patch.cjs').applyNavigation(source,root,release);
  await asar.createPackage(source,path.join(release,'resources/app.asar'));
  const manifest={version,baseVersion:JSON.parse(asar.extractFile(path.join(base,'resources/app.asar'),'package.json')).version,copied:[...copied],sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(release,'resources/app.asar'))).digest('hex')};
  fs.writeFileSync(path.join(out,'verification.json'),JSON.stringify(manifest,null,2));console.log(JSON.stringify(manifest));

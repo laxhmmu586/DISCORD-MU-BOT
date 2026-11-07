@@ -120,6 +120,15 @@
     ],
     "headers": [
       {
+        "source": "/{flights.html,flights.js}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "/firebase-messaging-sw.js",
         "headers": [
           {
