@@ -330,22 +330,6 @@
     ],
     "rewrites": [
       {
-        "source": "/index.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/index.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/index.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/index.html",
-        "destination": "/desktop-only.html"
-      },
-      {
         "source": "/report.html",
         "destination": "/desktop-only.html"
       },
@@ -552,22 +536,6 @@
       {
         "source": "/public/public/info-access.js",
         "destination": "/removed.html"
-      },
-      {
-        "source": "/index",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/index",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/index",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/index",
-        "destination": "/desktop-only.html"
       },
       {
         "source": "/report",
