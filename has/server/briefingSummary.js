@@ -27,11 +27,11 @@ function summaryLayout(snapshot,{photo=false}={}){
   const paragraph=(value,size=6.7,color='#58718a')=>{for(const line of wrap(value,panel-10,size)){text(line,start+5,top,size,false,color);top+=size+2;}top+=3;};
   paragraph(prices.notice,7.2,'#14385e');
   // Align the shared baggage labels once, with a price column for each route.
-  const routes=cards.slice(0,2),routeTitles=routes.map(card=>wrap(card.title==='US–China–International'?'US–China–Intl':card.title,59,6.4)),routeHeight=Math.max(...routeTitles.map(lines=>lines.length))*8+5;
-  rect(start,top,panel,routeHeight,'#eef5fb','#eef5fb');text('Baggage / seats',start+5,top+3,7,true);routeTitles.forEach((lines,i)=>lines.forEach((line,j)=>text(line,start+134+i*64,top+2+j*8,6.4,true)));top+=routeHeight+2;
+  const amountColumns=[178,220],amountWidth=37,labelWidth=168,routes=cards.slice(0,2),routeTitles=routes.map(card=>wrap(card.title==='US–China–International'?'Intl':card.title,amountWidth,6.4)),routeHeight=Math.max(...routeTitles.map(lines=>lines.length))*8+5;
+  rect(start,top,panel,routeHeight,'#eef5fb','#eef5fb');text('Baggage / seats',start+5,top+3,7,true);routeTitles.forEach((lines,i)=>lines.forEach((line,j)=>text(line,start+amountColumns[i],top+2+j*8,6.4,true)));top+=routeHeight+2;
   for(const [a,b] of [[0,0],[1,1],[2,2],[3,null],[4,3],[5,4],[6,null],[7,null]]){
-   const first=routes[0].rows[a],second=b===null?null:routes[1].rows[b],label=second&&second[0]!==first[0]?first[0]+' / '+second[0]:first[0],labels=wrap(label,124,6.6),values=[wrap(first[1],58,7),wrap(second?second[1]:'—',58,7)],h=Math.max(labels.length,...values.map(lines=>lines.length))*8.5+3;
-   rect(start,top,panel,h);labels.forEach((line,j)=>text(line,start+5,top+2+j*8.5,6.6));values.forEach((lines,i)=>lines.forEach((line,j)=>text(line,start+134+i*64,top+2+j*8.5,7,true)));top+=h+1;
+   const first=routes[0].rows[a],second=b===null?null:routes[1].rows[b],label=second&&second[0]!==first[0]?first[0]+' / '+second[0]:first[0],labels=wrap(label,labelWidth,6.6),values=[wrap(first[1],amountWidth,7),wrap(second?second[1]:'—',amountWidth,7)],h=Math.max(labels.length,...values.map(lines=>lines.length))*8.5+3;
+   rect(start,top,panel,h);labels.forEach((line,j)=>text(line,start+5,top+2+j*8.5,6.6));values.forEach((lines,i)=>lines.forEach((line,j)=>text(line,start+amountColumns[i],top+2+j*8.5,7,true)));top+=h+1;
   }top+=4;
   const pair=(items)=>{const width=(panel-6)/2,headingLines=items.map(card=>wrap(card.title,width-10,7.1)),h=Math.max(...headingLines.map(lines=>lines.length))*8.5+5;
    items.forEach((card,i)=>{const x=start+i*(width+6);rect(x,top,width,h,'#eef5fb','#eef5fb');headingLines[i].forEach((line,j)=>text(line,x+5,top+2+j*8.5,7.1,true));});top+=h+2;
