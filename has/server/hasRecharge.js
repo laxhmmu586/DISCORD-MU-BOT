@@ -64,20 +64,25 @@ async function workbook(month,scope,entries,dayFlights={},roleLabels=roles,sched
  for(const [i,address] of ['C10','G10','K10'].entries())summary.getCell(address).value=roleLabels[i];summary.getCell('C4').value=scope.station+'/'+scope.account;summary.getCell('C5').value=name.toUpperCase();
  for(let d=1;d<=31;d++){summary.getRow(d+11).hidden=d>last;summary.getCell('B'+(d+11)).value=summaryFlight(entries,dayFlights,d);for(let c=0;c<12;c++)summary.getCell(d+11,c+3).value=daily[d]?.[c]||0;}
  for(let c=3;c<=14;c++)summary.getCell(45,c).value={formula:`SUM(${summary.getColumn(c).letter}12:${summary.getColumn(c).letter}42)`,result:Object.values(daily).reduce((s,a)=>s+a[c-3],0)};
- for(let r=12;r<=45;r++)if(r<=42||r===45)for(let c=3;c<=14;c++){const cell=summary.getCell(r,c),value=typeof cell.value==='object'?cell.value?.result:cell.value;cell.style={...cell.style,fill:{type:'pattern',pattern:'solid',fgColor:{argb:Number(value)>0?'FFD9EAD3':'FFFFFFFF'}}};}
+
  gridBorders(summary,11,42,14);gridBorders(summary,45,45,14);box(summary,'C10:F10');box(summary,'G10:J10');box(summary,'K10:N10');
  require('./hasReportFormatting').apply(summary,Object.fromEntries(Object.entries(summaryFormats).map(([a,f])=>[a==='C1'?'C10':a==='G1'?'G10':a==='K1'?'K10':'B'+(+a.slice(1)+10),f])));summary.pageSetup.printArea='A1:N45';
  // Keep the supplied daily form's dimensions, merged cells, styles and signature areas.
- const all=[];for(let d=1;d<=last;d++){const found=entries.filter(e=>e.day===d);all.push(...(found.length?found:[{day:d,flight:'',reason:'',lines:[]} ]));}const counts={};for(const e of all){counts[e.day]=(counts[e.day]||0)+1;const title=String(e.day)+(counts[e.day]>1?'-'+counts[e.day]:'');const s=book.addWorksheet(title);s.model={...JSON.parse(JSON.stringify(sample)),id:s.id,name:title};s.name=title;decorateForm(s);
+ const all=[];for(let d=1;d<=last;d++){const found=entries.filter(e=>e.day===d);all.push(...(found.length?found:[{day:d,flight:'',reason:'',lines:[]} ]));}all.sort((a,b)=>Number(Boolean(b.lines.length))-Number(Boolean(a.lines.length))||a.day-b.day);const counts={},daySheets=new Map();for(const e of all){counts[e.day]=(counts[e.day]||0)+1;const title=String(e.day)+(counts[e.day]>1?'-'+counts[e.day]:'');const s=book.addWorksheet(title);s.model={...JSON.parse(JSON.stringify(sample)),id:s.id,name:title};s.name=title;if(e.lines.length)s.properties.tabColor={argb:'FF00B050'};else delete s.properties.tabColor;const sheets=daySheets.get(e.day)||[];sheets.push(title);daySheets.set(e.day,sheets);decorateForm(s);
  s.getCell('B7').value=scope.station+'/'+scope.account;s.getCell('F7').value=new Date(Date.UTC(year,m-1,e.day));s.getCell('F7').numFmt='mm/dd/yyyy';s.getCell('B9').value=e.fields?.B9||e.flight||summaryFlight(entries,dayFlights,e.day);s.getCell('B15').value=[e.reason,...['A17','A18','A19'].map(a=>e.fields?.[a])].filter(Boolean).join('\n');
  for(let r=23;r<=59;r++)for(let c=1;c<=14;c++)s.getCell(r,c).value=null;
  for(const a of detailFields)if(!['A17','A18','A19'].includes(a)&&(a!=='B9'||e.fields?.B9))s.getCell(a).value=e.fields?.[a]||null;
  for(const a of scheduledTimeFields)if(Object.hasOwn(scheduledTimes,a))s.getCell(a).value=(dayScheduledTimes[e.day]?.[a]??(e.fields?.[a]||scheduledTimes[a]))||null;
  for(const a of [...detailFields,'B15',...Array.from({length:37},(_,i)=>Array.from({length:14},(_,c)=>String.fromCharCode(65+c)+(23+i))).flat()]){const cell=s.getCell(a);cell.style={...cell.style,font:{...cell.font,name:'Arial',size:10,bold:false},alignment:{...cell.alignment,horizontal:'center',vertical:'middle'}};}
  for(const row of e.rows||[]){s.getCell(row.row,1).value=row.name;s.getCell(row.row,14).value=rowRemark(e,row.reason);}
- e.lines.forEach((l,i)=>{const r=l.row||23+i;s.getCell(r,1).value=l.name;const hours=s.getCell(r,2+roles.indexOf(l.role)*4+categories.indexOf(l.category));hours.value=l.hours;hours.style={...hours.style,fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FFD9EAD3'}}};s.getCell(r,14).value=rowRemark(e,l.reason||e.rows?.find(x=>x.row===r)?.reason||'');});
+ e.lines.forEach((l,i)=>{const r=l.row||23+i;s.getCell(r,1).value=l.name;const hours=s.getCell(r,2+roles.indexOf(l.role)*4+categories.indexOf(l.category));hours.value=l.hours;s.getCell(r,14).value=rowRemark(e,l.reason||e.rows?.find(x=>x.row===r)?.reason||'');});
  for(let c=2;c<=13;c++)s.getCell(60,c).value={formula:`SUM(${s.getColumn(c).letter}23:${s.getColumn(c).letter}59)`,result:e.lines.filter(l=>2+roles.indexOf(l.role)*4+categories.indexOf(l.category)===c).reduce((n,l)=>n+l.hours,0)};
  require('./hasReportFormatting').apply(s,Object.fromEntries(Object.entries(e.formats||{}).map(([a,f])=>[a==='A16'?'B15':a,f])));s.pageSetup.printArea='A1:S71';}
+ // Summary cells remain live links to every charge sheet for the date.
+ for(let d=1;d<=last;d++)for(let c=0;c<12;c++){
+  const column=summary.getColumn(c+2).letter,references=daySheets.get(d).map(title=>"'"+title+"'!"+column+'60');
+  summary.getCell(d+11,c+3).value={formula:'SUM('+references.join(',')+')',result:daily[d]?.[c]||0};
+ }
  book.calcProperties.fullCalcOnLoad=true;return book;
 }
 function register(app,{context,database,read,key,handler,template,live}){
