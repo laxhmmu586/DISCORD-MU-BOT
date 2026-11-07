@@ -317,6 +317,9 @@ test('employee Departure sheet uses effective ETAB, saved reference and nickname
  await request('lead','/assign',{date:DATE,flight:'MU586',direction:'departure',employeeId:'agent',fromField:null,toField:'gateLead',fromValue:null,toValue:''});
  await request('lead','',{date:DATE,flight:'MU586',direction:'departure',field:'etd',previous:null,value:'1230'});
  const first=await request('agent',path);assert.equal(first.status,200);
+ assert(!first.data.html.includes('data-employee-tier='),'Older clients receive readable benefits without unsupported buttons');
+ const cards=await request('agent',path+'&membershipUi='+require('../has/public/briefing-membership').uiVersion);assert.equal(cards.status,200);assert(cards.data.html.includes('data-employee-tier="elitePlus">Elite+</button>'));assert(cards.data.html.includes('employee-membership-tier-tabs'));
+ const stale=await request('agent',path+'&membershipUi=old-ui');assert.equal(stale.status,200);assert(!stale.data.html.includes('data-employee-tier='));
  for(const text of ['Shared allowance','$222','B-7369','1230','1145L','Membership Information','Gate Lead','agent'])assert(first.data.html.includes(text),text);
  assert(!first.data.html.includes('<input'));assert(!first.data.html.includes('employee_avatars'));
  const arrival=await request('agent','/employee-sheet?date='+DATE+'&flight=MU583&direction=arrival');assert.equal(arrival.status,200);assert(arrival.data.html.includes('ARRIVAL BRIEFING'));assert(!arrival.data.html.includes('Membership Information'));

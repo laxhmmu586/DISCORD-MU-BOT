@@ -3,7 +3,7 @@ const {summarySvg,summaryLayout}=require('./briefingSummary');
 const membership=require('../public/briefing-membership');
 const fields=require('../public/briefing-fields');
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function renderEmployeeSheet(snapshot){
+function renderEmployeeSheet(snapshot,{membershipCards:useMembershipCards=true}={}){
  const sections=reportSections(snapshot),find=title=>sections.find(([name])=>name===title)?.[1]||[];
  const heading=title=>'<h2>'+escape(title)+'</h2>';
  const cells=entries=>entries.map(([label,value])=>'<div><dt>'+escape(label)+'</dt><dd>'+escape(value||'—')+'</dd></div>').join('');
@@ -21,13 +21,15 @@ function renderEmployeeSheet(snapshot){
  const f=snapshot.fields,total=fields.booking(f),booking=heading('PAX Booking')+'<div class="employee-booking-grid">'+['Cabin','Config','PAX','INF'].map(label=>'<span>'+label+'</span>').join('')+['F','J','Y'].map(cabin=>'<strong>'+cabin+'</strong>'+['config','booking','infant'].map(prefix=>'<span class="employee-booking-value">'+escape(f[prefix+cabin]||(prefix==='booking'?'0':'—'))+'</span>').join('')).join('')+'</div><dl class="employee-booking-totals">'+cells([['TTL PAX',total.pax+' + '+total.infants],['PLF',total.plf]])+'</dl>';
  const time='<section>'+heading('Time Check')+'<dl class="employee-time-grid">'+cells(find('Time Check'))+'</dl></section>';
  const benefits=membership.rows(snapshot.membershipReference);
- const membershipCards='<section class="employee-membership">'+heading('Membership Information')+'<div class="employee-membership-tier-tabs" role="tablist" aria-label="Membership category">'+Object.entries(membership.tiers).map(([key,tier],i)=>'<button type="button" role="tab" id="employee-tier-'+key+'" aria-controls="employee-tier-panel-'+key+'" aria-selected="'+!i+'" tabindex="'+(i?-1:0)+'" data-employee-tier="'+key+'">'+escape(key==='elitePlus'?'Elite Plus':key==='elite'?'Elite':tier.label)+'</button>').join('')+'</div>'+Object.keys(membership.tiers).map((key,i)=>{
+ const membershipCards='<section class="employee-membership">'+heading('Membership Information')+'<div class="employee-membership-tier-tabs" role="tablist" aria-label="Membership category">'+Object.entries(membership.tiers).map(([key,tier],i)=>'<button type="button" role="tab" id="employee-tier-'+key+'" aria-controls="employee-tier-panel-'+key+'" aria-selected="'+!i+'" tabindex="'+(i?-1:0)+'" data-employee-tier="'+key+'">'+escape(key==='elitePlus'?'Elite+':key==='elite'?'Elite':tier.label)+'</button>').join('')+'</div>'+Object.keys(membership.tiers).map((key,i)=>{
   const rows=benefits.filter(row=>row.key===key);
   return '<section class="employee-membership-card" id="employee-tier-panel-'+key+'" role="tabpanel" aria-labelledby="employee-tier-'+key+'" data-employee-tier-panel="'+key+'"'+(i?' hidden':'')+'>'+(rows.length>1?'<div class="employee-membership-cabins" role="group" aria-label="Booking cabin">'+['business','economy'].map((cabin,j)=>'<button type="button" aria-pressed="'+!j+'" data-employee-cabin="'+cabin+'">'+(j?'Economy':'Business')+'</button>').join('')+'</div>':'')+rows.map((row,j)=>'<div aria-label="'+escape(row.cabin)+'" data-employee-benefits="'+row.cabinKey+'"'+(j?' hidden':'')+'><h3>'+escape(row.tier)+'</h3><p class="employee-membership-sky">'+escape(row.sky)+'</p><dl>'+row.benefits.map(benefit=>'<div><dt>'+escape(benefit.label)+'</dt><dd>'+escape(benefit.value)+'</dd></div>').join('')+'</dl></div>').join('')+(key==='elite'?'<p class="employee-membership-note">'+escape(membership.notice)+'</p>':'')+'</section>';
  }).join('')+'</section>';
+ // An already-open page may still run a client without the membership handlers.
+ const membershipTable='<section>'+heading('Membership Information')+'<div class="employee-membership-scroll"><table><thead><tr>'+membership.headers.map(label=>'<th scope="col">'+escape(label)+'</th>').join('')+'</tr></thead><tbody>'+benefits.map(row=>'<tr>'+membership.cells(row).map(value=>'<td>'+escape(value)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><p class="employee-membership-note">'+escape(membership.notice)+'</p></section>';
  return '<article class="employee-departure-sheet" aria-label="'+title+'">'+header+flight+
   '<section class="employee-summary"><div>'+booking+specials+time+'</div><div>'+price+'</div></section>'+details+
   '<section>'+heading('Team Assignment')+'<div class="employee-team-tabs" role="tablist" aria-label="Departure assignments">'+['Counter','Gate'].map((name,i)=>'<button type="button" role="tab" id="employee-'+name.toLowerCase()+'-tab" aria-controls="employee-'+name.toLowerCase()+'-panel" aria-selected="'+!i+'" tabindex="'+(i?-1:0)+'" data-employee-team="'+name.toLowerCase()+'">'+name+'</button>').join('')+'</div><div class="employee-team-grid">'+team('Counter')+team('Gate')+'</div></section>'+
-  membershipCards+'</article>';
+  (useMembershipCards?membershipCards:membershipTable)+'</article>';
 }
 module.exports={renderEmployeeSheet};

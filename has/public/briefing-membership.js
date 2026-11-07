@@ -20,5 +20,5 @@
   }));
  }
  const cells=row=>[row.tier,row.sky,row.cabin,...row.benefits.map((benefit,i)=>benefit.label===labels[i]?benefit.value:benefit.label+': '+benefit.value)];
- return {tiers,englishLabel,rows,cells,headers:['Membership','SkyTeam','Cabin',...labels],notice:'SkyTeam Elite cards do not include lounge access.'};
+ return {uiVersion:'membership-elite-short-v1',tiers,englishLabel,rows,cells,headers:['Membership','SkyTeam','Cabin',...labels],notice:'SkyTeam Elite cards do not include lounge access.'};
 });
