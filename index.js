@@ -992,6 +992,9 @@ function findPDPassengerByFFFromLog(log, query) {
 // ===============================
 const app =
   express();
+const desktopProtection = require('./desktopProtection');
+app.use(desktopProtection.staticGuard);
+app.use(require('./employeeDataProtection').middleware);
 app.use(require('./has/static').router());
 
 const allowedOrigins = [
@@ -1020,7 +1023,7 @@ app.use((req, res, next) => {
 });
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
-app.use('/has-pbb-api', express.json({limit:'2mb'}));
+app.use('/has-pbb-api', express.json({limit:'2mb',verify:desktopProtection.captureBody}));
 app.use('/profile-api', express.json({limit:'3mb'}));
 app.use('/staff-schedule-api', express.json({limit:'1mb'}));
 app.use('/briefing-api/express', express.json({limit:'512kb'}));
@@ -1038,8 +1041,10 @@ const visaMonitor = new (require('./visaMonitor').VisaMonitor)(visaStore, {
 });
 
 app.use(
-  express.json({ limit: JSON_BODY_LIMIT })
+  express.json({ limit: JSON_BODY_LIMIT, verify:desktopProtection.captureBody })
 );
+app.use(desktopProtection.createApiGuard());
+app.get('/desktop-access',(req,res)=>res.json({approved:true,uid:req.desktopUser.uid}));
 require('./visaRoutes').mountVisaRoutes(app, visaStore, visaMonitor);
 
 // Publish lightweight invalidations instead of making every open dashboard

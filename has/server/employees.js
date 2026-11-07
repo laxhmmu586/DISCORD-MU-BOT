@@ -113,7 +113,7 @@ function registerEmployees(app,{store,authenticate,profiles,onChange=()=>{},fire
   const saved=store.save(data,req.employeeAdmin);res.json({...scopedView(saved,req.employeeAccess),employeeAddedId:id});onChange();
  }catch(e){res.status(e.status||400).json({error:e.message});}});
  app.post('/employee-admin-api',(req,res)=>{try{
-  if(req.employeeAccess.mode==='admin'){const saved=store.save(req.body,req.employeeAdmin);res.json({...saved,access:req.employeeAccess});onChange();return;}
+  if(req.employeeAccess.mode==='admin'){const existing=new Map(store.get().employees.map(row=>[row.id,row.eid]));const body={...req.body,employees:req.body.employees?.map(row=>({...row,eid:existing.get(row.id)||''}))};const saved=store.save(body,req.employeeAdmin);res.json({...saved,access:req.employeeAccess});onChange();return;}
   const current=store.get();if(req.body.revision!==current.revision){const e=new Error('Employee list changed. Reload before saving.');e.status=409;throw e;}
   if(!Array.isArray(req.body.employees))throw new Error('Invalid employee list');
   const updates=new Map(req.body.employees.map(row=>[String(row.id||''),row]));

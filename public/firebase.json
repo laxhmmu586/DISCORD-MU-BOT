@@ -98,16 +98,6 @@
         "type": 301
       },
       {
-        "source": "/info.html",
-        "destination": "/info",
-        "type": 301
-      },
-      {
-        "source": "/info/",
-        "destination": "/info",
-        "type": 301
-      },
-      {
         "source": "/has-checklist.html",
         "destination": "/has-checklist",
         "type": 301
@@ -129,7 +119,15 @@
       }
     ],
     "headers": [
-      {"source":"/firebase-messaging-sw.js","headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"}]},
+      {
+        "source": "/firebase-messaging-sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
       {
         "source": "/has/**",
         "headers": [
@@ -305,9 +303,375 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/index.html",
+      "**/report.html",
+      "**/report.js",
+      "**/reports.html",
+      "**/cbs.html",
+      "**/cbs.js",
+      "**/has-pbb.html",
+      "**/has-pbb-client.js",
+      "**/has-pbb-data.js",
+      "**/has-pbb-dashboard.html",
+      "**/has-pbb-dashboard.js",
+      "**/info.html",
+      "**/info.js",
+      "**/info-access.js"
     ],
     "rewrites": [
+      {
+        "source": "/index.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/index.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/index.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/index.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/report.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/report.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/report.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/report.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/report.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/report.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/report.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/report.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/reports.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/reports.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/reports.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/reports.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/cbs.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/cbs.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/cbs.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/cbs.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/cbs.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/cbs.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/cbs.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/cbs.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has-pbb.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/has-pbb.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/has-pbb.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/has-pbb.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has-pbb-client.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/has-pbb-client.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/has-pbb-client.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/has-pbb-client.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has-pbb-data.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/has-pbb-data.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/has-pbb-data.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/has-pbb-data.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has-pbb-dashboard.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/has-pbb-dashboard.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/has-pbb-dashboard.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/has-pbb-dashboard.html",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has-pbb-dashboard.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/has-pbb-dashboard.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/has-pbb-dashboard.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/has-pbb-dashboard.js",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/info.html",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/has/info.html",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/info.html",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/public/info.html",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/info.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/has/info.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/info.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/public/info.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/info-access.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/has/info-access.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/info-access.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/public/info-access.js",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/index",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/index",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/index",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/index",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/report",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/report",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/report",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/report",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/reports",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/reports",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/reports",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/reports",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/cbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/cbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/cbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/cbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/lbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/lbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/lbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/lbs",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has-pbb",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/has-pbb",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/has-pbb",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/has-pbb",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has-pbb-dashboard",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/has/has-pbb-dashboard",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/has-pbb-dashboard",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/public/public/has-pbb-dashboard",
+        "destination": "/desktop-only.html"
+      },
+      {
+        "source": "/info",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/has/info",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/info",
+        "destination": "/removed.html"
+      },
+      {
+        "source": "/public/public/info",
+        "destination": "/removed.html"
+      },
       {
         "source": "/has-report-alignment.js",
         "destination": "/has/has-report-alignment.js"
@@ -379,10 +743,6 @@
       {
         "source": "/hr",
         "destination": "/has/hr.html"
-      },
-      {
-        "source": "/info",
-        "destination": "/has/info.html"
       },
       {
         "source": "/has-checklist",
@@ -1069,10 +1429,6 @@
         "destination": "/has/has-network.js"
       },
       {
-        "source": "/has-pbb-client.js",
-        "destination": "/has/has-pbb-client.js"
-      },
-      {
         "source": "/has-pbb-config.js",
         "destination": "/has/has-pbb-config.js"
       },
@@ -1081,28 +1437,12 @@
         "destination": "/has/qa.html"
       },
       {
-        "source": "/has-pbb-dashboard.html",
-        "destination": "/has/has-pbb-dashboard.html"
-      },
-      {
-        "source": "/has-pbb-dashboard.js",
-        "destination": "/has/has-pbb-dashboard.js"
-      },
-      {
-        "source": "/has-pbb-data.js",
-        "destination": "/has/has-pbb-data.js"
-      },
-      {
         "source": "/has-pbb-nav.js",
         "destination": "/has/has-pbb-nav.js"
       },
       {
         "source": "/has-pbb.css",
         "destination": "/has/has-pbb.css"
-      },
-      {
-        "source": "/has-pbb.html",
-        "destination": "/has/has-pbb.html"
       },
       {
         "source": "/has-recharge-grid.js",
@@ -1199,18 +1539,6 @@
       {
         "source": "/incident-report.js",
         "destination": "/has/incident-report.js"
-      },
-      {
-        "source": "/info-access.js",
-        "destination": "/has/info-access.js"
-      },
-      {
-        "source": "/info.html",
-        "destination": "/has/info.html"
-      },
-      {
-        "source": "/info.js",
-        "destination": "/has/info.js"
       },
       {
         "source": "/my-approvals.css",
