@@ -14,7 +14,7 @@ body.desktop-report-center .report-mode-actions .detail-action{min-height:44px;f
 .desktop-cbs-topbar .desktop-primary-nav{display:flex;align-items:center;gap:26px;flex:1;min-width:0}
 .desktop-cbs-topbar .desktop-primary-nav a{font:700 13px/1.2 Arial,sans-serif;color:#d5dfed;text-decoration:none;white-space:nowrap}
 .desktop-cbs-topbar .desktop-primary-nav [aria-current=page]{color:#fff}
-.desktop-cbs-page .wrap{padding-top:88px}
+.desktop-cbs-page .wrap{padding-top:28px}
 .desktop-cbs-page.sidebar-collapsed .desktop-cbs-topbar{left:76px}
 .desktop-cbs-form{padding-top:64px!important}.desktop-cbs-form .desktop-cbs-topbar{left:0}
 .desktop-cbs-page > header .page-tabs{flex:none;min-width:0}
