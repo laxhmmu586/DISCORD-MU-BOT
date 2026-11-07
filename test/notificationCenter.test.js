@@ -55,6 +55,7 @@ test('scheduled reminders are suppressed by the account reminder switch',async t
 test('reminder inbox stays private, counts unviewed messages and enforces owner-only read receipts',async t=>{
  const f=fixture(t);f.store.save(f.users.bm,reminder());f.setTime('2026-11-01T17:01:01Z');f.store.tick();await f.push.flush();
  const inbox=f.store.messages(f.users.sup);assert.equal(inbox.messages.length,1);assert.equal(inbox.messages[0].readAt,null);assert.equal(f.store.messages(f.users.agent).messages.length,0);
+ assert.equal(inbox.messages[0].badgeKey,f.sent.find(message=>message.payload.badgeUid===f.users.sup.uid).payload.badgeKey);
  f.store.readMessages(f.users.agent,{ids:[inbox.messages[0].id]});assert.equal(f.store.messages(f.users.sup).messages[0].readAt,null);
  assert.ok(f.store.readMessages(f.users.sup,{ids:[inbox.messages[0].id]}).messages[0].readAt);
 });
