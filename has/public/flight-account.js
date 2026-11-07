@@ -79,6 +79,7 @@
     const loginOrigin=readLoginOrigin();
     const target=loginOrigin==='has'?'/has-login.html':'/login.html';
     try{await window.mufcDisablePush?.();}catch{alert('Could not disconnect notifications for this device. Please retry logout.');return;}
+    await window.mufcClearAppBadge?.();
     window.setMufcFlight?.(null);
     for(const store of [localStorage,sessionStorage]) for(const key of ['mufc_allow_app_entry','mufc_auth_session_started_at','mufc_auth_last_activity_at',loginOriginKey]) { try{store.removeItem(key);}catch{} }
     try { if(auth?.currentUser) await auth.signOut(); } finally { location.replace(target); }

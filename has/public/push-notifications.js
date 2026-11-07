@@ -1,4 +1,5 @@
 (() => {
+ if(!document.querySelector('script[data-app-badge]')){const script=document.createElement('script');script.src='/has/app-badge.js?v=1';script.dataset.appBadge='';document.head.append(script);}
  const button=document.querySelector('#enable-notifications');if(!button||!window.firebase?.apps?.length)return;
  const auth=firebase.auth();let messaging,token='',busy=false,stopping=false,syncJob=null;
  button.setAttribute('role','switch');button.setAttribute('aria-label','Notifications');
