@@ -1,5 +1,7 @@
 # Approved MUFC Desktop computers
 
+`baggage.html` is also available in the authenticated website. Its tag lookup, baggage/No Tag creation and record updates require the existing employee sign-in but do not require an approved desktop device. The same exception permits reading Open On-hand cases and submitting the `exchange` action needed by the page's tag-exchange flow. Other CBS mutations, reports and Desktop-only APIs retain their device-signature requirement. Unauthenticated or invalid employee sessions cannot access the Baggage operations; responses use `private, no-store`.
+
 Dashboard (`index.html`), Report Center and LBS are desktop-only. Firebase Hosting excludes their source files, including nested copies. Dashboard URLs return HTTP 404; old Report/LBS links show a desktop-required notice. The API host rejects these original pages before any static router. Jet Bridge is available both in Desktop and on the authenticated website, retaining its existing employee/role checks. Its website navigation, footer and flight-card icon links are restored. Info is retired. Employee information responses omit EID; internal identifiers remain stored for existing record associations.
 
 Every approved computer has a separate Ed25519 key. The private key is generated on that computer, encrypted with Electron safeStorage (Windows credential protection), and stored under `%APPDATA%\MUFC\desktop-device-key.bin`. It is never included in an installer or uploaded. The public enrollment request is `%APPDATA%\MUFC\desktop-device-enrollment.json`.

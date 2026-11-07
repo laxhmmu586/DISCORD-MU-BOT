@@ -34,6 +34,22 @@ test('device proof, employee login, request binding, replay and revocation',asyn
 test('employee information omits EID recursively',()=>{
  assert.deepEqual(withoutEid({employees:[{id:'a',eid:'123',name:'A'}],profile:{eid:'321',name:'B'}}),{employees:[{id:'a',name:'A'}],profile:{name:'B'}});
 });
+
+test('Baggage web operations require employee login without device proof; other operations stay desktop-only',async t=>{
+ const app=express();let reached=0;
+ app.use(express.json({verify:captureBody}));
+ app.use(createApiGuard({devicesFile:path.join(os.tmpdir(),'unused-baggage-device-registry.json'),authenticate:async req=>{if(req.get('Authorization')!=='Bearer employee')throw Error('login');return {uid:'employee',email:'employee@mu.com'};}}));
+ app.use((req,res)=>{reached++;res.json({ok:true,user:req.baggageUser.uid,body:req.body});});
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{server.closeAllConnections();server.close();});const base='http://127.0.0.1:'+server.address().port;
+ const operations=[['GET','/test-baggage/MU383736'],['GET','/test-baggage/B6123456'],['GET','/test-baggage/3U515289'],['POST','/test-baggage',{noTag:true,direction:'inbound',bagTag:'No Tag'}],['POST','/test-baggage/MU383736/update',{type:'location',location:'Office'}],['GET','/cbs-unresolved-baggage'],['POST','/cbs-unresolved-baggage/12/update',{action:'exchange',newTagNumber:'MU123456'}]];
+ for(const [method,url,body] of operations){
+  for(const authorization of ['', 'Bearer invalid']){const before=reached;const response=await fetch(base+url,{method,headers:{'Content-Type':'application/json',...(authorization?{Authorization:authorization}:{})},...(body?{body:JSON.stringify(body)}:{})});assert.equal(response.status,401,url);assert.equal(reached,before,'Unauthorized request must not reach storage');}
+  const response=await fetch(base+url,{method,headers:{Authorization:'Bearer employee','Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});assert.equal(response.status,200,url);assert.match(response.headers.get('cache-control'),/no-store/);assert.equal((await response.json()).user,'employee');
+ }
+ for(const [method,url,body] of [['GET','/search?q=SY'],['GET','/test-baggage-report'],['GET','/cbs-cases'],['DELETE','/test-baggage/MU383736'],['POST','/cbs-unresolved-baggage/12/update',{action:'close'}],['POST','/cbs-unresolved-baggage/12/update',{action:'location'}],['POST','/cbs-unresolved-baggage/12/update',{}],['DELETE','/cbs-unresolved-baggage/12']]){
+  const response=await fetch(base+url,{method,headers:{Authorization:'Bearer employee','Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});assert.equal(response.status,403,url);
+ }
+});
 test('employee admin edits do not publish or erase legacy employee identifiers',async t=>{
  const Database=require('better-sqlite3'),db=new Database(':memory:');
  const {createEmployeeStore,registerEmployees}=require('../has/server/employees');

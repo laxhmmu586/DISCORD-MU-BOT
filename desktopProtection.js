@@ -16,6 +16,12 @@ function removedPage(value) { return /^(?:\/public){0,2}(?:\/has)?\/info(?:\.htm
 function privateApi(p) {
   return /^\/(?:desktop-access|search|dashboard-snapshot|sy-live-stream|flight-telex|notes|security-reviews|warning-acknowledgements|stored-report|reports\/|sales-report\/|(?:sales-details|vip|psm|inad|spml|wch|miss-connection|test-baggage|bagroom)-report|pbb-api(?:\/|$)|test-baggage(?:\/|$)|cbs-(?!scan(?:2)?(?:\/|$)))/i.test(p);
 }
+function webBaggageApi(p,method,body) {
+  return method==='GET'&&/^\/test-baggage\/[a-z0-9]{2}\d{6}\/?$/i.test(p)
+    ||method==='POST'&&(/^\/test-baggage\/?$/i.test(p)||/^\/test-baggage\/[a-z0-9]{2}\d{6}\/update\/?$/i.test(p))
+    ||method==='GET'&&/^\/cbs-unresolved-baggage\/?$/i.test(p)
+    ||method==='POST'&&/^\/cbs-unresolved-baggage\/[1-9]\d*\/update\/?$/i.test(p)&&body?.action==='exchange';
+}
 const digest=value=>crypto.createHash('sha256').update(value||'').digest('hex');
 function message({method,url,time,nonce,authorization,body}) {
   return ['MUFC-DESKTOP-1',method.toUpperCase(),url,time,nonce,digest(authorization),digest(body)].join('\n');
@@ -31,6 +37,11 @@ function createApiGuard({devicesFile=process.env.MUFC_DESKTOP_DEVICES_FILE||path
     if(req.path==='/desktop-device-enroll')return require('./desktopEnrollment').createEnrollmentHandler({devicesFile,authenticate,now,used})(req,res);
     if(!privateApi(req.path)||req.method==='OPTIONS')return next();
     res.set('Cache-Control','private, no-store');
+    if(webBaggageApi(req.path,req.method,req.body)){
+      try { req.baggageUser=await authenticate(req); }
+      catch { return res.status(401).json({error:'Employee sign-in required.',code:'SIGN_IN_REQUIRED'}); }
+      return next();
+    }
     try {
       // A web login, Origin or User-Agent is never proof of an approved device.
       const id=req.get('X-MUFC-Device'),time=req.get('X-MUFC-Time'),nonce=req.get('X-MUFC-Nonce'),signature=req.get('X-MUFC-Signature');
@@ -52,4 +63,4 @@ function createApiGuard({devicesFile=process.env.MUFC_DESKTOP_DEVICES_FILE||path
   };
 }
 const captureBody=(req,_res,buffer)=>{req.rawBody=buffer;};
-module.exports={privateFiles,privatePage,removedPage,privateApi,staticGuard,createApiGuard,captureBody,message,digest};
+module.exports={privateFiles,privatePage,removedPage,privateApi,webBaggageApi,staticGuard,createApiGuard,captureBody,message,digest};
