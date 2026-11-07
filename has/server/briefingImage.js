@@ -34,6 +34,20 @@ function renderBriefingImageSvg(snapshot,{control=snapshot.direction==='departur
    row.forEach(([label],i)=>{const x=M+i*(width+gap);parts.push(`<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#fffdf0" stroke="#d7e3ee"/>`);labels[i].forEach((line,j)=>text(line,x+14,y+10+j*22,16,false,'#607d99'));wrapped[i].forEach((line,j)=>text(line,x+14,y+14+labelHeight+j*31,23,true));});y+=height+12;
   }y+=14;
  }
+ if(photo&&snapshot.direction==='departure'){
+  const membership=require('../public/briefing-membership'),widths=[.15,.16,.10,.15,.14,.09,.10,.11].map(ratio=>ratio*CW);
+  parts.push(`<rect x="${M}" y="${y}" width="${CW}" height="42" fill="#edf5fc"/>`);text('MEMBERSHIP INFORMATION',M+14,y+7,20,true,'#0878bb');y+=56;
+  const wrap=(value,width)=>{
+   const limit=Math.max(1,Math.floor(width/(16*.59))),out=[];
+   for(const paragraph of String(value??'').split('\n')){let line='';for(const word of paragraph.split(' ')){if(line&&line.length+word.length+1>limit){out.push(line);line='';}if(word.length>limit){if(line){out.push(line);line='';}const pieces=lines(word,width,16);out.push(...pieces.slice(0,-1));line=pieces.at(-1);}else line+=(line?' ':'')+word;}out.push(line);}return out;
+  };
+  const row=(cells,header=false)=>{
+   const wrapped=cells.map((value,i)=>wrap(value,widths[i]-20)),height=Math.max(54,...wrapped.map(value=>value.length*23+24));let x=M;
+   wrapped.forEach((value,i)=>{parts.push(`<rect x="${x}" y="${y}" width="${widths[i]}" height="${height}" fill="${header?'#edf5fc':'#fffdf0'}" stroke="#d7e3ee"/>`);value.forEach((line,j)=>text(line,x+10,y+12+j*23,16,header||i===0));x+=widths[i];});y+=height;
+  };
+  row(membership.headers,true);for(const value of membership.rows(snapshot.membershipReference))row(membership.cells(value));
+  y+=14;for(const line of lines(membership.notice,CW,16)){text(line,M,y,16,false,'#607d99');y+=24;}
+ }
  if(photo){y=Math.max(y+50,1680);}else{y+=12;text((snapshot.preview?'Preview · ':'Completed ')+new Date(snapshot.generatedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles'})+' PT',M,y,16,false,'#68819a');y+=60;}
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y}"><rect width="100%" height="100%" fill="white"/>${parts.join('')}</svg>`;
 }

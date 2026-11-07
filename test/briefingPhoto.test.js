@@ -21,3 +21,22 @@ test('photo plan expands for long content without overlapping sections; defaults
  const arrival=renderBriefingImageSvg({...sample,direction:'arrival',flight:'MU583'},{photo:true});assert(!arrival.includes('>PRICE<'));
 });
 test('Departure photo renders as a complete PNG',async()=>{const bytes=await buildBriefingImage(sample,{photo:true}),metadata=await sharp(bytes).metadata();assert.equal(metadata.width,1400);assert(metadata.height>=1680);fs.mkdirSync('.verification/departure-photo',{recursive:true});fs.writeFileSync('.verification/departure-photo/departure.png',bytes);fs.writeFileSync('.verification/departure-photo/summary.svg',summarySvg(sample,{photo:true}));});
+
+test('employee sheet and camera photo include all membership cabins and saved benefits after assignments',()=>{
+ const membership=require('../has/public/briefing-membership'),{renderEmployeeSheet}=require('../has/server/briefingEmployeeSheet');
+ const snapshot={...sample,membershipReference:{values:{'membership.gold.economy.3':'Saved extra allowance','membership.gold.economy.2':'Custom bags','membership.silver.business.0':'Saved Silver','membership.platinum.business.0':'白金卡 · Platinum / V'}}};
+ const rows=membership.rows(snapshot.membershipReference);assert.equal(rows.length,9);assert.equal(rows[0].tier,'Platinum / V');assert.equal(rows[2].benefits[0].value,'Saved extra allowance');
+ const html=renderEmployeeSheet(snapshot),svg=renderBriefingImageSvg(snapshot,{photo:true});
+ for(const text of ['Platinum / V','Gold / G','Saved Silver','Elite Plus / *2','Elite / *1','Business','Economy','All cabins','Custom bags: Saved extra allowance','SkyTeam Elite cards do not include lounge access.']){assert(html.includes(text),text);assert(svg.replace(/<[^>]*>/g,'').replace(/\s/g,'').includes(text.replace(/\s/g,'')),text);}
+ assert(html.indexOf('Membership Information')>html.indexOf('Team Assignment'));assert(svg.indexOf('MEMBERSHIP INFORMATION')>svg.indexOf('TEAM ASSIGNMENT'));
+ assert(!renderBriefingImageSvg({...sample,direction:'arrival'},{photo:true}).includes('MEMBERSHIP INFORMATION'));
+ assert(!renderBriefingImageSvg(sample).includes('MEMBERSHIP INFORMATION'));
+});
+
+test('employee sheet escapes saved text and membership photo grows for long custom benefits',()=>{
+ const {renderEmployeeSheet}=require('../has/server/briefingEmployeeSheet');
+ const snapshot={...sample,fields:{...sample.fields,details:'<script>alert(1)</script>'},membershipReference:{values:{'membership.gold.economy.3':'<img src=x onerror=alert(1)> '+('Long benefit '.repeat(60))+'LAST BENEFIT'}}};
+ const html=renderEmployeeSheet(snapshot),svg=renderBriefingImageSvg(snapshot,{photo:true}),normal=renderBriefingImageSvg(sample,{photo:true});
+ assert(!html.includes('<script>'));assert(!html.includes('<img src=x'));assert(html.includes('&lt;script&gt;'));assert(svg.replace(/<[^>]*>/g,'').replace(/\s/g,'').includes('LASTBENEFIT'));
+ assert(Number(svg.match(/height="([\d.]+)"/)[1])>Number(normal.match(/height="([\d.]+)"/)[1]));
+});
