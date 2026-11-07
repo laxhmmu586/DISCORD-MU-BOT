@@ -529,3 +529,25 @@ test('page permissions support role and member access, reject stale updates, and
  assert.equal((await f.request('lake',qa,{...saved,revision:1,restricted:false})).data.restricted,false);
  assert.equal((await f.request('spotter','/dashboard?qa=1')).status,403);
 });
+
+
+test('QA account display defaults CBS off, supports restore, scopes all totals, and preserves operational dashboards',async t=>{
+ const f=await fixture(t),config=(await f.request('lake','/dashboard/config')).data;
+ const pair=(id,station,account)=>({id,station,account,inbound:{flightNo:id+'101',days:[3]},outbound:{flightNo:id+'102',days:[3]}});
+ assert.equal((await f.request('lake','/dashboard/config',{revision:config.revision,pairs:[pair('MU','LAX','MU'),pair('CB','LAX','CBS'),pair('SF','SFO','MU')]})).status,200);
+ const record={id:'cbs-test',station:'LAX',account:'CBS',date:'2026-10-21',type:'arrival',flightNo:'CB101',bridge:'L1',completedAt:'2026-10-21T17:00:00Z',answers:{},signatures:{driver:{name:'Driver'},spotter:{name:'Spotter'}}};
+ f.db.prepare('INSERT INTO has_pbb_records(id,station,account,date,flight,bridge,data) VALUES(?,?,?,?,?,?,?)').run(record.id,record.station,record.account,record.date,record.flightNo,record.bridge,JSON.stringify(record));
+ const report=()=>f.request('lake','/dashboard?qa=1&start=2026-10-21&end=2026-10-21');
+ let response=(await report()).data;assert.equal(response.canManageAccounts,true);assert.equal(response.scopes.some(scope=>scope.account==='CBS'),false);assert.equal(response.byScope.some(scope=>scope.account==='CBS'),false);assert.equal(response.daily[0].expectedFlights,4);assert.equal(response.daily[0].submittedFlights,0);
+ const policy=(await f.request('lake','/dashboard/qa-accounts')).data;assert(policy.hidden.some(scope=>scope.account==='CBS'));assert(policy.accounts.some(scope=>scope.account==='CBS'));
+ assert.equal((await f.request('demo','/dashboard/qa-accounts')).status,403);assert.equal((await f.request('demo','/dashboard/qa-accounts',{revision:0,hidden:[]})).status,403);assert.equal((await f.request('demo','/dashboard?qa=1')).data.canManageAccounts,false);
+ const restored=await f.request('lake','/dashboard/qa-accounts',{revision:policy.revision,hidden:[]});assert.equal(restored.status,200);
+ response=(await report()).data;assert.equal(response.daily[0].expectedFlights,6);assert.equal(response.daily[0].submittedFlights,1);assert.equal(response.daily[0].coveredFlights,1);assert.equal(response.scopes.some(scope=>scope.account==='CBS'),true);
+ assert.equal((await f.request('lake','/dashboard/qa-accounts',{revision:policy.revision,hidden:[]})).status,409);
+ assert.equal((await f.request('lake','/dashboard/qa-accounts',{revision:restored.data.revision,hidden:[{station:'BAD',account:'UNKNOWN'}]})).status,400);
+ const hidden=[{station:'LAX',account:'CBS'},{station:'LAX',account:'MU'}];assert.equal((await f.request('lake','/dashboard/qa-accounts',{revision:restored.data.revision,hidden})).status,200);
+ response=(await report()).data;assert.equal(response.daily[0].expectedFlights,2);assert.equal(response.scopes.some(scope=>scope.station==='SFO'&&scope.account==='MU'),true);
+ const detail=(await f.request('lake','/dashboard?qa=1&station=LAX&account=CBS&start=2026-10-21&end=2026-10-21')).data;assert.deepEqual(detail.byScope,[]);assert.deepEqual(detail.records,[]);assert.deepEqual(detail.missing,[]);
+ const operational=(await f.request('driver','/dashboard?start=2026-10-21&end=2026-10-21')).data;assert.equal(operational.daily[0].expectedFlights,2);assert.equal(operational.scopes[0].account,'MU');
+ assert.deepEqual(JSON.parse(f.db.prepare('SELECT hidden FROM has_pbb_qa_accounts').get().hidden),hidden);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM has_pbb_records WHERE id=?').get(record.id).n,1);
+});

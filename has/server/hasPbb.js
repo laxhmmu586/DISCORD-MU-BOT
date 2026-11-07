@@ -13,6 +13,21 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  db.exec('CREATE TABLE IF NOT EXISTS has_pbb_schedule(singleton INTEGER PRIMARY KEY CHECK(singleton=1),data TEXT NOT NULL)');
  db.prepare('INSERT OR IGNORE INTO has_pbb_schedule VALUES(1,?)').run(JSON.stringify({revision:1,pairs:[]}));
  const schedule=()=>JSON.parse(db.prepare('SELECT data FROM has_pbb_schedule WHERE singleton=1').get().data);
+ // QA display policy is independent of employee memberships and operational schedules.
+ db.exec('CREATE TABLE IF NOT EXISTS has_pbb_qa_accounts(singleton INTEGER PRIMARY KEY CHECK(singleton=1),revision INTEGER NOT NULL,hidden TEXT NOT NULL)');
+ const qaAccountOptions=()=>{
+  const roster=employees.get(),stored=db.prepare('SELECT hidden FROM has_pbb_qa_accounts WHERE singleton=1').get();
+  return [...new Map([...schedule().pairs,...(roster.accounts||[]),...roster.employees,...db.prepare('SELECT DISTINCT station,account FROM has_pbb_records').all(),...(stored?JSON.parse(stored.hidden):[])].filter(scope=>!employeeAccounts.isHeadquarter(scope)).map(scope=>[employeeAccounts.key(scope),employeeAccounts.scope(scope)])).values()].sort((a,b)=>a.station.localeCompare(b.station)||a.account.localeCompare(b.account));
+ };
+ const qaAccountPolicy=()=>{const row=db.prepare('SELECT revision,hidden FROM has_pbb_qa_accounts WHERE singleton=1').get();return row?{revision:row.revision,hidden:JSON.parse(row.hidden)}:{revision:0,hidden:qaAccountOptions().filter(scope=>scope.account==='CBS')};};
+ const saveQaAccounts=db.transaction(body=>{
+  const current=qaAccountPolicy();if(body?.revision!==current.revision)fail('Account display settings changed. Reopen the dialog and try again.',409);
+  const known=new Set(qaAccountOptions().map(employeeAccounts.key));
+  if(!Array.isArray(body.hidden)||body.hidden.length>known.size||body.hidden.some(scope=>!scope||typeof scope.station!=='string'||typeof scope.account!=='string'||!known.has(employeeAccounts.key(scope))))fail('Choose valid station and account pairs.');
+  const hidden=[...new Map(body.hidden.map(scope=>[employeeAccounts.key(scope),employeeAccounts.scope(scope)])).values()];
+  db.prepare('INSERT INTO has_pbb_qa_accounts VALUES(1,?,?) ON CONFLICT(singleton) DO UPDATE SET revision=excluded.revision,hidden=excluded.hidden').run(current.revision+1,JSON.stringify(hidden));
+  return {...qaAccountPolicy(),accounts:qaAccountOptions()};
+ });
  const gateLocks=e=>{db.prepare('DELETE FROM has_pbb_gates WHERE expires<=?').run(store.now().toISOString());return db.prepare('SELECT data FROM has_pbb_gates WHERE station=? AND account=?').all(e.station,e.account).map(row=>JSON.parse(row.data));};
  const defaultFlights=e=>db.prepare('SELECT flight FROM has_pbb_flights WHERE station=? AND account=? ORDER BY flight').all(e.station,e.account).map(r=>r.flight);
  const scopedSchedule=e=>schedule().pairs.filter(pair=>pair.station===e.station&&pair.account===e.account);
@@ -114,6 +129,8 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  qaPermissions.register(app,'/has-pbb-api/dashboard/qa-permissions',req=>req.hasUser);
  dashboardPermissions.register(app,'/has-pbb-api/dashboard/page-permissions',req=>req.hasUser);
  app.get('/has-pbb-api/dashboard/access',route((req,res)=>res.json({canAccess:dashboardViewer(req.hasUser)})));
+ app.get('/has-pbb-api/dashboard/qa-accounts',route((req,res)=>res.json({...qaAccountPolicy(),accounts:qaAccountOptions()})));
+ app.post('/has-pbb-api/dashboard/qa-accounts',route((req,res)=>res.json(saveQaAccounts(req.body))));
  app.get('/has-pbb-api/dashboard/qa-access',route((req,res)=>res.json({canAccess:qaViewer(req.hasUser)})));
  const configScopes=user=>employeePositions.normalize(profiles.linked(user)?.position)==='Business Manager'?[employeeAccounts.scope(employee(user))]:accounts(employee(user));
  const requestedConfigScopes=(user,query={})=>{
@@ -263,7 +280,8 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  app.get('/has-pbb-api/dashboard',route((req,res)=>{
   // Resolve Main Account from the linked profile, never from client filters or additional accounts.
   const allowed=req.pbbQa?null:employeeAccounts.scope(employee(req.hasUser));
-  const visible=scope=>!employeeAccounts.isHeadquarter(scope)&&(!allowed||same(allowed,scope));
+  const qaPolicy=req.pbbQa?qaAccountPolicy():null,hiddenQaAccounts=new Set((qaPolicy?.hidden||[]).map(employeeAccounts.key));
+  const visible=scope=>!employeeAccounts.isHeadquarter(scope)&&(!allowed||same(allowed,scope))&&(!req.pbbQa||!hiddenQaAccounts.has(employeeAccounts.key(scope)));
   const end=String(req.query.end||today());if(!validDate(end))fail('Select a valid end date.');
   const start=String(req.query.start||new Date(Date.parse(end)-6*86400000).toISOString().slice(0,10));
   if(!validDate(start)||!validDate(end)||start>end||(Date.parse(end)-Date.parse(start))/86400000>92)fail('Select a date range of up to 93 days.');
@@ -295,7 +313,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
     }
    }
   }
-  res.json({station:allowed?.station||station,account:allowed?.account||account,start,end,daily,scopes:allowed?[allowed]:scopes,byScope,...(req.pbbQa?{missing}:{}),records:(req.pbbQa&&(station==='ALL'||account==='ALL')?[]:rows).map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
+  res.json({station:allowed?.station||station,account:allowed?.account||account,start,end,daily,scopes:allowed?[allowed]:scopes,byScope,...(req.pbbQa?{missing,canManageAccounts:dashboard(req.hasUser),accountVisibilityRevision:qaPolicy.revision}:{}),records:(req.pbbQa&&(station==='ALL'||account==='ALL')?[]:rows).map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
  }));
  for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&(r.delivery.status!=='ready'||r.station==='LAX'&&r.account==='MU'&&['pending','failed'].includes(r.discordDelivery?.status)))void deliver(row.id);}
  return {deliver,get,pruneIncomplete,flushProblemMail:problemMail.tick,close(){problemMail.close();clearInterval(cleanupTimer);for(const s of streams)s.res.end();}};

@@ -14,9 +14,9 @@
   <script defer src="/flight-account.js?v=20261030-visual-followup"></script>
   <script defer src="/department-access.js?v=qa-workspace"></script>
   <script defer src="/download-filename.js"></script>
-  <script defer src="/has/dashboard-charge.js?v=visible-charge-3"></script><script defer src="/has/has-pbb-dashboard.js?v=visible-charge-3"></script>
+  <script defer src="/has/dashboard-charge.js?v=visible-charge-3"></script><script defer src="/has/has-pbb-dashboard.js?v=20261106-qa-accounts"></script>
 <link rel="stylesheet" href="/has/page-permissions.css?v=workspace"><script defer src="/has/page-permissions.js?v=editor-visibility"></script>
-<link rel="stylesheet" href="/has/pbb-coverage.css?v=qa-account-right">
+<link rel="stylesheet" href="/has/pbb-coverage.css?v=20261106-qa-accounts">
 </head>
 <body class="home-page qa-workspace">
 <div class="app-frame">
@@ -33,7 +33,7 @@
     <div class="sidebar-footer"><span class="footer-mark">HALLMARK</span><p>People. Operations. Together.</p><span class="footer-line"></span><small>Providing Peace of Mind.</small></div>
   </aside>
   <main class="home-main has-coverage-main">
-    <header class="has-page-intro"><span class="eyebrow">QUALITY ASSURANCE</span><h1>PBB coverage</h1><p>Company → Station → Account</p><button type="button" data-page-permissions="/has-pbb-api/dashboard/qa-permissions" hidden>Permissions</button></header>
+    <header class="has-page-intro"><span class="eyebrow">QUALITY ASSURANCE</span><h1>PBB coverage</h1><p>Company → Station → Account</p><button type="button" id="qa-account-settings" hidden>Accounts shown</button><button type="button" data-page-permissions="/has-pbb-api/dashboard/qa-permissions" hidden>Permissions</button></header>
     <p id="has-status" role="status" aria-live="polite">Checking access…</p><section id="dashboard-panel" hidden><form id="dashboard-form" class="has-form"><label>Station<select id="dashboard-station"></select></label><label>Account<select id="dashboard-account"></select></label><label>Start date<input type="date" id="dashboard-start" required></label><label>End date<input type="date" id="dashboard-end" required></label><div><button class="primary">Refresh statistics</button></div></form><div id="dashboard-results"></div></section>
   </main>
 </div>
