@@ -5,8 +5,9 @@
   const cbs=Boolean(document.querySelector('.page-tabs[aria-label="CBS sections"]'));
   const cbsForm=['/cbs-form.html','/pir-form.html'].includes(location.pathname);
   let header=originalHeader;
-  if(cbs||cbsForm){
-    document.body.classList.add(cbs?'desktop-cbs-page':'desktop-cbs-form');
+  if(cbs){document.body.classList.add('desktop-cbs-page');header=null;}
+  else if(cbsForm){
+    document.body.classList.add('desktop-cbs-form');
     header=document.createElement('div');header.className='desktop-cbs-topbar';header.setAttribute('role','banner');
     const brand=document.createElement('a');brand.className='brand';brand.href='/flights.html';brand.textContent='MUFC';header.append(brand);document.body.prepend(header);
   }

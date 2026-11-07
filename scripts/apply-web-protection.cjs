@@ -40,6 +40,6 @@ config.hosting.rewrites=config.hosting.rewrites.filter(r=>!blocked.some(n=>r.sou
 config.hosting.rewrites.unshift(...blocked.flatMap(n=>['/'+n,'/has/'+n,'/public/'+n,'/public/public/'+n].map(source=>({source,destination:n.startsWith('info')?'/removed.html':'/desktop-only.html'}))));
 config.hosting.rewrites=config.hosting.rewrites.filter((row,index,rows)=>rows.findIndex(other=>other.source===row.source)===index);
 // Keep Dashboard source excluded and let Hosting return its real 404 page.
-config.hosting.rewrites=config.hosting.rewrites.filter(row=>!/^(?:\/public){0,2}(?:\/has)?\/index(?:\.html)?\/?$/.test(row.source));
+config.hosting.rewrites=config.hosting.rewrites.filter(row=>!/^(?:\/public){0,2}(?:\/has)?\/(?:index|cbs|lbs)(?:\.html)?\/?$/.test(row.source));
 write('public/firebase.json',JSON.stringify(config,null,2)+'\n');
 console.log('Updated web navigation and hosting exclusion rules.');

@@ -397,22 +397,6 @@
         "destination": "/desktop-only.html"
       },
       {
-        "source": "/cbs.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/cbs.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/cbs.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/cbs.html",
-        "destination": "/desktop-only.html"
-      },
-      {
         "source": "/cbs.js",
         "destination": "/desktop-only.html"
       },
@@ -506,38 +490,6 @@
       },
       {
         "source": "/public/public/reports",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/cbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/cbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/cbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/cbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/lbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/lbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/lbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/lbs",
         "destination": "/desktop-only.html"
       },
       {

@@ -34,7 +34,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  const auth=await context.request.post(origin+'/desktop-auth',{headers:{Authorization:'Bearer '+token}});assert.equal(auth.status(),200);
  try{
   await page.goto(origin+'/cbs.html');await page.locator('#cases-output [data-edit-bag-tag]').first().waitFor();
-  assert.equal(await page.locator('.page-tabs .page-tab').count(),8);assert.deepEqual(await page.locator('.desktop-cbs-topbar nav a').allTextContents(),['REPORT','BAGGAGE','LBS','NOTES','FORM']);
+  assert.equal(await page.locator('.page-tabs .page-tab').count(),8);assert.equal(await page.locator('.desktop-cbs-topbar').count(),0);assert((await page.locator('#open-cases-card').boundingBox()).y<60,'CBS has no reserved top navigation row');
   await page.waitForFunction(()=>[...document.querySelectorAll('img.cbs-art')].every(i=>i.complete&&i.naturalWidth>0));
   await page.locator('#cbs-live-status.connected').waitFor();
   const bag=page.locator('#cases-output [data-edit-bag-tag]').first();await bag.dblclick();await bag.getByRole('textbox').fill('MU999999');await bag.getByRole('textbox').press('Enter');await page.waitForFunction(()=>document.querySelector('#cases-output [data-edit-bag-tag]')?.textContent==='MU999999');assert(posts.some(p=>p.path.startsWith('/cbs-bag-tags/')));
