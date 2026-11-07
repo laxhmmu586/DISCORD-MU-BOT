@@ -31,13 +31,15 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
         return json(res,{approved:true});
       }
       const sessionReady=onlineAuthorization&&Date.now()<onlineUntil;
-      const protectedPage=/^\\/(?:index|report|reports|cbs|has-pbb|has-pbb-dashboard)(?:\\.html)?$/.test(url.pathname)||url.pathname==='/';
+      const localPath=decodeURIComponent(url.pathname).replace(/\\\\/g,'/').replace(/\\/{2,}/g,'/');
+      const canonical=localPath.toLowerCase().replace(/[ .\\/]+$/,'');
+      const protectedPage=/^\\/(?:index|report|reports|cbs|has-pbb|has-pbb-dashboard)(?:\\.html)?$/.test(canonical)||url.pathname==='/';
       if(protectedPage&&!sessionReady){res.writeHead(302,{Location:'/login.html','Cache-Control':'no-store'});return res.end();}
       if(sessionReady&&!req.headers.authorization)req.headers.authorization=onlineAuthorization;
-      if(['/search','/local-flights','/sy-live-stream'].includes(url.pathname)&&!sessionReady)return json(res,{error:'Employee sign-in required.'},401);
+      if((['/search','/local-flights','/sy-live-stream'].includes(url.pathname)||url.pathname.startsWith('/sales-report/'))&&!sessionReady)return json(res,{error:'Employee sign-in required.'},401);
  `);
  // Pages are bundled locally. Never fall back to fetching private page code from a website.
- server=server.replace("if (file.endsWith('.html')) {", "if (file.endsWith('.html')) {");
+ server=server.replace("const relative = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);", "const relative = url.pathname === '/' ? '/index.html' : localPath;");
  write('src/server.js',server);
  write('src/desktop-policy.js',read('src/desktop-policy.js').replace('|has-pbb|','|'));
  let ui=read('web/desktop-ui.js');

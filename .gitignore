@@ -21,3 +21,6 @@ data/EP.DB-shm
 
 .vs/
 .verification/express/
+
+# Approved desktop device registry is managed on the API host.
+data/desktop-devices.json
