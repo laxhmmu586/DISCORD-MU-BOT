@@ -319,7 +319,7 @@ test('employee Departure sheet uses effective ETAB, saved reference and nickname
  const first=await request('agent',path);assert.equal(first.status,200);
  for(const text of ['Shared allowance','$222','B-7369','1230','1145L','Membership Information','Gate Lead','agent'])assert(first.data.html.includes(text),text);
  assert(!first.data.html.includes('<input'));assert(!first.data.html.includes('employee_avatars'));
- assert.equal((await request('agent','/employee-sheet?date='+DATE+'&flight=MU583&direction=arrival')).status,400);
+ const arrival=await request('agent','/employee-sheet?date='+DATE+'&flight=MU583&direction=arrival');assert.equal(arrival.status,200);assert(arrival.data.html.includes('ARRIVAL BRIEFING'));assert(!arrival.data.html.includes('Membership Information'));
  const saved=(await request('lead','/reference')).data;
  await request('lead','/reference',{revision:saved.revision,values:{...saved.values,'membership.gold.economy.3':'Updated allowance'}});
  assert((await request('agent',path)).data.html.includes('Updated allowance'));

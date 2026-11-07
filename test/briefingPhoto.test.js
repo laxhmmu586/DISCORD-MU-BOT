@@ -40,3 +40,12 @@ test('employee sheet escapes saved text and membership photo grows for long cust
  assert(!html.includes('<script>'));assert(!html.includes('<img src=x'));assert(html.includes('&lt;script&gt;'));assert(svg.replace(/<[^>]*>/g,'').replace(/\s/g,'').includes('LASTBENEFIT'));
  assert(Number(svg.match(/height="([\d.]+)"/)[1])>Number(normal.match(/height="([\d.]+)"/)[1]));
 });
+
+test('employee sheets use expanding special cards and Departure exposes separate assignment panels',()=>{
+ const {renderEmployeeSheet}=require('../has/server/briefingEmployeeSheet');
+ const long='Long special information '.repeat(15)+'END SPECIAL',departure=renderEmployeeSheet({...sample,fields:{...sample.fields,wchr:long,um:'3'}});
+ assert(departure.includes('class="employee-special-grid"'));assert(departure.includes(long));assert(departure.includes('data-employee-team="counter"'));assert(departure.includes('data-employee-team="gate"'));assert(departure.includes('data-employee-team-panel="gate" hidden'));
+ const arrival=renderEmployeeSheet({...sample,direction:'arrival',flight:'MU583',fields:{...sample.fields,wchrBusiness:long,wchrEconomy:'2',arrivalLead:'Lake',notes:'Existing notes'}});
+ for(const text of ['ARRIVAL BRIEFING','WCHR - Business','WCHR - Economy',long,'Lake','employee-arrival-team'])assert(arrival.includes(text),text);
+ assert(!arrival.includes('employee-team-tabs'));assert(!arrival.includes('MEMBERSHIP'));assert(!arrival.includes('data-field='),'Editable time fields are reused from the live page');
+});
