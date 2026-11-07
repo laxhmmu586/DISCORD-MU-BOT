@@ -5,9 +5,9 @@ const {withoutEid}=require('../employeeDataProtection');
 test('private pages blocked before every static mount; Info removed',async t=>{
  const app=express();app.use(staticGuard);app.use((_q,r)=>r.send('public'));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>server.close());const base='http://127.0.0.1:'+server.address().port;
- for(const route of ['/index.html','/public/index.html','/public/public/index.html','/has/index.html','/index','/report.html','/cbs.html','/has-pbb.html'])assert.equal((await fetch(base+route)).status,403,route);
+ for(const route of ['/index.html','/public/index.html','/public/public/index.html','/has/index.html','/index','/report.html','/cbs.html'])assert.equal((await fetch(base+route)).status,403,route);
  for(const route of ['/info','/info.html','/has/info.html','/info/'])assert.equal((await fetch(base+route)).status,410,route);
- assert.equal((await fetch(base+'/flights.html')).status,200);
+ assert.equal((await fetch(base+'/flights.html')).status,200);assert.equal((await fetch(base+'/has-pbb.html')).status,200);assert(!privateApi('/has-pbb-api/context'));
 });
 test('device proof, employee login, request binding, replay and revocation',async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mufc-device-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
@@ -18,7 +18,7 @@ test('device proof, employee login, request binding, replay and revocation',asyn
  const sign=(url='/search?q=SY',body='',method='GET',authorization='Bearer employee',time=String(Date.now()))=>{
   const nonce=crypto.randomBytes(24).toString('base64url');return {'Content-Type':'application/json',Authorization:authorization,'X-MUFC-Device':'approved','X-MUFC-Time':time,'X-MUFC-Nonce':nonce,'X-MUFC-Signature':crypto.sign(null,Buffer.from(message({method,url,time,nonce,authorization,body})),pair.privateKey).toString('base64url')};
  };
- for(const p of ['/search?q=SY','/cbs-cases','/psm-report','/sales-report/download','/has-pbb-api/context','/desktop-access','/dashboard-snapshot']){
+ for(const p of ['/search?q=SY','/cbs-cases','/psm-report','/sales-report/download','/desktop-access','/dashboard-snapshot']){
   assert.equal((await fetch(base+p,{headers:{Authorization:'Bearer employee',Origin:'https://www.mufcapp.net','User-Agent':'MUFC Desktop'}})).status,403,p);
  }
  const headers=sign();assert.equal((await fetch(base+'/search?q=SY',{headers})).status,200);assert.equal((await fetch(base+'/search?q=SY',{headers})).status,403,'replay');
@@ -47,8 +47,8 @@ test('employee admin edits do not publish or erase legacy employee identifiers',
 });
 test('hosting excludes original page code and all desktop aliases',()=>{
  const {hosting}=require('../public/firebase.json');
- for(const name of ['index.html','report.html','report.js','cbs.html','has-pbb.html','info.html'])assert(hosting.ignore.includes('**/'+name));
- for(const source of ['/report.html','/cbs.html','/has-pbb.html','/info'])assert(hosting.rewrites.some(r=>r.source===source&&['/desktop-only.html','/removed.html'].includes(r.destination)));
+ for(const name of ['index.html','report.html','report.js','cbs.html','info.html'])assert(hosting.ignore.includes('**/'+name));
+ for(const source of ['/report.html','/cbs.html','/info'])assert(hosting.rewrites.some(r=>r.source===source&&['/desktop-only.html','/removed.html'].includes(r.destination)));
  for(const source of ['/index.html','/has/index.html','/index','/public/index.html','/public/public/index.html'])assert(!hosting.rewrites.some(r=>r.source===source),'Dashboard falls through to a real 404');
  assert(privateApi('/cbs-cases'));assert(!privateApi('/cbs-scan'));assert(!privatePage('/has-report'));
 });

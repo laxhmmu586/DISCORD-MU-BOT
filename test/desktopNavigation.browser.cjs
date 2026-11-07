@@ -56,7 +56,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    return file?route.fulfill({path:file}):route.fulfill({status:404,body:''});
   });
   await web.goto('http://web.fixture/flights.html');await web.getByRole('button',{name:'Enter MU586 boarding'}).waitFor();
-  assert.equal(await web.getByText('Enter Dashboard',{exact:true}).count(),0);assert.equal(await web.locator('.flight-pbb-link').count(),0);assert(flightScript.includes('web-no-dashboard-v2'));
+  assert.equal(await web.getByText('Enter Dashboard',{exact:true}).count(),0);assert.equal(await web.locator('.flight-pbb-link').count(),1);assert.equal(await web.locator('.flight-pbb-link').getAttribute('href'),'/has-pbb.html');assert(flightScript.includes('web-jet-bridge-v3')); 
   await web.screenshot({path:'output/desktop-navigation-2.1.1/web-flights.png',fullPage:true});await web.close();
   console.log(JSON.stringify({navigationPages:5,reportTabs:5,noNestedReport:true,reportAndBaggageNavigation:true,formOpens:true,webDashboardRemoved:true,pageErrors:errors}));
   assert.deepEqual(errors,[]);

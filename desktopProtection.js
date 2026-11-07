@@ -3,18 +3,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // These files are packaged with Desktop, never served by the public API host.
-const privateFiles = ['index.html','report.html','report.js','reports.html','cbs.html','cbs.js','has-pbb.html','has-pbb-client.js','has-pbb-data.js','has-pbb-dashboard.html','has-pbb-dashboard.js'];
+const privateFiles = ['index.html','report.html','report.js','reports.html','cbs.html','cbs.js'];
 function normalized(value) {
   try { return decodeURIComponent(value).replace(/\\/g,'/').replace(/\/{2,}/g,'/').toLowerCase(); } catch { return ''; }
 }
 function privatePage(value) {
   const p=normalized(value).replace(/\/$/,'');
   return privateFiles.some(name=>p==='/'+name||p==='/public/'+name||p==='/public/public/'+name||p==='/has/'+name)
-    || /^\/(?:public\/)?(?:index|report|reports|cbs|lbs|has-pbb|has-pbb-dashboard)$/.test(p);
+    || /^\/(?:public\/)?(?:index|report|reports|cbs|lbs)$/.test(p);
 }
 function removedPage(value) { return /^(?:\/public){0,2}(?:\/has)?\/info(?:\.html|\.js|-access\.js)?\/?$/.test(normalized(value)); }
 function privateApi(p) {
-  return /^\/(?:desktop-access|search|dashboard-snapshot|sy-live-stream|flight-telex|notes|security-reviews|warning-acknowledgements|stored-report|reports\/|sales-report\/|(?:sales-details|vip|psm|inad|spml|wch|miss-connection|test-baggage|bagroom)-report|has-pbb-api(?:\/|$)|pbb-api(?:\/|$)|test-baggage(?:\/|$)|cbs-(?!scan(?:2)?(?:\/|$)))/i.test(p);
+  return /^\/(?:desktop-access|search|dashboard-snapshot|sy-live-stream|flight-telex|notes|security-reviews|warning-acknowledgements|stored-report|reports\/|sales-report\/|(?:sales-details|vip|psm|inad|spml|wch|miss-connection|test-baggage|bagroom)-report|pbb-api(?:\/|$)|test-baggage(?:\/|$)|cbs-(?!scan(?:2)?(?:\/|$)))/i.test(p);
 }
 const digest=value=>crypto.createHash('sha256').update(value||'').digest('hex');
 function message({method,url,time,nonce,authorization,body}) {
