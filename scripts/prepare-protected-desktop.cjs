@@ -25,7 +25,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
         if(req.method==='DELETE'){onlineAuthorization='';onlineUntil=0;return json(res,{signedOut:true});}
         if(req.method!=='POST'||!await authenticated(req))return json(res,{error:'Employee sign-in required.'},401);
         const access=await fetch(CLOUD+'/desktop-access',{headers:{Authorization:req.headers.authorization}});
-        if(!access.ok)return json(res,{error:'This computer needs administrator approval.'},403);
+        if(!access.ok){let details={};try{details=await access.json();}catch{}return json(res,{error:details.error||'Employee sign-in failed. Please try again.',code:details.code||'DESKTOP_REQUIRED'},access.status);}
         onlineAuthorization=req.headers.authorization;
         onlineUntil=Date.now()+Math.min(55*60000,Math.max(0,JSON.parse(Buffer.from(onlineAuthorization.split('.')[1],'base64url')).exp*1000-Date.now()));
         return json(res,{approved:true});

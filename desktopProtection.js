@@ -28,6 +28,7 @@ function staticGuard(req,res,next) {
 function createApiGuard({devicesFile=process.env.MUFC_DESKTOP_DEVICES_FILE||path.join(__dirname,'data','desktop-devices.json'),authenticate=require('./has/server/pbbAuth').authenticate,now=Date.now}={}) {
   const used=new Map();
   return async(req,res,next)=>{
+    if(req.path==='/desktop-device-enroll')return require('./desktopEnrollment').createEnrollmentHandler({devicesFile,authenticate,now,used})(req,res);
     if(!privateApi(req.path)||req.method==='OPTIONS')return next();
     res.set('Cache-Control','private, no-store');
     try {

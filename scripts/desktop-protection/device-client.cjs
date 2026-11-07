@@ -14,7 +14,7 @@ async function createDeviceClient(directory,safeStorage,nativeFetch=global.fetch
   const id=crypto.createHash('sha256').update(publicKey).digest('hex');
   fs.writeFileSync(path.join(directory,'desktop-device-enrollment.json'),JSON.stringify({id,publicKey,computer:require('node:os').hostname()},null,2));
   const digest=v=>crypto.createHash('sha256').update(v||'').digest('hex');
-  return async function deviceFetch(resource,options={}) {
+  return async function deviceFetch(resource,options={},enrollmentAttempted=false) {
     const url=new URL(resource instanceof Request?resource.url:resource);
     if(url.origin!=='https://api.mufcapp.net')return nativeFetch(resource,options);
     const method=(options.method||'GET').toUpperCase(),headers=new Headers(options.headers);
@@ -26,7 +26,19 @@ async function createDeviceClient(directory,safeStorage,nativeFetch=global.fetch
     const message=['MUFC-DESKTOP-1',method,url.pathname+url.search,time,nonce,digest(headers.get('Authorization')),digest(body)].join('\n');
     headers.set('X-MUFC-Device',id);headers.set('X-MUFC-Time',time);headers.set('X-MUFC-Nonce',nonce);
     headers.set('X-MUFC-Signature',crypto.sign(null,Buffer.from(message),privateKey).toString('base64url'));
-    return nativeFetch(resource,{...options,headers,...(body?{body}:{})});
+    const response=await nativeFetch(resource,{...options,headers,...(body?{body}:{})});
+    if(!enrollmentAttempted&&url.pathname==='/desktop-access'&&response.status===403&&headers.get('Authorization')) {
+      let details;try{details=await response.clone().json();}catch{}
+      if(details?.code==='DESKTOP_REQUIRED') {
+        const enrollment=await deviceFetch('https://api.mufcapp.net/desktop-device-enroll',{
+          method:'POST',headers:{Authorization:headers.get('Authorization'),'Content-Type':'application/json'},
+          body:JSON.stringify({id,publicKey,computer:require('node:os').hostname()})
+        });
+        if(!enrollment.ok)return enrollment;
+        return deviceFetch(resource,options,true);
+      }
+    }
+    return response;
   };
 }
 module.exports={createDeviceClient};
