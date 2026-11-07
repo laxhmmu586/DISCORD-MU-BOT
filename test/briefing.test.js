@@ -301,11 +301,28 @@ test('Departure SY booking is exact, refreshes, preserves overrides and freezes 
  assert.equal(exported.fields.bookingF,'2');assert.equal(exported.fields.bookingJ,'50');assert.equal(exported.fields.bookingY,'249');assert.equal(exported.fields.configF,'6');assert.equal(exported.fields.infantJ,'');
 });
 
-test('Departure photo reads saved Price reference without changing Arrival photo data',async t=>{
+test('Departure photo reads saved Price and Membership without changing Arrival photo data',async t=>{
  const {request}=await fixture(t),image=require('../has/server/briefingImage'),original=image.buildBriefingImage,captured=[];t.after(()=>image.buildBriefingImage=original);image.buildBriefingImage=async(snapshot,options)=>{captured.push({snapshot,options});return Buffer.from('photo-fixture');};
- const before=(await request('lead','/reference')).data;assert.equal((await request('lead','/reference',{revision:before.revision,values:{'price.2':'$222'},boxes:{price:[{id:'card-price',title:'Extra fee',text:'USD 25'}]}})).status,200);
+ const before=(await request('lead','/reference')).data;assert.equal((await request('lead','/reference',{revision:before.revision,values:{'price.2':'$222','membership.gold.economy.3':'Saved allowance'},boxes:{price:[{id:'card-price',title:'Extra fee',text:'USD 25'}]}})).status,200);
  assert.equal((await request('lead','/photo?date='+DATE+'&flight=MU586&direction=departure')).status,200);assert.equal(captured[0].snapshot.priceReference.values['price.2'],'$222');assert.equal(captured[0].snapshot.priceReference.boxes.price[0].text,'USD 25');assert.equal(captured[0].options.photo,true);
- assert.equal((await request('lead','/photo?date='+DATE+'&flight=MU583&direction=arrival')).status,200);assert(!('priceReference' in captured[1].snapshot));
+ assert.equal(captured[0].snapshot.membershipReference.values['membership.gold.economy.3'],'Saved allowance');
+ assert.equal((await request('lead','/photo?date='+DATE+'&flight=MU583&direction=arrival')).status,200);assert(!('priceReference' in captured[1].snapshot));assert(!('membershipReference' in captured[1].snapshot));
+});
+
+test('employee Departure sheet uses effective ETAB, saved reference and nicknames with existing access checks',async t=>{
+ const {request}=await fixture(t),path='/employee-sheet?date='+DATE+'&flight=MU586&direction=departure';
+ assert.equal((await request(null,path)).status,401);assert.equal((await request('other',path)).status,403);
+ const before=(await request('lead','/reference')).data;
+ await request('lead','/reference',{revision:before.revision,values:{'membership.gold.economy.3':'Shared allowance','price.2':'$222'}});
+ await request('lead','/assign',{date:DATE,flight:'MU586',direction:'departure',employeeId:'agent',fromField:null,toField:'gateLead',fromValue:null,toValue:''});
+ await request('lead','',{date:DATE,flight:'MU586',direction:'departure',field:'etd',previous:null,value:'1230'});
+ const first=await request('agent',path);assert.equal(first.status,200);
+ for(const text of ['Shared allowance','$222','B-7369','1230','1145L','Membership Information','Gate Lead','agent'])assert(first.data.html.includes(text),text);
+ assert(!first.data.html.includes('<input'));assert(!first.data.html.includes('employee_avatars'));
+ assert.equal((await request('agent','/employee-sheet?date='+DATE+'&flight=MU583&direction=arrival')).status,400);
+ const saved=(await request('lead','/reference')).data;
+ await request('lead','/reference',{revision:saved.revision,values:{...saved.values,'membership.gold.economy.3':'Updated allowance'}});
+ assert((await request('agent',path)).data.html.includes('Updated allowance'));
 });
 
 

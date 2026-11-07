@@ -1,5 +1,7 @@
 # Arrival and Departure briefing
 
+The standalone Departure employee view uses a read-only briefing sheet matching the camera photo: flight information, booking/specials/time checks beside Price, Details, Counter/Gate assignments, then Membership Information. Counter stays on the left and Gate on the right on phones as well as desktop. Booking and Price stack on phones, and the full Membership table scrolls horizontally. Membership includes every tier/cabin and uses the same saved reference values and English-label normalization as the existing editor. Camera PNGs append this complete table below assignments; Arrival and archived/control-sheet formats keep their existing content.
+
 `/briefing.html` replaces the Profile entry in the workspace sidebar. The account menu still provides Profile. Access requires an existing linked LAX/MU employee, using the same eligibility rules as Schedule. DEMO HAS, HAS OPS RAMP, and Headquarter accounts are excluded even when the selected workspace shows LAX / MU.
 
 The heading and record date use today's date in America/Los_Angeles. Flight defaults to MU583 and aircraft type to 777-300; flight can be changed. Departure defaults to MU586. Arrival mobile sections are Flight, Details, Duty and Time; Departure uses Flight, Details and Duty.

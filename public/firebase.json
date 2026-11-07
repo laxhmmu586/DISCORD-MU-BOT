@@ -1125,6 +1125,18 @@
         "destination": "/has/briefing-prices.js"
       },
       {
+        "source": "/briefing-membership.js",
+        "destination": "/has/briefing-membership.js"
+      },
+      {
+        "source": "/briefing-employee-sheet.js",
+        "destination": "/has/briefing-employee-sheet.js"
+      },
+      {
+        "source": "/briefing-employee-sheet.css",
+        "destination": "/has/briefing-employee-sheet.css"
+      },
+      {
         "source": "/briefing-live.js",
         "destination": "/has/briefing-live.js"
       },
