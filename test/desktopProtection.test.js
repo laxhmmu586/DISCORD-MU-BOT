@@ -48,6 +48,7 @@ test('employee admin edits do not publish or erase legacy employee identifiers',
 test('hosting excludes original page code and all desktop aliases',()=>{
  const {hosting}=require('../public/firebase.json');
  for(const name of ['index.html','report.html','report.js','cbs.html','has-pbb.html','info.html'])assert(hosting.ignore.includes('**/'+name));
- for(const source of ['/index.html','/has/index.html','/report.html','/cbs.html','/has-pbb.html','/info'])assert(hosting.rewrites.some(r=>r.source===source&&['/desktop-only.html','/removed.html'].includes(r.destination)));
+ for(const source of ['/report.html','/cbs.html','/has-pbb.html','/info'])assert(hosting.rewrites.some(r=>r.source===source&&['/desktop-only.html','/removed.html'].includes(r.destination)));
+ for(const source of ['/index.html','/has/index.html','/index','/public/index.html','/public/public/index.html'])assert(!hosting.rewrites.some(r=>r.source===source),'Dashboard falls through to a real 404');
  assert(privateApi('/cbs-cases'));assert(!privateApi('/cbs-scan'));assert(!privatePage('/has-report'));
 });
