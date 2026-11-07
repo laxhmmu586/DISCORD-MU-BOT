@@ -71,7 +71,7 @@
       if (!res.ok) throw new Error(data.error || 'Unable to save NBRD confirmation.');
       return data;
     }
-    function choose({ title, text, yesLabel = '✓', noLabel = '✕', confirm, reject, previewRows = [], warning = false }) {
+    function choose({ title, text, yesLabel = '✓', noLabel = '✕', confirm, reject, previewRows = [], warning = false, showBack = true }) {
       if (modal.open) return Promise.resolve(false);
       return new Promise(resolve => {
         modal.replaceChildren();
@@ -96,7 +96,7 @@
         actions.append(yes,no); modal.append(actions);
         const back=document.createElement('button'); back.type='button'; back.className='nbrd-back'; back.setAttribute('aria-label','Back');
         back.innerHTML='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h13a5 5 0 0 1 5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        modal.append(back);
+        if (showBack) modal.append(back);
         let busy=false;
         const finish = value => { modal.close(); resolve(value); };
         modal.oncancel = event => { event.preventDefault(); if (!busy) finish(false); };
@@ -128,7 +128,7 @@
         if (sequence === loadSequence && requestRevision === revision) render(data.rows || []);
         return rows;
       },
-      verify:()=>{ const pending=rows.filter(row=>!row.nbrdResolved); return pending.length ? choose({title:'Check Total Nbrd',text:'',previewRows:pending,yesLabel:'Continue',noLabel:'Add NBRD'}) : Promise.resolve(true); },
+      verify:()=>{ const pending=rows.filter(row=>!row.nbrdResolved); return pending.length ? choose({title:'Check Total Nbrd',text:'',previewRows:pending,yesLabel:'Continue',noLabel:'Add NBRD',showBack:false}) : Promise.resolve(true); },
       board:({bn,detail,confirm})=>choose({warning:true,title:`NBRD · BN ${displayBn(bn)}`,text:detail,yesLabel:'OK to Board',noLabel:'NOT OK',confirm}),
     };
   }
