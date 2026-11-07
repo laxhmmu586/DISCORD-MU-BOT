@@ -1,6 +1,6 @@
 # Approved MUFC Desktop computers
 
-Dashboard (`index.html`), Report Center, LBS and Jet Bridge are desktop-only from MUFC 2.1.0. Firebase Hosting excludes their source files, including nested copies, and serves a small desktop-required notice for old links. The API host rejects the original pages before any static router. Info is retired. Employee information responses omit EID; internal identifiers remain stored for existing record associations.
+Dashboard (`index.html`), Report Center and LBS are desktop-only. Firebase Hosting excludes their source files, including nested copies. Dashboard URLs return HTTP 404; old Report/LBS links show a desktop-required notice. The API host rejects these original pages before any static router. Jet Bridge is available both in Desktop and on the authenticated website, retaining its existing employee/role checks. Its website navigation, footer and flight-card icon links are restored. Info is retired. Employee information responses omit EID; internal identifiers remain stored for existing record associations.
 
 Every approved computer has a separate Ed25519 key. The private key is generated on that computer, encrypted with Electron safeStorage (Windows credential protection), and stored under `%APPDATA%\MUFC\desktop-device-key.bin`. It is never included in an installer or uploaded. The public enrollment request is `%APPDATA%\MUFC\desktop-device-enrollment.json`.
 

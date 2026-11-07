@@ -31,8 +31,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert(!fs.readFileSync(path.join(source,'src/preload.js'),'utf8').includes('boarding:request'));
   assert(!fs.readFileSync(path.join(source,'src/main.js'),'utf8').includes('boardingService'));
   for(const p of ['/index.html','/report.html','/baggage.html','/cbs.html','/notes.html']){
-   await page.goto(origin+p);await page.locator('body > header .desktop-primary-nav').waitFor();
-   assert.deepEqual(await page.locator('body > header .desktop-primary-nav > *').allTextContents(),expected,p);
+   await page.goto(origin+p);await page.locator('body > header .desktop-primary-nav, .desktop-cbs-topbar .desktop-primary-nav').first().waitFor();
+   assert.deepEqual(await page.locator('body > header .desktop-primary-nav > *, .desktop-cbs-topbar .desktop-primary-nav > *').allTextContents(),expected,p);
   }
   await page.goto(origin+'/index.html');await page.locator('body > header .desktop-primary-nav').getByText('REPORT',{exact:true}).click();await page.waitForURL('**/report.html');
   assert.deepEqual((await page.locator('.report-mode-actions [data-report-mode]').allTextContents()).map(t=>t.trim()),['Sales Report','Sales Details','VIP Report','Authorization Report','INAD Report']);

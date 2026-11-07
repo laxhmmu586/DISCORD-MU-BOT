@@ -1,7 +1,15 @@
 (()=>{function initialize(){
   if(!window.mufcDesktop||location.pathname==='/login.html')return;
   const entries=[['REPORT','/report.html'],['BAGGAGE','/baggage.html'],['LBS','/cbs.html'],['NOTES','/notes.html'],['FORM','/index.html#forms']];
-  const header=document.querySelector('body > header');
+  const originalHeader=document.querySelector('body > header');
+  const cbs=Boolean(document.querySelector('.page-tabs[aria-label="CBS sections"]'));
+  const cbsForm=['/cbs-form.html','/pir-form.html'].includes(location.pathname);
+  let header=originalHeader;
+  if(cbs||cbsForm){
+    document.body.classList.add(cbs?'desktop-cbs-page':'desktop-cbs-form');
+    header=document.createElement('div');header.className='desktop-cbs-topbar';header.setAttribute('role','banner');
+    const brand=document.createElement('a');brand.className='brand';brand.href='/flights.html';brand.textContent='MUFC';header.append(brand);document.body.prepend(header);
+  }
   if(header){
     let nav=header.querySelector('nav');
     if(!nav){nav=document.createElement('nav');const brand=header.querySelector('.brand,.flight-brand');if(brand)brand.after(nav);else header.prepend(nav);}
