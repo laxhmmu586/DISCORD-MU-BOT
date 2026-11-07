@@ -22,7 +22,7 @@ node scripts/prepare-protected-desktop.cjs BASE_APP NEW_OUTPUT 2.1.0 ASAR_MODULE
 node scripts/verify-protected-desktop.cjs NEW_OUTPUT/app-source
 ```
 
-Validation: 26 focused security/profile tests passed. Integration against the actual packaged server verified five pages, 55 bundled dependencies, signed cloud proxy requests, employee login, sign-out, URL encoding/case variants and rejection of ordinary browsers. A real Electron smoke run initialized Firebase and the native bridge and rejected protected pages before login. Business data returned by cloud services in the integration test is simulated; a real employee sign-in remains the final production acceptance check.
+Validation: 27 focused security/profile tests passed. Integration against the actual packaged server verified five pages, 55 bundled dependencies, signed cloud proxy requests, employee login, sign-out, URL encoding/case variants and rejection of ordinary browsers. A real Electron smoke run initialized Firebase and the native bridge and rejected protected pages before login. Business data returned by cloud services in the integration test is simulated; a real employee sign-in remains the final production acceptance check.
 
 The broader employee-admin/workspace suite has 16 failures on the unchanged `48e6a65e` baseline as well (mock database, route expectations and missing VM globals). Those failures are unrelated to this change.
 

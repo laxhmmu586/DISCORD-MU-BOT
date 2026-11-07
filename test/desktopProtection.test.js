@@ -34,6 +34,17 @@ test('device proof, employee login, request binding, replay and revocation',asyn
 test('employee information omits EID recursively',()=>{
  assert.deepEqual(withoutEid({employees:[{id:'a',eid:'123',name:'A'}],profile:{eid:'321',name:'B'}}),{employees:[{id:'a',name:'A'}],profile:{name:'B'}});
 });
+test('employee admin edits do not publish or erase legacy employee identifiers',async t=>{
+ const Database=require('better-sqlite3'),db=new Database(':memory:');
+ const {createEmployeeStore,registerEmployees}=require('../has/server/employees');
+ const store=createEmployeeStore(db,{seed:[{id:'agent',name:'Agent',station:'LAX',account:'MU',eid:'12345',position:'Agent',attach:false,detach:false,spotter:false}]});
+ const app=express();app.use(express.json());app.use(require('../employeeDataProtection').middleware);
+ registerEmployees(app,{store,authenticate:async()=>({uid:'owner',email:'lake@mu.com'})});
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>{server.close();db.close();});
+ const url='http://127.0.0.1:'+server.address().port+'/employee-admin-api',response=await fetch(url);assert.equal(response.status,200);
+ const view=await response.json();assert(!('eid' in view.employees[0]));view.employees[0].nickname='Updated';
+ const saved=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(view)});assert.equal(saved.status,200);assert(!('eid' in (await saved.json()).employees[0]));assert.equal(store.get().employees[0].eid,'12345');
+});
 test('hosting excludes original page code and all desktop aliases',()=>{
  const {hosting}=require('../public/firebase.json');
  for(const name of ['index.html','report.html','report.js','cbs.html','has-pbb.html','info.html'])assert(hosting.ignore.includes('**/'+name));
