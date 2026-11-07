@@ -60,6 +60,9 @@ function decorateForm(sheet){
 async function workbook(month,scope,entries,dayFlights={},roleLabels=roles,scheduledTimes={},dayScheduledTimes={},summaryFormats={}){
  const Excel=require('exceljs'),book=new Excel.Workbook();await book.xlsx.readFile(path.join(require('node:path').resolve(__dirname,'../..'),'has/resources/has-report-templates/rechargeable-2026.xlsx'));
  const {year,month:m,name}=reportMonth(month),last=new Date(Date.UTC(year,m,0)).getUTCDate(),summary=book.worksheets[0],daily=totals(entries),sample=JSON.parse(JSON.stringify(book.worksheets[1].model));sample.rows=sample.rows.filter(r=>r.number<=71);sample.mergeCells=sample.merges;
+ // Legacy positive-value rules override both fills and borders when Excel recalculates.
+ // Keep the explicit grid and user formatting instead of those template rules.
+ summary.conditionalFormattings=[];
  for(const s of [...book.worksheets].slice(1))book.removeWorksheet(s.id);
  for(const [i,address] of ['C10','G10','K10'].entries())summary.getCell(address).value=roleLabels[i];summary.getCell('C4').value=scope.station+'/'+scope.account;summary.getCell('C5').value=name.toUpperCase();
  for(let d=1;d<=31;d++){summary.getRow(d+11).hidden=d>last;summary.getCell('B'+(d+11)).value=summaryFlight(entries,dayFlights,d);for(let c=0;c<12;c++)summary.getCell(d+11,c+3).value=daily[d]?.[c]||0;}
