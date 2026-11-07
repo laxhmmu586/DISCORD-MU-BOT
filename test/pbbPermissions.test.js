@@ -30,7 +30,7 @@ test('signature API uses saved checklist type, rejects opposite permission and i
    let data=await(await fetch(base+'/employee-admin-api',{headers:{Authorization:'Bearer admin'}})).json();data.employees.find(e=>e.id===allowed)[type==='arrival'?'attach':'detach']=false;
    assert.equal((await api('/employee-admin-api',data)).status,200);assert.equal((await sign(allowed)).status,400);
    data=await(await fetch(base+'/employee-admin-api',{headers:{Authorization:'Bearer admin'}})).json();data.employees.find(e=>e.id===allowed)[type==='arrival'?'attach':'detach']=true;
-   assert.equal((await api('/employee-admin-api',data)).status,200);assert.equal((await sign(allowed)).status,200);assert.equal(store.get(r.id).signatures.driver.eid,type==='arrival'?'00123':'00456');
+   assert.equal((await api('/employee-admin-api',data)).status,200);assert.equal((await sign(allowed)).status,200);assert.equal(store.get(r.id).signatures.driver.eid,undefined);
   }
  }finally{integration.close();server.closeAllConnections();await new Promise(r=>server.close(r));store.db.close();}
 });

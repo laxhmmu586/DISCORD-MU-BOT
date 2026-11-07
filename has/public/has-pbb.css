@@ -414,3 +414,59 @@ html.has-theme{background:#fff;color-scheme:light}
 .qa-workspace #dashboard-form input,.qa-workspace #dashboard-form button,.qa-workspace [data-qa-back]{border:1px solid #fff;border-radius:10px;background:#f7faff;color:inherit;padding:9px 12px;font:inherit}
 .qa-workspace button{cursor:pointer}
 .qa-workspace #dashboard-results .has-panel,.qa-workspace #dashboard-results .has-chart-card{background:transparent;border:0;box-shadow:none;padding:0}
+
+/* Settings use a Discord-style rail and a compact, independent content pane. */
+.has-topbar .has-top-actions{margin-left:auto}
+.has-license-line{display:block}
+dialog.has-schedule-dialog{width:min(1100px,calc(100vw - 32px));max-height:90svh;padding:0;border:1px solid #42444c;border-radius:12px;background:#313338;color:#f2f3f5;overflow:auto;color-scheme:dark}
+.has-config-layout{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:660px}
+.has-config-sidebar{padding:30px 16px;background:#2b2d31;border-right:1px solid #232428}
+.has-config-sidebar h2{margin:0 12px 26px;font-size:21px;color:#f2f3f5}
+.has-config-sidebar .has-config-eyebrow{margin:0 12px 10px;color:#949ba4;font-size:10px;letter-spacing:1px}
+.has-config-sidebar nav{display:grid;gap:5px}
+.has-schedule-dialog .has-config-sidebar button{text-align:left;border:0;background:transparent;color:#b5bac1;padding:11px 12px;border-radius:4px;font-size:13px}
+.has-schedule-dialog .has-config-sidebar button:hover{background:#35373c;color:#fff}
+.has-schedule-dialog .has-config-sidebar button[aria-current=page]{background:#404249;color:#fff;font-weight:600}
+.has-config-main{min-width:0;padding:26px 30px}
+.has-config-main [hidden]{display:none!important}
+.has-config-main .has-schedule-heading{padding:0 0 18px;background:none;border-bottom:1px solid #42444c}
+.has-config-main .has-schedule-heading h2{font-size:21px;color:#f2f3f5;letter-spacing:0}
+.has-config-main .has-schedule-heading button{padding:2px 10px;background:none;color:#b5bac1}
+.has-config-main .has-config-intro{margin:18px 0;color:#b5bac1;font-size:13px;line-height:1.5}
+.has-config-main .has-schedule-summary{display:flex;gap:18px;margin:16px 0;color:#b5bac1}
+.has-config-main .has-schedule-summary>div{padding:0;border:0;border-radius:0;background:none;gap:8px}
+.has-config-main .has-schedule-summary span{font-size:11px;color:#b5bac1}
+.has-config-main .has-schedule-summary strong{font-size:16px;color:#f2f3f5}
+.has-config-main #schedule-form{padding:0}
+.has-config-main .has-schedule-pair{padding:16px;margin:16px 0;border:1px solid #42444c;border-radius:6px;background:#2b2d31;box-shadow:none;gap:14px}
+.has-config-main .has-schedule-scope{padding-bottom:14px;border-color:#42444c;gap:10px}
+.has-config-main label{font-size:12px;color:#b5bac1;font-weight:500}
+.has-config-main input:not([type=checkbox]){background:#1e1f22;color:#f2f3f5;border:1px solid transparent;border-radius:4px;padding:9px 10px;min-width:0;font-size:13px}
+.has-config-main input:focus{outline:2px solid #5865f2;outline-offset:1px}
+.has-config-main input[readonly]{color:#949ba4}
+.has-config-main .has-schedule-pair fieldset{padding:0;background:transparent;border:0}
+.has-config-main .has-schedule-pair legend{padding:0;margin-bottom:10px;color:#f2f3f5;font-size:13px}
+.has-config-main .leg-frequency{background:#404249;color:#b5bac1;border-radius:4px;padding:3px 6px}
+.has-config-main .has-schedule-days{gap:4px;margin-top:10px}
+.has-config-main .has-schedule-days label{padding:8px 0;font-size:10px;background:#313338;border:1px solid #42444c;border-radius:4px;color:#b5bac1}
+.has-config-main .has-schedule-days label:has(input:checked){background:#5865f2;color:white;border-color:#5865f2;box-shadow:none}
+.has-config-main .has-ops-arrival{grid-column:1/-1;padding:8px 0;background:none;border:0;display:flex;align-items:center;gap:8px}
+.has-config-main .pair-frequency{display:none}
+.has-config-main button{border:0;border-radius:4px;background:#4e5058;color:#f2f3f5;padding:9px 13px;font-size:12px;box-shadow:none}
+.has-config-main button:hover{background:#5d6069}
+.has-config-main button.primary{background:#5865f2;color:#fff;box-shadow:none}
+.has-config-main button.primary:hover{background:#4752c4}
+.has-config-main .has-schedule-actions{position:static;background:none;border-top:1px solid #42444c;padding:18px 0 0;margin-top:20px;backdrop-filter:none}
+.has-config-main #schedule-status,.has-config-main #pbb-settings-status{color:#b5bac1;font-size:12px}
+.has-pbb-editor-layout{display:grid;grid-template-columns:200px minmax(0,1fr);gap:24px;margin-top:24px}
+.has-pbb-directory{min-width:0}
+.has-pbb-directory>input{width:100%;box-sizing:border-box}
+#pbb-employees{display:grid;align-content:start;gap:4px;max-height:410px;overflow:auto;margin-top:12px}
+.has-config-main #pbb-employees button{text-align:left;background:transparent;padding:10px}
+.has-config-main #pbb-employees button:hover,.has-config-main #pbb-employees button[aria-pressed=true]{background:#404249}
+#pbb-employees strong,#pbb-employees small{display:block;overflow-wrap:anywhere}
+#pbb-employees strong{font-size:12px}#pbb-employees small{font-size:10px;color:#b5bac1;margin-top:5px}
+#pbb-settings-form{min-width:0}#pbb-settings-form h3{margin:0 0 6px;color:#f2f3f5;font-size:17px}#pbb-employee-scope{font-size:12px;color:#949ba4;margin:0 0 22px}
+#pbb-certificate-fields{border:0;padding:0;margin:0;min-width:0}#pbb-certificate-fields legend,#pbb-certificate-fields h4{font-size:12px;color:#f2f3f5;margin:0 0 14px;padding:0}#pbb-certificate-fields h4{margin-top:24px}
+#pbb-certificate-fields label{display:block;margin-bottom:14px}#pbb-certificate-fields:disabled{opacity:.6}
+@media(max-width:760px){.has-config-layout{grid-template-columns:1fr;min-height:0}.has-config-sidebar{padding:16px;border-right:0;border-bottom:1px solid #232428}.has-config-sidebar h2,.has-config-sidebar .has-config-eyebrow{display:none}.has-config-sidebar nav{display:flex;gap:6px}.has-config-main{padding:20px 16px}.has-pbb-editor-layout{grid-template-columns:1fr}.has-pbb-directory #pbb-employees{max-height:150px}.has-config-main .has-schedule-summary{gap:12px;flex-wrap:wrap}.has-config-main .has-schedule-summary>div{display:flex}.has-config-main .has-schedule-summary strong{margin:0}.has-config-main .has-schedule-pair{grid-template-columns:1fr}.has-config-main .has-schedule-heading h2{font-size:19px}}

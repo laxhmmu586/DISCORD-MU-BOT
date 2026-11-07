@@ -12,6 +12,14 @@ function openEmployeeDatabase(legacyDb,{filename=process.env.PBB_EMPLOYEE_DB_PAT
    if(legacy)db.prepare('INSERT OR IGNORE INTO pbb_employees(singleton,data) VALUES (1,?)').run(legacy.data);
   }
   const store=createEmployeeStore(db,{seed});
+  // Clean the retired legacy copy too, so it cannot restore employee EIDs later.
+  if(legacyDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pbb_employees'").get()){
+   const row=legacyDb.prepare('SELECT data FROM pbb_employees WHERE singleton=1').get();
+   if(row){
+    const data=JSON.parse(row.data);data.employees=data.employees.map(({eid,...person})=>person);
+    legacyDb.prepare('UPDATE pbb_employees SET data=? WHERE singleton=1').run(JSON.stringify(data));
+   }
+  }
   return {...store,db,close:()=>db.close()};
  }catch(error){db.close();throw error;}
 }

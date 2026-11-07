@@ -24,7 +24,7 @@ test('role isolation, shared confirmations, sign-off, immutable completed record
 test('employee seed, exact string IDs, qualified-only options and concurrent admin save protection',()=>{
  const s=createStore(':memory:',{now:()=>new Date('2026-10-13T16:00:00Z')}),employees=createEmployeeStore(s.db,{seed:employeeSeed}),data=employees.get();assert.equal(data.employees.length,29);assert.equal(data.employees[0].discordId,'900000000000000001');assert.equal(employees.options().length,0);
  data.employees[3].attach=true;data.employees[4].spotter=true;const saved=employees.save(data,admin);
- assert.equal(saved.revision,2);assert.equal(employees.options().length,2);assert.equal(employees.options()[0].eid,'123456');assert.equal(employees.options()[0].discordId,undefined);
+ assert.equal(saved.revision,2);assert.equal(employees.options().length,2);assert.equal(employees.options()[0].eid,undefined);assert.equal(employees.options()[0].discordId,undefined);
  assert.throws(()=>employees.save(data,admin),/changed/);s.db.close();
 });
 test('API protects employee data, SSE publishes snapshots, two-role PDF triggers and retries skip successful targets',async()=>{
@@ -47,7 +47,7 @@ test('API protects employee data, SSE publishes snapshots, two-role PDF triggers
  await api('/pbb-api/records/'+r.id,'spotter',{action:'signal',role:'spotter',phase:'safe'});await api('/pbb-api/records/'+r.id,'driver',{action:'signal',role:'driver',phase:'go'});
  assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'sign',role:'driver',employeeId:'staff-5',strokes})).status,403);
  assert.equal((await api('/pbb-api/records/'+r.id,'driver',{action:'sign',role:'driver',employeeId:'staff-4',name:'Forged',eid:'bad',strokes})).status,200);
- assert.equal(store.get(r.id).signatures.driver.name,'TEST DRIVER');assert.equal(store.get(r.id).signatures.driver.eid,'123456');
+ assert.equal(store.get(r.id).signatures.driver.name,'TEST DRIVER');assert.equal(store.get(r.id).signatures.driver.eid,undefined);
  assert.equal((await api('/pbb-api/records/'+r.id,'spotter',{action:'sign',role:'spotter',employeeId:'staff-4',strokes})).status,400);
  await api('/pbb-api/records/'+r.id,'spotter',{action:'sign',role:'spotter',employeeId:'staff-5',strokes});for(let i=0;i<50&&store.get(r.id).delivery.discord.status==='pending';i++)await new Promise(r=>setTimeout(r,10));
  assert.equal(driveWrites,1);assert.equal(discordWrites,1);assert.equal(store.get(r.id).delivery.discord.status,'failed');

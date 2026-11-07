@@ -28,12 +28,12 @@ async function buildPbbPdf(record){
  for(const [i,role] of ['driver','spotter'].entries()){
   const sig=record.signatures[role];if(!sig)throw Error('Both signatures required');
   const nameTop=arrival?624+i*38:669+i*30,nameX=arrival?30:42;
-  text(signaturePage,sig.name,nameX,nameTop,arrival?266:271,9,bold);text(signaturePage,'EID: '+(sig.eid||'--'),nameX,nameTop+(arrival?10:7),260,6);
+  text(signaturePage,sig.name,nameX,nameTop,arrival?266:271,9,bold);
   const x=arrival?323:331,top=arrival?615+i*38:662+i*30,width=arrival?250:228,height=arrival?20:13;
   for(const stroke of sig.strokes)for(let n=1;n<stroke.length;n++){const a=stroke[n-1],b=stroke[n];signaturePage.drawLine({start:{x:x+a[0]*width,y:792-top-a[1]*height},end:{x:x+b[0]*width,y:792-top-b[1]*height},thickness:.85,color:ink});}
  }
  // Keep the original page layout. Detailed role answers, notes and signing times travel as a PDF attachment.
- const audit={id:record.id,type:record.type,flightNo:record.flightNo,date:record.date,gate:record.gate,blockTime:'',participants:record.participants,bridges:record.bridges,answers:record.answers,notes:record.notes,signals:record.signals,signatures:Object.fromEntries(Object.entries(record.signatures).map(([role,s])=>[role,{name:s.name,eid:s.eid,at:s.at}])),completedAt:record.completedAt};
+ const audit={id:record.id,type:record.type,flightNo:record.flightNo,date:record.date,gate:record.gate,blockTime:'',participants:record.participants,bridges:record.bridges,answers:record.answers,notes:record.notes,signals:record.signals,signatures:Object.fromEntries(Object.entries(record.signatures).map(([role,s])=>[role,{name:s.name,at:s.at}])),completedAt:record.completedAt};
  await doc.attach(Buffer.from(JSON.stringify(audit,null,2)),`JetBridge-${record.id}-audit.json`,{mimeType:'application/json',description:'Operator responses, notes and signature timestamps'});
  doc.setTitle(`Jet Bridge ${record.type} ${record.flightNo} ${record.date}`);doc.setSubject('Completed original Hallmark Jet Bridge checklist');
  return Buffer.from(await doc.save());

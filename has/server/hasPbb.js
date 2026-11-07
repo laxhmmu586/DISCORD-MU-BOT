@@ -148,7 +148,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   }
   res.json(saved);
  }));
- app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({allAccountAccess:isOps(profiles.linked(req.hasUser)),accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,eid:e.eid,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser)||configEditor(req.hasUser)&&(employeePositions.normalize(profiles.linked(req.hasUser)?.position)!=='Business Manager'||same(e,employeeAccounts.scope(profiles.linked(req.hasUser)))),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
+ app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({allAccountAccess:isOps(profiles.linked(req.hasUser)),accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser)||configEditor(req.hasUser)&&(employeePositions.normalize(profiles.linked(req.hasUser)?.position)!=='Business Manager'||same(e,employeeAccounts.scope(profiles.linked(req.hasUser)))),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
  app.post('/has-pbb-api/gate',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate))fail('Confirm flight and gate number.');
@@ -178,7 +178,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   if(r.station!=='LAX'||r.type!=='arrival'||!pair?.opsArrivalSpotter)return r;
   for(const item of items.filter(x=>(x.type||'arrival')==='arrival'&&x.role==='spotter'))for(const id of [item.id,...(item.linkedAnswers||[])])r.answers.spotter[id]=true;
   r.ready.spotter=true;r.owners.spotter='has-ops-ramp';
-  r.signatures.spotter={employeeId:'has-ops-ramp',name:'HAS OPS RAMP',eid:'',strokes:[],typedSignature:'HAS OPS RAMP',at:stamp(),source:'configured-ops-arrival',configuredBy:schedule().updatedBy};
+  r.signatures.spotter={employeeId:'has-ops-ramp',name:'HAS OPS RAMP',strokes:[],typedSignature:'HAS OPS RAMP',at:stamp(),source:'configured-ops-arrival',configuredBy:schedule().updatedBy};
   return r;
  }
  app.post('/has-pbb-api/records',route((req,res)=>{
@@ -234,7 +234,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   }else if(b.action==='sign'){
    if(items.some(x=>(x.type||'arrival')===r.type&&x.role===role&&(role==='driver'||x.phase==='pre')&&!r.answers[role][x.id])||r.ready[role]!==true||role==='driver'&&!r.dockedAt)fail('Complete your checks before signing.');
    const strokes=b.strokes;if(!Array.isArray(strokes)||!strokes.length||strokes.length>100||strokes.some(s=>!Array.isArray(s)||s.length<2)||strokes.flat().length>10000||strokes.flat().some(p=>!Array.isArray(p)||p.length!==2||p.some(n=>!Number.isFinite(n)||n<0||n>1)))fail('Handwritten signature required.');
-   r.signatures[role]={employeeId:e.id,name:e.name,eid:e.eid,uid:req.hasUser.uid,strokes,at:stamp(),...(role==='driver'?{pbbId:terminalLicense.forGate(e,r.gate).id,pbbExpiry:terminalLicense.forGate(e,r.gate).expiry,pbbTerminal:terminalLicense.forGate(e,r.gate).terminal}:{})};
+   r.signatures[role]={employeeId:e.id,name:e.name,uid:req.hasUser.uid,strokes,at:stamp(),...(role==='driver'?{pbbId:terminalLicense.forGate(e,r.gate).id,pbbExpiry:terminalLicense.forGate(e,r.gate).expiry,pbbTerminal:terminalLicense.forGate(e,r.gate).terminal}:{})};
    if(r.signatures.driver&&r.signatures.spotter){r.completedAt=stamp();if(r.station==='LAX'&&r.account==='MU')r.discordDelivery={status:'pending'};}
   }else fail('Unknown action');
   r.owners[role]=e.id;r.updatedAt=stamp();r.revision++;return put(r);
