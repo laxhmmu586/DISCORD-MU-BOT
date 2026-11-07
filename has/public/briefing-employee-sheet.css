@@ -46,3 +46,6 @@
 @media(max-width:700px){.employee-membership-tier-tabs{gap:4px}.employee-membership-tier-tabs button{font-size:10px;padding:8px 2px}.employee-departure-sheet .employee-membership-card{padding:12px}.employee-membership-card dl>div{gap:8px}.employee-membership-card dt,.employee-departure-sheet .employee-membership-card dd{font-size:12px}.employee-departure-sheet .employee-membership-card h3{font-size:16px}}
 
 @media(max-width:350px){.employee-membership-tier-tabs{gap:3px}.employee-membership-tier-tabs button{font-size:9px;padding:8px 0;white-space:nowrap}}
+
+.employee-sheet-view{--briefing-membership-ui:membership-elite-short-v1}
+.employee-membership-scroll{overflow-x:auto}.employee-membership-scroll table{width:100%;min-width:760px;border-collapse:collapse;text-align:left;font-size:12px}.employee-membership-scroll th,.employee-membership-scroll td{padding:10px;border:1px solid #d7e3ee;background:#fffdf0;white-space:pre-wrap;overflow-wrap:anywhere}.employee-membership-scroll th{background:#edf5fc}

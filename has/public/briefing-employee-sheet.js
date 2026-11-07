@@ -7,6 +7,13 @@
  document.getElementById('arrival-content').append(host);
  const mobile=matchMedia('(max-width:700px)'),time=document.getElementById('panel-time'),timeHome=document.createComment('Arrival time record home');time.before(timeHome);
  let sequence=0,timer,lastContext,selectedTeam='counter',renderedHtml='',selectedTier='platinum',selectedCabin='business';
+ let membershipStyles;
+ async function membershipVersion(){
+  const version=window.BriefingMembership?.uiVersion||'',loaded=()=>getComputedStyle(shell).getPropertyValue('--briefing-membership-ui').trim()===version;
+  if(!version||loaded())return version;
+  if(!membershipStyles)membershipStyles=new Promise(resolve=>{const link=document.createElement('link');link.rel='stylesheet';link.href='/has/briefing-employee-sheet.css?v='+encodeURIComponent(version);link.onload=()=>resolve();link.onerror=()=>{membershipStyles=null;link.remove();resolve();};document.head.append(link);});
+  await membershipStyles;return loaded()?version:'';
+ }
  function teamTabs(){
   for(const button of content.querySelectorAll('[data-employee-team]')){const active=button.dataset.employeeTeam===selectedTeam;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;}
   for(const panel of content.querySelectorAll('[data-employee-team-panel]'))panel.hidden=panel.dataset.employeeTeamPanel!==selectedTeam;
@@ -30,7 +37,9 @@
   if(host.dataset.key!==key){content.textContent='Loading briefing…';host.dataset.key=key;selectedTeam='counter';selectedTier='platinum';selectedCabin='business';renderedHtml='';}
   timer=setTimeout(async()=>{
    try{
-    const data=await peopleApi('/briefing-api/employee-sheet?'+new URLSearchParams({date:context.date,flight:context.flight,direction:context.direction}));
+    const membershipUi=context.direction==='departure'?await membershipVersion():'';
+    if(run!==sequence)return;
+    const data=await peopleApi('/briefing-api/employee-sheet?'+new URLSearchParams({date:context.date,flight:context.flight,direction:context.direction,membershipUi}));
     if(run===sequence&&data.html!==renderedHtml){const active=content.contains(document.activeElement)?document.activeElement:null,focusedTeam=active?.dataset.employeeTeam,focusedTier=active?.dataset.employeeTier,focusedCabin=active?.dataset.employeeCabin;content.innerHTML=data.html;renderedHtml=data.html;teamTabs();membershipTabs();if(focusedTeam)content.querySelector('[data-employee-team="'+selectedTeam+'"]').focus();else if(focusedTier)content.querySelector('[data-employee-tier="'+selectedTier+'"]').focus();else if(focusedCabin)content.querySelector('[data-employee-tier-panel="'+selectedTier+'"] [data-employee-cabin="'+selectedCabin+'"]').focus();window.dispatchEvent(new Event('briefing-sheet-rendered'));}
    }catch(error){if(run===sequence){content.replaceChildren();renderedHtml='';const message=document.createElement('p'),retry=document.createElement('button');message.setAttribute('role','status');message.textContent='Briefing could not be loaded: '+error.message;retry.type='button';retry.textContent='Retry';retry.onclick=()=>update(lastContext);content.append(message,retry);}}
   },100);
