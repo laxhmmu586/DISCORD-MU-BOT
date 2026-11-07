@@ -1,6 +1,6 @@
 const {sections}=require('../../flightContext');
 const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-function createBriefingBooking({getLog=()=>require('../../googleDrive').getLatestFlightLog(),now=Date.now,ttl=30000}={}){
+function createBriefingBooking({getLog=()=>require('../../flightDayStore').current().log(),now=Date.now,ttl=30000}={}){
  let cache,expires=0,pending;
  async function readSections(){
   if(cache&&now()<expires)return cache;

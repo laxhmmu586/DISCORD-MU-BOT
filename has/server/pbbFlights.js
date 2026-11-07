@@ -1,6 +1,6 @@
 const {discoverFlights}=require('../../flightContext');
 const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-function createFlightService({arrivalService=require('./pbbEtab').createGateService(),getLog=()=>require('../../googleDrive').getLatestFlightLog(),now=Date.now}={}){
+function createFlightService({arrivalService=require('./pbbEtab').createGateService(),getLog=()=>require('../../flightDayStore').current().log(),now=Date.now}={}){
  return {
   read:(flightNo,date)=>arrivalService.read(flightNo,date),
   async today(date,type){
