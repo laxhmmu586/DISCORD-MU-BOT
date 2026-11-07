@@ -31,8 +31,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert(!fs.readFileSync(path.join(source,'src/preload.js'),'utf8').includes('boarding:request'));
   assert(!fs.readFileSync(path.join(source,'src/main.js'),'utf8').includes('boardingService'));
   for(const p of ['/index.html','/report.html','/baggage.html','/cbs.html','/notes.html']){
-   await page.goto(origin+p);await page.locator('body > header .desktop-primary-nav').waitFor();
-   assert.deepEqual(await page.locator('body > header .desktop-primary-nav > *').allTextContents(),expected,p);
+   await page.goto(origin+p);await page.locator('body > header .desktop-primary-nav, .desktop-cbs-topbar .desktop-primary-nav').first().waitFor();
+   assert.deepEqual(await page.locator('body > header .desktop-primary-nav > *, .desktop-cbs-topbar .desktop-primary-nav > *').allTextContents(),expected,p);
   }
   await page.goto(origin+'/index.html');await page.locator('body > header .desktop-primary-nav').getByText('REPORT',{exact:true}).click();await page.waitForURL('**/report.html');
   assert.deepEqual((await page.locator('.report-mode-actions [data-report-mode]').allTextContents()).map(t=>t.trim()),['Sales Report','Sales Details','VIP Report','Authorization Report','INAD Report']);
@@ -56,7 +56,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    return file?route.fulfill({path:file}):route.fulfill({status:404,body:''});
   });
   await web.goto('http://web.fixture/flights.html');await web.getByRole('button',{name:'Enter MU586 boarding'}).waitFor();
-  assert.equal(await web.getByText('Enter Dashboard',{exact:true}).count(),0);assert.equal(await web.locator('.flight-pbb-link').count(),0);assert(flightScript.includes('web-no-dashboard-v2'));
+  assert.equal(await web.getByText('Enter Dashboard',{exact:true}).count(),0);assert.equal(await web.locator('.flight-pbb-link').count(),1);assert.equal(await web.locator('.flight-pbb-link').getAttribute('href'),'/has-pbb.html');assert(flightScript.includes('web-jet-bridge-v3')); 
   await web.screenshot({path:'output/desktop-navigation-2.1.1/web-flights.png',fullPage:true});await web.close();
   console.log(JSON.stringify({navigationPages:5,reportTabs:5,noNestedReport:true,reportAndBaggageNavigation:true,formOpens:true,webDashboardRemoved:true,pageErrors:errors}));
   assert.deepEqual(errors,[]);

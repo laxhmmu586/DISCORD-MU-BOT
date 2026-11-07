@@ -2,16 +2,16 @@
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8'),write=(p,v)=>fs.writeFileSync(path.join(root,p),v);
 let html=read('public/public/flights.html');
-html=html.replace(/<a\b[^>]*href="\/(?:report|cbs|has-pbb)\.html"[^>]*>[\s\S]*?<\/a>/g,'');
+html=html.replace(/<a\b[^>]*href="\/(?:report|cbs)\.html"[^>]*>[\s\S]*?<\/a>/g,'');
 write('public/public/flights.html',html);
 let js=read('public/public/flights.js');
 js=js.replace(/^  const enter = flight =>.*\r?\n/m,'');
-js=js.replace(/<a class="flight-pbb-link"[\s\S]*?<\/a>/,'').replace(/<button class="flight-enter"[\s\S]*?<\/button>/,'');
-js=js.replace(/^          card\.querySelector\('\.flight-pbb-link'\).*\r?\n/m,'').replace(/^          card\.querySelector\('\.flight-enter'\).*\r?\n/m,'');
+js=js.replace(/<button class="flight-enter"[\s\S]*?<\/button>/,'');
+js=js.replace(/^          card\.querySelector\('\.flight-enter'\).*\r?\n/m,'');
 write('public/public/flights.js',js);
 for(const file of fs.readdirSync(path.join(root,'public/public')).filter(f=>f.endsWith('.html')&&!require('../desktopProtection').privateFiles.includes(f))) {
   let value=read('public/public/'+file);
-  value=value.replace(/<a\b[^>]*href="\/?(?:index|report|reports|cbs|has-pbb|info)(?:\.html)?(?:[?#][^"]*)?"[^>]*>[\s\S]*?<\/a>/g,'');
+  value=value.replace(/<a\b[^>]*href="\/?(?:index|report|reports|cbs|info)(?:\.html)?(?:[?#][^"]*)?"[^>]*>[\s\S]*?<\/a>/g,'');
   write('public/public/'+file,value);
 }
 // Remove links in every workspace page, including sidebars that are not built dynamically.
@@ -35,7 +35,7 @@ const excluded=[...protection.privateFiles,'info.html','info.js','info-access.js
 config.hosting.ignore=[...new Set([...config.hosting.ignore,...excluded.map(n=>'**/'+n)])];
 config.hosting.redirects=config.hosting.redirects.filter(r=>!/^\/info(?:\.html|\/)?$/.test(r.source));
 config.hosting.rewrites=config.hosting.rewrites.filter(r=>!/^\/info(?:\.html|\/)?$/.test(r.source));
-const blocked=[...new Set([...excluded,...['index','report','reports','cbs','lbs','has-pbb','has-pbb-dashboard','info']])];
+const blocked=[...new Set([...excluded,...['index','report','reports','cbs','lbs','info']])];
 config.hosting.rewrites=config.hosting.rewrites.filter(r=>!blocked.some(n=>r.source==='/'+n||r.source==='/has/'+n));
 config.hosting.rewrites.unshift(...blocked.flatMap(n=>['/'+n,'/has/'+n,'/public/'+n,'/public/public/'+n].map(source=>({source,destination:n.startsWith('info')?'/removed.html':'/desktop-only.html'}))));
 config.hosting.rewrites=config.hosting.rewrites.filter((row,index,rows)=>rows.findIndex(other=>other.source===row.source)===index);

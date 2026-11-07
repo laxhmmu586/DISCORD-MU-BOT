@@ -36,6 +36,7 @@ function applyNavigation(source,root,release){
  // The Report Center has exactly the five retained report tabs, with no local iframe.
  copy('report.html');
  require('./retire-laketerm-features.cjs').retireLakeTermFeatures(source,release);
- return [...copied];
+ const cbsCopied=require('./cbs-patch.cjs').applyCbs(source,root);
+ return [...new Set([...copied,...cbsCopied])];
 }
 module.exports={applyNavigation};

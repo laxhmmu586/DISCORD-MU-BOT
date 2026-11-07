@@ -319,16 +319,35 @@
       "**/reports.html",
       "**/cbs.html",
       "**/cbs.js",
-      "**/has-pbb.html",
-      "**/has-pbb-client.js",
-      "**/has-pbb-data.js",
-      "**/has-pbb-dashboard.html",
-      "**/has-pbb-dashboard.js",
       "**/info.html",
       "**/info.js",
       "**/info-access.js"
     ],
     "rewrites": [
+      {
+        "source": "/has-pbb",
+        "destination": "/has/has-pbb.html"
+      },
+      {
+        "source": "/has-pbb-dashboard.js",
+        "destination": "/has/has-pbb-dashboard.js"
+      },
+      {
+        "source": "/has-pbb-dashboard.html",
+        "destination": "/has/has-pbb-dashboard.html"
+      },
+      {
+        "source": "/has-pbb-data.js",
+        "destination": "/has/has-pbb-data.js"
+      },
+      {
+        "source": "/has-pbb-client.js",
+        "destination": "/has/has-pbb-client.js"
+      },
+      {
+        "source": "/has-pbb.html",
+        "destination": "/has/has-pbb.html"
+      },
       {
         "source": "/report.html",
         "destination": "/desktop-only.html"
@@ -407,86 +426,6 @@
       },
       {
         "source": "/public/public/cbs.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has-pbb.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/has-pbb.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/has-pbb.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/has-pbb.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has-pbb-client.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/has-pbb-client.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/has-pbb-client.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/has-pbb-client.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has-pbb-data.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/has-pbb-data.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/has-pbb-data.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/has-pbb-data.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has-pbb-dashboard.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/has-pbb-dashboard.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/has-pbb-dashboard.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/has-pbb-dashboard.html",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has-pbb-dashboard.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/has-pbb-dashboard.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/has-pbb-dashboard.js",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/has-pbb-dashboard.js",
         "destination": "/desktop-only.html"
       },
       {
@@ -599,38 +538,6 @@
       },
       {
         "source": "/public/public/lbs",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has-pbb",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/has-pbb",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/has-pbb",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/has-pbb",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has-pbb-dashboard",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/has/has-pbb-dashboard",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/has-pbb-dashboard",
-        "destination": "/desktop-only.html"
-      },
-      {
-        "source": "/public/public/has-pbb-dashboard",
         "destination": "/desktop-only.html"
       },
       {
