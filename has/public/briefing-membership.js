@@ -16,7 +16,7 @@
   return Object.entries(tiers).flatMap(([key,tier])=>Object.entries(tier.cabins).map(([cabin,benefits])=>{
    const base='membership.'+key+'.'+(cabin==='all'?'business':cabin)+'.';
    const value=(index,fallback)=>Object.hasOwn(saved,base+index)?englishLabel(saved[base+index]):fallback;
-   return {tier:value(0,tier.name),sky:value(1,tier.sky),cabin:cabin==='all'?'All cabins':cabin==='business'?'Business':'Economy',benefits:labels.map((label,i)=>({label:value(2+i*2,label),value:value(3+i*2,benefits[i])}))};
+   return {key,cabinKey:cabin,tier:value(0,tier.name),sky:value(1,tier.sky),cabin:cabin==='all'?'All cabins':cabin==='business'?'Business':'Economy',benefits:labels.map((label,i)=>({label:value(2+i*2,label),value:value(3+i*2,benefits[i])}))};
   }));
  }
  const cells=row=>[row.tier,row.sky,row.cabin,...row.benefits.map((benefit,i)=>benefit.label===labels[i]?benefit.value:benefit.label+': '+benefit.value)];

@@ -13,25 +13,28 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
   const assigned=await page.request.post(origin+'/briefing-api/assign',{headers:{Authorization:'sup'},data:{date:'2026-10-31',flight:'MU583',direction:'arrival',employeeId:'agent',fromField:null,toField:'arrivalLead',fromValue:null,toValue:''}});assert.equal(assigned.status(),200);
   await page.setViewportSize({width:1440,height:1000});await page.goto(origin+'/briefing');await page.locator('#arrival-content').waitFor({state:'visible'});await page.locator('#departure-tab').click();
   const sheet=page.locator('.employee-departure-sheet');await sheet.waitFor();
-  assert.equal(await sheet.locator('tbody tr').count(),9);assert.equal(await sheet.locator('input,textarea,[contenteditable=true]').count(),0);
+  assert.equal(await sheet.locator('[data-employee-tier]').count(),5);assert.equal(await sheet.locator('[data-employee-benefits]').count(),9);assert.equal(await sheet.locator('input,textarea,[contenteditable=true]').count(),0);
   assert.equal(await page.locator('#arrival-content>.briefing-workspace').isVisible(),false);
-  for(const width of [1440,390]){
+  for(const width of [1440,320,390]){
    await page.setViewportSize({width,height:1000});await sheet.waitFor();
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No page overflow');
+   const tiers=sheet.locator('[data-employee-tier]');assert(await tiers.evaluateAll(nodes=>{const y=nodes[0].getBoundingClientRect().top;return nodes.length===5&&nodes.every(node=>Math.abs(node.getBoundingClientRect().top-y)<1);}),'All five membership categories share one row');
+   for(const key of ['platinum','gold','silver','elitePlus','elite']){await sheet.locator('[data-employee-tier="'+key+'"]').click();assert.equal(await sheet.locator('[data-employee-tier-panel="'+key+'"]').isVisible(),true);assert.equal(await sheet.locator('[data-employee-tier-panel]:visible').count(),1);assert.equal(await sheet.locator('[data-employee-tier-panel="'+key+'"] [data-employee-benefits]:visible dl>div').count(),5);}
+   await sheet.locator('[data-employee-tier=platinum]').click();
    await sheet.getByRole('tab',{name:'Gate',exact:true}).click();assert.equal(await sheet.locator('#employee-gate-panel').isVisible(),true);assert.equal(await sheet.locator('#employee-counter-panel').isVisible(),false);
    await sheet.getByRole('tab',{name:'Counter',exact:true}).click();assert.equal(await sheet.locator('#employee-counter-panel').isVisible(),true);assert.equal(await sheet.locator('#employee-gate-panel').isVisible(),false);
    assert(await sheet.locator('.employee-special-grid>div').evaluateAll(nodes=>nodes.every(node=>{const box=node.getBoundingClientRect();return [...node.children].every(child=>{const r=child.getBoundingClientRect();return r.left>=box.left&&r.right<=box.right&&r.bottom<=box.bottom;});})),'Special values stay inside expanding cards');
-   fs.mkdirSync('.verification/briefing-employee-sheet',{recursive:true});await page.screenshot({path:'.verification/briefing-employee-sheet/employee-'+width+'.png',fullPage:true,animations:'disabled'});
+   fs.mkdirSync('.verification/briefing-employee-sheet',{recursive:true});await page.screenshot({path:'.verification/briefing-employee-sheet/employee-'+width+'.png',fullPage:true,animations:'disabled'});await sheet.locator('.employee-membership').screenshot({path:'.verification/briefing-employee-sheet/membership-'+width+'.png',animations:'disabled'});
   }
   const key='?date=2026-10-31&flight=MU586&direction=departure';
   const before=await page.request.get(origin+'/briefing-api/photo'+key,{headers:{Authorization:'agent'}});assert.equal(before.status(),200);const baseline=await before.body();
   const reference=await (await page.request.get(origin+'/briefing-api/reference',{headers:{Authorization:'sup'}})).json();
   const saved=await page.request.post(origin+'/briefing-api/reference',{headers:{Authorization:'sup'},data:{revision:reference.revision,values:{...reference.values,'membership.gold.economy.3':'Saved camera allowance'}}});assert.equal(saved.status(),200);
-  await page.reload();await page.locator('#arrival-content').waitFor({state:'visible'});await page.locator('#departure-tab').click();await sheet.getByRole('cell',{name:'Saved camera allowance',exact:true}).waitFor();
+  await page.reload();await page.locator('#arrival-content').waitFor({state:'visible'});await page.locator('#departure-tab').click();await sheet.locator('[data-employee-tier=gold]').click();await sheet.locator('[data-employee-tier-panel=gold] [data-employee-cabin=economy]').click();await sheet.locator('[data-employee-tier-panel=gold] [data-employee-benefits=economy] dd').filter({hasText:'Saved camera allowance'}).waitFor();
   const downloadPromise=page.waitForEvent('download');await page.locator('#briefing-photo').click();const download=await downloadPromise;await download.saveAs('.verification/briefing-employee-sheet/employee-photo.png');const bytes=fs.readFileSync('.verification/briefing-employee-sheet/employee-photo.png');assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),1400);assert(!bytes.equals(baseline));
   const current=await (await page.request.get(origin+'/briefing-api'+key,{headers:{Authorization:'sup'}})).json();
   await page.request.post(origin+'/briefing-api',{headers:{Authorization:'sup'},data:{date:current.date,flight:current.flight,direction:'departure',field:'details',previous:current.fields.details,value:'LIVE EMPLOYEE DETAILS'}});
-  await sheet.locator('.employee-sheet-details').filter({hasText:'LIVE EMPLOYEE DETAILS'}).waitFor();
+  await sheet.locator('.employee-sheet-details').filter({hasText:'LIVE EMPLOYEE DETAILS'}).waitFor();assert.equal(await sheet.locator('[data-employee-tier=gold]').getAttribute('aria-selected'),'true');assert.equal(await sheet.locator('[data-employee-tier-panel=gold] [data-employee-cabin=economy]').getAttribute('aria-pressed'),'true');
   await sheet.getByRole('tab',{name:'Gate',exact:true}).click();
   await page.request.post(origin+'/briefing-api',{headers:{Authorization:'sup'},data:{date:current.date,flight:current.flight,direction:'departure',field:'details',previous:'LIVE EMPLOYEE DETAILS',value:'UPDATED EMPLOYEE DETAILS'}});
   await sheet.locator('.employee-sheet-details').filter({hasText:'UPDATED EMPLOYEE DETAILS'}).waitFor();assert.equal(await sheet.getByRole('tab',{name:'Gate',exact:true}).getAttribute('aria-selected'),'true');
@@ -49,7 +52,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
   await page.setViewportSize({width:390,height:1000});await page.locator('.employee-arrival-sheet').waitFor();assert.equal(await page.locator('#briefing-employee-sheet #panel-time').count(),1);assert.equal(await page.locator('[data-field=notes]').inputValue(),'Arrival saved notes');
   await page.evaluate(()=>window.switchFixtureUser('sup'));await page.waitForFunction(()=>!document.querySelector('.briefing-shell').classList.contains('employee-briefing'));
   await page.locator('#departure-tab').click();await page.waitForFunction(()=>document.querySelector('#briefing-flight').value==='MU586'&&!document.querySelector('#arrival-content').hidden);assert.equal(await sheet.count(),0);
-  await page.locator('[data-reference=membership]').click();await page.locator('[data-tier=gold]').click();await page.locator('[data-cabin=economy]').click();assert.equal(await page.locator('[data-reference-value="membership.gold.economy.3"]').textContent(),'Saved camera allowance');
+  await page.locator('[data-reference=membership]').click();assert(await page.locator('.membership-tier-row [data-tier]').evaluateAll(nodes=>{const y=nodes[0].getBoundingClientRect().top;return nodes.length===5&&nodes.every(node=>Math.abs(node.getBoundingClientRect().top-y)<1);}),'Reference dialog also shows five tiers in one row');await page.locator('[data-tier=gold]').click();await page.locator('[data-cabin=economy]').click();assert.equal(await page.locator('[data-reference-value="membership.gold.economy.3"]').textContent(),'Saved camera allowance');
   assert.deepEqual(errors,[]);console.log('PASS: employee Arrival mobile sheet, live time/notes editing, assignment tabs and persistence, expanding specials, full Membership, camera PNG, live updates and manager editor.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
