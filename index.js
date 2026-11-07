@@ -126,24 +126,21 @@ let boardingBoxCache;
 const dashboardSySnapshot=new (require('./dashboardSySnapshot').DashboardSySnapshot)({db:require('./db'),completed:(flight,date)=>flightModules.get(flight,date)});
 let pendingDashboardLog=null,dashboardSnapshotScheduled=false;
 function warmDashboardSnapshot(log){if(!log)return;pendingDashboardLog=log;if(dashboardSnapshotScheduled)return;dashboardSnapshotScheduled=true;setImmediate(()=>{const current=pendingDashboardLog;pendingDashboardLog=null;dashboardSnapshotScheduled=false;try{dashboardSySnapshot.updateFromLog(current);}catch(error){console.warn('Dashboard snapshot:',error.message);}});}
-const flightListCache=new (require('./flightListCache').FlightListCache)({db:require('./db'),loadLog:()=>getLatestFlightLog()});
 const boardingLive = new BoardingSqliteLive({ db: require('./db'), onReset: scope => {
   if (scope) nbrdConfirmations.clearScope(scope.flight, scope.date);
   else { nbrdConfirmations.clear(); boardingBoxCache?.invalidate(); }
 } });
 boardingLive.startCleanup();
+const flightDayStore=new (require('./flightDayStore').FlightDayStore)({db:require('./db'),beforeAccess:()=>boardingLive.cleanupIfDue()});
+require('./flightDayStore').setCurrent(flightDayStore);
+// Operational SY/BND reads never download Drive logs. Approved desktops publish
+// only today's terminal sections; BAB cleanup owns their retention.
+const flightListCache={read:async()=>flightDayStore.snapshot()};
 boardingBoxCache = new (require('./boardingBoxCache').BoardingBoxCache)({ db:require('./db'),
-  loadLog:async()=>{const log=await downloadLatestFlightLog();flightListCache.update(log);warmDashboardSnapshot(log);return log;}, beforeAccess:() => boardingLive.cleanupIfDue() });
+  loadLog:async()=>flightDayStore.log(), beforeAccess:() => boardingLive.cleanupIfDue() });
 boardingBoxCache.start();
 async function getLatestFlightLog() {
-  const ticket = boardingBoxCache.beginUpdate();
   const log = await downloadLatestFlightLog();
-  if (log) {
-    flightListCache.update(log);
-    warmDashboardSnapshot(log);
-    try { boardingBoxCache.updateFromLog(log, ticket); }
-    catch (error) { console.error('BOX cache update:', error.message); }
-  }
   return log;
 }
 const boardingDate = req => String(req.query.flightDate || req.body?.flightDate || operationalDate()).toUpperCase();
@@ -1023,6 +1020,7 @@ app.use((req, res, next) => {
 });
 
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '60mb';
+app.use('/flight-day-sync', express.json({limit:'1100kb',verify:desktopProtection.captureBody}));
 app.use('/has-pbb-api', express.json({limit:'2mb',verify:desktopProtection.captureBody}));
 app.use('/profile-api', express.json({limit:'3mb'}));
 app.use('/staff-schedule-api', express.json({limit:'1mb'}));
@@ -3280,6 +3278,9 @@ app.use(['/cbs-scan', '/cbs-scan2'], (req, res, next) => {
 });
 
 require('./flightListCache').register(app,flightListCache);
+require('./flightDayStore').register(app,{store:flightDayStore,onUpdate:log=>{
+  boardingBoxCache.updateFromLog(log);warmDashboardSnapshot(log);
+}});
 
 app.get('/boarding-box', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -4681,7 +4682,9 @@ app.get('/dashboard-snapshot',async(req,res)=>{
   if(!flight||date!==operationalDate())return res.status(400).json({error:'Choose today’s flight.'});
   try{
     const modules=flightModules.get(flight,date),complete=require('./flightModuleState').KEYS.every(key=>modules[key]?.complete);
-    const sy=dashboardSySnapshot.get(flight,date)||(complete?{flightNo:flight,flightDate:date,crewApis:{steps:Object.values(modules).filter(step=>step.key!=='fsc')}}:null);
+    const operational=flightDayStore.get(flight,date);
+    const saved=dashboardSySnapshot.get(flight,date);
+    const sy=operational?{...(saved||{}),...operational}:complete?{flightNo:flight,flightDate:date,crewApis:{steps:Object.values(modules).filter(step=>step.key!=='fsc')}}:null;
     if(sy){flightModules.apply(sy,require('./flightModuleState').isoDate(date));const authContext=await resolveAuthContextFromRequest(req);sy.permissions=authContext.permissions;}
     return res.json({sy,allModulesComplete:complete});
   }catch(error){res.status(503).json({error:'Saved flight data is unavailable.'});}
@@ -4835,6 +4838,10 @@ app.get(
         });
         if (!syInfo) {
           return res.json({ error: `No SY section found for ${requestedFlightNo}${syDate ? `/${syDate}` : ''}.` });
+        }
+        if(syInfo.flightDate===operationalDate()){
+          const operational=flightDayStore.get(syInfo.flightNo,syInfo.flightDate);
+          Object.assign(syInfo,{gate:operational?.gate||null,bdt:operational?.bdt||null,ed:operational?.ed||null,sd:operational?.sd||null});
         }
         const boardingNbrdVersion = boardingNbrdSnapshotVersion(selectedFlight, selectedDate, log);
         if (normalizeBoardingFlight(selectedFlight) && Array.isArray(syInfo.bnAudit)) {

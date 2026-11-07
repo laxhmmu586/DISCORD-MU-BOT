@@ -42,11 +42,12 @@
     finally { running = false; reload.disabled = false; finishLoading(); }
   }
   reload.onclick = () => refresh(true);
+  setInterval(()=>{if(!document.hidden)void refresh();},10000);
   if (!window.firebase?.apps?.length) { status.textContent = 'Unable to initialize sign-in. Please reload.'; finishLoading(); return; }
   firebase.auth().onAuthStateChanged(user => {
     if (!user) { location.replace('/login.html?next='+encodeURIComponent(location.pathname+location.search)); return; }
 
     userId=user.uid||user.email||'';
-    if(!restore())void refresh();
+    restore();void refresh();
   }, error => { status.textContent = error.message || 'Unable to check sign-in. Please reload.'; finishLoading(); });
 })();

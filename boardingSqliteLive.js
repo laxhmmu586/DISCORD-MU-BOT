@@ -39,6 +39,10 @@ class BoardingSqliteLive {
     CREATE TABLE IF NOT EXISTS boarding_scan_requests (
       request_id TEXT PRIMARY KEY, scan_id INTEGER NOT NULL REFERENCES scans(id) ON DELETE CASCADE
     );`);
+    db.exec(`CREATE TABLE IF NOT EXISTS flight_day_sections (
+      flight_date TEXT NOT NULL,flight_no TEXT NOT NULL,kind TEXT NOT NULL,
+      stamp INTEGER NOT NULL,raw TEXT NOT NULL,hash TEXT NOT NULL,
+      PRIMARY KEY(flight_date,flight_no,kind));`);
     this.findRequest = db.prepare(`SELECT s.*, d.raw_scan, d.seat, d.is_infant
       FROM boarding_scan_requests r JOIN scans s ON s.id=r.scan_id
       JOIN boarding_scan_details d ON d.scan_id=s.id WHERE r.request_id=?`);
@@ -75,7 +79,10 @@ class BoardingSqliteLive {
     if (!previous) this.saveCleanupAt.run(now());
     this.nextCleanupAt = nextBoardingCleanup(previous?.value ?? now());
     this.clearData = db.transaction(() => {
-      db.exec('DELETE FROM boarding_scan_details; DELETE FROM scans; DELETE FROM boarding_nbrd; DELETE FROM boarding_nbrd_versions; DELETE FROM boarding_box_cache; DELETE FROM boarding_box_confirmations; DELETE FROM boarding_box_numbers;');
+      db.exec('DELETE FROM boarding_scan_details; DELETE FROM scans; DELETE FROM boarding_nbrd; DELETE FROM boarding_nbrd_versions; DELETE FROM boarding_box_cache; DELETE FROM boarding_box_confirmations; DELETE FROM boarding_box_numbers; DELETE FROM flight_day_sections;');
+      for(const table of ['dashboard_sy_snapshots','flight_list_cache']) {
+        if(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))db.exec('DELETE FROM '+table);
+      }
       this.saveCleanupAt.run(this.now());
     });
     this.cleanupIfDue();
