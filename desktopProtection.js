@@ -14,7 +14,7 @@ function privatePage(value) {
 }
 function removedPage(value) { return /^(?:\/public){0,2}(?:\/has)?\/info(?:\.html|\.js|-access\.js)?\/?$/.test(normalized(value)); }
 function privateApi(p) {
-  return /^\/(?:nextday-info\/|record-scan|flight-day-sync|desktop-access|search|dashboard-snapshot|sy-live-stream|flight-telex|notes|security-reviews|warning-acknowledgements|stored-report|reports\/|sales-report\/|(?:sales-details|vip|psm|inad|spml|wch|miss-connection|test-baggage|bagroom)-report|pbb-api(?:\/|$)|test-baggage(?:\/|$)|cbs-(?!scan(?:2)?(?:\/|$)))/i.test(p);
+  return /^\/(?:nextday-info\/|record-scan|flight-day-sync|flight-email-checks|desktop-access|search|dashboard-snapshot|sy-live-stream|flight-telex|notes|security-reviews|warning-acknowledgements|stored-report|reports\/|sales-report\/|(?:sales-details|vip|psm|inad|spml|wch|miss-connection|test-baggage|bagroom)-report|pbb-api(?:\/|$)|test-baggage(?:\/|$)|cbs-(?!scan(?:2)?(?:\/|$)))/i.test(p);
 }
 function webBaggageApi(p,method,body) {
   return method==='GET'&&/^\/test-baggage\/[a-z0-9]{2}\d{6}\/?$/i.test(p)
@@ -32,7 +32,7 @@ function staticGuard(req,res,next) {
   next();
 }
 function createApiGuard({devicesFile=process.env.MUFC_DESKTOP_DEVICES_FILE||path.join(__dirname,'data','desktop-devices.json'),authenticate=require('./has/server/pbbAuth').authenticate,now=Date.now}={}) {
-  const used=new Map();
+  const used=new Map();let emailHandler;
   return async(req,res,next)=>{
     if(req.path==='/desktop-device-enroll')return require('./desktopEnrollment').createEnrollmentHandler({devicesFile,authenticate,now,used})(req,res);
     if(!privateApi(req.path)||req.method==='OPTIONS')return next();
@@ -58,6 +58,11 @@ function createApiGuard({devicesFile=process.env.MUFC_DESKTOP_DEVICES_FILE||path
       used.set(key,at+120000);
       req.desktopUser=await authenticate(req);
       if(device.allowedEmails?.length&&!device.allowedEmails.includes(req.desktopUser.email.toLowerCase()))throw Error('account');
+      if(req.path==='/flight-email-checks'){
+        if(req.method!=='POST')return res.status(405).json({error:'Use POST for email checks.'});
+        emailHandler ||= require('./terminalEmailChecks').createHandler(require('./googleDrive'));
+        return emailHandler(req,res);
+      }
       next();
     } catch { return res.status(403).json({error:'Approved MUFC Desktop computer and employee sign-in required.',code:'DESKTOP_REQUIRED'}); }
   };

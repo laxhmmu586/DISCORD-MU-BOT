@@ -1,0 +1,13 @@
+[
+  "src/server.js",
+  "src/desktop-html.js",
+  "src/email-checks.js",
+  "src/updates/window.cjs",
+  "src/updates/local-checks.cjs",
+  "web/desktop-ui.js",
+  "web/desktop-background.css",
+  "web/desktop-recovery.js",
+  "web/desktop-glass-v2.js",
+  "web/desktop-glass-v2.css",
+  "web/assets/shanghai-night-v2.webp"
+]
