@@ -1,0 +1,41 @@
+{
+  "baseSha256": "517a2954885da332fbf75d8cc3a7d851bd82314391f311ec3f6c5aa68b55ff8d",
+  "edits": [
+    {
+      "start": 4417,
+      "end": 4418,
+      "replacement": [
+        "<link rel=\"stylesheet\" href=\"/desktop-stability.css\"><link rel=\"stylesheet\" href=\"/desktop-glass-v2.css\"><script defer src=\"/desktop-glass-v2.js\"></script></head>\n"
+      ]
+    },
+    {
+      "start": 4798,
+      "end": 4800,
+      "replacement": [
+        "        ? [\"CREW_APIS\", \"FSC\", \"NEXTDAY_INFO\", \"NET\", \"CCL\", \"CC\", \"INITIAL_FLIGHT\", \"BDT_CHG\"]\n",
+        "        : [\"NEXTDAY_INFO\"];\n"
+      ]
+    },
+    {
+      "start": 6322,
+      "end": 6323,
+      "replacement": [
+        "        const mealSignature=JSON.stringify([sy.flightNo,sy.flightDate,sy.reservation,sy.reservationTicketed,sy.spml?.email?.found,sy.spml?.email?.counts,sy.spml?.email?.countsByCabin,sy.spml?.email?.cabinCounts,sy.spml?.preorderByCabin]);\n"
+      ]
+    },
+    {
+      "start": 6324,
+      "end": 6325,
+      "replacement": [
+        "        if(window.mufcDesktop){let status=document.querySelector(\"#desktop-meal-status\");if(!status){status=document.createElement(\"p\");status.id=\"desktop-meal-status\";status.style.cssText=\"padding:8px 12px;margin:0;color:#b9cde0;font-size:12px\";document.querySelector(\"#meal-order-shell\")?.append(status);}status.textContent=sy.spml?.email?.error||([\"error\",\"pending\",\"offline\"].includes(sy.desktopCloud?.state)?sy.desktopCloud.message:(sy.spml?.email?.found?\"Meal order email found in Gmail; checked against local logs.\":sy.spml?.email?.reason||\"No matching meal order email found in Gmail.\"));}\n"
+      ]
+    },
+    {
+      "start": 9143,
+      "end": 9144,
+      "replacement": [
+        "    </script><script>const gmailRefreshTimer=setInterval(()=>{if(!document.hidden && typeof currentSy!== 'undefined' && currentSy?.desktopCloud?.state==='pending' && !syAutoRefreshInFlight)void refreshSy({background:true});},3000);window.addEventListener('pagehide',()=>clearInterval(gmailRefreshTimer));</script>\n"
+      ]
+    }
+  ]
+}
