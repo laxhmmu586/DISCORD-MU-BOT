@@ -1,0 +1,7 @@
+# Shanghai Flights background
+
+Generated with the built-in image generation tool; original PNG retained in the Codex generated-images directory. Web asset: `public/public/assets/flights-shanghai-glass-v3.webp` (WebP quality 90).
+
+## Final prompt
+
+Use case: photorealistic-natural. Asset type: premium minimalist airline operations website background ONLY, wide landscape 16:9. Primary request: elegant Shanghai waterfront night panorama seen across the Huangpu River from the Bund toward Lujiazui, with recognizable Oriental Pearl Tower, Shanghai Tower, Shanghai World Financial Center and Jin Mao Tower, accurate believable relative proportions. Restrained luxury photographic art direction, refined midnight blue and luminous steel blue, gentle warm pearl gold building lights, calm river with silky subtle reflections, clear blue-hour atmosphere. Bright enough to see the city and water, no crushed blacks, no oversaturated neon rainbow. Composition: vast quiet smooth navy/blue sky occupies upper 65 percent, skyline spans lower third, tallest tower remains below the central UI area; skyline horizon at about 78 percent height and river below. Leave center and upper center uncluttered for glass UI later. Buildings are distant yet crisp, elegant photographic realism, very subtle haze, cinematic balanced exposure. Background only: NO UI, NO glass panels, NO buttons, NO text, NO logos, NO graphic ribbons, NO huge lens flare, NO airplanes, NO people. Design should feel expensive, clean, calm, contemporary, not sci-fi.
