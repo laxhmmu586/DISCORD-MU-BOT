@@ -15,3 +15,7 @@ HAS-PBB avatar/name navigation follows the currently selected account: LAX/MU op
 Validation includes permission/revision checks, multi-identity disable and re-enable, Firebase failure/retry, old-session rejection, push suppression, roster/assignment filtering, responsive HR and PBB flows, exchange-rate overrides and one-page print exports. Tests use fake identities and mock Firebase updates; no production employee was disabled.
 
 Price fields retain their original CNY bases when focused without an edit. The price editor remains available after saving or closing/reopening. Upgrade item cells are centered, the seat/purchase-ticket rows omit their RMK captions, and Baggage labels its existing CBS shortcut Departure Rush Bag.
+
+Desktop 2.1.11 intercepts the charge exchange API in its authenticated loopback server. FSC comes directly from local eTerm logs for the current Los Angeles date, without requiring SY or downloading cloud logs. Daily automatic rates and manual overrides are written atomically to `charge-exchange.json` beside desktop sync state, so they survive application restarts. Stale revisions and prior-date writes are rejected. Shared base-price administration remains on the existing API.
+
+NEXTDAY INFO validates the full `DDMMMYY` date in aggregate-only, device-signed local input. This path does not download cloud logs. Missing pages, invalid counts, another flight and another year are rejected before delivery.
