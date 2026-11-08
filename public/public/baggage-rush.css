@@ -1,0 +1,45 @@
+.report-admin-page .departure-rush-panel {
+  margin-top:24px;
+  background:linear-gradient(135deg,#fff,#f2f5ff);
+  color:#172033;
+  border-color:#d8e0f5;
+  scroll-margin-top:24px;
+}
+.departure-rush-heading {display:flex;justify-content:space-between;align-items:center;gap:16px;}
+.departure-rush-heading h2 {margin:0;color:#123a73;font-size:32px;}
+.departure-rush-panel button {border:0;border-radius:999px;padding:12px 18px;font-weight:850;background:#123a73;color:#fff;}
+.departure-rush-panel button.secondary {background:#e8eef7;color:#123a73;}
+.departure-rush-panel button:disabled {opacity:.55;cursor:wait;}
+.departure-rush-panel .worldtracer-form {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:24px 0 0;max-width:1120px;}
+.departure-rush-panel label {display:grid;gap:7px;color:#475467;font-size:12px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;}
+.departure-rush-panel input {width:100%;min-width:0;border:1px solid #ccd8f2;border-radius:12px;background:#fff;color:#172033;color-scheme:light;padding:12px;font-size:14px;font-weight:700;}
+.departure-rush-panel input:disabled {opacity:.7;}
+.departure-rush-panel .rush-itinerary,.departure-rush-panel .actions,.departure-rush-panel .worldtracer-status {grid-column:1/-1;}
+.departure-rush-panel .rush-itinerary {display:grid;min-width:0;gap:10px;padding:16px;border-radius:16px;background:#f8fbff;border:1px solid #d8e4f1;}
+.departure-rush-panel .rush-itinerary-head {display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;}
+.departure-rush-panel .rush-itinerary-head h2 {margin:0;font-size:18px;color:#123a73;}
+.departure-rush-panel .rush-flight-row {display:grid;grid-template-columns:150px 150px minmax(90px,1fr) 24px minmax(90px,1fr) auto;gap:8px;align-items:end;}
+.departure-rush-panel .rush-flight-row + .rush-flight-row {margin-top:16px;}
+.departure-rush-panel .rush-flight-row label,.departure-rush-panel .rush-flight-row input {min-width:0;max-width:100%;}
+.departure-rush-panel input[type="date"] {display:block;min-width:0;max-width:100%;appearance:none;}
+.departure-rush-panel input[type="date"]::-webkit-date-and-time-value {min-width:0;text-align:left;}
+.departure-rush-panel .rush-flight-row button {padding:10px 12px;border-radius:10px;background:#fce8e6;color:#b42318;}
+.departure-rush-panel .rush-route-arrow {align-self:center;text-align:center;color:#52677f;font-weight:900;}
+.departure-rush-panel .worldtracer-status {margin:0;line-height:1.6;overflow-wrap:anywhere;}
+.departure-rush-panel .worldtracer-status:empty {display:none;}
+.departure-rush-panel .status-fail {color:#b42318;}
+.departure-rush-panel .status-warn {color:#825000;}
+.report-admin-page .departure-rush-panel :is(button,input):focus-visible {outline:2px solid #245fce;outline-offset:3px;}
+@media(max-width:840px) {
+  .departure-rush-panel .worldtracer-form {grid-template-columns:1fr;}
+  .departure-rush-panel .rush-flight-row {grid-template-columns:1fr 1fr;}
+  .departure-rush-panel .rush-route-arrow {display:none;}
+  .departure-rush-panel .rush-flight-row button {grid-column:1/-1;}
+}
+@media(max-width:520px) {
+  .departure-rush-panel .rush-itinerary {padding:12px;overflow:hidden;}
+  .departure-rush-panel .rush-itinerary-head {align-items:stretch;}
+  .departure-rush-panel .rush-itinerary-head button {width:100%;}
+  .departure-rush-panel .rush-flight-row {grid-template-columns:minmax(0,1fr);}
+  .departure-rush-panel input[type="date"] {height:52px;}
+}

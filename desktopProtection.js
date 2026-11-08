@@ -19,6 +19,7 @@ function privateApi(p) {
 function webBaggageApi(p,method,body) {
   return method==='GET'&&/^\/test-baggage\/[a-z0-9]{2}\d{6}\/?$/i.test(p)
     ||method==='POST'&&(/^\/test-baggage\/?$/i.test(p)||/^\/test-baggage\/[a-z0-9]{2}\d{6}\/update\/?$/i.test(p))
+    ||method==='POST'&&/^\/cbs-worldtracer-cases\/?$/i.test(p)
     ||method==='GET'&&/^\/cbs-unresolved-baggage\/?$/i.test(p)
     ||method==='POST'&&/^\/cbs-unresolved-baggage\/[1-9]\d*\/update\/?$/i.test(p)&&body?.action==='exchange';
 }
