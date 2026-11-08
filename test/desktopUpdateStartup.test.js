@@ -10,6 +10,8 @@ test('startup checks and idle login Core installation require no employee login'
   const integration=await module.exports.create({app,config:{},ipcMain:{handle:(name,fn)=>handlers[name]=fn}});
   const win=new EventEmitter(),frame={};Object.assign(win,{isDestroyed:()=>false,destroy:()=>calls.push('destroy'),webContents:new EventEmitter()});Object.assign(win.webContents,{mainFrame:frame,getURL:()=> 'http://127.0.0.1/login.html',send:(name,data)=>sent.push({name,data})});
   integration.bind(win);await new Promise(resolve=>setImmediate(resolve));
+  let prevented=false;win.emit('close',{preventDefault:()=>{prevented=true;}});
+  assert.equal(prevented,false,'Closing must never wait for update preparation');
   assert.deepEqual(calls,['check']);assert.equal(sent[0].name,'hotfix:prepare');
   const event={sender:win.webContents,senderFrame:frame};
   await handlers['hotfix:prepared'](event,{token:sent[0].data.token,safe:false,url:'/login.html'});

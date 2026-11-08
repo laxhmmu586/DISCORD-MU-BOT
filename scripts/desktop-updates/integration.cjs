@@ -3,7 +3,7 @@ const path=require('node:path'),fs=require('node:fs/promises'),crypto=require('n
 const {Updater}=require('./updater.cjs');
 async function create({app,config,ipcMain,session,fetch}) {
   const updater=await new Updater({directory:path.join(app.getPath('userData'),'updates',app.getVersion()),bundledRoot:path.join(__dirname,'../../web'),coreVersion:app.getVersion(),config,fetch}).init();
-  let pinned=updater.state.active,window,token,timer,watchdog,closing=false;
+  let pinned=updater.state.active,window,token,timer,watchdog;
   const trusted=event=>{
     if(!window||event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame)throw Error('Main application frame required.');
   };
@@ -13,9 +13,9 @@ async function create({app,config,ipcMain,session,fetch}) {
     const preparedURL=window.webContents.getURL();
     const safeURL=new URL(preparedURL);
     if(!['/login.html','/flights.html'].includes(safeURL.pathname)||safeURL.pathname+safeURL.search+safeURL.hash!==result.url)return;
-    if(closing || (updater.coreReady && safeURL.pathname==='/login.html')){
+    if(updater.coreReady && safeURL.pathname==='/login.html'){
       try{await require('./core.cjs').scheduleCore(updater);window.destroy();app.quit();}
-      catch(error){closing=false;updater.status={status:'error',message:error.message};}
+      catch(error){updater.status={status:'error',message:error.message};}
       return;
     }
     if(updater.checking)return;
@@ -37,14 +37,8 @@ async function create({app,config,ipcMain,session,fetch}) {
       if(!monitor)return;
       window.webContents.on('render-process-gone',()=>void rollback('Renderer stopped during hotfix'));
       window.webContents.on('did-fail-load',(_e,_code,_description,_url,main)=>{if(main)void rollback('Hotfix page failed to load');});
-      // Closing a busy work page exits normally without running an installer.
-      // Safe installation is attempted only after the same renderer handshake.
-      window.on('close',event=>{
-        if(!updater.coreReady||closing)return;
-        const url=new URL(window.webContents.getURL());
-        if(!['/login.html','/flights.html'].includes(url.pathname))return;
-        event.preventDefault();closing=true;prepare();setTimeout(()=>{if(closing){closing=false;updater.coreReady=null;window.close();}},11000).unref();
-      });
+      // Never intercept close or wait for a renderer/installer. Verified updates
+      // install through the idle login handshake, including after the next launch.
       const needsPrepare=()=>updater.ready||updater.rollbackRequested||(updater.coreReady&&new URL(window.webContents.getURL()||'about:blank').pathname==='/login.html');
       const check=()=>updater.check().then(()=>{if(needsPrepare())prepare();});
       void check();timer=setInterval(check,5*60000);timer.unref();

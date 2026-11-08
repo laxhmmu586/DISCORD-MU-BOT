@@ -4,7 +4,7 @@
     "mufc-2026": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAlyLOpOc7VuiQbZ+CdktDYv/woKpxeVOlrtc9OOqf+Qc=\n-----END PUBLIC KEY-----\n"
   },
   "sources": [
-    "https://api.mufcapp.net/desktop-updates/stable/2.1.7/"
+    "https://api.mufcapp.net/desktop-updates/stable/2.1.8/"
   ],
   "coreCertificateThumbprints": [
     "877C05BF6EA092C78B8C5A3F081BF25855EFB390"
