@@ -25,6 +25,13 @@
     html:has(body.login-orbit){overflow:hidden}
     body.login-orbit{height:100dvh!important;min-height:0!important;overflow:hidden!important}
     body:has(>.flight-topbar)>main{min-height:calc(100svh - 60px - var(--mufc-window-height))}
+    body:has(.timeline)>main{height:calc(100dvh - var(--mufc-window-height));min-height:calc(100dvh - var(--mufc-window-height))}
+    body:has(.timeline) .hero{height:calc(100dvh - 76px - var(--mufc-window-height));min-height:calc(100dvh - 76px - var(--mufc-window-height))}
+    .mufc-maximized{--mufc-window-height:0px}
+    .mufc-maximized .mufc-window-bar{left:auto!important;width:138px;height:32px;background:transparent;border:0}
+    .mufc-maximized .mufc-window-drag{display:none}
+    .mufc-maximized>.flight-topbar,.mufc-maximized>.topbar{padding-right:154px!important}
+    .mufc-maximized>#mufc-login-controls,.mufc-maximized>#mufc-settings-button{right:154px!important}
     .mufc-fullscreen{--mufc-window-height:0px}
     .mufc-fullscreen .mufc-window-bar{display:none}
     @media print{:root{--mufc-window-height:0px}.mufc-window-bar{display:none}}
@@ -37,7 +44,7 @@
     new MutationObserver(syncLayer).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open']});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
-  const paint=state=>{document.body.classList.toggle('mufc-fullscreen',Boolean(state.fullscreen));const button=bar.querySelector('[data-mufc-window-action="maximize"]');button.innerHTML=svg(state.maximized?'restore':'maximize');button.title=state.maximized?'Restore':'Maximize';button.setAttribute('aria-label',button.title);};
+  const paint=state=>{document.body.classList.toggle('mufc-fullscreen',Boolean(state.fullscreen));document.body.classList.toggle('mufc-maximized',Boolean(state.maximized));const button=bar.querySelector('[data-mufc-window-action="maximize"]');button.innerHTML=svg(state.maximized?'restore':'maximize');button.title=state.maximized?'Restore':'Maximize';button.setAttribute('aria-label',button.title);};
   bar.addEventListener('click',event=>{const button=event.target.closest('[data-mufc-window-action]');if(button)void window.mufcDesktop.windowControl(button.dataset.mufcWindowAction).then(paint).catch(()=>{});});
   window.mufcDesktop.onWindowState(paint);void window.mufcDesktop.windowControl('state').then(paint).catch(()=>{});
 })();

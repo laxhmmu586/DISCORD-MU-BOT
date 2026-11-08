@@ -39,6 +39,7 @@ function apply(source,config) {
   preload=replace(preload,'contextBridge.exposeInMainWorld',`if (process.isMainFrame) contextBridge.exposeInMainWorld`);
   preload=replace(preload,"  googleSignIn:",`  onUpdatePrepare: callback => {ipcRenderer.on('hotfix:prepare', (_event,data)=>callback(data));},
   windowControl: action => ipcRenderer.invoke('window:control',action),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
   onWindowState: callback => ipcRenderer.on('window:state',(_event,data)=>callback(data)),
   updatePrepare: data => ipcRenderer.invoke('hotfix:prepared',data),
   updateHealthy: data => ipcRenderer.invoke('hotfix:healthy',data),

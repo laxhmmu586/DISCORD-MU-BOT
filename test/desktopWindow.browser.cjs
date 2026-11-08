@@ -26,19 +26,24 @@ const {chromium}=require(process.argv[4]||'playwright');
  for(const route of ['flights.html','index.html','login.html','cbs.html','cbs-form.html']){
    await page.goto('http://127.0.0.1:'+server.address().port+'/'+route);await page.waitForSelector('.mufc-window-bar');
    await page.evaluate(()=>{document.body.classList.remove('is-loading');const a=document.querySelector('#flight-account');if(a)a.textContent='Lake';});
-   for(const width of [1000,1500]){
-     await page.setViewportSize({width,height:980});
+   for(const [width,height] of [[1000,700],[1500,980]]){
+     await page.setViewportSize({width,height});
      const result=await page.evaluate(()=>{const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom,right:r.right};};return {bar:rect(document.querySelector('.mufc-window-bar')),header:document.querySelector('.desktop-cbs-topbar,body>header')?rect(document.querySelector('.desktop-cbs-topbar,body>header')):null,settings:rect(document.querySelector('#mufc-settings-button')),buttons:[...document.querySelectorAll('[data-mufc-window-action]')].map(rect)};});
      assert.equal(result.bar.y,0);assert.equal(result.bar.height,32);assert.equal(result.bar.width,width);
      assert(result.buttons.every(b=>b.width===46&&b.height>20&&b.right<=width),'Visible window controls');
      if(result.header)assert(result.header.y>=32,'Navigation below window chrome: '+route);
      assert(result.settings.y>=32,'Settings below window chrome');records.push({route,width,...result});
+     if(route==='index.html')assert(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'Dashboard must not overflow by the caption height');
    }
    await page.screenshot({path:path.join(out,route+'.png')});
    await page.locator('#mufc-settings-button').click();await page.waitForSelector('dialog[open] .mufc-window-bar');
    await page.locator('[data-mufc-window-action="maximize"]').click();assert.equal(await page.locator('[data-mufc-window-action="maximize"]').getAttribute('aria-label'),'Restore');
    await page.screenshot({path:path.join(out,route+'-settings.png')});
    await page.locator('[data-close]').click();await page.waitForSelector('body > .mufc-window-bar');
+   const maximized=await page.evaluate(()=>({height:getComputedStyle(document.body).getPropertyValue('--mufc-window-height').trim(),bar:document.querySelector('.mufc-window-bar').getBoundingClientRect().width}));
+   assert.equal(maximized.height,'0px');assert.equal(maximized.bar,138);
+   await page.screenshot({path:path.join(out,route+'-maximized.png')});
+   await page.locator('[data-mufc-window-action="maximize"]').click();
    await page.evaluate(()=>window.fixtureWindowState({fullscreen:true}));assert.equal(await page.locator('.mufc-window-bar').isVisible(),false);
    await page.evaluate(()=>window.fixtureWindowState({fullscreen:false}));assert.equal(await page.locator('.mufc-window-bar').isVisible(),true);
  }
