@@ -1,5 +1,5 @@
 /* Desktop keeps the original centered composition; mobile uses the glass reference. */
-body.airport-scene.flight-glass-page{min-height:100svh;background:linear-gradient(180deg,#01050ce8,#020912b8 55%,#02070ba3),url('/assets/flights-shanghai-glass-v3.webp') center center/cover fixed no-repeat!important;isolation:isolate}
+body.airport-scene.flight-glass-page{min-height:100svh;background:linear-gradient(180deg,#01050c88,#0209123b 55%,#02070b55),url('/assets/flights-shanghai-bund-night-v4.webp') center center/cover fixed no-repeat!important;isolation:isolate}
 body.flight-glass-page::before,body.flight-glass-page::after{content:none!important}
 .flight-glass-scene{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
 .flight-glass-scene svg,.flight-glass-horizon{display:none}
@@ -28,7 +28,7 @@ body.flight-glass-page main>.flight-services,.flight-glass-page.is-loading .flig
 .flight-glass-page #flight-status{margin:20px 0 0;color:#d5e7fc}
 .flight-glass-page.is-loading .flight-loading>span{top:43%}
 @media(max-width:760px){
- body.airport-scene.flight-glass-page{background-color:#02060d!important;background:radial-gradient(ellipse at 98% 50%,#17325218,transparent 60%),linear-gradient(180deg,#01050cf5,#020912c7 54%,#02070b99),url('/assets/flights-shanghai-glass-v3.webp') 66% bottom/auto 100svh fixed no-repeat!important}
+ body.airport-scene.flight-glass-page{background-color:#02060d!important;background:radial-gradient(ellipse at 98% 50%,#17325218,transparent 60%),linear-gradient(180deg,#01050cbb,#02091266 54%,#02070b44),url('/assets/flights-shanghai-bund-night-v4.webp') 12% bottom/auto 100svh fixed no-repeat!important}
  .flight-glass-scene svg{display:block;position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:url(#flight-arc-light);stroke-width:1;opacity:.16;filter:drop-shadow(0 0 4px #61cfff)}
  .flight-glass-scene svg .flight-glass-ribbon{fill:url(#flight-ribbon-fill);stroke:none}
  .flight-glass-page .flight-topbar{width:calc(100% - 56px);height:86px;padding:0;gap:12px}
