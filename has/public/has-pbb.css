@@ -496,3 +496,7 @@ dialog.has-schedule-dialog{width:min(1100px,calc(100vw - 32px));max-height:90svh
 .has-page .has-topbar #has-briefing-button{display:inline-flex;flex-direction:row;align-items:center;gap:4px;padding:4px 0;font-size:11px;line-height:1.2;min-height:32px}.has-page .has-topbar #has-briefing-button img{width:22px;height:22px;object-fit:contain}.has-page .has-shell{padding-top:16px!important}.has-page .has-page-intro{margin-bottom:8px!important}.has-page .has-page-intro h1{margin:4px 0}.has-page #has-status{margin:8px 0}.has-page #has-view>.has-gate-card{margin-top:12px}
 @media(max-width:760px){.has-page .has-shell{padding-top:12px!important}}
 @media(max-width:360px){.has-page .has-topbar #has-briefing-button span{display:none}.has-page .has-topbar #has-briefing-button img{width:20px;height:20px}}
+
+/* Give MU Briefing a little more separation from Config. */
+.has-page .has-topbar #has-briefing-button{margin-right:8px}
+@media(max-width:360px){.has-page .has-topbar #has-briefing-button{margin-right:3px}}
