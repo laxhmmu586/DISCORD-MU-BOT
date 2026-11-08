@@ -4917,13 +4917,15 @@ app.post('/nextday-info/send', async (req, res) => {
     // Re-read the operational log immediately before delivery. The page may have
     // retained an earlier SY/JCSY response while new figures were entered, and an
     // email must never be sent with those stale browser-side totals.
-    const log = await getLatestFlightLog();
     const syDate = isoDateToSyDate(nextIso);
-    let syInfo = log && syDate ? findSYInfo(log, syDate, {
-      preferredFlightNo: flightNo,
-      strictPreferredFlight: true
-    }) : null;
-    if(req.desktopUser&&req.body?.terminalSy)syInfo=require('./terminalNextDay').validate(req.body.terminalSy,flightNo,syDate);
+    const terminal = req.desktopUser && req.body?.terminalSy;
+    const log = terminal ? '' : await getLatestFlightLog();
+    const syInfo = terminal
+      ? require('./terminalNextDay').validate(terminal, flightNo, syDate + nextIso.slice(2, 4))
+      : log && syDate ? findSYInfo(log, syDate, {
+        preferredFlightNo: flightNo,
+        strictPreferredFlight: true
+      }) : null;
     if (syInfo?.jcsy?.complete && !syInfo.jcsy.paginationComplete) {
       const jcsy = syInfo.jcsy;
       const progress = jcsy.bookedTotal

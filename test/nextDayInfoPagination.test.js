@@ -13,14 +13,15 @@ const route = server.slice(server.indexOf("app.post('/nextday-info/send'"), serv
 
 const parse = (log) => findSYInfo(log, '05NOV', { preferredFlightNo: 'MU586', strictPreferredFlight: true });
 
-async function send(log) {
+async function send(log, requestBody = {}, desktopUser = null) {
   let handler;
   let status = 200;
   let body;
   const deliveries = [];
   const context = {
     app: { post: (_path, callback) => { handler = callback; } },
-    getLatestFlightLog: async () => log,
+    getLatestFlightLog: async () => {if(log instanceof Error)throw log;return log;},
+    require: (name) => {if(name!=='./terminalNextDay')throw Error(name);return require('../terminalNextDay');},
     findSYInfo,
     todayIsoUtc: () => '2026-11-04',
     addIsoDays: () => '2026-11-05',
@@ -34,7 +35,7 @@ async function send(log) {
     console,
   };
   vm.runInNewContext(helpers + route, context);
-  await handler({ body: { flightNo: 'MU586' } }, {
+  await handler({ desktopUser, body: { flightNo: 'MU586', ...requestBody } }, {
     status(code) { status = code; return this; },
     json(value) { body = value; return this; },
   });
@@ -104,3 +105,8 @@ test('a newer incomplete JCSY query does not send stale totals from an earlier c
   assert.equal(result.status, 400);
   assert.deepEqual(result.deliveries, []);
 });
+
+function terminalPayload(){const sy=parse(fixture);return {flightNo:sy.flightNo,flightDate:'05NOV26',reservationTicketed:['',...sy.reservationTicketed.slice(1,4).map(Number)],jcsy:sy.jcsy};}
+test('signed desktop aggregates use full flight date and skip cloud log',async()=>{const result=await send(Error('cloud offline'),{terminalSy:terminalPayload()},{email:'fixture@example.test'});assert.equal(result.status,200);assert.equal(result.body.details.domesticTransfer,'92');});
+test('wrong year, wrong flight, missing pages and invalid totals block delivery',async()=>{for(const change of [p=>p.flightDate='05NOV25',p=>p.flightNo='MU578',p=>p.jcsy.paginationComplete=false,p=>p.reservationTicketed[1]=-1,p=>p.jcsy.rows=[null]]){const terminalSy=terminalPayload();change(terminalSy);const result=await send(Error('must not read cloud'),{terminalSy},{email:'fixture@example.test'});assert.equal(result.status,400);assert.equal(result.deliveries.length,0);}});
+test('web requests cannot substitute desktop figures',async()=>{const result=await send('',{terminalSy:terminalPayload()});assert.equal(result.status,400);assert.equal(result.deliveries.length,0);});

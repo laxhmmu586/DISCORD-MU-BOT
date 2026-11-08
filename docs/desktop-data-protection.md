@@ -29,3 +29,5 @@ Validation: 27 focused security/profile tests passed. Integration against the ac
 The broader employee-admin/workspace suite has 16 failures on the unchanged `48e6a65e` baseline as well (mock database, route expectations and missing VM globals). Those failures are unrelated to this change.
 
 Approval controls access from new installations and ordinary browsers. It cannot prevent an approved employee from copying data they are authorized to view or protect a Windows session already controlled by another person.
+
+MUFC 2.1.11 retains `mufc-2026` and its original Windows publisher pin, and adds `mufc-lax-20261108` with publisher thumbprint `0CD6CA0573BCC9CC94B13ECFDCD3581BCC92A341`. One manual installation is required to introduce the new trust key to old clients. The installer explicitly asks before enrolling both pinned public code-signing certificates for the current Windows user. Signing material stays outside this repository at `C:\Users\laxhm\AppData\Local\MUFC-Release-Signing-20261108`; the Windows certificate private key is non-exportable in the current user certificate store. Private keys must never be uploaded to the update host.
