@@ -232,3 +232,6 @@ body.home-page .home-sidebar>.workspace-features{margin-bottom:7px}
 @media(prefers-reduced-motion:reduce){.home-task-row .icon-pending-approval{animation:none}}
 
 .home-task-tabs #home-approve-count{background:#ffe3e8;color:#d92d43}
+
+/* Date-free workspaces use the same right-aligned account group as dated headers. */
+@media(min-width:761px){body.home-page .home-topbar:not(:has(>.topbar-date))>#flight-account{margin-left:auto}}
