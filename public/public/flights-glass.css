@@ -9,7 +9,7 @@ body.flight-glass-page::before,body.flight-glass-page::after{content:none!import
 .flight-glass-page main{position:relative;z-index:1;max-width:1280px;min-height:calc(100svh - 60px);margin:auto;padding:76px 30px 25px;align-items:center}
 .flight-glass-page .flight-welcome p{font-size:12px;font-weight:500;letter-spacing:5px;color:#cee1fb;margin:0 0 16px}
 .flight-glass-page .flight-welcome h1{font-size:clamp(36px,3.4vw,50px);font-family:"Segoe UI",Arial,sans-serif;font-weight:300;letter-spacing:-1px;line-height:1.2;margin:0}
-.flight-glass-page .flight-welcome::after{content:"";display:block;width:180px;height:2px;margin:28px auto 0;background:linear-gradient(90deg,transparent,#4dbbff 32%,#eaffff 50%,#3bb4ff 68%,transparent);box-shadow:0 0 10px #39baffb3,0 0 22px #008cff70}
+.flight-glass-page .flight-welcome::after{content:"";display:block;width:180px;height:2px;margin:28px auto 0;background:none;box-shadow:none}
 .flight-glass-page .flight-cards{width:100%;margin:76px 0 0;padding:0;gap:26px;align-items:stretch}
 .flight-glass-page .flight-card,.flight-glass-page .flight-card.is-active,.flight-glass-page .flight-card:hover,.flight-glass-page .flight-card:focus-within{width:390px;max-width:100%;min-height:260px;padding:32px 44px 34px;border:1px solid #a8c6e45c;border-radius:25px;background:linear-gradient(125deg,#e4f0ff1c 0%,#c5dcf407 28%,transparent 48%),linear-gradient(155deg,#0b182b85,#02070fb8 65%,#0b203b70);box-shadow:inset 0 1px 0 #f0f7ff66,inset 1px 0 0 #d6eaff24,inset 0 -1px 0 #71a1cc38,0 18px 50px #0009,0 0 20px #4488c515;backdrop-filter:blur(25px) saturate(125%);-webkit-backdrop-filter:blur(25px) saturate(125%)}
 .flight-glass-page .flight-card:hover{transform:translateY(-3px)}
@@ -33,7 +33,7 @@ body.flight-glass-page main>.flight-services,.flight-glass-page.is-loading .flig
  .flight-glass-scene svg .flight-glass-ribbon{fill:url(#flight-ribbon-fill);stroke:none}
  .flight-glass-page .flight-topbar{width:calc(100% - 56px);height:86px;padding:0;gap:12px}
  .flight-glass-page .flight-brand{position:relative;padding-bottom:5px;font-size:30px;font-weight:800;letter-spacing:3px}
- .flight-glass-page .flight-brand::after{content:"";position:absolute;left:6px;right:0;bottom:0;height:13px;border-bottom:2px solid #48c5ff;border-radius:0 0 70% 50%;transform:rotate(-7deg);filter:drop-shadow(0 1px 4px #14aaff)}
+ .flight-glass-page .flight-brand::after{content:none}
  .flight-glass-page main{min-height:calc(100svh - 86px);padding:36px clamp(20px,8vw,42px) 28px;align-items:stretch}
  .flight-glass-page .flight-welcome{text-align:left;max-width:520px;width:100%;margin:0 auto}
  .flight-glass-page .flight-welcome p{font-size:10px;letter-spacing:3.3px;margin-bottom:14px}
