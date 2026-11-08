@@ -489,7 +489,10 @@ dialog.has-schedule-dialog{width:min(1100px,calc(100vw - 32px));max-height:90svh
 
 @media(max-width:360px){.has-page .has-topbar #has-config-button.has-config-button{padding:8px 10px;gap:5px;font-size:11px;height:40px;min-height:40px}.has-topbar .has-station-brand{margin-right:5px}}
 
-/* Compact MU Briefing beneath the current account, away from the brand. */
-.has-page .has-page-intro #has-briefing-button{position:static;grid-column:2;grid-row:2;justify-self:end;display:inline-flex;align-items:center;gap:5px;margin:8px 0 0;padding:4px 0;min-height:32px;font-size:11px;line-height:1.2;background:transparent;border:0;box-shadow:none;cursor:pointer}.has-page .has-page-intro #has-briefing-button img{width:22px;height:22px;object-fit:contain}
 
 .has-page .has-intro-account .has-account-switch{justify-content:center;align-items:center}
+
+/* Compact heading and top-bar MU Briefing. */
+.has-page .has-topbar #has-briefing-button{display:inline-flex;flex-direction:row;align-items:center;gap:4px;padding:4px 0;font-size:11px;line-height:1.2;min-height:32px}.has-page .has-topbar #has-briefing-button img{width:22px;height:22px;object-fit:contain}.has-page .has-shell{padding-top:16px!important}.has-page .has-page-intro{margin-bottom:8px!important}.has-page .has-page-intro h1{margin:4px 0}.has-page #has-status{margin:8px 0}.has-page #has-view>.has-gate-card{margin-top:12px}
+@media(max-width:760px){.has-page .has-shell{padding-top:12px!important}}
+@media(max-width:360px){.has-page .has-topbar #has-briefing-button span{display:none}.has-page .has-topbar #has-briefing-button img{width:20px;height:20px}}
