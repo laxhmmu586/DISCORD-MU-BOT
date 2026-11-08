@@ -16,8 +16,9 @@ function apply(source,config) {
   let main=read('src/main.js');
   main=replace(main,"const { autoUpdater } = require('electron-updater');",'// Core and UI updates use the signed MUFC manifest.');
   main=replace(main,'let window, origin, server;','let window, origin, server, secureUpdates;');
-  main=replace(main,"const secret = crypto.randomBytes(32).toString('hex');",`secureUpdates=await require('./updates/integration.cjs').create({app,config:require('../update-config.json'),ipcMain,session:desktopSession,fetch:global.fetch});
-    const secret = crypto.randomBytes(32).toString('hex');`);
+  // Public update transport is independent of employee login/device enrollment.
+  main=replace(main,"    global.fetch = await require('./device-client')",`    secureUpdates=await require('./updates/integration.cjs').create({app,config:require('../update-config.json'),ipcMain,session:desktopSession,fetch:global.fetch});
+    global.fetch = await require('./device-client')`);
   main=replace(main,"path.join(app.getPath('userData'),'sheet-sync.json')))","path.join(app.getPath('userData'),'sheet-sync.json'), id=>secureUpdates.webRoot(id)))");
   main=replace(main,"if (details.url.startsWith(origin + '/')) details.requestHeaders['X-MUFC-Session'] = secret;",`if (details.url.startsWith(origin + '/')) {details.requestHeaders['X-MUFC-Session'] = secret;secureUpdates.requestHeaders(details.requestHeaders);}`);
   main=replace(main,"event.sender !== window.webContents || new URL(event.senderFrame.url).origin !== origin","event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== origin");
@@ -32,7 +33,7 @@ function apply(source,config) {
   const start=main.indexOf('    if (app.isPackaged) {\n      try {\n        await fs.access(');
   assert(start>=0);const end=main.indexOf('\n  }).catch(',start);assert(end>start);
   main=main.slice(0,start)+main.slice(end);
-  main=replace(main,'new BrowserWindow({ show:',"new BrowserWindow({ frame:false, titleBarStyle:'hidden', titleBarOverlay:{color:'#061828',symbolColor:'#dcecff',height:32}, backgroundColor:'#061828', show:");
+  main=replace(main,'new BrowserWindow({ show:',"new BrowserWindow({ frame:false, backgroundColor:'#061828', show:");
   write('src/main.js',main);
   let preload=read('src/preload.js');
   preload=replace(preload,'contextBridge.exposeInMainWorld',`if (process.isMainFrame) contextBridge.exposeInMainWorld`);

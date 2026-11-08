@@ -43,9 +43,18 @@
     try{const state=JSON.parse(sessionStorage.getItem('mufc-update-navigation'));if(state?.url===location.pathname+location.search+location.hash){scrollTo(state.x,state.y);sessionStorage.removeItem('mufc-update-navigation');}}catch{}
   });
   let failed=false,readyAt=0;window.addEventListener('error',()=>{failed=true;});window.addEventListener('unhandledrejection',()=>{failed=true;});
+  // This status uses native IPC, so it works without a signed-in Firebase user.
+  if(location.pathname==='/login.html' && window.mufcDesktop.updateStatus){
+    const status=document.createElement('div');status.setAttribute('role','status');
+    status.style.cssText='position:fixed;left:18px;bottom:14px;z-index:10000;max-width:calc(100vw - 36px);padding:8px 12px;border:1px solid #ffffff20;border-radius:8px;background:#061828ee;color:#c5d0dd;font:12px/1.5 system-ui;pointer-events:none';
+    status.textContent='Checking for updates…';document.body.append(status);
+    const paint=async()=>{try{const state=await window.mufcDesktop.updateStatus();status.textContent=state.core?'Update downloaded. Installing when the login screen is idle…':state.status==='error'?'Update unavailable. Retrying automatically…':state.message;}catch{status.textContent='Update unavailable. Retrying automatically…';}};
+    void paint();setInterval(paint,5000);
+    window.addEventListener('online',()=>{void window.mufcDesktop.checkUpdates?.().then(paint).catch(()=>{});});
+  }
   const health=setInterval(async()=>{
     if(failed)return;
-    if(document.readyState==='complete' && window.firebase?.apps?.length && window.mufcDesktop && !document.body.classList.contains('is-loading')) {
+    if(document.readyState==='complete' && (location.pathname==='/login.html'||window.firebase?.apps?.length) && window.mufcDesktop && !document.body.classList.contains('is-loading')) {
       if(!readyAt)readyAt=Date.now();if(Date.now()-readyAt<10000)return;
       await window.mufcDesktop.updateHealthy({version:window.mufcUIVersion});clearInterval(health);
     }else readyAt=0;

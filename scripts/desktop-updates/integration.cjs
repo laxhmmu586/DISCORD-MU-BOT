@@ -13,7 +13,7 @@ async function create({app,config,ipcMain,session,fetch}) {
     const preparedURL=window.webContents.getURL();
     const safeURL=new URL(preparedURL);
     if(!['/login.html','/flights.html'].includes(safeURL.pathname)||safeURL.pathname+safeURL.search+safeURL.hash!==result.url)return;
-    if(closing){
+    if(closing || (updater.coreReady && safeURL.pathname==='/login.html')){
       try{await require('./core.cjs').scheduleCore(updater);window.destroy();app.quit();}
       catch(error){closing=false;updater.status={status:'error',message:error.message};}
       return;
@@ -45,9 +45,10 @@ async function create({app,config,ipcMain,session,fetch}) {
         if(!['/login.html','/flights.html'].includes(url.pathname))return;
         event.preventDefault();closing=true;prepare();setTimeout(()=>{if(closing){closing=false;updater.coreReady=null;window.close();}},11000).unref();
       });
-      const check=()=>updater.check().then(()=>{if(updater.ready||updater.rollbackRequested)prepare();});
+      const needsPrepare=()=>updater.ready||updater.rollbackRequested||(updater.coreReady&&new URL(window.webContents.getURL()||'about:blank').pathname==='/login.html');
+      const check=()=>updater.check().then(()=>{if(needsPrepare())prepare();});
       void check();timer=setInterval(check,5*60000);timer.unref();
-      const safeTimer=setInterval(()=>{if(updater.ready||updater.rollbackRequested)prepare();},10000);safeTimer.unref();
+      const safeTimer=setInterval(()=>{if(needsPrepare())prepare();},10000);safeTimer.unref();
       app.on('before-quit',()=>{clearInterval(timer);clearInterval(safeTimer);clearTimeout(watchdog);});
     }
   };

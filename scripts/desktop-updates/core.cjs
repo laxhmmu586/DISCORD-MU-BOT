@@ -19,7 +19,7 @@ async function scheduleCore(updater,pid=process.pid) {
   // Validate now AND again after MUFC exits, immediately before running the EXE.
   await promisify(execFile)('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',encoded(check)],{windowsHide:true,timeout:30000});
   if(updater.coreReady!==item||updater.control?.sequence!==manifest.sequence||updater.control.paused||updater.control.disabled)throw Error('Core publication changed during verification.');
-  const helper=spawn('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',encoded(`Wait-Process -Id ${Number(pid)} -ErrorAction SilentlyContinue;${check}Start-Process -FilePath $file -ArgumentList '/S' -WindowStyle Hidden -Wait;`)],{detached:true,stdio:'ignore',windowsHide:true});
+  const helper=spawn('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',encoded(`Wait-Process -Id ${Number(pid)} -ErrorAction SilentlyContinue;${check}$installed=Start-Process -FilePath $file -ArgumentList '/S' -WindowStyle Hidden -Wait -PassThru;if($installed.ExitCode -eq 0){Start-Process -FilePath ${quote(process.execPath)} -WindowStyle Hidden;}`)],{detached:true,stdio:'ignore',windowsHide:true});
   helper.unref();return true;
 }
 module.exports={scheduleCore};

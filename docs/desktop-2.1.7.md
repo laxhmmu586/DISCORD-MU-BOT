@@ -1,0 +1,9 @@
+# MUFC 2.1.7
+
+The frameless window uses one opaque 32px strip with a thin divider, a separate drag region and visible SVG minimize/maximize/restore/close controls. Windows platform detection no longer hides the controls when the packaged window has no native titlebar overlay. Fixed navigation and CBS sidebars start below the strip; existing page padding is preserved. Fullscreen and printing remove the strip's space. Modal dialogs host the window strip in their top layer so Settings does not block window controls.
+
+The public signed update transport is created before device enrollment and does not use employee authentication. Launching the app starts update checks; the login screen shows update status and retries after connectivity returns. A downloaded, verified Core may install automatically after the unchanged safe-page handshake on an idle login screen. Dirty inputs, dialogs, pending requests and business operations continue to defer installation. A successful installer reopens the same application executable. Authenticode, certificate pins, manifest signatures and checksums remain mandatory.
+
+Clients already on 2.1.5/2.1.6 retain their existing close-to-install behavior for this first upgrade; their updater itself cannot change before the new Core is installed. No employee login is required to download or install 2.1.7. Subsequent updates use the automatic idle-login installation behavior.
+
+Validation: 19 targeted Node tests; five packaged pages at widths 1000 and 1500 in Edge, including Settings top-layer controls, maximize/restore and fullscreen; actual packaged Electron login/Settings startup with no persistent employee session; installer Authenticode signature verified against the pinned certificate. Browser fixtures suppress business scripts and use simulated employee display data. Electron's offscreen login screenshot returned UnknownVizError; browser screenshots provide layout evidence.
