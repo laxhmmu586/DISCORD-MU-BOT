@@ -14,7 +14,7 @@ function privatePage(value) {
 }
 function removedPage(value) { return /^(?:\/public){0,2}(?:\/has)?\/info(?:\.html|\.js|-access\.js)?\/?$/.test(normalized(value)); }
 function privateApi(p) {
-  return /^\/(?:flight-day-sync|desktop-access|search|dashboard-snapshot|sy-live-stream|flight-telex|notes|security-reviews|warning-acknowledgements|stored-report|reports\/|sales-report\/|(?:sales-details|vip|psm|inad|spml|wch|miss-connection|test-baggage|bagroom)-report|pbb-api(?:\/|$)|test-baggage(?:\/|$)|cbs-(?!scan(?:2)?(?:\/|$)))/i.test(p);
+  return /^\/(?:nextday-info\/|record-scan|flight-day-sync|desktop-access|search|dashboard-snapshot|sy-live-stream|flight-telex|notes|security-reviews|warning-acknowledgements|stored-report|reports\/|sales-report\/|(?:sales-details|vip|psm|inad|spml|wch|miss-connection|test-baggage|bagroom)-report|pbb-api(?:\/|$)|test-baggage(?:\/|$)|cbs-(?!scan(?:2)?(?:\/|$)))/i.test(p);
 }
 function webBaggageApi(p,method,body) {
   return method==='GET'&&/^\/test-baggage\/[a-z0-9]{2}\d{6}\/?$/i.test(p)

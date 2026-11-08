@@ -37,6 +37,11 @@ class FlightDayStore {
     return {date,flights:discoverFlights(log,{date}),revision:createHash('sha256').update(date+log).digest('hex'),storage:'sqlite'};
   }
   get(flight,date=operationalDate(new Date(this.now()))) {if(date!==operationalDate(new Date(this.now())))return null;return this.snapshot().flights.find(row=>row.flightNo===flight)||null;}
+  bagInfo(flight='MU586',date=operationalDate(new Date(this.now()))) {
+    if(date!==operationalDate(new Date(this.now())))return null;
+    const log=require('./flightContext').scopedLog(this.log(),flight,date),parser=require('./syParser');
+    return require('./scripts/desktop-updates/terminal-bags.cjs').bagInfo(parser.findSYInfo(log,date,{preferredFlightNo:flight,strictPreferredFlight:true}),parser.findBoardingBoxInfo(log,flight,date));
+  }
 }
 function register(app,{store,onUpdate=()=>{}}) {
   app.post('/flight-day-sync',(req,res)=>{

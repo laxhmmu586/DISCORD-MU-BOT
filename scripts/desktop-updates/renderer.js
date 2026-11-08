@@ -11,7 +11,7 @@
     pending++;
     try { return await nativeFetch(...args); } finally { pending--; }
   };
-  for (const name of ['pointerdown','keydown','touchstart']) document.addEventListener(name,()=>{lastActivity=Date.now();},true);
+  for (const name of ['pointerdown','keydown','touchstart']) document.addEventListener(name,event=>{if(!event.target.closest?.('[data-mufc-window-action="close"]'))lastActivity=Date.now();},true);
   for (const name of ['input','change']) document.addEventListener(name,event=>{
     if(event.target.matches?.('input,textarea,select,[contenteditable]'))dirty=true;
   },true);

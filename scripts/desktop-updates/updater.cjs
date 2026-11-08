@@ -95,6 +95,19 @@ class Updater {
     catch (error) { await response.body.cancel?.().catch(()=>{}); throw error; }
     return Buffer.concat(chunks);
   }
+  async downloadCore(url,file,release) {
+    const temp=file+'.'+crypto.randomBytes(8).toString('hex')+'.tmp';let handle;
+    try {
+      const response=await this.fetch(url.href,{redirect:'error',signal:AbortSignal.timeout(10*60000),cache:'no-store'});
+      assert(response.ok,'Core source HTTP '+response.status);
+      assert(Number(response.headers.get('content-length')||0)<=release.size,'Core too large');
+      handle=await fs.open(temp,'wx');const hash=crypto.createHash('sha256');let size=0;
+      assert(response.body,'Missing Core body');
+      for await(const chunk of response.body){size+=chunk.length;assert(size<=release.size,'Core too large');hash.update(chunk);await handle.writeFile(chunk);}
+      assert(size===release.size&&hash.digest('hex')===release.sha256,'Core checksum failed');
+      await handle.sync();await handle.close();handle=null;await renameAtomic(temp,file);
+    }finally{if(handle)await handle.close();await fs.unlink(temp).catch(()=>{});}
+  }
   verifyEnvelope(envelope, {expiry = true} = {}) {
     assert(envelope && typeof envelope.payload === 'string' && envelope.payload.length < 2e6, 'Invalid signed envelope');
     const key = this.config.keys?.[envelope.keyId]; assert(key, 'Unknown signing key');
@@ -208,7 +221,7 @@ class Updater {
       if (!manifest.paused && !manifest.disabled && manifest.core && !this.state.blocked.includes(manifest.core.id)) {
         const c=manifest.core; const file=path.join(this.directory,'core-'+c.id+'.exe');
         let bytes;try{bytes=await fs.readFile(file);}catch{}
-        if(!bytes||digest(bytes)!==c.sha256){bytes=await this.bytes(new URL('files/'+c.sha256,source),c.size);assert(bytes.length===c.size&&digest(bytes)===c.sha256,'Core checksum failed');await fs.writeFile(file+'.tmp',bytes);await renameAtomic(file+'.tmp',file);}
+        if(!bytes||digest(bytes)!==c.sha256)await this.downloadCore(new URL('files/'+c.sha256,source),file,c);
         // Installation additionally requires Windows Authenticode with a pinned
         // publisher certificate. No shell arguments are supplied by the feed.
         this.coreReady={file,release:c,envelope};

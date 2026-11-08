@@ -1,5 +1,7 @@
 # MUFC 2.1.4 audit and secure update implementation
 
+Historical 2.1.5 audit. See `desktop-2.1.6.md` for current certificate installation and local-only GD/NEXTDAY/Meal Order. The latest dependency list supersedes associations described below.
+
 ## Audited baseline
 
 The supplied `MUFC-Setup-2.1.4.exe` was extracted, without installing it, from the user's software folder. Its internal `package.json` identifies `mufc-desktop` 2.1.4, `src/main.js`, and `electron-updater ^6.8.9`. The EXE installer is NSIS; application code is `resources/app.asar`. Existing packaging metadata identifies Electron 44.5.1, while the inherited PE executable's Windows file version remains 2.0.10. Application version must therefore be checked inside ASAR, not inferred from the inherited PE metadata. The installed application on the audit machine was 2.1.2, distinct from the supplied 2.1.4 installer.

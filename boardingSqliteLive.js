@@ -80,7 +80,7 @@ class BoardingSqliteLive {
     this.nextCleanupAt = nextBoardingCleanup(previous?.value ?? now());
     this.clearData = db.transaction(() => {
       db.exec('DELETE FROM boarding_scan_details; DELETE FROM scans; DELETE FROM boarding_nbrd; DELETE FROM boarding_nbrd_versions; DELETE FROM boarding_box_cache; DELETE FROM boarding_box_confirmations; DELETE FROM boarding_box_numbers; DELETE FROM flight_day_sections;');
-      for(const table of ['dashboard_sy_snapshots','flight_list_cache']) {
+      for(const table of ['dashboard_sy_snapshots','flight_list_cache','record_scans']) {
         if(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))db.exec('DELETE FROM '+table);
       }
       this.saveCleanupAt.run(this.now());

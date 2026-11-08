@@ -44,154 +44,14 @@ const drive =
     auth
   });
 
-const CBS_RECORD_ARCHIVE_FOLDER_ID = process.env.CBS_RECORD_ARCHIVE_FOLDER_ID || '1QbP-_qSoyIfv_H6NG8fSTxpTK8vfYSvR';
-const CBS_RECORD_TODAY_FOLDER_ID = process.env.CBS_RECORD_TODAY_FOLDER_ID || '1cKMKdeW4BbBY47_hMAW_N_lxnCt0Pulo';
-const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
-
-function cbsRecordDateKeys(value) {
-  const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return [];
-  const [, year, month, day] = match;
-  const date = new Date(`${year}-${month}-${day}T12:00:00Z`);
-  if (Number.isNaN(date.getTime())) return [];
-  const shortMonth = date.toLocaleString('en-US', { month:'short', timeZone:'UTC' }).toUpperCase();
-  const longMonth = date.toLocaleString('en-US', { month:'long', timeZone:'UTC' }).toUpperCase();
-  return [
-    `${year}${month}${day}`, `${year}-${month}-${day}`, `${month}-${day}-${year}`,
-    `${day}${shortMonth}${year.slice(-2)}`, `${day}${shortMonth}${year}`,
-    `${longMonth}${day}${year}`, `${day}${longMonth}${year}`, `${year}${longMonth}${day}`, `${year}${shortMonth}${day}`
-  ].map((item) => item.replace(/[^A-Z0-9]/gi, '').toUpperCase());
-}
-
-async function listDriveChildren(folderId, foldersOnly = false) {
-  const files = [];
-  let pageToken;
-  do {
-    const result = await drive.files.list({
-      q:`'${folderId}' in parents and trashed = false${foldersOnly ? ` and mimeType = '${GOOGLE_FOLDER_MIME_TYPE}'` : ''}`,
-      fields:'nextPageToken,files(id,name,mimeType,modifiedTime,size)', pageSize:1000, pageToken
-    });
-    files.push(...(result.data.files || []));
-    pageToken = result.data.nextPageToken || undefined;
-  } while (pageToken);
-  return files;
-}
-
-async function listDriveDescendantFiles(folderId, maxDepth = 3) {
-  const files = [];
-  let folders = [{ id:folderId, depth:0 }];
-  while (folders.length) {
-    const current = folders;
-    folders = [];
-    const childrenByFolder = await Promise.all(current.map((folder) => listDriveChildren(folder.id)));
-    childrenByFolder.forEach((children, index) => {
-      const parent = current[index];
-      children.forEach((file) => {
-        if (file.mimeType === GOOGLE_FOLDER_MIME_TYPE) {
-          if (parent.depth < maxDepth) folders.push({ id:file.id, depth:parent.depth + 1 });
-        } else {
-          files.push(file);
-        }
-      });
-    });
-  }
-  return files;
-}
-
-async function findCbsRecordDateFolders(dateKeys, maxDepth = 3) {
-  const matches = [];
-  let folders = [{ id:CBS_RECORD_ARCHIVE_FOLDER_ID, depth:0 }];
-  while (folders.length) {
-    const current = folders;
-    folders = [];
-    const childrenByFolder = await Promise.all(current.map((folder) => listDriveChildren(folder.id, true)));
-    childrenByFolder.forEach((children, index) => {
-      const parent = current[index];
-      children.forEach((folder) => {
-        const normalized = String(folder.name || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
-        if (dateKeys.some((key) => normalized === key || normalized.includes(key))) matches.push(folder);
-        else if (parent.depth < maxDepth) folders.push({ id:folder.id, depth:parent.depth + 1 });
-      });
-    });
-  }
-  return matches;
-}
-
-async function readCbsRecordFile(file) {
-  if (file.mimeType === GOOGLE_FOLDER_MIME_TYPE) return '';
-  let response;
-  if (file.mimeType === 'application/vnd.google-apps.document') {
-    response = await drive.files.export({ fileId:file.id, mimeType:'text/plain' }, { responseType:'text' });
-  } else if (file.mimeType === 'application/vnd.google-apps.spreadsheet') {
-    response = await drive.files.export({ fileId:file.id, mimeType:'text/csv' }, { responseType:'text' });
-  } else if (file.mimeType?.startsWith('application/vnd.google-apps.')) {
-    return '';
-  } else {
-    response = await drive.files.get({ fileId:file.id, alt:'media' }, { responseType:'text' });
-  }
-  return typeof response.data === 'string' ? response.data : Buffer.from(response.data || '').toString('utf8');
-}
-
-/** Find full PNR records by the six-digit bag-tag serial number. */
-async function findCbsPnrRecordsByBagTag(bagTag, flightDate, flightNumbers = []) {
-  const serial = String(bagTag || '').replace(/\D/g, '').slice(-6);
-  const dateKeys = cbsRecordDateKeys(flightDate);
-  if (!/^\d{6}$/.test(serial)) throw new Error('Bag tag must contain a six-digit serial number');
-  if (!dateKeys.length) throw new Error('DATE must use YYYY-MM-DD format');
-
-  const matchingFolders = await findCbsRecordDateFolders(dateKeys);
-  const sources = [{ id:CBS_RECORD_TODAY_FOLDER_ID, label:'Today' }, ...matchingFolders.map((folder) => ({ id:folder.id, label:folder.name }))];
-  const uniqueSources = [...new Map(sources.map((source) => [source.id, source])).values()];
-  // Record exports are sometimes placed inside an extra batch/date folder.
-  // Walk descendants instead of assuming every file is an immediate child.
-  const candidates = (await Promise.all(uniqueSources.map(async (source) => (await listDriveDescendantFiles(source.id)).map((file) => ({ ...file, source:source.label }))))).flat();
-  const records = [];
-  for (const file of candidates) {
-    try {
-      const content = await readCbsRecordFile(file);
-      const matchedRecords = extractPnrRecordsForBagTag(content, serial);
-      // Scoped lookups require both the bag tag and the actual PR flight header.
-      // A filename alone cannot identify an arrival PNR.
-      if (!matchedRecords.length && (flightNumbers.length || !String(file.name || '').includes(serial))) continue;
-      const previews = matchedRecords.length ? matchedRecords : [content.trim()];
-      previews.filter((recordContent) => recordContent && (!flightNumbers.length || pnrRecordMatchesFlight(recordContent, flightNumbers, flightDate))).forEach((recordContent) => {
-        const separated = splitPnrAndTicketRecord(recordContent);
-        records.push({ fileId:file.id, fileName:file.name || '', source:file.source, modifiedTime:file.modifiedTime || '', content:separated.pnr, ticketContent:separated.ticket });
-      });
-    } catch (err) {
-      console.warn(`CBS record file skipped (${file.name || file.id}):`, err?.message || err);
-    }
-  }
-  const deduped = [];
-  const seen = new Set();
-  for (const record of records) {
-    const key = record.content.replace(/\s+/g, ' ').trim().toUpperCase() || record.fileName.toUpperCase();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(record);
-  }
-  return { bagTagSerial:serial, date:flightDate, searchedFolders:uniqueSources.map((source) => source.label), records:deduped };
-}
+// PNR and Ticket files stay in the local client.
+async function findCbsPnrRecordsByBagTag() { return {records:[],source:'local-client',disabled:true}; }
 
 const cbsStorage = require('./cbsStorage');
 const sheets = cbsStorage.client(google.sheets({version:'v4',auth}));
 
 
-const FULL_SHEET_ID =
-  '1FjdIg_b1iIfcAbCsxGBmIMnhFxA70sRo7cs4Vr4OLpc';
 
-const FSC_RATE_SHEET_ID =
-  process.env.FSC_RATE_SHEET_ID || '1VDIRN77cKZMQPXQ1ZLY-8lp8VI44tpFD5oU1Q9YAzYs';
-const FSC_RATE_SHEET_GID =
-  Number(process.env.FSC_RATE_SHEET_GID || 550963234);
-const FSC_RATE_CELL =
-  process.env.FSC_RATE_CELL || 'J8';
-const SY_BOOKING_SHEET_ID =
-  process.env.SY_BOOKING_SHEET_ID || '1-BnQrtRj6-uTgoC89uj8zQ1dZTcSh96QFRH-_Tf4JEQ';
-const SY_BOOKING_SHEET_GID =
-  Number(process.env.SY_BOOKING_SHEET_GID || 701688915);
-const SY_BOOKING_RANGE =
-  process.env.SY_BOOKING_RANGE || 'F7:F9';
 
 
 const CBS_SHEET_ID = process.env.CBS_SHEET_ID || '10oEQypkoaNvosREqT-mNw8zsyrQxln2EwsBUuS9OtsU';
@@ -263,12 +123,6 @@ const CBS_MISSING_BAG_HEADERS = ['Bag Tag', 'Passenger Name', 'Destination', 'Ai
 const CBS_SCAN_SHEET_ID = process.env.CBS_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const EMERGENCY_BOARD_SHEET_ID = process.env.EMERGENCY_BOARD_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
 const EMERGENCY_BOARD_SHEET_GID = Number(process.env.EMERGENCY_BOARD_SHEET_GID || 1102230555);
-const RECORD_SCAN_SHEET_ID = process.env.RECORD_SCAN_SHEET_ID || '1bfIeytT6UMdvWXimeg4s1HVuXHqmpYZx53ufsbes6Ms';
-const RECORD_SCAN_SHEET_GID = Number(process.env.RECORD_SCAN_SHEET_GID || 621930495);
-const RECORD_SCAN_HEADERS = ['BN', 'SEAT', 'FLIGHT NUMBER', 'RAW SCAN'];
-const RECORD_CASE_SHEET_ID = process.env.RECORD_CASE_SHEET_ID || '1t0TS3__Im1tyLy7Hj7CGF8zet_-5TT1986QCodhvYbo';
-const RECORD_CASE_SHEET_GID = Number(process.env.RECORD_CASE_SHEET_GID || 1472152106);
-const RECORD_CASE_HEADERS = ['Submitted At', 'Status', 'BN', 'Passenger Name', 'Phone', 'Email', 'Travel Party', 'Companion BNs', 'Companion PNR Records', 'Intention', 'Final Destination', 'PNR Record', 'New Ticket Number', 'Comment', 'Updated At', 'Updated By', 'Hotel Reservation Number', 'Hotel Price', 'Passenger Wants Refund', 'Reserved', 'Reserved', 'Case History', 'Case Workflow', 'TKT Record', 'Hotel Name', 'Room Number'];
 const CBS_SCAN_HEADERS = ['BN', 'Seat', 'Flight', 'Raw Scan', 'Scanned At'];
 const CBS_SCAN_INFANT_HEADERS = ['Infant BN', 'Infant Seat', 'Infant Flight', 'Infant Raw Scan', 'Infant Scanned At'];
 let emergencyBoardSheetTitle = '';
@@ -277,10 +131,6 @@ let emergencyBoardSheetCache = { loadedAt: 0, rows: [] };
 let emergencyBoardAppendPending = [];
 let emergencyBoardAppendTimer = null;
 let emergencyBoardAppendRunning = false;
-let recordScanSheetTitle = '';
-let recordCaseSheetTitle = '';
-const RECORD_CASE_CACHE_TTL_MS = Math.max(30000, Number(process.env.RECORD_CASE_CACHE_TTL_MS) || 55000);
-let recordCaseCache = { expiresAt:0, rows:[], pending:null };
 let cbsMissingBagSheetTitle = '';
 let cbsMissingBagSheetCache = { loadedAt: 0, rows: [] };
 
@@ -407,33 +257,7 @@ function extractFscExchangeRate(value) {
   return match?.[1] || '';
 }
 
-async function updateFscExchangeRate(rate) {
-  const normalizedRate = String(rate || '').trim();
-  if (!/^\d+(?:\.\d+)?$/.test(normalizedRate)) {
-    throw new Error('Invalid FSC exchange rate.');
-  }
-
-  const title = await resolveSheetTitleByGid(FSC_RATE_SHEET_ID, FSC_RATE_SHEET_GID);
-  if (!title) {
-    throw new Error(`Sheet gid ${FSC_RATE_SHEET_GID} was not found in spreadsheet ${FSC_RATE_SHEET_ID}.`);
-  }
-  const range = `${escapeSheetTitle(title)}!${FSC_RATE_CELL}`;
-  const res = await sheets.spreadsheets.values.update({
-    spreadsheetId: FSC_RATE_SHEET_ID,
-    range,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[normalizedRate]] }
-  });
-
-  return {
-    rate: normalizedRate,
-    spreadsheetId: FSC_RATE_SHEET_ID,
-    gid: FSC_RATE_SHEET_GID,
-    cell: FSC_RATE_CELL,
-    sheetTitle: title,
-    updatedRange: res.data.updatedRange || range
-  };
-}
+async function updateFscExchangeRate(rate) { return {rate:String(rate||''),skipped:true,source:'terminal',reason:'Google Sheets writeback retired'}; }
 
 function normalizeSyBookingCounts(counts) {
   if (!Array.isArray(counts) || counts.length !== 3) {
@@ -447,31 +271,7 @@ function normalizeSyBookingCounts(counts) {
   });
 }
 
-async function updateSyBookingCounts(counts) {
-  const [first, business, economy] = normalizeSyBookingCounts(counts);
-  const title = await resolveSheetTitleByGid(SY_BOOKING_SHEET_ID, SY_BOOKING_SHEET_GID);
-  if (!title) {
-    throw new Error(`Sheet gid ${SY_BOOKING_SHEET_GID} was not found in spreadsheet ${SY_BOOKING_SHEET_ID}.`);
-  }
-
-  const range = `${escapeSheetTitle(title)}!${SY_BOOKING_RANGE}`;
-  const values = [[first], [business], [economy]];
-  const res = await sheets.spreadsheets.values.update({
-    spreadsheetId: SY_BOOKING_SHEET_ID,
-    range,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values }
-  });
-
-  return {
-    counts: { first, business, economy },
-    spreadsheetId: SY_BOOKING_SHEET_ID,
-    gid: SY_BOOKING_SHEET_GID,
-    range: SY_BOOKING_RANGE,
-    sheetTitle: title,
-    updatedRange: res.data.updatedRange || range
-  };
-}
+async function updateSyBookingCounts(counts) { return {counts:normalizeSyBookingCounts(counts),skipped:true,source:'terminal',reason:'Old Briefing writeback retired'}; }
 
 function normalizeTimestampToIsoDate(value) {
   const raw = String(value || '').trim();
@@ -499,136 +299,19 @@ function normalizeFlightToken(value) {
   return `${m[1]}${m[2]}`;
 }
 
-async function getSyBagSheetRows() {
-  if (sheetAccessBlocked) return [];
-  const ttlMs = 5 * 60 * 1000;
-  if (Date.now() - syBagSheetCache.loadedAt < ttlMs && syBagSheetCache.rows.length) return syBagSheetCache.rows;
 
-  if (!syBagSheetTitle) syBagSheetTitle = await resolveSheetTitleByGid(FULL_SHEET_ID, 1199056804);
-  if (!syBagSheetTitle) return [];
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: FULL_SHEET_ID,
-    range: `${syBagSheetTitle}!A:W`
-  });
-
-  const rows = res.data.values || [];
-  syBagSheetCache = { loadedAt: Date.now(), rows };
-  return rows;
-}
-
-async function getSyBagInfoByDate(isoDate, flightDateRaw = '') {
-  try {
-    const rows = await getSyBagSheetRows();
-    if (rows.length <= 1) return null;
-
-    const normalizeReportType = (value) => String(value || '').trim().toUpperCase();
-    const classifyReportType = (value) => {
-      const normalized = normalizeReportType(value).replace(/\s+/g, ' ');
-      if (normalized.includes('RUSH') && normalized.includes('BAG')) return 'RUSH BAGS';
-      if (normalized.includes('NOT') && normalized.includes('LOAD') && normalized.includes('BAG')) return 'NOT LOAD BAGS';
-      return '';
-    };
-    const buildRushRow = (row) => [14, 15, 16, 17, 18].map((idx) => row[idx] || '');
-
-    const buildNotLoadRow = (row) => [20, 21, 22].map((idx) => row[idx] || '');
-
-    const collectRushRowsForMatcher = (matcher) => {
-      const values = [];
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!matcher(row) || classifyReportType(row[1]) !== 'RUSH BAGS') continue;
-        const columns = buildRushRow(row);
-        if (columns.some((v) => String(v || '').trim() !== '')) values.push(columns);
-      }
-      return values;
-    };
-
-    const collectNotLoadRowsForMatcher = (matcher) => {
-      const values = [];
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!matcher(row) || classifyReportType(row[1]) !== 'NOT LOAD BAGS') continue;
-        const columns = buildNotLoadRow(row);
-        if (columns.some((v) => String(v || '').trim() !== '')) values.push(columns);
-      }
-      return values;
-    };
-
-    const buildPayload = (matcher) => {
-      const rushRows = collectRushRowsForMatcher(matcher);
-      const rushBags = rushRows.length
-        ? {
-          type: 'RUSH BAGS',
-          headers: ['RUSH TAG NUMBER', 'ORIGINAL TAG NUMBER', 'RUSH TO WHERE', 'AKE NUMBER', 'REMARK'],
-          rows: rushRows,
-          columns: rushRows[rushRows.length - 1],
-          hasData: true
-        }
-        : null;
-      const notLoadRows = collectNotLoadRowsForMatcher(matcher);
-      const notLoadBags = notLoadRows.length
-        ? {
-          type: 'NOT LOAD BAGS',
-          headers: ['TAG NUMBER', 'LOAD OR NOT', 'COMMENT'],
-          rows: notLoadRows,
-          hasData: true
-        }
-        : null;
-      if (!rushBags && !notLoadBags) return null;
-      return {
-        rushBags,
-        notLoadBags,
-        unloadBags: notLoadBags ? notLoadBags.rows : [],
-        hasData: Boolean(rushBags?.hasData || notLoadBags?.hasData)
-      };
-    };
-
-    // Keep this aligned with 240 date matching logic: compare by flight token (DDMMM)
-    // from timestamp, ignoring time and year.
-    const targetToken = normalizeFlightToken(flightDateRaw);
-    if (targetToken) {
-      const tokenMatch = buildPayload((row) => normalizeFlightDate(row[0]) === targetToken);
-      if (tokenMatch) return tokenMatch;
-    }
-
-    // Fallback: exact ISO date match when token is unavailable.
-    const isoMatch = buildPayload((row) => normalizeTimestampToIsoDate(row[0]) === isoDate);
-    if (isoMatch) return isoMatch;
-
-    return null;
-  } catch (err) {
-    console.error('SY bag sheet lookup error:', err?.message || err);
-    return null;
-  }
-}
+async function getSyBagInfoByDate(isoDate, flightDateRaw='', flightNo='MU586') { const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];const match=String(isoDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);const date=match?match[3]+months[Number(match[2])-1]+match[1].slice(-2):flightDateRaw;return require('./flightDayStore').current().bagInfo(flightNo,date); }
 
 // ===============================
 // Download File
 // ===============================
-async function downloadLog(fileId) {
 
-  const response =
-    await drive.files.get({
-
-      fileId,
-
-      alt: 'media'
-
-    }, {
-
-      responseType: 'text'
-    });
-
-  return response.data;
-}
 
 // ===============================
 // Get Today Log
 // ===============================
-function isLogFileName(name = '') {
-  return String(name || '').trim().toLowerCase().endsWith('.log');
-}
+
 const SALES_REPORT_FOLDER_ID = '1-RLbv_BU9rnsaaPy8UUkbN6FkhA5YqGf';
 
 const REPORT_SHEET_ID = '1JqRnDx_uLc2m2SzyZOuHWWJsbkKenlKo60U9zwV9uMQ';
@@ -1505,80 +1188,9 @@ async function downloadSalesReportByFlight(flightNo, flightDate) {
   return { fileName: file.name, content: response.data };
 }
 
-async function downloadLogsInFolder(folderId, label) {
 
-  const files = [];
-  let pageToken = null;
 
-  do {
-    const res =
-      await drive.files.list({
-
-        q:
-          `'${folderId}' in parents and trashed = false`,
-
-        fields:
-          'nextPageToken,files(id,name,modifiedTime,mimeType)',
-
-        orderBy:
-          'name',
-
-        pageSize:
-          1000,
-
-        pageToken
-      });
-
-    files.push(...(res.data.files || []).filter((file) => isLogFileName(file.name)));
-    pageToken = res.data.nextPageToken || null;
-  } while (pageToken);
-
-  if (!files.length) {
-    console.log(`${label} .log files not found`);
-    return null;
-  }
-
-  files.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-
-  const logs = [];
-
-  for (const file of files) {
-    console.log(
-      `Using ${label} log ${file.name}:`,
-      file.modifiedTime || ''
-    );
-
-    const content =
-      await downloadLog(file.id);
-
-    logs.push(content);
-  }
-
-  return logs.join(require('./flightContext').FILE_BOUNDARY);
-}
-
-async function getLatestFlightLog() {
-
-  try {
-
-    const folderId =
-      process.env.TODAY_FOLDER_ID;
-
-    return await downloadLogsInFolder(
-      folderId,
-      'TODAY'
-    );
-
-  } catch (err) {
-
-    console.error(
-      'Today Log Error:',
-      err
-    );
-
-    return null;
-  }
-}
+async function getLatestFlightLog() { return require('./flightDayStore').current().log(); }
 
 
 function envFirst(...names) {
@@ -2525,72 +2137,7 @@ async function hasNextDayInfoEmail(flightNo, subjectDate, expectedSubject = '') 
 // Example:
 // 11MAY
 // ===============================
-async function getFlightLogByDate(date, yearSuffix) {
-
-  try {
-
-    const archiveRoot =
-      process.env.ARCHIVE_FOLDER_ID;
-
-    // ===========================
-    // Folder Name
-    // ===========================
-    const resolvedYearSuffix =
-      String(yearSuffix || new Date().getUTCFullYear().toString().slice(-2))
-        .padStart(2, '0');
-
-    const folderName =
-      `MU586 ${date}${resolvedYearSuffix}`;
-
-    // ===========================
-    // Find Date Folder
-    // ===========================
-    const folderRes =
-      await drive.files.list({
-
-        q:
-          `'${archiveRoot}' in parents and name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-
-        fields:
-          'files(id,name)',
-
-        pageSize:
-          1
-      });
-
-    const folder =
-      folderRes.data.files[0];
-
-    if (!folder) {
-
-      console.log(
-        'Archive folder not found:',
-        folderName
-      );
-
-      return null;
-    }
-
-    console.log(
-      'Using ARCHIVE:',
-      folderName
-    );
-
-    return await downloadLogsInFolder(
-      folder.id,
-      `ARCHIVE ${folderName}`
-    );
-
-  } catch (err) {
-
-    console.error(
-      'Archive Error:',
-      err
-    );
-
-    return null;
-  }
-}
+async function getFlightLogByDate(date, yearSuffix) { const token=String(date).toUpperCase()+(String(date).length===5?String(yearSuffix||new Date().getFullYear()).slice(-2):'');return token===require('./flightContext').operationalDate()?require('./flightDayStore').current().log():null; }
 
 
 function isCbsScanQuotaError(err) {
@@ -3516,193 +3063,15 @@ async function appendEmergencyBoardRecord(record = {}) {
 }
 
 
-async function getRecordScanSheetTitle() {
-  if (!recordScanSheetTitle) recordScanSheetTitle = await resolveSheetTitleByGid(RECORD_SCAN_SHEET_ID, RECORD_SCAN_SHEET_GID);
-  return recordScanSheetTitle || 'Sheet1';
-}
 
-async function appendRecordScanRecord(record = {}) {
-  const bn = formatCbsScanSheetBn(record.bn);
-  const seat = String(record.seat || '').trim().toUpperCase();
-  const flight = String(record.flight || '').trim().toUpperCase();
-  const rawScan = String(record.rawScan || record.raw || '').trim();
-  if (!bn || !seat || !rawScan || !['MU586', 'MU9586'].includes(flight)) throw new Error('Invalid record scan.');
 
-  const title = await getRecordScanSheetTitle();
-  const range = `${escapeSheetTitle(title)}!A:D`;
-  const response = await cbsScanSheetsCall(() => sheets.spreadsheets.values.get({
-    spreadsheetId: RECORD_SCAN_SHEET_ID,
-    range
-  }), 'Record scan sheet read', 'normal', 'read');
-  const rows = response.data.values || [];
-  const firstRow = rows[0] || [];
-  const hasHeaders = RECORD_SCAN_HEADERS.every((header, index) => String(firstRow[index] || '').trim().toUpperCase() === header);
-  if (!hasHeaders) {
-    await cbsScanSheetsCall(() => sheets.spreadsheets.values.update({
-      spreadsheetId: RECORD_SCAN_SHEET_ID,
-      range: `${escapeSheetTitle(title)}!A1:D1`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [RECORD_SCAN_HEADERS] }
-    }), 'Record scan header update');
-  }
-  const dataRows = hasHeaders ? rows.slice(1) : rows;
-  if (dataRows.some((row) => normalizeCbsScanBn(row[0]) === normalizeCbsScanBn(bn))) throw makeCbsScanDuplicateError(bn);
-  await cbsScanSheetsCall(() => sheets.spreadsheets.values.append({
-    spreadsheetId: RECORD_SCAN_SHEET_ID,
-    range,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [[bn, seat, flight, rawScan]] }
-  }), 'Record scan row write');
-  return { bn, seat, flight };
-}
+async function appendRecordScanRecord(record={}) { return require('./recordScanStore').append(record); }
 
-async function getRecordCaseSheetTitle() {
-  if (!recordCaseSheetTitle) recordCaseSheetTitle = await resolveSheetTitleByGid(RECORD_CASE_SHEET_ID, RECORD_CASE_SHEET_GID);
-  return recordCaseSheetTitle || 'Sheet1';
-}
 
-function parseRecordCaseHistory(value) {
-  try {
-    const parsed = JSON.parse(String(value || '[]'));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (_) {
-    return [];
-  }
-}
 
-function parseRecordCaseWorkflow(value) {
-  try {
-    const parsed = JSON.parse(String(value || '{}'));
-    return parsed && !Array.isArray(parsed) && typeof parsed === 'object' ? parsed : {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function recordCaseFromRow(values, rowNumber) {
-  const row = Object.fromEntries(RECORD_CASE_HEADERS.map((header, index) => [header, String(values[index] || '')]));
-  return {
-    rowNumber, submittedAt:row['Submitted At'], status:row.Status, bn:row.BN, passengerName:row['Passenger Name'], phone:row.Phone,
-    email:row.Email, travelParty:row['Travel Party'], companionBns:row['Companion BNs'], companionPnrRecords:row['Companion PNR Records'],
-    intention:row.Intention, finalDestination:row['Final Destination'], pnrRecord:row['PNR Record'], newTicketNumber:row['New Ticket Number'],
-    comment:row.Comment, updatedAt:row['Updated At'], updatedBy:row['Updated By'], hotelReservationNumber:row['Hotel Reservation Number'],
-    hotelPrice:row['Hotel Price'], passengerWantsRefund:row['Passenger Wants Refund'], tktRecord:row['TKT Record'], hotelName:row['Hotel Name'], roomNumber:row['Room Number'], caseWorkflow:parseRecordCaseWorkflow(row['Case Workflow']),
-    caseHistory:parseRecordCaseHistory(row['Case History'])
-  };
-}
-
-async function getRecordCases(options = {}) {
-  if (!options.forceRefresh && recordCaseCache.expiresAt > Date.now()) return recordCaseCache.rows;
-  if (recordCaseCache.pending) return recordCaseCache.pending;
-  recordCaseCache.pending = (async () => {
-    const title = await getRecordCaseSheetTitle();
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:Z` });
-    const values = response.data.values || [];
-    // Accept the original A:P header set while the new hotel columns are being
-    // introduced, so an existing sheet never exposes its header as a case row.
-    const hasHeaders = RECORD_CASE_HEADERS.slice(0, 16).every((header, index) => String(values[0]?.[index] || '').trim() === header);
-    const rows = values.slice(hasHeaders ? 1 : 0).map((row, index) => recordCaseFromRow(row, index + (hasHeaders ? 2 : 1))).filter((row) => row.bn);
-    recordCaseCache = { expiresAt:Date.now() + RECORD_CASE_CACHE_TTL_MS, rows, pending:null };
-    return rows;
-  })();
-  try { return await recordCaseCache.pending; } finally { recordCaseCache.pending = null; }
-}
-
-async function ensureRecordCaseHeaders(title) {
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:Z1` });
-  if (RECORD_CASE_HEADERS.every((header, index) => String(response.data.values?.[0]?.[index] || '').trim() === header)) return;
-  await sheets.spreadsheets.values.update({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A1:Z1`, valueInputOption:'RAW', requestBody:{ values:[RECORD_CASE_HEADERS] } });
-}
-
-async function appendRecordCase(record = {}) {
-  const title = await getRecordCaseSheetTitle();
-  await ensureRecordCaseHeaders(title);
-  const row = [record.submittedAt, record.status, record.bn, record.passengerName, record.phone, record.email, record.travelParty,
-    record.companionBns, record.companionPnrRecords, record.intention, record.finalDestination, record.pnrRecord, '', '', record.submittedAt, 'Passenger', '', '', '', '', '', JSON.stringify([{ type:'status', status:'Waiting', message:'Passenger submitted the IRR form', at:record.submittedAt, by:'Passenger' }]), '', '', '', ''];
-  const response = await sheets.spreadsheets.values.append({ spreadsheetId:RECORD_CASE_SHEET_ID, range:`${escapeSheetTitle(title)}!A:Z`, valueInputOption:'RAW', insertDataOption:'INSERT_ROWS', requestBody:{ values:[row] } });
-  const rowNumber = Number(String(response.data?.updates?.updatedRange || '').match(/![A-Z]+(\d+)/i)?.[1] || 0);
-  const saved = recordCaseFromRow(row, rowNumber);
-  // Force the next dashboard poll to merge this append with rows written by
-  // other server instances instead of temporarily exposing a partial cache.
-  recordCaseCache.expiresAt = 0;
-  return saved;
-}
-
-async function updateRecordCase(rowNumber, update = {}) {
-  const number = Number(rowNumber); if (!Number.isInteger(number) || number < 2) throw new Error('Invalid row number');
-  const title = await getRecordCaseSheetTitle();
-  const existing = (await getRecordCases({ forceRefresh:true })).find((row) => row.rowNumber === number);
-  if (!existing) throw new Error('Record case not found');
-  const now = new Date().toISOString();
-  if (update.expectedUpdatedAt !== undefined && String(update.expectedUpdatedAt) !== String(existing.updatedAt || '')) {
-    const error = new Error('This case was updated by another agent. Refresh it and try again.');
-    error.code = 'EDIT_CONFLICT';
-    throw error;
-  }
-  const action = String(update.action || '');
-  const operationalActions = new Set(['confirmPassenger', 'newTicket', 'manualPnr', 'manualTkt', 'requestHotel', 'hotel', 'updateRoom', 'hotelDelivered', 'comment', 'refund']);
-  const closesCase = action === 'caseClose';
-  const nextStatus = closesCase ? 'Case Closed' : (operationalActions.has(action) ? 'In Progress' : existing.status);
-  const values = [nextStatus, String(update.newTicketNumber ?? existing.newTicketNumber).slice(0,160), String(update.comment ?? existing.comment).slice(0,1000), now, String(update.updatedBy || '').slice(0,160)];
-  const pnrRecord = String(update.pnrRecord ?? existing.pnrRecord).slice(0,10000);
-  const tktRecord = String(update.tktRecord ?? existing.tktRecord).slice(0,10000);
-  const hotelReservationNumber = String(update.hotelReservationNumber ?? existing.hotelReservationNumber).slice(0,160);
-  const hotelPrice = String(update.hotelPrice ?? existing.hotelPrice).slice(0,80);
-  const hotelName = String(update.hotelName ?? existing.hotelName).slice(0,160);
-  const roomNumber = String(update.roomNumber ?? existing.roomNumber).slice(0,80);
-  const passengerWantsRefund = String(action === 'refund' ? 'Yes' : (update.passengerWantsRefund ?? existing.passengerWantsRefund)).slice(0,20);
-  const by = values[4] || 'Agent';
-  const caseWorkflow = { ...(existing.caseWorkflow || {}) };
-  const requestType = String(update.requestType || '').toLowerCase();
-  if (action === 'confirmPassenger' && !['rebooking', 'refund'].includes(requestType)) throw new Error('Select rebooking or refund when confirming with the passenger.');
-  if (['newTicket', 'requestHotel', 'hotel', 'refund'].includes(action) && !caseWorkflow.passengerConfirmed) throw new Error('Confirm the passenger details before handling the request.');
-  if (action === 'newTicket' && caseWorkflow.requestType !== 'rebooking') throw new Error('The passenger must select rebooking before a new itinerary is provided.');
-  if (action === 'refund' && caseWorkflow.requestType !== 'refund') throw new Error('The passenger must select refund before refund information is provided.');
-  if (action === 'hotelDelivered' && !caseWorkflow.hotelProvided) throw new Error('Add the hotel reservation before providing its confirmation.');
-  if (action === 'caseClose' && !caseWorkflow.passengerConfirmed) throw new Error('Confirm the passenger details before closing the case.');
-  if (action === 'caseClose' && caseWorkflow.requestType === 'rebooking' && !caseWorkflow.itineraryDelivered) throw new Error('Provide the new itinerary before closing the case.');
-  if (action === 'caseClose' && caseWorkflow.requestType === 'refund' && !caseWorkflow.refundRequested) throw new Error('Provide refund information before closing the case.');
-  if (action === 'caseClose' && caseWorkflow.hotelRequested && !caseWorkflow.hotelProvided) throw new Error('Provide the requested hotel before closing the case.');
-  if (action === 'caseClose' && caseWorkflow.hotelProvided && !caseWorkflow.hotelConfirmationDelivered) throw new Error('Provide the hotel confirmation before closing the case.');
-  const completeStep = (name) => { caseWorkflow[name] = { at:now, by }; };
-  if (action === 'confirmPassenger') { completeStep('passengerConfirmed'); caseWorkflow.requestType = requestType; }
-  if (action === 'newTicket') { completeStep('ticketChanged'); completeStep('itineraryDelivered'); }
-  if (action === 'requestHotel') completeStep('hotelRequested');
-  if (action === 'hotel') { completeStep('hotelProvided'); completeStep('hotelConfirmationDelivered'); }
-  if (action === 'refund') completeStep('refundRequested');
-  if (action === 'caseClose') completeStep('caseClosed');
-  let history = Array.isArray(existing.caseHistory) ? [...existing.caseHistory] : [];
-  const chatMessage = String(update.chatMessage || '').trim().slice(0, 1000);
-  const actionLabels = { confirmPassenger:'Passenger details and requested handling confirmed', newTicket:'New itinerary provided to passenger', manualPnr:'PNR record manually corrected', manualTkt:'TKT record manually corrected', requestHotel:'Hotel requested', hotel:'Hotel confirmation provided to passenger', updateRoom:'Hotel room updated', hotelDelivered:'Hotel confirmation provided to passenger', comment:'Comment updated', refund:'Refund information provided / passenger referred to original ticketing channel', caseClose:'Case closed' };
-  if (actionLabels[action]) {
-    const detail = action === 'confirmPassenger' ? [requestType, String(update.confirmationNote || '').trim().slice(0,1000)].filter(Boolean).join(' · ') : action === 'newTicket' ? values[1] : action === 'manualTkt' ? tktRecord : action === 'manualPnr' ? pnrRecord : ['hotel', 'updateRoom'].includes(action) ? [hotelName, roomNumber && `Room ${roomNumber}`, hotelReservationNumber, hotelPrice].filter(Boolean).join(' · ') : action === 'comment' ? values[2] : action === 'refund' ? passengerWantsRefund : '';
-    history.push({ type:'status', status:values[0], message:[actionLabels[action], detail].filter(Boolean).join(': '), at:now, by });
-  }
-  if (chatMessage) history.push({ id:`${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, type:'message', message:chatMessage, at:now, by });
-  const deleteMessageIndex = Number(update.deleteMessageIndex);
-  if (Number.isInteger(deleteMessageIndex) && deleteMessageIndex >= 0 && history[deleteMessageIndex]?.type === 'message') history = history.filter((_, index) => index !== deleteMessageIndex);
-  // Write only fields supplied by this action. This avoids one agent replacing
-  // unrelated values that another agent has just saved.
-  const data = [
-    { range:`${escapeSheetTitle(title)}!B${number}`, values:[[values[0]]] },
-    { range:`${escapeSheetTitle(title)}!O${number}:P${number}`, values:[[now, values[4]]] },
-    { range:`${escapeSheetTitle(title)}!V${number}`, values:[[JSON.stringify(history)]] }
-  ];
-  if (update.pnrRecord !== undefined) data.push({ range:`${escapeSheetTitle(title)}!L${number}`, values:[[pnrRecord]] });
-  if (update.tktRecord !== undefined) data.push({ range:`${escapeSheetTitle(title)}!X${number}`, values:[[tktRecord]] });
-  if (update.newTicketNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!M${number}`, values:[[values[1]]] });
-  if (update.comment !== undefined) data.push({ range:`${escapeSheetTitle(title)}!N${number}`, values:[[values[2]]] });
-  if (update.hotelReservationNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!Q${number}`, values:[[hotelReservationNumber]] });
-  if (update.hotelPrice !== undefined) data.push({ range:`${escapeSheetTitle(title)}!R${number}`, values:[[hotelPrice]] });
-  if (update.passengerWantsRefund !== undefined) data.push({ range:`${escapeSheetTitle(title)}!S${number}`, values:[[passengerWantsRefund]] });
-  if (update.hotelName !== undefined) data.push({ range:`${escapeSheetTitle(title)}!Y${number}`, values:[[hotelName]] });
-  if (update.roomNumber !== undefined) data.push({ range:`${escapeSheetTitle(title)}!Z${number}`, values:[[roomNumber]] });
-  if (actionLabels[action] && action !== 'comment') data.push({ range:`${escapeSheetTitle(title)}!W${number}`, values:[[JSON.stringify(caseWorkflow)]] });
-  await sheets.spreadsheets.values.batchUpdate({ spreadsheetId:RECORD_CASE_SHEET_ID, requestBody:{ valueInputOption:'RAW', data } });
-  recordCaseCache.expiresAt = 0;
-  return { ...existing, status:values[0], pnrRecord, tktRecord, newTicketNumber:values[1], comment:values[2], updatedAt:now, updatedBy:values[4], hotelReservationNumber, hotelPrice, hotelName, roomNumber, passengerWantsRefund, caseWorkflow, caseHistory:history };
-}
+async function appendRecordCase() { throw Object.assign(Error('IRR / Record Case retired'),{code:'FEATURE_RETIRED',status:410}); }
+async function getRecordCases() { throw Object.assign(Error('IRR / Record Case retired'),{code:'FEATURE_RETIRED',status:410}); }
+async function updateRecordCase() { throw Object.assign(Error('IRR / Record Case retired'),{code:'FEATURE_RETIRED',status:410}); }
 
 async function getCbsSheetTitle() {
   if (!cbsSheetTitle) cbsSheetTitle = await resolveSheetTitleByGid(CBS_SHEET_ID, CBS_SHEET_GID);
