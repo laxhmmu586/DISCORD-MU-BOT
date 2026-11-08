@@ -5,10 +5,13 @@ self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('push',event=>{
  let payload;try{payload=event.data.json().data;}catch{return;}
  if(!payload||!['approval_required','read_sign_required','schedule_notification','schedule_announcement','hr_reminder'].includes(payload.type))return;
+ const path=['/schedule','/has-form','/read-sign'].includes(payload.url)?payload.url:'/home';
+ const requestLink=path==='/schedule'&&payload.source==='schedule'&&['approval_required','schedule_notification'].includes(payload.eventType||payload.type)&&typeof payload.requestId==='string'&&/^[a-zA-Z0-9_-]{1,128}$/.test(payload.requestId);
+ const target=requestLink?path+'?request='+encodeURIComponent(payload.requestId):path;
  event.waitUntil(self.registration.showNotification(payload.title||'MUFC',{
   body:payload.body||'',icon:'/has/assets/push-icon-192.png',badge:'/has/assets/push-badge.png',
   tag:[payload.eventType||payload.type,payload.source,payload.requestId,payload.approvalStage].join(':'),
-  data:{url:['/schedule','/has-form','/read-sign'].includes(payload.url)?payload.url:'/home'}
+  data:{url:target}
  }));
 });
 self.addEventListener('notificationclick',event=>{
