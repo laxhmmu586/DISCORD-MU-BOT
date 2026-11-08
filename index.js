@@ -54,10 +54,7 @@ const {
   downloadSalesReportByFlight,
   getSalesDetailsReportRows,
   syncSalesDetailsFromSourceSheet,
-  getNextDayInfoEmail,
-  getLatestMealOrderEmail,
   sendNextDayInfoEmail,
-  getGdCheckEmail,
   getStoredReportRows,
   getVipReportRows,
   getPsmMsgReportRows,
@@ -114,7 +111,6 @@ const {
   sendMisconnectionAssistanceEmail,
   getCbsBaggageChartImage,
   getCbsOpenBagAuthorizationPdf,
-  findCbsPnrRecordsByBagTag,
   appendRecordScanRecord,
   readNotesDriveStore,
   writeNotesDriveStore
@@ -677,57 +673,7 @@ async function loadStoredReportRows(type, isoDate, options = {}) {
 }
 
 
-async function refreshSyPreflightEmailChecks(syInfo, isoDate) {
-  const gdQuery = syInfo.crewApis?.gdCheckQuery || null;
-  const gdStep = syInfo.crewApis?.steps?.find((step) => step.key === 'gdCheck');
-  if (!applyCachedPreflightStep(syInfo, isoDate, 'gdCheck') && gdStep && gdQuery?.flightNo && gdQuery?.flightDate) {
-    const gdSubject = gdQuery.emailSubject || `GD for ${gdQuery.flightNo}/${gdQuery.flightDate}`;
-    const gdResult = await getGdCheckEmail(gdQuery.flightNo, gdQuery.emailSubjectDate || gdQuery.flightDate, gdQuery.crew || [], gdSubject, gdQuery.expectedFlight || { flightNo: syInfo.flightNo, flightDate: syInfo.flightDate, aircraftRegistration: syInfo.aircraftRegistration });
-    gdStep.complete = Boolean(gdResult.complete);
-    gdStep.time = gdResult.sentAt ? gdResult.sentAt.slice(11, 19) : '';
-    gdStep.searched = true;
-    gdStep.details = gdResult;
-    gdStep.detailText = gdResult.detailText || '';
-    gdStep.reason = gdResult.reason || '';
-    gdStep.searchQuery = gdResult.query || '';
-    gdStep.authMode = gdResult.authMode || '';
-    gdStep.gmailUser = gdResult.userId || '';
-    gdStep.searchDate = gdResult.searchDate || '';
-    gdStep.subject = gdSubject;
-    gdStep.tooltip = gdStep.complete
-      ? `GD CHECK complete: ${gdResult.matched || 0}/${gdResult.total || 0} crew matched; flight/date/registration matched`
-      : `GD CHECK issue: ${gdResult.reason || gdSubject}`;
-    cacheCompletedPreflightStep(syInfo, isoDate, 'gdCheck');
-  } else if (gdStep && !gdQuery?.flightNo) {
-    gdStep.searched = true;
-    gdStep.reason = 'Missing flight number, flight date, or CWD crew list for GD search.';
-  }
-
-  const nextDayQuery = syInfo.crewApis?.nextDayInfoQuery || null;
-  const nextDayStep = syInfo.crewApis?.steps?.find((step) => step.key === 'nextDayInfo');
-  if (!applyCachedPreflightStep(syInfo, isoDate, 'nextDayInfo') && nextDayStep && nextDayQuery?.flightNo && nextDayQuery?.flightDate) {
-    const nextDaySubject = nextDayQuery.emailSubject || `${nextDayQuery.flightNo} ${nextDayQuery.flightDate} flight information details`;
-    const nextDayEmail = await getNextDayInfoEmail(nextDayQuery.flightNo, nextDayQuery.emailSubjectDate || nextDayQuery.flightDate, nextDaySubject);
-    nextDayStep.complete = Boolean(nextDayEmail.sent || nextDayEmail.found);
-    nextDayStep.time = nextDayEmail.sentAt ? nextDayEmail.sentAt.slice(11, 19) : '';
-    nextDayStep.searched = true;
-    nextDayStep.details = nextDayEmail.details || {};
-    nextDayStep.detailText = nextDayStep.complete ? (nextDayEmail.detailText || '') : '';
-    nextDayStep.reason = nextDayEmail.reason || '';
-    nextDayStep.searchQuery = nextDayEmail.query || '';
-    nextDayStep.authMode = nextDayEmail.authMode || '';
-    nextDayStep.gmailUser = nextDayEmail.userId || '';
-    nextDayStep.searchDate = nextDayEmail.searchDate || '';
-    nextDayStep.subject = nextDaySubject;
-    nextDayStep.tooltip = nextDayStep.complete
-      ? `NEXTDAY INFO sent email found: ${nextDaySubject}`
-      : `NEXTDAY INFO not found: ${nextDayEmail.reason || nextDaySubject}`;
-    cacheCompletedPreflightStep(syInfo, isoDate, 'nextDayInfo');
-  } else if (nextDayStep && !nextDayQuery?.flightNo) {
-    nextDayStep.searched = true;
-    nextDayStep.reason = 'Missing flight number or next-day email subject date for Gmail search.';
-  }
-}
+async function refreshLocalPreflightChecks(syInfo) { for(const step of syInfo.crewApis?.steps||[]){if(['gdCheck','nextDayInfo'].includes(step.key))Object.assign(step,{complete:false,searched:true,source:'local-client',reason:'Check this module against local client logs.'});} }
 
 
 
@@ -775,7 +721,7 @@ async function refreshDeferredSyData(syInfo, log, isoDate) {
       syInfo.vipSheetSync = { appended: 0, found: 0, error: err?.message || 'Sheet sync failed' };
     }
 
-    await refreshSyPreflightEmailChecks(syInfo, isoDate);
+    await refreshLocalPreflightChecks(syInfo, isoDate);
   })().finally(() => {
     deferredSyRefreshes.delete(key);
   });
@@ -3387,6 +3333,7 @@ app.post('/cbs-scan2', async (req, res) => {
 
 app.post('/record-scan', async (req, res) => {
   try {
+    boardingLive.cleanupIfDue();
     const parsed = parseRecordPdf417(req.body?.rawScan || req.body?.raw || req.body?.text || '');
     const saved = await appendRecordScanRecord(parsed);
     return res.json({ ok: true, ...saved });
@@ -3604,52 +3551,7 @@ function bestCbsPnrRecord(records = []) {
 
 let cbsPnrSyncPending = null;
 let cbsPnrSyncRecent = { at:0, result:null };
-async function syncMissingCbsPnrRecords(passengerCases = [], unresolvedCases = [], updatedBy = 'System') {
-  const candidates = [
-    ...passengerCases.filter(caseNeedsArrivalPnrSync).map((row) => ({ source:'passenger', row })),
-    ...unresolvedCases.filter((row) => {
-      const isBagRoom = [row.status, row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
-      return isBagRoom ? !row.resolvedAt && caseNeedsPnrSync(row) : caseNeedsArrivalPnrSync(row);
-    }).map((row) => ({ source:'unresolved', row }))
-  ];
-  const lookupCache = new Map();
-  const updates = [];
-  const errors = [];
-  for (const candidate of candidates) {
-    const bagTags = String(candidate.row.bagTag || '').match(/\b\d{10}\b|\b[A-Z][A-Z0-9]\d{6}\b|\b\d{6}\b/gi) || [];
-    const tags = bagTags.map(normalizeRecordCheckBagTag).filter(Boolean);
-    const isBagRoom = candidate.source === 'unresolved' && [candidate.row.status, candidate.row.bagType].some((value) => String(value || '').trim().toLowerCase() === 'not load bags');
-    const { date, flightNumbers } = isBagRoom ? { date:cbsRecordLookupDate(candidate.row), flightNumbers:[] } : cbsArrivalRecordScope(candidate.row);
-    if (!tags.length || !date) continue;
-    try {
-      const records = [];
-      for (const tag of tags) {
-        const cacheKey = `${date}:${tag.serial}:${flightNumbers.join(',')}`;
-        if (!lookupCache.has(cacheKey)) lookupCache.set(cacheKey, findCbsPnrRecordsByBagTag(tag.serial, date, flightNumbers));
-        const lookup = await lookupCache.get(cacheKey);
-        records.push(...lookup.records);
-      }
-      const selectedRecord = bestCbsPnrRecord(records);
-      const record = String(selectedRecord?.content || '').slice(0, 5000);
-      const ticketRecord = String(selectedRecord?.ticketContent || '').slice(0, 5000);
-      // Do not cache a miss: record files may be uploaded after the case first
-      // loads, and Refresh must be able to discover them immediately.
-      if (!record) continue;
-      const result = candidate.source === 'unresolved'
-        ? await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record, recordType:'pnr', updatedBy })
-        : await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, replaceEventKey:'record-pnr', updateEvent:{ key:'record-pnr', title:'Update Record - PNR', fields:[['Record - PNR', record]], by:updatedBy } });
-      if (ticketRecord) {
-        if (candidate.source === 'unresolved') await updateCbsUnresolvedBaggageDetails(candidate.row.rowNumber, { record:ticketRecord, recordType:'tkt', updatedBy });
-        else await updateCbsCase(candidate.row.rowNumber, { status:candidate.row.status, replaceEventKey:'record-tkt', updateEvent:{ key:'record-tkt', title:'Update Record - TKT', fields:[['Record - TKT', ticketRecord]], by:updatedBy } });
-      }
-      if (!result.notFound) updates.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag });
-    } catch (err) {
-      errors.push({ source:candidate.source, rowNumber:candidate.row.rowNumber, bagTag:candidate.row.bagTag, error:err?.message || 'Record lookup failed' });
-      console.error(`CBS automatic PNR sync skipped ${candidate.source} row ${candidate.row.rowNumber}:`, err);
-    }
-  }
-  return { checked:candidates.length, updated:updates.length, updates, errors };
-}
+async function syncMissingCbsPnrRecords() { return {checked:0,updated:0,updates:[],errors:[],disabled:true,source:'local-client'}; }
 
 function startCbsPnrRecordSync(passengerCases, unresolvedCases, updatedBy = 'System') {
   if (cbsPnrSyncPending) return cbsPnrSyncPending;
@@ -4878,14 +4780,14 @@ app.get(
           const syPayload={...syInfo,spml,boardingNbrdVersion,permissions:authContext.permissions};dashboardSySnapshot.put(syPayload);
           return res.json({sy:syPayload,core:true});
         }
-        const bagInfoPromise = isoDate ? getSyBagInfoByDate(isoDate, syInfo.flightDate) : Promise.resolve(null);
+        const bagInfoPromise = isoDate ? getSyBagInfoByDate(isoDate, syInfo.flightDate, syInfo.flightNo) : Promise.resolve(null);
         const outboundRushPromise = isoDate && syInfo.flightNo === 'MU586' && syInfo.flightDate === operationalDate()
           ? hasOutboundRushBaggage('MU586', isoDate).catch(error => {
             console.warn('Outbound rush check failed:', error?.message || error);
             return false;
           })
           : Promise.resolve(false);
-        const mealEmailPromise = getLatestMealOrderEmail(syInfo.flightNo, syInfo.flightDate);
+        const mealEmailPromise = Promise.resolve({found:false,source:'local-client',reason:'Check Meal Order in local logs.'});
         const authContextPromise = resolveAuthContextFromRequest(req);
 
         if (isoDate && isoDate !== todayIsoUtc()) {
@@ -4893,7 +4795,7 @@ app.get(
           rememberCompletedPreflightSteps(syInfo, isoDate);
           applyCachedCompletedPreflightSteps(syInfo, isoDate);
         } else {
-          await refreshSyPreflightEmailChecks(syInfo, isoDate);
+          await refreshLocalPreflightChecks(syInfo, isoDate);
           rememberCompletedPreflightSteps(syInfo, isoDate);
           applyCachedCompletedPreflightSteps(syInfo, isoDate);
           setImmediate(() => {
@@ -5017,10 +4919,11 @@ app.post('/nextday-info/send', async (req, res) => {
     // email must never be sent with those stale browser-side totals.
     const log = await getLatestFlightLog();
     const syDate = isoDateToSyDate(nextIso);
-    const syInfo = log && syDate ? findSYInfo(log, syDate, {
+    let syInfo = log && syDate ? findSYInfo(log, syDate, {
       preferredFlightNo: flightNo,
       strictPreferredFlight: true
     }) : null;
+    if(req.desktopUser&&req.body?.terminalSy)syInfo=require('./terminalNextDay').validate(req.body.terminalSy,flightNo,syDate);
     if (syInfo?.jcsy?.complete && !syInfo.jcsy.paginationComplete) {
       const jcsy = syInfo.jcsy;
       const progress = jcsy.bookedTotal

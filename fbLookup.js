@@ -548,10 +548,10 @@ module.exports = (client) => {
     if (fscRate) {
       try {
         const result = await updateFscExchangeRate(fscRate);
-        return message.reply(`FSC exchange rate ${result.rate} saved to ${result.sheetTitle}!${result.cell}.`);
+        return message.reply(`FSC exchange rate ${result.rate} read from terminal text; Google Sheets writeback is disabled.`);
       } catch (err) {
-        console.error('FSC exchange rate sheet update failed:', err);
-        return message.reply('FSC exchange rate found, but sheet update failed.');
+        console.error('FSC exchange rate parsing failed:', err);
+        return message.reply('FSC exchange rate could not be read.');
       }
     }
 

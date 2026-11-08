@@ -7183,6 +7183,7 @@
 
       function bagroomSectionsHtml(sheet, emptyText) {
         const sections = [];
+        if(sheet?.source==='SY/BND'){const s=sheet.summary||{};sections.push('<h3>SY / BND</h3><p>Checked bags: '+escapeHtml(s.bags??'—')+' · Weight: '+escapeHtml(s.weightKg??'—')+' KG · Boarding numbers: '+escapeHtml(s.boardingNumbers??'—')+'</p><p class="panel-muted">'+escapeHtml(sheet.detailMessage||'')+'</p>');}
         const addBagSection = (title, bagSection, headers) => {
           const rows = bagSection?.rows || (bagSection?.columns ? [bagSection.columns] : []);
           if (!rows.length) return;
@@ -7210,10 +7211,10 @@
           const data = await apiJson(`/bagroom-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
           const rows = data?.rows || [];
           const html = rows.map((row) => {
-            const body = bagroomSectionsHtml(row.bagSheet || {}, `No Google Sheet bag report data found for ${row.date}.`);
+            const body = bagroomSectionsHtml(row.bagSheet || {}, `No terminal bag report data found for ${row.date}.`);
             return `<h3>${escapeHtml(row.date)}</h3>${body}`;
           }).join("");
-          baggageOutput.innerHTML = html || `<p class="panel-muted">No Google Sheet bag report data found for selected range.</p>`;
+          baggageOutput.innerHTML = html || `<p class="panel-muted">No terminal bag report data found for selected range.</p>`;
         } catch (error) {
           baggageOutput.innerHTML = `<p class="panel-muted status-fail">${escapeHtml(error?.message || "Bag report lookup failed.")}</p>`;
         }
