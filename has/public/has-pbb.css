@@ -491,3 +491,5 @@ dialog.has-schedule-dialog{width:min(1100px,calc(100vw - 32px));max-height:90svh
 
 /* Compact MU Briefing beneath the current account, away from the brand. */
 .has-page .has-page-intro #has-briefing-button{position:static;grid-column:2;grid-row:2;justify-self:end;display:inline-flex;align-items:center;gap:5px;margin:8px 0 0;padding:4px 0;min-height:32px;font-size:11px;line-height:1.2;background:transparent;border:0;box-shadow:none;cursor:pointer}.has-page .has-page-intro #has-briefing-button img{width:22px;height:22px;object-fit:contain}
+
+.has-page .has-intro-account .has-account-switch{justify-content:center;align-items:center}
