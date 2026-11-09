@@ -96,7 +96,7 @@ async function startServer(settings, secret, port = 17865, syncFile = '', update
       const canonical=localPath.toLowerCase().replace(/[ .\/]+$/,'');
       if(/^\/(?:boarding-pass(?:[./-]|$)|reissue(?:[./-]|$))/.test(canonical))return json(res,{error:'This feature has moved to LakeTerm.'},410);
       if(canonical==='/reports.html'){res.writeHead(302,{Location:'/report.html'});return res.end();}
-      const protectedPage=/^\/(?:index|report|reports|cbs|cbs-form|pir-form|has-pbb|has-pbb-dashboard)(?:\.html)?$/.test(canonical)||url.pathname==='/';
+      const protectedPage=/^\/(?:index|report|reports|mufc-report|cbs|cbs-form|pir-form|has-pbb|has-pbb-dashboard)(?:\.html)?$/.test(canonical)||url.pathname==='/';
       if(protectedPage&&!sessionReady){res.writeHead(302,{Location:'/login.html','Cache-Control':'no-store'});return res.end();}
       if(sessionReady&&!req.headers.authorization)req.headers.authorization=onlineAuthorization;
       if((['/search','/local-flights','/sy-live-stream'].includes(url.pathname)||url.pathname.startsWith('/sales-report/'))&&!sessionReady)return json(res,{error:'Employee sign-in required.'},401);
@@ -160,7 +160,11 @@ async function startServer(settings, secret, port = 17865, syncFile = '', update
           return res.end(content);
         } catch (err) { if (err.code !== 'ENOENT' && err.code !== 'EISDIR') throw err; }
       }
-      if (url.pathname.startsWith('/has-report-api/') && !/^\/has-report-api\/(?:context|da(?:\/|$))/.test(url.pathname)) return json(res,{error:'Only DA is included in MUFC Desktop.'},404);
+      if (/^\/(?:has|mufc)-report-api(?:\/|$)/.test(url.pathname)) {
+        const suffix=url.pathname.replace(/^\/(?:has|mufc)-report-api/,'');
+        if (!/^\/(?:context$|(?:da|wwh|rechargeable)\/)/.test(suffix)) return json(res,{error:'Only LAX/MU DA, WWH and Rechargeable hours are included in MUFC.'},404);
+        url.pathname='/mufc-report-api'+suffix;
+      }
       if (!['GET', 'POST'].includes(req.method)) return json(res, { error: 'Unsupported method.' }, 405);
       // Online-only operations never inherit the local-file access permission.
       if (!await authenticated(req)) return json(res,{error:'Online sign-in is required for this feature.'},401);

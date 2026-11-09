@@ -325,6 +325,14 @@
     ],
     "rewrites": [
       {
+        "source": "/mufc-report.html",
+        "destination": "/has/mufc-report.html"
+      },
+      {
+        "source": "/mufc-report",
+        "destination": "/has/mufc-report.html"
+      },
+      {
         "source": "/has-pbb",
         "destination": "/has/has-pbb.html"
       },
