@@ -41,6 +41,7 @@ function applyNavigation(source,root,release){
  copy('mufc-report.html');
  require('./retire-laketerm-features.cjs').retireLakeTermFeatures(source,release);
  const cbsCopied=require('./cbs-patch.cjs').applyCbs(source,root);
- return [...new Set([...copied,...cbsCopied])];
+ require('./jetbridge-link-patch.cjs').applyJetBridgeLink(source);
+ return [...new Set([...copied,...cbsCopied,'jetbridge-link.js'])];
 }
 module.exports={applyNavigation};

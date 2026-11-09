@@ -13,7 +13,7 @@
         for (const [index, flight] of flights.entries()) {
           const card = document.createElement('article'); card.className = 'flight-card' + (index === 0 ? ' is-active' : '');
           card.dataset.flight = flight.flightNo;
-          card.innerHTML = `<a class="flight-pbb-link" href="/has-pbb.html" aria-label="Open Jet Bridge checklist for ${escape(flight.flightNo)}" title="Jet Bridge"><img src="/has/assets/home-icon-bridge-v2.webp" alt="" width="40" height="40"></a><h2>${escape(flight.flightNo)}</h2><div class="flight-date">${escape(flight.flightDate)}</div><div class="flight-card-actions"><button class="flight-enter flight-enter-boarding" type="button" aria-label="Enter ${escape(flight.flightNo)} boarding">Enter Boarding</button></div>`;
+          card.innerHTML = `<a class="flight-pbb-link" href="https://has-station.com/has-pbb.html" target="_blank" rel="noopener noreferrer" aria-label="Open Jet Bridge checklist for ${escape(flight.flightNo)}" title="Jet Bridge"><img src="/has/assets/home-icon-bridge-v2.webp" alt="" width="40" height="40"></a><h2>${escape(flight.flightNo)}</h2><div class="flight-date">${escape(flight.flightDate)}</div><div class="flight-card-actions"><button class="flight-enter flight-enter-boarding" type="button" aria-label="Enter ${escape(flight.flightNo)} boarding">Enter Boarding</button></div>`;
           card.querySelector('.flight-pbb-link').onclick = () => window.setMufcFlight({...flight, source:'current'});
           card.querySelector('.flight-enter-boarding').onclick = () => { window.setMufcFlight({...flight, source:'current'}); location.assign('/scan.html'); };
           const activate = () => { cards.querySelectorAll('.flight-card').forEach(c => c.classList.toggle('is-active', c === card)); };
