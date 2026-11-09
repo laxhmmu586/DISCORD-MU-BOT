@@ -44,6 +44,13 @@ async function template(kind,month,scope,extraRows={}){
  return {kind,month,rows,columns:wheelchair?16:columns,cells,days:kind==='da'?days(sheet):[],extraRows,merges:wheelchair?[...sheet.model.merges,'O4:P4']:sheet.model.merges,widths:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).width||12).concat(wheelchair?[12,12]:[]),hiddenColumns:Array.from({length:columns},(_,i)=>sheet.getColumn(i+1).hidden?i+1:0).filter(Boolean),heights:Array.from({length:rows},(_,i)=>sheet.getRow(i+1).height||20),sheetName:name,workbook};
 }
 function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHeartbeatMs}){
+ // MUFC edits the same LAX/MU records as HAS, through a restricted entry point.
+ app.use((req,res,next)=>{
+  if(!/^\/mufc-report-api(?:\/|$)/.test(req.path))return next();
+  const suffix=req.path.slice('/mufc-report-api'.length);
+  if(!/^\/(?:context$|(?:da|wwh|rechargeable)\/)/.test(suffix))return res.status(404).json({error:'MUFC supports DA, WWH and Rechargeable hours only.'});
+  req.mufcReports=true;req.url=req.url.replace(/^\/mufc-report-api/,'/has-report-api');next();
+ });
  let db,ownsDatabase=false;
  function database(){
   if(db)return db;
@@ -57,8 +64,8 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
    db=candidate;ownsDatabase=owned;return db;
   }catch(error){if(owned&&candidate?.open)candidate.close();console.error('HAS report database initialization:',error);unavailable();}
  }
- app.use('/has-report-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.reportUser={...await authenticate(req),workspaceScope:req.get('X-Workspace-Account')||null};next();}catch{res.status(401).json({error:'Sign in required.'});}});
- const context=user=>{const employee=require('./workspaceScope').scopeEmployee(profiles.linked(user),user.workspaceScope);if(!employee)fail('Link your employee profile first.',403);return {employee,scope:groups.scope(employee),permissions:{...access(employee),terrific:canDashboard(employee),expense:canDashboard(employee)}};};
+ app.use('/has-report-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.reportUser={...await authenticate(req),mufcReports:req.mufcReports===true,workspaceScope:req.get('X-Workspace-Account')||null};next();}catch{res.status(401).json({error:'Sign in required.'});}});
+ const context=user=>{const employee=require('./workspaceScope').scopeEmployee(profiles.linked(user),user.mufcReports?{station:'LAX',account:'MU'}:user.workspaceScope);if(!employee)fail('Link your employee profile first.',403);const permissions=user.mufcReports?access(employee):{...access(employee),terrific:canDashboard(employee),expense:canDashboard(employee)};return {employee,scope:groups.scope(employee),permissions};};
  const authorize=req=>{const ctx=context(req.reportUser);if(!['da','wwh',...forms.kinds].includes(req.params.kind))fail('Unknown report type.',404);if(!ctx.permissions[req.params.kind])fail('Report access denied for your Main Account position.',403);return ctx;};
  const key=scope=>JSON.stringify([scope.station,scope.account]);
  const read=(scope,kind,month)=>{const row=database().prepare('SELECT data FROM has_reports WHERE scope=? AND kind=? AND month=?').get(key(scope),kind,month);const data=row?JSON.parse(row.data):{revision:0,values:{}};if(['da','wwh'].includes(kind))delete data.values[kind==='wwh'?'B1':'C4'];if(kind==='wwh')for(const [old,target] of [['A31','A32'],['A38','A39'],['A47','A48'],['A50','A51'],['A53','B54']]){const value=data.values[old];if(typeof value==='string'&&!data.values[target]&&!/^(?:ADDITIONAL\s+)?COMMENTS:\s*(?:NIL)?$/i.test(value.trim()))data.values[target]=value.replace(/^(?:ADDITIONAL\s+)?COMMENTS:\s*/i,'');}return data;};
@@ -68,7 +75,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  const apply=(model,values,stored=false)=>{if(!values||typeof values!=='object'||Array.isArray(values))fail('Invalid report values.');for(const [address,value] of Object.entries(values)){const cell=model.cells[address];if(!cell?.editable){if(stored)continue;fail('This template cell cannot be edited: '+address);}if(!['string','number'].includes(typeof value)||String(value).length>4000||typeof value==='number'&&!Number.isFinite(value))fail('Invalid cell value.');if(!stored&&cell.maxLength&&String(value).length>cell.maxLength)fail('Issued By must be 50 characters or fewer.');if(!stored&&cell.choices&&value!==''&&!cell.choices.includes(value))fail('Choose Compliment or Manager Direction.');if(cell.webOnly&&value!==''&&(!Number.isSafeInteger(Number(value))||Number(value)<0))fail('Wheelchair counts must be non-negative whole numbers.');setInput(cell,value);}return model;};
  const {createHoursTemplate,hoursValues}=require('./hasReportHours');
  const scopedTemplate=createHoursTemplate({template,read,apply});
- app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser),supervisor=canHrSafety(employee);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee),...Object.fromEntries(wordForms.kinds.map(kind=>[kind,supervisor]))},canChecklist:require('./hasChecklists').allowed(employee),canDashboard:canDashboard(employee),canAdmin:['Supervisor','Business Manager'].includes(positions.normalize(employee.position))||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
+ app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser),supervisor=canHrSafety(employee);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee),...Object.fromEntries(wordForms.kinds.map(kind=>[kind,!req.reportUser.mufcReports&&supervisor]))},canChecklist:!req.reportUser.mufcReports&&require('./hasChecklists').allowed(employee),canDashboard:!req.reportUser.mufcReports&&canDashboard(employee),canAdmin:['Supervisor','Business Manager'].includes(positions.normalize(employee.position))||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
  wordForms.register(app,{context,database,read,key,handler,allowed:canHrSafety});
  require('./hasChecklists').register(app,{context,handler,supervisor:canChecklistManage,database,read,key,employees});
  const linkDA=async(model,scope)=>{

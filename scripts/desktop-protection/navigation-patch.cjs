@@ -6,6 +6,9 @@ function applyNavigation(source,root,release){
  let server=read('src/server.js');
  if(!server.includes('/desktop-navigation.js'))server=server.replace('<script defer src="/desktop-ui.js"></script>','<script defer src="/desktop-ui.js"></script><script defer src="/desktop-navigation.js"></script><link rel="stylesheet" href="/desktop-navigation.css">');
  if(!server.includes('mufcDesktopInitialHash'))server=server.replace('window.MU_API_BASE=location.origin;','window.MU_API_BASE=location.origin;window.mufcDesktopInitialHash=location.hash;');
+ const reportGateStart=server.indexOf("      if (url.pathname.startsWith('/has-report-api/')"),reportGateEnd=server.indexOf('\n',reportGateStart);
+ if(reportGateStart>=0)server=server.slice(0,reportGateStart)+"      if (/^\\/(?:has|mufc)-report-api(?:\\/|$)/.test(url.pathname)) {\n        const suffix=url.pathname.replace(/^\\/(?:has|mufc)-report-api/,'');\n        if (!/^\\/(?:context$|(?:da|wwh|rechargeable)\\/)/.test(suffix)) return json(res,{error:'Only LAX/MU DA, WWH and Rechargeable hours are included in MUFC.'},404);\n        url.pathname='/mufc-report-api'+suffix;\n      }"+server.slice(reportGateEnd);
+ server=server.replace('index|report|reports|cbs|','index|report|reports|mufc-report|cbs|');
  assert(server.includes('/desktop-navigation.js'));write('src/server.js',server);
  write('src/desktop-policy.js',read('src/desktop-policy.js').replace('|baggage',''));
  let ui=read('web/desktop-ui.js');
@@ -35,6 +38,7 @@ function applyNavigation(source,root,release){
  copy('baggage.html');
  // The Report Center has exactly the five retained report tabs, with no local iframe.
  copy('report.html');
+ copy('mufc-report.html');
  require('./retire-laketerm-features.cjs').retireLakeTermFeatures(source,release);
  const cbsCopied=require('./cbs-patch.cjs').applyCbs(source,root);
  return [...new Set([...copied,...cbsCopied])];

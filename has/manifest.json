@@ -313,7 +313,9 @@
     "departure-checklist-model.js",
     "departure-checklists.js",
     "departure-checklists.css",
-    "has-report-alignment.js"
+    "has-report-alignment.js",
+    "mufc-report.html",
+    "mufc-report.css"
   ],
   "server": [
     "briefingDefaults.js",
