@@ -20,13 +20,12 @@
   const links = [
     ['/briefing', 'Briefing', 'briefing', 'data-briefing-nav hidden'],
     ['/schedule', 'Schedule', 'schedule', 'data-schedule-nav hidden'],
-    ['/has-report', 'Report', 'report', 'data-report-access hidden'],
-    ['/has-form', 'Request', 'request', ''],
+    ['https://has-station.com/has-report', 'Report', 'report', 'data-report-access hidden'],
     ['/has-checklist', 'Checklist', 'checklist', 'data-checklist-access hidden'],
     ['/read-sign', 'Read & Sign', 'sign', ''],
   ];
   sidebar.id = 'workspace-sidebar'; sidebar.classList.add('home-sidebar');
-  sidebar.innerHTML = `<button class="sidebar-collapse" type="button" aria-label="Collapse sidebar" aria-controls="workspace-sidebar" aria-expanded="true"><svg class="collapse-arrow" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="workspace-arrow-blue"><stop stop-color="#9cddff"/><stop offset="1" stop-color="#1268e4"/></linearGradient></defs><path d="m25 9-14 12a4 4 0 0 0 0 6l14 12a4 4 0 0 0 6-3v-5h8a4 4 0 0 0 4-4v-5a4 4 0 0 0-4-4h-8v-6a4 4 0 0 0-6-3Z" fill="url(#workspace-arrow-blue)" stroke="#d3efff" stroke-width="1.5"/></svg></button><p class="sidebar-caption">QUICK ACCESS</p><nav aria-label="Workspace pages">${links.map(([href,label,icon,attrs]) => `<a href="${href}" ${attrs}${href === current ? ' class="is-active" aria-current="page"' : ''} aria-label="${label.replace('&', '&amp;')}" title="${label.replace('&', '&amp;')}">${artwork(icon)}<span>${label.replace('&', '&amp;')}</span></a>`).join('')}</nav><div class="home-team-art" data-employee-art></div><div class="sidebar-footer"><span class="footer-mark">HALLMARK</span><p>People. Operations. Together.</p><span class="footer-line"></span><small>Providing Peace of Mind.</small></div>`;
+  sidebar.innerHTML = `<button class="sidebar-collapse" type="button" aria-label="Collapse sidebar" aria-controls="workspace-sidebar" aria-expanded="true"><svg class="collapse-arrow" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="workspace-arrow-blue"><stop stop-color="#9cddff"/><stop offset="1" stop-color="#1268e4"/></linearGradient></defs><path d="m25 9-14 12a4 4 0 0 0 0 6l14 12a4 4 0 0 0 6-3v-5h8a4 4 0 0 0 4-4v-5a4 4 0 0 0-4-4h-8v-6a4 4 0 0 0-6-3Z" fill="url(#workspace-arrow-blue)" stroke="#d3efff" stroke-width="1.5"/></svg></button><p class="sidebar-caption">QUICK ACCESS</p><nav aria-label="Workspace pages">${links.map(([href,label,icon,attrs]) => `<a href="${href}" ${attrs}${(href === current || (icon === 'report' && current === '/has-report')) ? ' class="is-active" aria-current="page"' : ''} aria-label="${label.replace('&', '&amp;')}" title="${label.replace('&', '&amp;')}">${artwork(icon)}<span>${label.replace('&', '&amp;')}</span></a>`).join('')}</nav><div class="home-team-art" data-employee-art></div><div class="sidebar-footer"><span class="footer-mark">HALLMARK</span><p>People. Operations. Together.</p><span class="footer-line"></span><small>Providing Peace of Mind.</small></div>`;
   if (admin) { admin.href = '/admin'; sidebar.querySelector('nav').append(admin); }
   main.classList.add('home-main');
   const frame = document.createElement('div'); frame.className = 'app-frame';
@@ -77,7 +76,7 @@
       }
       const label = link.querySelector('span:not(.art-icon):not(.request-alert)')?.textContent?.trim() || link.textContent.trim();
       if (label) { link.setAttribute('aria-label', label); link.title = label; }
-      const active = link.getAttribute('href') === current; link.classList.toggle('is-active', active); if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+      const active = link.getAttribute('href') === current || (link.hasAttribute('data-report-access') && current === '/has-report'); link.classList.toggle('is-active', active); if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
     });
   }
   new MutationObserver(records => { if (records.some(record => record.type === 'childList')) decorateNavigation(); }).observe(sidebar, {childList:true,subtree:true}); decorateNavigation();
