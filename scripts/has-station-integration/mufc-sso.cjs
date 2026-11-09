@@ -22,7 +22,11 @@ function createMufcSso({firebase,employees,blocked,groups,fetch=global.fetch,now
   const result=await response.json();if(!Array.isArray(result.accounts)||!result.accounts.some(a=>a.station==='LAX'&&a.account==='MU'))throw failure('Link your MUFC employee account first.');
   // The upstream verifies the signature, project, expiry and blocked-account state.
   const claims=JSON.parse(Buffer.from(token.split('.')[1]||'','base64url'));
-  if(claims.email_verified!==true||!claims.sub||!claims.email||!Number.isFinite(claims.exp)||claims.exp*1000<=now())throw failure('MUFC sign-in expired.',401);
+  if(!Number.isFinite(claims.exp)||claims.exp*1000<=now())throw failure('MUFC sign-in expired.',401);
+  if(!claims.sub||!claims.email)throw failure('Your MUFC employee sign-in has no account identity.',401);
+  // MUFC permits approved password accounts with an unverified email flag.
+  // Trust only its authenticated workspace membership here; the matching HAS
+  // identity must still be verified, enabled and explicitly linked below.
   return claims;
  }
  function employee(email){
