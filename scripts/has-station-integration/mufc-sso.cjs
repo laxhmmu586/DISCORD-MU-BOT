@@ -26,7 +26,7 @@ function createMufcSso({firebase,employees,blocked,groups,fetch=global.fetch,now
   if(!claims.sub||!claims.email)throw failure('Your MUFC employee sign-in has no account identity.',401);
   // MUFC permits approved password accounts with an unverified email flag.
   // Trust only its authenticated workspace membership here; the matching HAS
-  // identity must still be verified, enabled and explicitly linked below.
+  // identity must still be enabled and explicitly linked below.
   return claims;
  }
  function employee(email){
@@ -40,10 +40,10 @@ function createMufcSso({firebase,employees,blocked,groups,fetch=global.fetch,now
   const claims=await source(token),person=employee(claims.email);
   if(!groups.belongs(person,{station:'LAX',account:'MU'}))throw failure('LAX/MU access is required.');
   const target=await firebase.getUserByEmail(normal(person.loginId));
-  if(target.disabled||!target.emailVerified)throw failure('Your HAS Station account must be verified and active.');
+  if(target.disabled)throw failure('Your HAS Station account is disabled.');
   const linked=employees.db.prepare('SELECT employee_id FROM employee_accounts WHERE uid=?').get(target.uid);
   if(linked?.employee_id!==person.id)throw failure('Link the matching employee account in HAS Station first.');
-  const user={uid:target.uid,email:target.email,emailVerified:true,provider:'custom',authTime:claims.auth_time};
+  const user={uid:target.uid,email:target.email,emailVerified:target.emailVerified===true,provider:'custom',authTime:claims.auth_time};
   if(blocked(employees.db,user))throw failure('Your HAS Station account is disabled.');
   const code=crypto.randomBytes(32).toString('base64url');
   pending.set(hash(code),{until:now()+30000,token,claims,user,destination});
