@@ -3224,7 +3224,9 @@ app.use(['/cbs-scan', '/cbs-scan2'], (req, res, next) => {
 });
 
 require('./flightListCache').register(app,flightListCache);
-require('./flightDayStore').register(app,{store:flightDayStore,onUpdate:log=>{
+require('./flightDayStore').register(app,{store:flightDayStore,
+  syncReports: require('./desktopReportSync').createSync(appendStoredReportRows),
+  onUpdate:log=>{
   boardingBoxCache.updateFromLog(log);warmDashboardSnapshot(log);
 }});
 
