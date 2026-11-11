@@ -43,10 +43,24 @@ class FlightDayStore {
     return require('./scripts/desktop-updates/terminal-bags.cjs').bagInfo(parser.findSYInfo(log,date,{preferredFlightNo:flight,strictPreferredFlight:true}),parser.findBoardingBoxInfo(log,flight,date));
   }
 }
-function register(app,{store,onUpdate=()=>{}}) {
-  app.post('/flight-day-sync',(req,res)=>{
+function register(app,{store,onUpdate=()=>{},syncReports}) {
+  app.post('/flight-day-sync',async (req,res)=>{
     if(!req.desktopUser)return res.status(403).json({error:'Approved employee desktop required.'});
-    try {const result=store.ingest(req.body?.log);onUpdate(store.log());res.set('Cache-Control','no-store');res.json(result);}
+    try {
+      const result=store.ingest(req.body?.log);
+      onUpdate(store.log());
+      if (req.body.reports !== undefined && syncReports) {
+        try {
+          await syncReports(req.body.reports, result.date);
+          result.reports = {ok:true};
+        } catch (error) {
+          console.warn('Desktop report sync:', error.message);
+          result.reports = {ok:false,error:'Unable to save local report rows.'};
+        }
+      }
+      res.set('Cache-Control','no-store');
+      res.json(result);
+    }
     catch(error){res.status(400).json({error:error.message});}
   });
 }
