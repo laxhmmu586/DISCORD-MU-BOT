@@ -141,3 +141,7 @@
 .rs-report-grid .rs-account-card:hover { border-color: #258be8; }
 .rs-report-detail { margin-top: 16px; padding: 12px; border: 1px solid #d1e0f2; border-radius: 10px; background: #ffffff85; }
 .rs-report-detail h4 { margin: 0 0 8px; color: #315984; }
+
+.rs-draft-files{list-style:none;padding:0;margin:12px 0}.rs-draft-file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #93adc94d}.rs-draft-file span{min-width:0;overflow-wrap:anywhere}.rs-dialog .rs-draft-file button{flex:none;padding:7px 12px}
+
+.rs-draft-files:empty{display:none}.rs-dialog #memo-account{display:block;box-sizing:border-box;width:100%;margin-top:8px;padding:10px;font:inherit;border:1px solid #93adc94d;border-radius:8px}

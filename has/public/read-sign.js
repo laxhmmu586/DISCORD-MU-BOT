@@ -74,7 +74,24 @@
   window.chargeDashboard?.(document.querySelector('.rs-stats'));window.chargeDashboard?.($('rs-list'));
   document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter===filter)));
  }
- async function load(){data=await api();$('publish-memo').hidden=!data.canPublish;document.querySelector('.rs-subtitle').textContent=data.mainAccount.station+' / '+data.mainAccount.account+' · Read, acknowledge and sign.';const account=$('memo-account');account.replaceChildren(...(data.canSelectAccounts?[new Option('All accounts','ALL')]:[]),...(data.recipientAccounts||[]).map(a=>new Option(a.station+' / '+a.account,JSON.stringify([a.station,a.account]))));account.disabled=!data.canSelectAccounts;list();return data;}
+ async function load(){
+  data=await api();$('publish-memo').hidden=!data.canPublish;
+  document.querySelector('.rs-subtitle').textContent=data.mainAccount.station+' / '+data.mainAccount.account+' · Read, acknowledge and sign.';
+  const account=$('memo-account'),previous=account.value,options=data.canSelectAccounts?[new Option('All accounts','ALL')]:[];
+  const mainLaxMu=data.mainAccount.station==='LAX'&&data.mainAccount.account==='MU';
+  const scopes=[...(data.recipientAccounts||[])];
+  if(mainLaxMu&&!scopes.some(scope=>scope.station==='LAX'&&scope.account==='MU'))scopes.push(data.mainAccount);
+  for(const scope of scopes){
+   const laxMu=scope.station==='LAX'&&scope.account==='MU';
+   if(laxMu)options.push(new Option('All LAX / MU (including Cross Account)','LAX_MU_ALL'));
+   options.push(new Option(laxMu?'Main Account LAX / MU':scope.station+' / '+scope.account,JSON.stringify([scope.station,scope.account])));
+  }
+  account.replaceChildren(...options);
+  const defaultAccount=data.canSelectAccounts?'ALL':JSON.stringify([data.mainAccount.station,data.mainAccount.account]);
+  account.value=options.some(option=>option.value===previous)?previous:defaultAccount;
+  account.disabled=!data.canSelectAccounts&&!mainLaxMu;
+  list();return data;
+ }
  async function open(id){
   const revision=++detailRevision,result=await api('/'+encodeURIComponent(id));if(revision!==detailRevision)return;selected=result;const r=selected;clockOffset=Date.parse(r.serverNow)-Date.now();history.replaceState(null,'','?memo='+encodeURIComponent(id)+(filter==='signed'?'&view=history':''));list();$('rs-empty-detail').hidden=true;$('rs-detail-content').hidden=false;completion();reports(r);
   $('rs-detail-badge').replaceChildren(badge(r));$('rs-subject').textContent=r.subject;$('rs-body').textContent=r.body;
@@ -116,10 +133,31 @@
   finally{reportRefreshing=false;}
  },15000);
  const dialog=$('compose-dialog'),form=$('compose-form'),cs=$('compose-status');
+ let selectedFiles=[];
+ function renderSelectedFiles(){
+  const list=$('memo-file-list');list.replaceChildren();
+  for(const file of selectedFiles){
+   const item=node('li',null,'rs-draft-file'),name=node('span',file.name),remove=node('button','Remove');
+   remove.type='button';remove.setAttribute('aria-label','Remove attachment '+file.name);
+   remove.onclick=()=>{if(busy)return;selectedFiles=selectedFiles.filter(selected=>selected!==file);renderSelectedFiles();cs.textContent='';};
+   item.append(name,remove);list.append(item);
+  }
+ }
+ $('memo-files').onchange=event=>{
+  const chosen=[...event.target.files];event.target.value='';if(busy)return;
+  const files=[...selectedFiles];
+  for(const file of chosen)if(!files.some(selected=>selected.name===file.name&&selected.size===file.size&&selected.lastModified===file.lastModified))files.push(file);
+  if(files.length>5||files.reduce((total,file)=>total+file.size,0)>10*1024*1024){cs.textContent='Attach up to 5 files, totaling at most 10 MB.';return;}
+  selectedFiles=files;renderSelectedFiles();cs.textContent='';
+ };
  $('publish-memo').onclick=()=>{dialog.showModal();};$('close-compose').onclick=()=>{if(!busy)dialog.close();};dialog.oncancel=e=>{if(busy)e.preventDefault();};
- async function payload(){const files=[...$('memo-files').files];if(files.length>5||files.reduce((n,f)=>n+f.size,0)>10*1024*1024)throw Error('Attach up to 5 files, totaling at most 10 MB.');return {requestId:publishId,targetAccount:$('memo-account').value,subject:$('memo-subject').value,memoNumber:$('memo-number').value,body:$('memo-body').value,deadline:new Date($('memo-deadline').value).toISOString(),attachments:await Promise.all(files.map(async f=>({name:f.name,type:f.type||(/\.txt$/i.test(f.name)?'text/plain':''),data:await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(Error('Could not read attachment.'));reader.readAsDataURL(f);})})))};}
- form.onsubmit=async e=>{e.preventDefault();if(busy)return;try{draft=await payload();if(new Date(draft.deadline)<=new Date())throw Error('Choose a future deadline.');$('compose-fields').hidden=true;$('compose-preview').hidden=false;$('compose-preview-text').textContent=`To: ${$('memo-account').selectedOptions[0]?.textContent||'Main Account'}\nSubject: ${draft.subject}\nMemo #: ${draft.memoNumber||'—'}\nDeadline: ${date(draft.deadline)}\n\n${draft.body}\n\nAttachments: ${draft.attachments.map(f=>f.name).join(', ')||'None'}`;cs.textContent='Publishing will notify employees in the selected account scope and require their handwritten signature.';}catch(e){cs.textContent=e.message;}};
+ async function payload(){
+  const files=[...selectedFiles],crossAccount=$('memo-account').value==='LAX_MU_ALL';
+  if(files.length>5||files.reduce((n,f)=>n+f.size,0)>10*1024*1024)throw Error('Attach up to 5 files, totaling at most 10 MB.');
+  return {requestId:publishId,targetAccount:crossAccount?JSON.stringify(['LAX','MU']):$('memo-account').value,recipientMode:crossAccount?'all-memberships':'main',subject:$('memo-subject').value,memoNumber:$('memo-number').value,body:$('memo-body').value,deadline:new Date($('memo-deadline').value).toISOString(),attachments:await Promise.all(files.map(async f=>({name:f.name,type:f.type||(/\.txt$/i.test(f.name)?'text/plain':''),data:await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(Error('Could not read attachment.'));reader.readAsDataURL(f);})})))};
+ }
+ form.onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;const review=form.querySelector('button[type=submit]');review.disabled=true;try{draft=await payload();if(new Date(draft.deadline)<=new Date())throw Error('Choose a future deadline.');$('compose-fields').hidden=true;$('compose-preview').hidden=false;$('compose-preview-text').textContent=`To: ${$('memo-account').selectedOptions[0]?.textContent||'Main Account'}\nSubject: ${draft.subject}\nMemo #: ${draft.memoNumber||'—'}\nDeadline: ${date(draft.deadline)}\n\n${draft.body}\n\nAttachments: ${draft.attachments.map(f=>f.name).join(', ')||'None'}`;cs.textContent='Publishing will notify employees in the selected account scope and require their handwritten signature.';}catch(e){cs.textContent=e.message;}finally{busy=false;review.disabled=false;}};
  $('edit-draft').onclick=()=>{if(busy)return;$('compose-fields').hidden=false;$('compose-preview').hidden=true;cs.textContent='';};
- $('confirm-publish').onclick=async()=>{if(busy||!draft)return;busy=true;dialog.querySelectorAll('button').forEach(b=>b.disabled=true);try{const r=await api('',draft);publishId=crypto.randomUUID();draft=null;form.reset();$('compose-fields').hidden=false;$('compose-preview').hidden=true;dialog.close();await load();await open(r.id);status.textContent='Published. Email reminders are queued; delivery status appears beside each employee in the register.';}catch(e){cs.textContent=e.message;}finally{busy=false;dialog.querySelectorAll('button').forEach(b=>b.disabled=false);}};
+ $('confirm-publish').onclick=async()=>{if(busy||!draft)return;busy=true;dialog.querySelectorAll('button').forEach(b=>b.disabled=true);try{const r=await api('',draft);publishId=crypto.randomUUID();draft=null;form.reset();selectedFiles=[];renderSelectedFiles();$('compose-fields').hidden=false;$('compose-preview').hidden=true;dialog.close();await load();await open(r.id);status.textContent='Published. Email reminders are queued; delivery status appears beside each employee in the register.';}catch(e){cs.textContent=e.message;}finally{busy=false;dialog.querySelectorAll('button').forEach(b=>b.disabled=false);}};
  firebase.auth().onAuthStateChanged(async user=>{if(!user){peopleSignIn();return;}try{await load();$('rs-content').hidden=false;filter=new URLSearchParams(location.search).get('view')==='history'?'signed':'all';list();const id=new URLSearchParams(location.search).get('memo');if(id)await open(id);else{const first=filter==='signed'?data.memos.find(m=>m.myStatus==='signed'):data.memos[0];if(first)await open(first.id);}status.textContent='';}catch(e){status.textContent=e.message;}});
 })();

@@ -4,6 +4,75 @@ function fixture(t){const db=new Database(':memory:');t.after(()=>db.close());co
 const body=()=>({requestId:crypto.randomUUID(),subject:'Security alert: Data Protection',memoNumber:'SOP-2026-018',body:'Please review the attached SOP.\nBy signing you acknowledge the updated procedure.',deadline:'2026-10-25T23:59:00-07:00',attachments:[{name:'SOP.txt',type:'text/plain',data:Buffer.from('Example policy').toString('base64')}]});
 const signed={acknowledged:true,strokes:[[[.1,.7],[.2,.2],[.3,.8],[.4,.4],[.5,.6],[.7,.3],[.8,.5]]]};
 
+test('LAX/MU main and all-membership audiences isolate cross-account viewing and signing',t=>{
+ const f=fixture(t);
+ f.rows.forEach(person=>Object.assign(person,{station:'LAX',account:'MU'}));
+ f.rows.push(
+  {id:'cross',name:'CROSS ACCOUNT',position:'Business Manager',station:'LAX',account:'CZ',additionalAccounts:[{station:'LAX',account:'MU'},{station:'LAX',account:'MU'}],email:'cross@example.test'},
+  {id:'cz-only',name:'CZ ONLY',position:'Business Manager',station:'LAX',account:'CZ',email:'cz-only@example.test'},
+  {id:'other-station',name:'OTHER STATION',position:'Agent',station:'SFO',account:'MU',email:'sfo@example.test'},
+  {id:'no-email-cross',name:'NO EMAIL',position:'Agent',station:'LAX',account:'CZ',additionalAccounts:[{station:'LAX',account:'MU'}],email:''}
+ );
+ const targetAccount=JSON.stringify(['LAX','MU']);
+ const main=f.store.publish(f.users[1],{...body(),targetAccount,recipientMode:'main'});
+ assert.deepEqual(main.roster.map(person=>person.id),['e0','e1','e2','e3']);
+ assert.equal(f.store.list({uid:'cross'}).memos.length,0);
+ const draft={...body(),targetAccount,recipientMode:'all-memberships'};
+ const all=f.store.publish(f.users[1],draft);
+ assert.deepEqual(all.roster.map(person=>person.id),['e0','e1','e2','e3','cross']);
+ assert.equal(all.recipientLabel,'All LAX / MU (including Cross Account)');
+ assert.deepEqual(f.store.get(all.id).recipientAccounts,[{station:'LAX',account:'MU'}]);
+ assert.equal(f.store.get(all.id).allAccounts,false);
+ assert.equal(f.employees.db.prepare('SELECT COUNT(*) AS n FROM read_sign_mail WHERE memo_id=?').get(all.id).n,5);
+ const cross=f.store.read({uid:'cross'},all.id);
+ assert.deepEqual(cross.roster.map(person=>person.id),['cross']);
+ assert.equal(cross.canManage,false);
+ assert.deepEqual(cross.availableRecipients,[]);
+ assert.equal(f.store.sign({uid:'cross'},all.id,signed).myStatus,'signed');
+ assert.equal(f.store.read(f.users[1],all.id).signed,1);
+ assert.throws(()=>f.store.read({uid:'cz-only'},all.id),error=>error.status===404);
+ assert.throws(()=>f.store.attachment({uid:'cz-only'},all.id,all.attachments[0].id),error=>error.status===404);
+ assert.throws(()=>f.store.addRecipients({uid:'cross'},all.id,{employeeIds:['cz-only']}),error=>error.status===403);
+ assert.throws(()=>f.store.publish({uid:'cross'},{...body(),targetAccount,recipientMode:'all-memberships'}),error=>error.status===403);
+ assert.throws(()=>f.store.publish(f.users[1],{...draft,recipientMode:'main'}),error=>error.status===409);
+ assert.equal(f.store.publish(f.users[1],draft).id,all.id);
+ f.rows.find(person=>person.id==='cross').additionalAccounts=[];
+ assert.equal(f.store.read(f.users[1],all.id).total,4);
+ assert.throws(()=>f.store.read({uid:'cross'},all.id),error=>error.status===404);
+});
+
+test('all LAX/MU recipients can be supplemented without exposing other Main Account employees',t=>{
+ const f=fixture(t);f.rows.forEach(person=>Object.assign(person,{station:'LAX',account:'MU'}));
+ f.rows.push({id:'new-cross',name:'NEW CROSS',position:'Agent',station:'LAX',account:'CZ',additionalAccounts:[{station:'LAX',account:'MU'}],email:''});
+ const r=f.store.publish(f.users[2],{...body(),targetAccount:JSON.stringify(['LAX','MU']),recipientMode:'all-memberships'});
+ const signature=f.store.sign(f.users[0],r.id,signed).mySignedAt;
+ f.rows.find(person=>person.id==='new-cross').email='cross@example.test';
+ assert(f.store.read(f.users[2],r.id).availableRecipients.some(person=>person.id==='new-cross'));
+ f.store.addRecipients(f.users[2],r.id,{employeeIds:['new-cross']});
+ assert.equal(f.store.read(f.users[0],r.id).mySignedAt,signature);
+ assert.deepEqual(f.store.get(r.id).recipientAccounts,[{station:'LAX',account:'MU'}]);
+ assert.equal(f.store.sign({uid:'new-cross'},r.id,signed).myStatus,'signed');
+ assert.throws(()=>f.store.publish(f.users[1],{...body(),recipientMode:'invalid'}));
+ assert.throws(()=>f.store.publish(f.users[1],{...body(),targetAccount:JSON.stringify(['SFO','MU']),recipientMode:'all-memberships'}),error=>error.status===403);
+});
+
+test('queued all LAX/MU email waits while a cross-account assignment is removed',async t=>{
+ const f=fixture(t);f.rows.forEach(person=>Object.assign(person,{station:'LAX',account:'MU'}));
+ const cross={id:'cross-mail',name:'CROSS ACCOUNT',position:'Agent',station:'LAX',account:'CZ',additionalAccounts:[{station:'LAX',account:'MU'}],email:'cross@example.test'};
+ f.rows.push(cross);
+ const sent=[];
+ const service=registerReadSign(express(),{...f,authenticate:async()=>f.users[1],send:async(_memo,email)=>sent.push(email)});
+ t.after(service.close);
+ const memo=service.store.publish(f.users[1],{...body(),targetAccount:JSON.stringify(['LAX','MU']),recipientMode:'all-memberships'});
+ cross.additionalAccounts=[];
+ await service.retry();
+ assert(!sent.includes(cross.email));
+ assert.equal(f.employees.db.prepare('SELECT status FROM read_sign_mail WHERE memo_id=? AND employee_id=?').get(memo.id,cross.id).status,'out-of-scope');
+ cross.additionalAccounts=[{station:'LAX',account:'MU'}];
+ await service.retry();
+ assert.equal(sent.filter(email=>email===cross.email).length,1);
+});
+
 test('Main Account isolation covers lists, detail, attachments, signing and recipient changes, including legacy memos',t=>{
  const f=fixture(t);f.rows.forEach(e=>Object.assign(e,{station:'LAX',account:'MU'}));
  f.rows[2].account='CZ';f.rows[2].additionalAccounts=[{station:'LAX',account:'MU'}];
