@@ -36,6 +36,8 @@ function createApiGuard({devicesFile=process.env.MUFC_DESKTOP_DEVICES_FILE||path
   const used=new Map();let emailHandler;
   return async(req,res,next)=>{
     if(req.path==='/desktop-device-enroll')return require('./desktopEnrollment').createEnrollmentHandler({devicesFile,authenticate,now,used})(req,res);
+    // The passenger PIR form shares this URL with the protected staff case list.
+    if(req.method==='POST'&&/^\/cbs-cases\/?$/i.test(req.path))return next();
     if(!privateApi(req.path)||req.method==='OPTIONS')return next();
     res.set('Cache-Control','private, no-store');
     if(webBaggageApi(req.path,req.method,req.body)){
