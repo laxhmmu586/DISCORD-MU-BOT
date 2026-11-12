@@ -5,7 +5,7 @@ Read & Sign is available at `/read-sign.html`. The Profile module links to all m
 ## Publishing and signing
 
 - Only employees whose current server-side position is Supervisor or Manager may publish. Admin email membership alone does not grant publishing rights.
-- A publication contains a subject, optional memo number, message, mandatory future deadline, and up to five attachments totaling 10 MB. Supported files: PDF, PNG, JPEG, WebP, TXT, DOCX and XLSX. Attachment downloads require an authenticated Supervisor or Manager.
+- A publication contains a subject, optional memo number, message, mandatory future deadline, and up to five attachments totaling 10 MB. Supported files: PDF, PNG, JPEG, WebP, TXT, DOCX and XLSX. Attachment downloads require an authenticated employee authorized to view that memo.
 - Publication atomically snapshots all named employees and queues a reminder for each. Employee names, published content and the required roster remain fixed for the record. Employees added later can read but are not assigned to earlier memos.
 - Employees must check the acknowledgement and draw a handwritten signature. The server validates normalized strokes and constructs the stored signature image. A unique memo/employee key prevents duplicate signatures. Retries retain the first acknowledgement timestamp. Late signatures are accepted and explicitly marked.
 - Only Supervisors and Managers can inspect the roster, signatures and acknowledgement dates. Other employees can inspect only their own signing status and date. Filters distinguish all memos, items to sign, and the employee's signed history. Print / Save PDF produces a Hallmark register with Employee Name, Signature / Initials and Date of Ack columns.
@@ -41,7 +41,7 @@ The pre-existing Uniform test fixture used `@mu.com` accounts that the current p
 
 ## Read & Sign privacy and compact layouts
 
-Only the current stored Supervisor or Manager role can view the full acknowledgement register, aggregate signing counts, signatures and delivery statuses, print/save the register, or download attachments. Other positions receive only their own acknowledgement state and date, alongside the memo content and attachment filenames. Roster and aggregate counts are omitted from list, detail and sign responses; direct attachment requests return 403. Changing a stored role takes effect on the next request. Employees can still sign and review their personal history.
+Only the current stored Supervisor or Manager role can view the full acknowledgement register, aggregate signing counts, signatures and delivery statuses, or print/save the register. Other positions receive only their own acknowledgement state and date, alongside the memo content and downloadable attachments. Roster and aggregate counts are omitted from list, detail and sign responses. Attachment access uses the same account and recipient audience checks as memo access; out-of-scope requests return 404. Changing a stored role takes effect on the next request. Employees can still sign and review their personal history.
 
 Profile attendance uses a compact chart card without stretching to match neighboring columns. Attendance details place a bounded monthly chart next to a readable-width record panel with compact expandable rows; smaller screens stack these panels. Info resource cards and the CTO table have a bounded width, with existing CTO data preserved.
 
