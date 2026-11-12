@@ -21,6 +21,10 @@ test('device proof, employee login, request binding, replay and revocation',asyn
  for(const p of ['/search?q=SY','/cbs-cases','/psm-report','/sales-report/download','/desktop-access','/dashboard-snapshot']){
   assert.equal((await fetch(base+p,{headers:{Authorization:'Bearer employee',Origin:'https://www.mufcapp.net','User-Agent':'MUFC Desktop'}})).status,403,p);
  }
+ assert.equal((await fetch(base+'/cbs-cases',{method:'POST'})).status,200,'passenger PIR submission is public');
+ for(const route of ['/cbs-cases/from-baggage/MU123456','/cbs-cases/12/update']){
+  assert.equal((await fetch(base+route,{method:'POST'})).status,403,route);
+ }
  const headers=sign();assert.equal((await fetch(base+'/search?q=SY',{headers})).status,200);assert.equal((await fetch(base+'/search?q=SY',{headers})).status,403,'replay');
  assert.equal((await fetch(base+'/search?q=PD',{headers:sign()})).status,403,'path binding');
  assert.equal((await fetch(base+'/search?q=SY',{headers:{...sign(),Authorization:'Bearer stolen'}})).status,403,'token binding');
