@@ -1,19 +1,21 @@
 window.createBriefingDefaults=({getCurrent,getDirection,api,flush,isBusy,isQuick,onSaved})=>{
  const button=document.getElementById('briefing-defaults'),dialog=document.createElement('dialog');dialog.className='departure-defaults-dialog';dialog.setAttribute('aria-labelledby','departure-defaults-title');
- dialog.innerHTML='<header><h2 id="departure-defaults-title">Departure Defaults</h2><button type="button" data-default-close>Close</button></header><div class="departure-default-tabs" role="tablist" aria-label="Default settings"><button type="button" id="counter-default-tab" role="tab" aria-controls="departure-default-panel" aria-selected="true" data-default-section="counter">Counter</button><button type="button" id="gate-default-tab" role="tab" aria-controls="departure-default-panel" aria-selected="false" data-default-section="gate">Gate</button></div><p>Saving updates labels immediately across departure briefings.</p><p data-default-status role="status" aria-live="polite"></p><form><section id="departure-default-panel" role="tabpanel" aria-labelledby="counter-default-tab"></section><footer><button type="button" data-use-current>Use current settings</button><button type="submit" data-save-defaults>Save Counter defaults</button></footer></form>';
+ dialog.innerHTML='<header><h2 id="departure-defaults-title">Departure Defaults</h2><button type="button" data-default-close>Close</button></header><div class="departure-default-tabs" role="tablist" aria-label="Default settings"><button type="button" id="counter-default-tab" role="tab" aria-controls="departure-default-panel" aria-selected="true" data-default-section="counter">Counter</button><button type="button" id="gate-default-tab" role="tab" aria-controls="departure-default-panel" aria-selected="false" data-default-section="gate">Gate</button></div><p data-default-description></p><p data-default-status role="status" aria-live="polite"></p><form><section id="departure-default-panel" role="tabpanel" aria-labelledby="counter-default-tab"></section><footer><button type="button" data-use-current>Use current settings</button><button type="submit" data-save-defaults>Save Counter defaults</button></footer></form>';
  document.body.append(dialog);
  const panel=dialog.querySelector('section'),status=dialog.querySelector('[data-default-status]'),save=dialog.querySelector('[data-save-defaults]'),use=dialog.querySelector('[data-use-current]'),close=dialog.querySelector('[data-default-close]'),tabs=[...dialog.querySelectorAll('[data-default-section]')];
- const keys={counter:Object.keys(BriefingFields.defaults).filter(key=>/^counterA\d+(Number|Service)$/.test(key)),gate:BriefingFields.gate.map(([key])=>key+'Label')};
- let section='counter',record=null,generation=0,busy=false,settings=new Map();
- const allowed=()=>getCurrent()?.canEditDepartureDefaults&&getCurrent()?.direction==='departure'&&getDirection()==='departure'&&!isQuick();
+ const keys={counter:Object.keys(BriefingFields.defaults).filter(key=>/^counterA\d+(Number|Service)$/.test(key)),gate:BriefingFields.gate.map(([key])=>key+'Label'),arrival:BriefingFields.arrival.map(key=>key+'Label')};
+ let direction='departure',section='counter',record=null,generation=0,busy=false,settings=new Map();
+ const allowed=()=>getCurrent()?.canEditDepartureDefaults&&['arrival','departure'].includes(getCurrent()?.direction)&&getDirection()===getCurrent()?.direction&&!isQuick();
+ const title=section=>section==='arrival'?'Arrival':section==='counter'?'Counter':'Gate';
+ const endpoint=()=>'/'+direction+'-defaults';
  const capture=()=>{const item=settings.get(section);if(item)for(const input of panel.querySelectorAll('[data-default-field]'))item.values[input.dataset.defaultField]=input.value;};
  function lock(value){busy=value;for(const element of dialog.querySelectorAll('button,input,textarea'))element.disabled=value;save.disabled=value||!settings.has(section);use.disabled=save.disabled;}
  function render(){
-  panel.replaceChildren();for(const tab of tabs){const selected=tab.dataset.defaultSection===section;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;}panel.setAttribute('aria-labelledby',section+'-default-tab');
-  save.textContent='Save '+(section==='counter'?'Counter':'Gate')+' defaults';const item=settings.get(section);if(!item){lock(busy);return;}
+  panel.replaceChildren();for(const tab of tabs){const selected=tab.dataset.defaultSection===section;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;}panel.setAttribute('role',section==='arrival'?'region':'tabpanel');panel.setAttribute('aria-labelledby',section==='arrival'?'departure-defaults-title':section+'-default-tab');
+  save.textContent='Save '+title(section)+' defaults';const item=settings.get(section);if(!item){lock(busy);return;}
   const field=(key,label)=>{const wrapper=document.createElement('label'),name=document.createElement('span'),input=document.createElement(key.endsWith('Number')?'input':'textarea');name.textContent=label;input.dataset.defaultField=key;input.setAttribute('aria-label',label);input.maxLength=150;if(input.tagName==='TEXTAREA')input.rows=2;input.value=item.values[key];wrapper.append(input);return wrapper;};
   if(section==='counter')for(let number=59;number<=68;number++){const row=document.createElement('div');row.className='counter-default-row';row.append(field('counterA'+number+'Number','A'+number+' counter number'),field('counterA'+number+'Service','A'+number+' service type'));panel.append(row);}
-  else for(const [index,[key,label]] of BriefingFields.gate.entries()){const row=field(key+'Label',label+' position name');row.className='gate-default-role gate-default-role-'+index;panel.append(row);}
+  else for(const [index,[key,label]] of (section==='arrival'?BriefingFields.arrivalRoles:BriefingFields.gate).entries()){const row=field(key+'Label',label+' position name');row.className='gate-default-role gate-default-role-'+index;panel.append(row);}
   status.textContent=item.dirty?'Unsaved '+section+' defaults.':item.updatedAt?'Saved by '+item.updatedBy+' · '+new Date(item.updatedAt).toLocaleString('en-US',{timeZone:'America/Los_Angeles'}):'Edit these settings, then save this section.';lock(busy);
  }
  function dismiss(){generation++;dialog.close();record=null;settings.clear();busy=false;}
@@ -24,14 +26,14 @@ window.createBriefingDefaults=({getCurrent,getDirection,api,flush,isBusy,isQuick
  use.onclick=()=>{const current=getCurrent();if(!allowed()||current!==record)return;const item=settings.get(section);item.values=Object.fromEntries(keys[section].map(key=>[key,String(current.fields[key]??BriefingFields.defaults[key])]));item.dirty=true;render();};
  button.onclick=async()=>{
   if(!allowed()||busy||isBusy())return;button.disabled=true;let run;
-  try{if(!(await flush())||!allowed())return;record=getCurrent();run=++generation;section='counter';settings.clear();render();dialog.showModal();status.textContent='Loading defaults…';lock(true);
-   const data=await Promise.all(['counter','gate'].map(section=>api('/departure-defaults?section='+section)));
+  try{if(!(await flush())||!allowed())return;record=getCurrent();direction=record.direction;run=++generation;section=direction==='arrival'?'arrival':'counter';dialog.querySelector('h2').textContent=(direction==='arrival'?'Arrival':'Departure')+' Defaults';dialog.querySelector('[role=tablist]').hidden=direction==='arrival';dialog.querySelector('[data-default-description]').textContent='Saving updates labels immediately across '+direction+' briefings.';settings.clear();render();dialog.showModal();status.textContent='Loading defaults…';lock(true);
+   const data=await Promise.all((direction==='arrival'?['arrival']:['counter','gate']).map(section=>api(endpoint()+'?section='+section)));
    if(run!==generation||record!==getCurrent()||!allowed())return;for(const item of data)settings.set(item.section,item);lock(false);render();
   }catch(error){if(run===generation&&dialog.open)status.textContent=error.message;}finally{button.disabled=false;if(run===generation&&dialog.open)lock(false);}
  };
  dialog.querySelector('form').onsubmit=async event=>{
   event.preventDefault();if(busy||!allowed()||record!==getCurrent()||isBusy())return;capture();const item=settings.get(section);if(!item)return;const run=generation,selected=section;lock(true);status.textContent='Saving defaults…';
-  try{const result=await api('/departure-defaults',{section:selected,revision:item.revision,values:{...item.values}});if(run!==generation||record!==getCurrent()||!allowed())return;settings.set(selected,result);await onSaved?.();render();status.textContent=(selected==='counter'?'Counter':'Gate')+' defaults saved. Departure briefings now use these settings.';}
+  try{const result=await api(endpoint(),{section:selected,revision:item.revision,values:{...item.values}});if(run!==generation||record!==getCurrent()||!allowed())return;settings.set(selected,result);await onSaved?.();render();status.textContent=title(selected)+' defaults saved. '+(direction==='arrival'?'Arrival':'Departure')+' briefings now use these settings.';}
   catch(error){if(run===generation)status.textContent=error.message;}finally{if(run===generation)lock(false);}
  };
  return {update(){button.hidden=!allowed();if(dialog.open&&(!allowed()||record!==getCurrent()))dismiss();}};

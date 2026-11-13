@@ -39,3 +39,34 @@ test('default changes update existing departures immediately, preserve assignmen
  assert.equal((await request('lead','/clear',{...key,expected:existing.fields})).status,200);const cleared=(await request('lead',path)).data;assert.equal(cleared.fields.gateLeadLabel,'New Gate Lead');assert.equal(cleared.fields.counterA59Service,'New Counter');assert.equal(cleared.fields.gateLead,'');
  registerBriefing(express(),options);assert.equal(service.record({date:'2026-11-03',flight:'MU586'}).fields.gateLeadLabel,'New Gate Lead');assert.equal(db.prepare('SELECT COUNT(*) AS n FROM briefing_departure_defaults').get().n,2);
 });
+
+
+test('Arrival defaults enforce Lead+, validate labels and protect concurrent edits',async t=>{
+ const {db,request}=await fixture(t),path='/arrival-defaults?section=arrival';
+ assert.equal((await request(null,path)).status,401);
+ for(const user of ['agent','other','override']){assert.equal((await request(user,path)).status,403);assert.equal((await request(user,'/arrival-defaults',{section:'arrival',revision:0,values:{}})).status,403);}
+ assert.equal((await request('lead',path+'&view=employee')).status,403);
+ assert.equal((await request('lead','/departure-defaults?section=arrival')).status,400);
+ assert.equal((await request('lead','/arrival-defaults?section=gate')).status,400);
+ const before=(await request('lead',path)).data;assert.equal(Object.keys(before.values).length,7);
+ const values={...before.values,arrivalLeadLabel:'Arrival Coordinator'};
+ for(const invalid of [{...values,arrivalLead:'Employee'},{...values,arrivalLeadLabel:'x'.repeat(151)},{...values,carouselLabel:12}])assert.equal((await request('lead','/arrival-defaults',{section:'arrival',revision:0,values:invalid})).status,400);
+ assert.equal((await request('lead','/arrival-defaults',{section:'arrival',revision:0,values})).status,200);
+ assert.equal((await request('sup','/arrival-defaults',{section:'arrival',revision:0,values})).status,409);
+ assert.equal(db.prepare("SELECT employee_id FROM briefing_audit WHERE field='arrival-defaults'").get().employee_id,'lead');
+});
+
+test('Arrival defaults update existing and future arrivals, survive Clear and restart, and preserve assignments, times and departure labels',async t=>{
+ const {request,service,options}=await fixture(t),key={date:'2026-11-01',flight:'MU583',direction:'arrival'},path='?date='+key.date+'&flight='+key.flight;
+ assert.equal((await request('lead','/assign',{...key,employeeId:'agent',fromField:null,toField:'arrivalLead',toValue:''})).status,200);
+ assert.equal((await request('lead','',{...key,field:'blockTime',value:'1030',previous:''})).status,200);
+ const before=(await request('lead','/arrival-defaults?section=arrival')).data,values={...before.values,arrivalLeadLabel:'Arrival Coordinator',carouselLabel:'Baggage Claim'};
+ await request('lead','/arrival-defaults',{section:'arrival',revision:before.revision,values});
+ const existing=(await request('lead',path)).data;assert.equal(existing.fields.arrivalLeadLabel,'Arrival Coordinator');assert.equal(existing.fields.arrivalLead,'agent employee');assert.equal(existing.fields.blockTime,'1030');
+ const next=(await request('agent','?date=2026-11-02&flight=MU577')).data;assert.equal(next.fields.carouselLabel,'Baggage Claim');assert.equal(next.fields.arrivalLead,'');assert.equal(next.fields.blockTime,'');
+ assert.equal((await request('lead','?date=2026-11-01&flight=MU586')).data.fields.gateLeadLabel,'Gate Lead');
+ const {reportSections,renderBriefingReport}=require('../has/server/briefingPdf'),snapshot={...existing,id:'arrival-label-test',generatedBy:'Lead',generatedAt:'2026-11-01T20:00:00Z'};
+ assert.deepEqual(reportSections(snapshot).find(([title])=>title==='Team Assignment')[1],[['Arrival Coordinator','agent employee']]);assert(renderBriefingReport(snapshot).includes('Arrival Coordinator'));
+ assert.equal((await request('lead','/clear',{...key,expected:existing.fields})).status,200);const cleared=(await request('lead',path)).data;assert.equal(cleared.fields.arrivalLeadLabel,'Arrival Coordinator');assert.equal(cleared.fields.arrivalLead,'');
+ registerBriefing(express(),options);assert.equal(service.record({date:'2026-11-03',flight:'MU579'}).fields.arrivalLeadLabel,'Arrival Coordinator');
+});

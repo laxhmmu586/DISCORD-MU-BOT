@@ -61,7 +61,7 @@ test('Clear is Lead-only, scoped to this flight/date, audited and protected agai
  for(const user of ['agent'])assert.equal((await request(user,'/clear',{...key,expected:initial.fields})).status,403);
  await request('agent','',{...key,field:'firstBag',previous:'',value:'12:50'});
  assert.equal((await request('sup','/clear',{...key,expected:initial.fields})).status,409);
- const current=(await request('sup','?date='+DATE)).data,cleared=await request('sup','/clear',{...key,expected:current.fields});assert.equal(cleared.status,200);assert(Object.entries(cleared.data.fields).every(([field,value])=>(/^config[FJY]$/.test(field)||/^counterA\d+(Number|Service)$/.test(field))?value===current.fields[field]:value===''));
+ const current=(await request('sup','?date='+DATE)).data,cleared=await request('sup','/clear',{...key,expected:current.fields});assert.equal(cleared.status,200);assert(Object.entries(cleared.data.fields).every(([field,value])=>(/^config[FJY]$/.test(field)||/^counterA\d+(Number|Service)$/.test(field)||require('../has/public/briefing-fields').arrival.some(key=>field===key+'Label'))?value===current.fields[field]:value===''));
  assert.equal((await request('agent','?date='+DATE+'&flight=MU577')).data.fields.aircraftType,'777-300');assert.deepEqual((await request('agent','?date='+DATE)).data.contacts.rows,CONTACTS);assert.equal(db.prepare("SELECT employee_id FROM briefing_audit WHERE field='clear'").get().employee_id,'sup');
 });
 
