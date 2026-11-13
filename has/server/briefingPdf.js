@@ -1,7 +1,7 @@
 const {PDFDocument,StandardFonts}=require('../../vendor/pdf-lib/pdf-lib');
 
 const departureFields=require('../public/briefing-fields');
-function reportSections(snapshot){const f={...snapshot.fields,...snapshot.assignmentLabels},special=departureFields.specialInformation(f,snapshot.direction),arrivalTeam=[['Arrival Lead',f.arrivalLead],['Announcement',f.announcement],['Carousel',f.carousel],['Phone Call',f.phoneCall],['Jet-Bridge',f.jetBridge],['Finish everything',f.finishEverything],['G - Shift',f.gShift]].filter(([,value])=>String(value??'').trim()&&!/^[-–—]+$/.test(String(value).trim()));if(snapshot.direction==='departure'){
+function reportSections(snapshot){const f={...snapshot.fields,...snapshot.assignmentLabels},special=departureFields.specialInformation(f,snapshot.direction),arrivalTeam=departureFields.arrivalRoles.map(([field,label])=>[f[field+'Label']||label,f[field]]).filter(([,value])=>String(value??'').trim()&&!/^[-–—]+$/.test(String(value).trim()));if(snapshot.direction==='departure'){
  const total=departureFields.booking(f),checks=departureFields.timeChecks(require('../../etabAdvisory').localDate(new Date(snapshot.generatedAt)));
  return [
  ['Flight Information',[['Flight Number',snapshot.flight],['A/C Registration',f.registration],['A/C Type',f.aircraftType],['ETD',f.etd],['Boarding Time',f.boardingTime],['Boarding Gate',f.gate]],3],
