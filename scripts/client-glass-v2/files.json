@@ -9,5 +9,8 @@
   "web/desktop-recovery.js",
   "web/desktop-glass-v2.js",
   "web/desktop-glass-v2.css",
+  "web/glass-status-palette.css",
+  "web/completed-email-checks.js",
+  "web/update-status-help.js",
   "web/assets/shanghai-night-v2.webp"
 ]
