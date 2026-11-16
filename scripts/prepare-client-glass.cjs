@@ -17,11 +17,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal(crypto.createHash('sha256').update(originalIndex).digest('hex'),recipe.baseSha256,'Dashboard baseline changed; rebase the small patch first');
  const indexLines=originalIndex.match(/[^\n]*\n|[^\n]+$/g)||[];
  for(const edit of [...recipe.edits].reverse())indexLines.splice(edit.start,edit.end-edit.start,...edit.replacement);
- fs.writeFileSync(indexFile,indexLines.join(''));
+ fs.writeFileSync(indexFile,require('./client-glass-v2/apply-ui-hotfix.cjs').applyUiHotfix(indexLines.join('')));
+ for(const name of ['login.html','flights.html']){const file=path.join(source,'web',name);fs.writeFileSync(file,require('./client-glass-v2/apply-ui-hotfix.cjs').appendUpdateHelp(fs.readFileSync(file,'utf8')));}
  const packageFile=path.join(source,'package.json'),pkg=JSON.parse(fs.readFileSync(packageFile));pkg.version=version;fs.writeFileSync(packageFile,JSON.stringify(pkg,null,2)+'\n');
  const configFile=path.join(source,'update-config.json'),config=JSON.parse(fs.readFileSync(configFile));config.sources=[`https://api.mufcapp.net/desktop-updates/stable/${version}/`];fs.writeFileSync(configFile,JSON.stringify(config,null,2)+'\n');
  const target=path.join(runtime,'resources/app.asar');await asar.createPackage(source,target);
- const allowed=new Set([...list,'web/index.html','package.json','update-config.json']);let changed=[];
+ const allowed=new Set([...list,'web/index.html','web/login.html','web/flights.html','package.json','update-config.json']);let changed=[];
  const normalize=name=>name.replace(/^[\\/]/,'').replaceAll('\\','/');
  const baselineEntries=asar.listPackage(archive),targetEntries=asar.listPackage(target),baselineSet=new Set(baselineEntries.map(normalize)),targetSet=new Set(targetEntries.map(normalize));
  for(const name of baselineEntries){
