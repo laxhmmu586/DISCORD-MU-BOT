@@ -4995,7 +4995,6 @@ app.listen(
     );
     syncTodayReportSheets();
     visaMonitor.start();
-    pbbService.startWheelchairMail();
     briefingAutoArchive.start();
     setInterval(syncTodayReportSheets, 30 * 60 * 1000);
     runBagRoomUnloadExpiration().catch((err) => console.error('Bag Room expiration error:', err));
