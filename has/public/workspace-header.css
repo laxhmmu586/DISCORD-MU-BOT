@@ -24,3 +24,17 @@
 .workspace-reminder{display:grid;grid-template-columns:1fr auto;align-items:start;gap:12px;padding:12px 3px;border-top:1px solid #dbe8f7;font-size:12px;line-height:1.6}.workspace-reminder button{background:#e5f0ff;color:#246ad1;border:1px solid white;border-radius:8px;padding:5px 8px;font-size:10px;cursor:pointer}.workspace-reminder span{overflow-wrap:anywhere}
 
 .workspace-bell.has-unread .workspace-bell-art{transform-origin:50% 12%;animation:notification-bell-sway 1.2s ease-in-out infinite}@keyframes notification-bell-sway{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}@media(prefers-reduced-motion:reduce){.workspace-bell.has-unread .workspace-bell-art{animation:none}}
+
+/* All workspace destinations share one row between Home and Admin. */
+.home-topbar>.top-nav.workspace-main-navigation{display:flex;flex:1;min-width:0;margin-left:0;overflow-x:auto;overflow-y:hidden;justify-content:flex-start;flex-wrap:nowrap;gap:2px;scrollbar-width:none}
+.home-topbar>.top-nav.workspace-main-navigation>*{flex:none;white-space:nowrap}
+.home-topbar>.top-nav.workspace-main-navigation>a{display:flex;align-items:center;justify-content:center;min-width:0;padding:0 12px;font-size:13px}
+.home-topbar>.top-nav.workspace-main-navigation::-webkit-scrollbar{display:none}
+@media(min-width:761px){
+ .workspace-glass.profile-page .profile-topbar:has(.workspace-main-navigation),.home-topbar:has(.workspace-main-navigation){gap:16px}
+}
+@media(min-width:761px) and (max-width:1250px){.home-topbar:has(.workspace-main-navigation)>.topbar-date{display:none}}
+@media(max-width:760px){
+ .home-topbar>.top-nav.workspace-main-navigation>a{padding:0 10px;font-size:12px;height:38px}
+ body.workspace-glass.profile-page[data-workspace-page=schedule] .profile-topbar>.top-nav{grid-column:1/-1}
+}
