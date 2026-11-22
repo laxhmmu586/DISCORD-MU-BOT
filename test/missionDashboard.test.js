@@ -28,9 +28,9 @@ function harness() {
     syRenderSignature:()=>'',countTriple:()=>[],tripleHtml:()=>'',securityReviewPassBnSet:()=>new Set(),govWrongPassportBnList:()=>[],
     unresolvedReviewedBnCount:xs=>(xs||[]).length,webEdiIssueBnList:sy=>sy.govAqq?.passportCodeIssues||[],
     nbrdRowsWithAcknowledgements:sy=>sy.nbrd||[],unacknowledgedNbrdCount:(sy,rows)=>rows.filter(r=>!r.acked).length,
-    buildWarningRows:()=>[],duplicateBagRows:()=>[],duplicateNameRows:()=>[],completedSyNodeState:()=>({}),stepByKey:()=>({complete:true,time:'1200'}),
+    unresolvedDuplicatePassports:sy=>sy.govAqq?.duplicatePassports||[],buildWarningRows:()=>[],duplicateBagRows:()=>[],duplicateNameRows:()=>[],completedSyNodeState:()=>({}),stepByKey:()=>({complete:true,time:'1200'}),
     fscRateSyncInfo:()=>({}),isFscRateSheetFilled:()=>true,ticketMatchAudit:()=>({ready:false,match:false,differences:[0,0,0]}),normalizeStatus:(done,count,locked)=>locked?'locked':done?'done':count?'issue':'pending'};
-  for(const name of ['setSyDetailsVisible','setText','renderMealOrderColumns','selectMealOrderDay','syncCkinNbrdBnsToBoardingSheet','setBadgeText','setActionIssueState','updateWarningActionState','loadWarningAcknowledgements','refreshSalesReportButton','rememberCompletedSyNode','stopSyAutoRefreshWhenFinalNodesComplete','resetTimelineCenter','rerenderActiveRealtimePanel']) context[name]=()=>{};
+  for(const name of ['applyExceptionAcknowledgementState','setSyDetailsVisible','setText','renderMealOrderColumns','selectMealOrderDay','syncCkinNbrdBnsToBoardingSheet','setBadgeText','setActionIssueState','updateWarningActionState','loadWarningAcknowledgements','refreshSalesReportButton','rememberCompletedSyNode','stopSyAutoRefreshWhenFinalNodesComplete','resetTimelineCenter','rerenderActiveRealtimePanel']) context[name]=()=>{};
   vm.createContext(context);
   vm.runInContext(source('updateFlightFromSy')+'\n'+source('applyMissingBagNodeStatus')+'\n'+source('applyNbrdAcknowledgementState'),context);
   return {context,node:key=>nodes.find(n=>n.dataset.key===key)};
