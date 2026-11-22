@@ -278,3 +278,12 @@
  .schedule-toolbar #schedule-undo{padding:0}
  .schedule-toolbar #schedule-undo img{width:30px;height:30px}
 }
+
+/* Schedule uses the full frame; its destinations are in the top navigation. */
+body.workspace-glass.profile-page[data-workspace-page=schedule] .profile-sidebar,
+body.workspace-glass.profile-page[data-workspace-page=schedule] .menu-toggle,
+body.workspace-glass.profile-page[data-workspace-page=schedule] .sidebar-scrim{display:none!important}
+@media(min-width:761px){
+ body.workspace-glass.profile-page[data-workspace-page=schedule] .app-frame{grid-template-columns:minmax(0,1fr)}
+ body.workspace-glass.profile-page[data-workspace-page=schedule] .profile-shell{grid-column:1}
+}

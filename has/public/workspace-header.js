@@ -21,17 +21,27 @@
   }else{for(const [node,marker] of mobileLinks){marker.replaceWith(node);}mobileLinks.clear();}
  }
  mobile.addEventListener('change',syncMobileNavigation);
+ // Mirror the existing permission-controlled links in one ordered top navigation.
+ function syncOperationNavigation(){
+  if(!glassWorkspace)return;const top=header.querySelector('.top-nav');if(!top)return;
+  top.classList.add('workspace-main-navigation');
+  top.querySelectorAll('[data-mobile-operation],.top-nav-placeholder,[data-department="finance"],[data-department="qa"]').forEach(node=>node.remove());
+  const anchor=top.querySelector('[data-department="hr"]');
+  for(const [selector,label] of [['[data-briefing-nav]','BRIEFING'],['[data-schedule-nav]','SCHEDULE'],['[data-report-access]','REPORT'],['[data-checklist-access]','CHECKLIST'],['a[href="/read-sign"],a[href="/read-sign.html"]','READ & SIGN']]){
+   const source=[...document.querySelectorAll('.profile-sidebar a,.home-sidebar a')].find(node=>node.matches(selector));
+   let link=[...top.querySelectorAll('[data-workspace-operation]')].find(node=>node.dataset.workspaceOperation===label);
+   if(!source){link?.remove();continue;}
+   if(!link){link=source.cloneNode(false);link.removeAttribute('id');link.className='workspace-operation';link.dataset.workspaceOperation=label;link.textContent=label;top.insertBefore(link,anchor);}
+   link.hidden=source.hidden;
+   for(const name of ['href','aria-current','aria-disabled','tabindex']){const value=source.getAttribute(name);if(value===null)link.removeAttribute(name);else if(link.getAttribute(name)!==value)link.setAttribute(name,value);}
+   link.classList.toggle('is-active',source.classList.contains('is-active'));
+  }
+ }
+ const navigationSource=document.querySelector('.profile-sidebar,.home-sidebar');
+ if(glassWorkspace&&navigationSource)new MutationObserver(syncOperationNavigation).observe(navigationSource,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','href','class','aria-current']});
+ syncOperationNavigation();
  function renderFeatures(scope){const testAccount=[profile?.loginId,profile?.email,profile?.companyEmail,user?.email].some(v=>String(v||'').trim().toLowerCase()==='test@hm.com');const eligible=Boolean(user&&profile)&&(profile.canViewOperations??(scope?.station==='LAX'&&scope?.account==='MU'));hasFeatures=eligible;for(const node of document.querySelectorAll('.profile-sidebar [data-briefing-nav],.profile-sidebar [data-schedule-nav]'))features.append(node);for(const node of features.querySelectorAll('[data-briefing-nav],[data-schedule-nav]'))node.hidden=!eligible||Boolean(node.hasAttribute('data-schedule-nav')&&!testAccount&&[profile?.name,profile?.nickname].some(v=>['DEMOHAS','HASOPSRAMP'].includes(String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''))));syncMobileNavigation();for(const link of document.querySelectorAll('a[href="/has-form"]'))link.hidden=!profile?.canViewForm;features.hidden=![...features.children].some(n=>!n.hidden);
-  if(glassWorkspace){
-   const top=header.querySelector('.top-nav');
-   if(top){
-    for(const old of top.querySelectorAll('[data-mobile-operation]'))old.remove();
-    for(const node of features.querySelectorAll('[data-briefing-nav],[data-schedule-nav]')){
-     const link=node.cloneNode(true);link.removeAttribute('data-briefing-nav');link.removeAttribute('data-schedule-nav');link.dataset.mobileOperation='';link.classList.add('mobile-operation');
-     top.insertBefore(link,[...top.children].find(node=>!node.hasAttribute('data-mobile-operation'))||null);
-    }
-   }
-  }document.body.classList.toggle('workspace-has-features',!glassWorkspace&&!features.hidden);}
+  syncOperationNavigation();document.body.classList.toggle('workspace-has-features',!glassWorkspace&&!features.hidden);}
  async function loadAccounts(){if(!user)return;const current=++generation;try{const response=await fetch((window.MU_API_BASE||'https://api.mufcapp.net').replace(/\/$/,'')+'/profile-api/workspace',{cache:'no-store',headers:{Authorization:'Bearer '+await user.getIdToken()}});if(!response.ok)throw Error();const data=await response.json();if(current!==generation)return;renderAccounts(data.accounts,data.main);}catch{if(current===generation&&profile?.station&&profile?.account)renderAccounts([{station:profile.station,account:profile.account}],profile);}}
  function renderAccounts(accounts,main){select.replaceChildren();if(!accounts?.length){accountHost.hidden=true;renderFeatures(null);return;}let saved;try{saved=JSON.parse(sessionStorage.getItem('workspace-account:'+user.uid)||'null');}catch{}if(saved&&!accounts.some(a=>a.station===saved.station&&a.account===saved.account)){try{sessionStorage.removeItem('workspace-account:'+user.uid);location.reload();}catch{}return;}const chosen=accounts.find(a=>a.station===saved?.station&&a.account===saved?.account)||accounts.find(a=>a.station===main?.station&&a.account===main?.account)||accounts[0];for(const scope of accounts){const option=document.createElement('option');option.value=scopeKey(scope);option.textContent=scope.station+' / '+scope.account;select.append(option);}select.value=scopeKey(chosen);select.disabled=accounts.length===1;accountHost.hidden=false;renderFeatures(chosen);}
  select.onchange=()=>{const next=select.value;select.value=scopeKey(JSON.parse(window.workspaceHeaders?.()['X-Workspace-Account']||JSON.stringify({station:profile.station,account:profile.account})));if(!confirm('Switch account? Save your changes before continuing.'))return;window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('workspace-account:'+user.uid,next);}catch{}},{once:true});location.reload();};
@@ -40,5 +50,5 @@
  bell.onclick=()=>{panel.hidden=!panel.hidden;bell.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden)void window.RequestInbox?.load();};document.addEventListener('click',event=>{if(!panel.contains(event.target)&&!bell.contains(event.target)){panel.hidden=true;bell.setAttribute('aria-expanded','false');}});document.addEventListener('keydown',event=>{if(event.key==='Escape'){panel.hidden=true;bell.setAttribute('aria-expanded','false');}});
  window.addEventListener('workspace-profile',event=>onProfile(event.detail));window.addEventListener('request-inbox-updated',event=>renderNotifications(event.detail));if(window.workspaceProfile)onProfile(window.workspaceProfile);renderNotifications(window.RequestInbox?.data);
  if(!window.RequestInbox&&!document.querySelector('script[src*="request-inbox.js"]')){const script=document.createElement('script');script.src='/request-inbox.js?v=20261031-reminders';script.onerror=()=>{const empty=panel.querySelector('p');if(empty)empty.textContent='Notifications unavailable. Please retry.';};document.head.append(script);}
- const css=document.createElement('link');css.rel='stylesheet';css.href='/workspace-header.css?v=20261031-notification-bells';document.head.append(css);
+ const css=document.createElement('link');css.rel='stylesheet';css.href='/workspace-header.css?v=20261122-top-navigation';document.head.append(css);
 })();
