@@ -264,17 +264,17 @@
 
 /* Compact desktop roster; keep the touch calendar geometry unchanged. */
 @media(min-width:761px){
- body.workspace-glass.profile-page[data-workspace-page=schedule] .app-frame{max-width:2200px;margin:24px auto;width:calc(100% - 48px)}
+ body.workspace-glass.profile-page[data-workspace-page=schedule] .app-frame{max-width:2440px;margin:16px auto;width:calc(100% - 32px)}
 }
 @media(min-width:601px){
- .schedule-grid tbody tr:not(.team-heading)>td{height:44px;padding:4px!important}
- .schedule-grid .duty{font-size:12px!important}
- .schedule-grid .employee-cell{padding:5px 8px}
- .employee-identity{gap:6px}
- .employee-identity b{font-size:11px}
- .employee-identity img,.employee-identity .avatar-placeholder{width:28px;height:28px;border-radius:8px}
- .employee-identity .schedule-code{width:46px;font-size:9px}
- .schedule-toolbar>:is(button,select,input),.schedule-add-edit>button{min-height:36px;padding:8px 11px;font-size:12px}
+ .schedule-grid tbody tr:not(.team-heading)>td{height:40px;padding:4px!important}
+ .schedule-grid .duty{font-size:11px!important}
+ .schedule-grid .employee-cell{padding:4px 6px}
+ .employee-identity{gap:5px}
+ .employee-identity b{font-size:10px}
+ .employee-identity img,.employee-identity .avatar-placeholder{width:24px;height:24px;border-radius:7px}
+ .employee-identity .schedule-code{width:42px;font-size:9px}
+ .schedule-toolbar>:is(button,select,input),.schedule-add-edit>button{min-height:32px;padding:6px 9px;font-size:11px}
  .schedule-toolbar #schedule-undo{padding:0}
- .schedule-toolbar #schedule-undo img{width:34px;height:34px}
+ .schedule-toolbar #schedule-undo img{width:30px;height:30px}
 }
