@@ -4566,6 +4566,7 @@
                 <div class="manifest-section is-operations">
                   <strong class="meal-order-title">Meal Order</strong>
                   <div class="meal-order-shell" id="meal-order-shell">
+                    <div id="meal-exception-ack" class="warning-ack-row"></div>
                     <div class="meal-order-tabs" role="tablist" aria-label="Meal order date">
                       <button class="meal-order-tab" id="meal-order-tab-today" type="button" role="tab" aria-selected="true" aria-controls="reservation-table-today" data-meal-day="today">---</button>
                     </div>
@@ -5028,7 +5029,7 @@
         currentSy.bnAudit = rows;
         const passBnSet = securityReviewPassBnSet(currentSy);
         const gov = currentSy.govAqq || {};
-        const govGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(currentSy), gov.missingApiBnList, gov.infApiBnList];
+        const govGroups = [unresolvedDuplicatePassports(currentSy), gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(currentSy), gov.missingApiBnList, gov.infApiBnList];
         const counts = {
           GOV: govGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0),
           WEBEDI: unresolvedReviewedBnCount(webEdiIssueBnList(currentSy), passBnSet),
@@ -6258,7 +6259,7 @@
         const chdIssues = isClearLocked("CHD") ? 0 : (sy.chdList || []).filter((row) => row.hasChdCode === false).length;
         const gov = sy.govAqq || {};
         const passBnSet = securityReviewPassBnSet(sy);
-        const govIssueGroups = [gov.duplicatePassports, gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(sy), gov.missingApiBnList, gov.infApiBnList];
+        const govIssueGroups = [unresolvedDuplicatePassports(sy), gov.aqqTclBnList, gov.govDtaBnList, gov.passportExpBnList, gov.passportExpiringSoonBnList, govWrongPassportBnList(sy), gov.missingApiBnList, gov.infApiBnList];
         const govCount = isClearLocked("GOV") ? 0 : govIssueGroups.reduce((sum, value) => sum + unresolvedReviewedBnCount(value, passBnSet), 0);
         const webediCount = isClearLocked("WEBEDI") ? 0 : unresolvedReviewedBnCount(webEdiIssueBnList(sy), passBnSet);
         const nbrdRows = nbrdRowsWithAcknowledgements(sy);
@@ -6372,6 +6373,7 @@
           else node.removeAttribute("data-alert");
           previousStarted = previousStarted && (key === "FSC" ? true : started);
         });
+        applyExceptionAcknowledgementState(sy);
         if (!unchanged) resetTimelineCenter();
         rerenderActiveRealtimePanel();
       }
@@ -6401,6 +6403,8 @@
         else if (title === "WEB/EDI/RS") renderWebEdiPanel();
         else if (title === "CKIN/NBRD") renderNbrdPanel();
         else if (title === "WARNING") renderWarningPanel();
+        else if (title === "Duplicate Names") renderDuplicateNamesPanel();
+        else if (title === "Duplicate Bag Tags") renderDuplicateBagsPanel();
         refreshOpenPassengerModal();
       }
 
@@ -6579,8 +6583,9 @@
         const rows = groups.flatMap(([group, items]) => (items || []).map((item) => enrichGovRow(item, group)));
         const summary = groups.map(([label, items]) => {
           const groupRows = (items || []).map((item) => enrichGovRow(item, label));
-          const isClear = !groupRows.length;
-          const status = isClear ? "Clear" : String(groupRows.length);
+          const pendingCount = label === "Duplicate Passport" ? unresolvedDuplicatePassports(currentSy).reduce((sum, item) => sum + (item.bns || []).length, 0) : groupRows.length;
+          const isClear = pendingCount === 0;
+          const status = isClear ? (groupRows.length ? "Acknowledged" : "Clear") : String(pendingCount);
           return `<div class="data-card ${isClear ? "is-clear" : "is-warning"}"><b>${escapeHtml(label)}</b><span>${escapeHtml(status)}</span></div>`;
         }).join("");
         const details = groups.map(([label, items]) => {
@@ -6588,7 +6593,8 @@
           if (!groupRows.length) return "";
           return `<article class="data-card gov-detail-card"><b>${escapeHtml(label)} Details</b>${renderBnButtons(groupRows, "", (row) => row.reason, null, () => "is-warning")}</article>`;
         }).filter(Boolean).join("");
-        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid gov-summary-grid">${summary}</div>${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
+        const duplicateAck = (gov.duplicatePassports || []).map((item) => exceptionAckControl(passportExceptionKey(item), `Duplicate passport ${item.passportNo || ""} · ${(item.bns || []).map((bn) => `BN${bn}`).join(", ")} · verified exception / residual INF document`)).join("");
+        renderPanel("GOV/AQQ", currentSy?.flightNo || "SY", `<div class="data-grid gov-summary-grid">${summary}</div>${duplicateAck}${details ? `<div class="data-grid gov-details-grid">${details}</div>` : ""}`);
         setPanelPassengerRows(rows);
       }
 
@@ -6732,10 +6738,107 @@
       const asvcWarningType = "ASVC SEAT/PDUG";
 
       function warningAckKey(row) {
+        if (row?.exceptionKey) return row.exceptionKey;
         if (row.warningType === asvcWarningType) {
           return [normalizedBn(row.bn), asvcWarningType, row.detail.replace(/\s+/g, " ")].join("|").toUpperCase();
         }
         return [normalizedBn(row?.bn || row?.passengerRecord?.bn), row?.seat || row?.passengerRecord?.seat || "", row?.warningType || "WARNING", row?.warningReason || ""].join("|").toUpperCase();
+      }
+
+      function exceptionKey(type, details) {
+        // Bound keys to the acknowledgement API limit, including large groups.
+        const canonical = (value) => Array.isArray(value) ? value.map(canonical) : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])])) : value;
+        const text = JSON.stringify(canonical(details));
+        const hashes = [2166136261, 3335557771, 1234567891, 987654319].map((seed) => {
+          let hash = seed;
+          for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+          return (hash >>> 0).toString(16).padStart(8, "0");
+        });
+        return `EXCEPTION|${type}|${text.length}|${hashes.join("")}`.toUpperCase();
+      }
+
+      function exceptionAcknowledged(key) {
+        return userHasAcknowledged(currentWarningAckMap[key] || []);
+      }
+
+      function exceptionAckControl(key, label) {
+        const acks = currentWarningAckMap[key] || [];
+        const own = exceptionAcknowledged(key);
+        const note = acks.length ? `Acknowledged by ${acks.map((ack) => ack.by).join(", ")}` : "Verify the records before acknowledging.";
+        return `<div class="warning-ack-row"><button type="button" class="warning-ack-button" data-exception-ack="${escapeHtml(key)}" ${own ? "disabled" : ""}>${own ? "Acknowledged" : "Acknowledge"}</button><span class="warning-ack-note">${escapeHtml(label)} · ${escapeHtml(note)}</span></div>`;
+      }
+
+      function duplicateExceptionGroups(type, rows, field) {
+        const groups = new Map();
+        rows.forEach((row) => {
+          const group = String(row[field] || "");
+          if (!groups.has(group)) groups.set(group, []);
+          groups.get(group).push(row);
+        });
+        return [...groups].map(([label, members]) => {
+          const identities = [...new Set(members.map((row) => JSON.stringify([row.bn, passengerName(row), row.passportNo, row.ticketNo || row.ticketNumber, row.dob || row.dobKey, row.passportExpiry, row.seat, type === "DUP_BAG" ? row.display : ""])))].sort();
+          return { label, key: exceptionKey(type, [label, identities]), rows: members };
+        });
+      }
+
+      function passportExceptionKey(item, sy = currentSy) {
+        const bns = new Set((item.bns || []).map((bn) => normalizedBn(bn)).sort());
+        const identities = allPassengerRecords(sy).filter((row) => bns.has(normalizedBn(row.bn))).map((row) => [row.bn, passengerName(row), row.passportNo, row.ticketNo || row.ticketNumber, row.hasInfant, row.infantName]).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+        return exceptionKey("DUP_PSPT", [item.passportNo, item.dob, item.passportExpiry, [...bns], identities]);
+      }
+
+      function unresolvedDuplicatePassports(sy = currentSy) {
+        return (sy?.govAqq?.duplicatePassports || []).filter((item) => !exceptionAcknowledged(passportExceptionKey(item, sy)));
+      }
+
+      function mealExceptionKey(sy = currentSy) {
+        return exceptionKey("MEAL_ORDER", [sy?.reservationTicketed, sy?.spml?.email?.found, sy?.spml?.email?.cabinCounts, sy?.spml?.email?.countsByCabin, sy?.spml?.email?.counts, sy?.spml?.preorderByCabin]);
+      }
+
+      function applyExceptionAcknowledgementState(sy = currentSy) {
+        if (!sy) return;
+        renderMealOrderColumns(sy);
+        const mealKey = mealExceptionKey(sy);
+        const mealNode = document.querySelector('.node[data-key="MEAL_ORDER"]');
+        const shortage = document.querySelector("#reservation-table-today")?.classList.contains("has-shortage");
+        const mealAck = document.querySelector("#meal-exception-ack");
+        if (mealAck) mealAck.innerHTML = shortage ? exceptionAckControl(mealKey, "Meal difference checked (e.g. passenger offloaded)") : "";
+        if (mealNode && shortage) {
+          const acknowledged = exceptionAcknowledged(mealKey);
+          mealNode.dataset.status = acknowledged ? "done" : "issue";
+          mealNode.dataset.time = acknowledged ? "ACK" : "SHORTAGE";
+          mealNode.removeAttribute("data-alert");
+        }
+        for (const [type, rows, field] of [["DUP_NAME", duplicateNameRows(sy), "nameKey"], ["DUP_BAG", duplicateBagRows(sy), "bagKey"]]) {
+          const groups = duplicateExceptionGroups(type, rows, field);
+          const pending = groups.filter((group) => !exceptionAcknowledged(group.key));
+          const node = document.querySelector(`.node[data-key="${type}"]`);
+          if (node && groups.length) {
+            node.dataset.status = type === "DUP_NAME" || !pending.length ? "done" : "issue";
+            node.dataset.time = pending.length ? String(rows.length) : "ACK";
+            if (type === "DUP_BAG" && pending.length) node.dataset.alert = String(pending.reduce((sum, group) => sum + group.rows.length, 0));
+            else node.removeAttribute("data-alert");
+          }
+        }
+        updateOperationReviewNodesFromRows(sy.bnAudit || []);
+      }
+
+      async function handleExceptionAcknowledgement(event) {
+        const button = event.target.closest("[data-exception-ack]");
+        if (!button || button.disabled) return;
+        const sy = currentSy;
+        button.disabled = true;
+        button.textContent = "Saving...";
+        try {
+          await acknowledgeWarning({ exceptionKey: button.dataset.exceptionAck });
+          if (currentSy !== sy) return;
+          applyExceptionAcknowledgementState(sy);
+          rerenderActiveRealtimePanel();
+        } catch (error) {
+          button.disabled = false;
+          button.textContent = "Retry acknowledgement";
+          button.title = error?.message || "Acknowledgement was not saved";
+        }
       }
 
       function userHasAcknowledged(ackList = [], user = currentUserName()) {
@@ -6778,6 +6881,8 @@
           currentWarningAckMap = data?.acknowledgements || {};
           updateWarningActionState(buildWarningRows(sy));
           applyNbrdAcknowledgementState(sy);
+          applyExceptionAcknowledgementState(sy);
+          rerenderActiveRealtimePanel();
           if (resultPanel?.dataset?.panelTitle === "WARNING") renderWarningPanel();
           if (resultPanel?.dataset?.panelTitle === "CKIN/NBRD") renderNbrdPanel();
         } catch (error) {
@@ -6787,6 +6892,8 @@
 
       async function acknowledgeWarning(row) {
         const warningKey = row?.warningKey || warningAckKey(row);
+        const flightNo = currentSy?.flightNo;
+        const flightDate = currentSy?.flightDate;
         const data = await apiJson("/warning-acknowledgements", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -6797,7 +6904,7 @@
             reviewer: currentUserName(),
           }),
         });
-        currentWarningAckMap[warningKey] = data?.acknowledgements || currentWarningAckMap[warningKey] || [];
+        if (currentSy?.flightNo === flightNo && currentSy?.flightDate === flightDate) currentWarningAckMap[warningKey] = data?.acknowledgements || currentWarningAckMap[warningKey] || [];
       }
 
       function buildWarningRows(sy = currentSy) {
@@ -8761,7 +8868,10 @@
         if (event.target.closest("a, button")) closeMobilePanel();
       });
 
+      document.querySelector("#meal-exception-ack")?.addEventListener("click", handleExceptionAcknowledgement);
+
       async function handleResultPanelClick(event) {
+        if (event.target.closest("[data-exception-ack]")) { await handleExceptionAcknowledgement(event); return; }
         if(await handleVisaPolicyAction(event))return;
         if (event.target.closest("[data-close-panel]")) {
           resetPanelState();
