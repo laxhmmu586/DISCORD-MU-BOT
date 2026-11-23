@@ -1047,7 +1047,7 @@ test('Upcoming Rush updates notify the operations Discord channel', () => {
 });
 
 test('Rush Bag cases with MU586 notify Discord and treat WorldTracer as optional', () => {
-  assert.match(server, /CBS_RUSH_BAG_DISCORD_CHANNEL_ID = process\.env\.CBS_RUSH_BAG_DISCORD_CHANNEL_ID \|\| '1252033117280010291'/);
+  assert.match(server, /CBS_RUSH_BAG_DISCORD_CHANNEL_ID = process\.env\.CBS_RUSH_BAG_DISCORD_CHANNEL_ID \|\| '1574549650311221301'/);
   const sender = server.match(/async function sendRushBagToDiscord[\s\S]*?\n\}/)?.[0] || '';
   assert.doesNotMatch(sender, /if \(!worldTracerFileNumber\)/);
   assert.match(sender, /\.\.\.\(worldTracerFileNumber \? \[`WorldTracer File Number:/);
