@@ -226,7 +226,7 @@ class Updater {
         // publisher certificate. No shell arguments are supplied by the feed.
         this.coreReady={file,release:c,envelope};
       }
-      this.status = {status:this.ready?'staged':'checked',message:this.ready?'Verified hotfix downloaded; waiting for a safe moment.':manifest.paused?'Update publishing paused.':manifest.disabled?'Updates disabled by publisher.':this.coreReady?'Verified Core downloaded; installs after a safe close from the flight selector.':'Secure update check complete.',hotfix:this.ready,core:Boolean(this.coreReady)};
+      this.status = {status:this.ready?'staged':'checked',message:this.ready?'Verified hotfix downloaded; waiting for a safe moment.':manifest.paused?'Update publishing paused.':manifest.disabled?'Updates disabled by publisher.':this.coreReady?'更新已下载。请在更新弹窗中点击“立即安装”。':'已是最新版本。',hotfix:this.ready,core:Boolean(this.coreReady),coreVersion:this.coreReady?.release.version};
     } catch(error) { this.ready=null;this.coreReady=null;this.status={status:'error',message:error.message}; }
     finally { this.checking=false; }
     return this.status;
