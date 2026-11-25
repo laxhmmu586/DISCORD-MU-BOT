@@ -8,11 +8,11 @@ test('formulas evaluate references, ranges, common functions and conditional err
 });
 test('DA added rows shift data and formulas, reject stale layouts and update WWH and annual exports',async t=>{
  const request=await fixture(t),path='/da/2026-10';
- assert.equal((await request('lead',path,{revision:0,values:{K7:292,K8:'=K12',K12:305,L6:1,L11:1,F6:1100}})).status,200);
+ assert.equal((await request('lead',path,{revision:0,values:{G7:1130,G8:1130,G12:1130,K7:292,K8:'=K12',K12:305,L6:1,L11:1,F6:1100}})).status,200);
  const added=await request('lead',path+'/rows',{revision:1,day:1});assert.equal(added.status,200);assert.equal(added.data.layoutRevision,1);
  let data=(await request('lead',path)).data;assert.equal(data.days[0].end,11);assert.equal(data.days[1].start,12);assert.equal(data.cells.K13.value,305);assert.equal(data.cells.K8.formula,'K13');assert.equal(data.cells.C4.value,'LAX/MU');assert.equal(format(data.cells.F6.value,data.cells.F6),'11:00');
  assert.equal((await request('lead',path,{revision:2,layoutRevision:0,values:{K12:999}})).status,409);
- assert.equal((await request('lead',path,{revision:2,layoutRevision:1,values:{C11:'MU999',K11:'=SUM(10,10)'}})).status,200);
+ assert.equal((await request('lead',path,{revision:2,layoutRevision:1,values:{C11:'MU999',G11:1130,K11:'=SUM(10,10)'}})).status,200);
  assert.equal((await request('manager','/wwh/2026-10')).data.calculated.AA11,922);assert.equal((await request('other',path)).data.extraRows?.[1],undefined);
  assert.equal((await request('agent',path+'/rows',{revision:3,day:1})).status,403);assert.equal((await request('lead',path+'/rows',{revision:3,day:32})).status,400);
  const da=await request('lead',path+'/export'),book=new Excel.Workbook();assert.equal(da.status,200);await book.xlsx.load(da.data);const sheet=book.getWorksheet('Oct');assert.equal(sheet.getCell('C11').value,'MU999');assert.equal(sheet.getCell('K8').formula,'K13');assert.equal(sheet.getCell('K11').result,20);assert.equal(sheet.getCell('K13').value,305);assert(sheet.model.merges.includes('L6:L11'));assert.equal(sheet.getCell('F6').numFmt,'hh:mm');assert.equal(sheet.getCell('F6').value.getUTCHours(),11);
@@ -23,7 +23,7 @@ test('DA removes only added rows, confirms nonempty rows and shifts formulas and
  assert.equal((await request('lead',path+'/rows',{revision:0,day:1,delta:-1})).status,400);
  assert.equal((await request('lead',path+'/rows',{revision:0,day:1,delta:2})).status,400);
  await request('lead',path+'/rows',{revision:0,day:1});
- await request('lead',path,{revision:1,layoutRevision:1,values:{K7:100,K11:20,K12:30,K8:'=K12',K9:'=K11',K10:'=SUM(K6:K11)'}});
+ await request('lead',path,{revision:1,layoutRevision:1,values:{G7:1130,G8:1130,G12:1130,K7:100,K11:20,K12:30,K8:'=K12',K9:'=K11',K10:'=SUM(K6:K11)'}});
  assert.equal((await request('lead',path+'/rows',{revision:2,layoutRevision:1,day:1,delta:-1})).status,409);
  assert.equal((await request('other',path+'/rows',{revision:0,day:1,delta:-1})).status,400);
  assert.equal((await request('agent',path+'/rows',{revision:2,layoutRevision:1,day:1,delta:-1,confirmRemoval:true})).status,403);
