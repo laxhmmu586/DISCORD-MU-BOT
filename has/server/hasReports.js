@@ -86,7 +86,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
  app.get('/has-report-api/context',handler(async(req,res)=>{const {employee,scope,permissions}=context(req.reportUser),supervisor=canHrSafety(employee);res.json({scope,permissions:{...permissions,rechargeable:recharge.allowed(employee),...Object.fromEntries(wordForms.kinds.map(kind=>[kind,!req.reportUser.mufcReports&&supervisor]))},canChecklist:!req.reportUser.mufcReports&&require('./hasChecklists').allowed(employee),canDashboard:!req.reportUser.mufcReports&&canDashboard(employee),canAdmin:['Supervisor','Business Manager'].includes(positions.normalize(employee.position))||require('./employees').ADMIN_EMAILS.has(String(req.reportUser.email||'').trim().toLowerCase())});}));
  wordForms.register(app,{context,database,read,key,handler,allowed:canHrSafety});
  require('./hasChecklists').register(app,{context,handler,supervisor:canChecklistManage,database,read,key,employees});
- const linkDA=async(model,scope)=>{
+ const linkDA=async(model,scope,departureOnly=true)=>{
   if(model.kind!=='wwh')return null;
   for(let r=5;r<=10;r++)for(const c of ['I','N','T','U','V','W','X'])if(model.cells[c+r]&&!model.cells[c+r].formula&&model.cells[c+r].value==='')model.cells[c+r].value=0;
   recharge.link(model,read(scope,'rechargeable',model.month));
@@ -96,7 +96,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
    const from=+range[1],to=+(range[2]||range[1]);
    const start=source.days.find(day=>day.day===from)?.start,end=source.days.find(day=>day.day===to)?.end;
    if(!start)continue;
-   for(const [target,column] of [['Z','L'],['AA',departurePaxColumn]]){
+   for(const [target,column] of [['Z','L'],['AA',departureOnly?departurePaxColumn:'K']]){
     let value=0;for(let row=start;row<=end;row++){const n=column===departurePaxColumn?departurePax(source.cells,sourceResults,row):daValue(source.cells,sourceResults,column+row);if(isError(n)){value=n;break;}value+=Number(n)||0;}
     Object.assign(model.cells[target+r],{value,editable:false,linked:true,sourceFormula:`SUM('DA Source'!${column}${start}:${column}${end})`});
    }
@@ -130,7 +130,7 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   res.json({year,scope:ctx.scope,months,generatedAt:new Date().toISOString(),basis:'budgetHours + rechargeHours - actualHours'});
  }));
  recharge.register(app,{context,database,read,key,handler,template,live});
- app.get('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model,saved}=await build(req);apply(model,saved.values,true);await linkDA(model,ctx.scope);const {workbook,...view}=model;res.json({...view,...saved,scope:ctx.scope,...(model.kind==='terrific'?{defaults:{issuedBy:ctx.employee.name||'',message:'Thank you! Keep up the great work!'}}:{}),calculated:calculate(model.cells)});}));
+ app.get('/has-report-api/:kind/:month',handler(async(req,res)=>{const {ctx,model,saved}=await build(req);apply(model,saved.values,true);await linkDA(model,ctx.scope,!req.reportUser.mufcReports);const {workbook,...view}=model;res.json({...view,...saved,scope:ctx.scope,...(model.kind==='terrific'?{defaults:{issuedBy:ctx.employee.name||'',message:'Thank you! Keep up the great work!'}}:{}),calculated:calculate(model.cells)});}));
  const write=(ctx,model,user,body,action='Edited')=>{const saved=database().transaction(()=>{
   const latest=read(ctx.scope,model.kind,model.month);if((body.layoutRevision||0)!==(latest.layoutRevision||0))fail('Daily rows changed. Reload the report before continuing.',409);apply(model,latest.values,true);
   if(model.kind==='wwh')recharge.link(model,read(ctx.scope,'rechargeable',model.month));
@@ -182,24 +182,26 @@ function registerHasReports(app,{employees,profiles,authenticate,reportDb,liveHe
   res.json(write(ctx,model,req.reportUser,{revision:req.body.revision,layoutRevision:req.body.layoutRevision||0,values},'Imported Excel'));
  }));
  app.get('/has-report-api/:kind/:month/export',handler(async(req,res)=>{
-  const {ctx,model}=await build(req),year=model.month.slice(0,4),filename=`${model.kind.toUpperCase()}_${ctx.scope.station}_${ctx.scope.account}_${model.month}`;
+  const {ctx,model}=await build(req),departureOnly=!req.reportUser.mufcReports,year=model.month.slice(0,4),filename=`${model.kind.toUpperCase()}_${ctx.scope.station}_${ctx.scope.account}_${model.month}`;
   if(forms.kinds.includes(model.kind)){apply(model,read(ctx.scope,model.kind,model.month).values,true);model.formats=read(ctx.scope,model.kind,model.month).formats||{};return res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(model.kind+'_'+ctx.scope.station+'_'+ctx.scope.account+'_'+model.month+'.xlsx').send(await forms.exportForm(model));}
   // The originals are annual workbooks. Populate every monthly tab from this
   // Main Account's shared records, including the selected month's live totals.
   const hoursCache=new Map();
   for(let m=1;m<=12;m++){
    const month=year+'-'+String(m).padStart(2,'0'),stored=read(ctx.scope,model.kind,month),current=month===model.month?model:await scopedTemplate(model.kind,month,ctx.scope,stored.extraRows,hoursCache);
-   apply(current,stored.values,true);const source=await linkDA(current,ctx.scope),results=calculate(current.cells),sheet=model.workbook.getWorksheet(current.sheetName);if(current!==model){prepareCalendar(sheet,model.kind,+year);if(model.kind==='da')applyExtraRows(sheet,stored.extraRows);}
+   apply(current,stored.values,true);const source=await linkDA(current,ctx.scope,departureOnly),results=calculate(current.cells),sheet=model.workbook.getWorksheet(current.sheetName);if(current!==model){prepareCalendar(sheet,model.kind,+year);if(model.kind==='da')applyExtraRows(sheet,stored.extraRows);}
    if(model.kind==='wwh')for(const row of [47,50,53])sheet.getCell('A'+row).value=row===47?'ADDITIONAL COMMENTS:':'COMMENTS:';
    const sourceName=month===model.month?'DA Source':'DA Source '+current.sheetName;
    if(source){const data=model.workbook.addWorksheet(sourceName,{state:'hidden'}),computed=calculate(source.cells);for(const [address,cell] of Object.entries(source.cells))if(!cell.webOnly)data.getCell(address).value=cell.formula?{formula:cell.formula,result:typeof computed[address]==='string'?{error:computed[address]}:computed[address]}:cell.value===''?null:cell.value;
-    data.getCell(departurePaxColumn+'5').value='Departure PAX';
-    for(const day of source.days)for(let row=day.start;row<=day.end;row++){
-     const pax='K'+row,value=departurePax(source.cells,computed,row);
-     data.getCell(departurePaxColumn+row).value={
-      formula:`IF(OR(ISNUMBER(G${row}),ISNUMBER(H${row})),IF(ISTEXT(${pax}),IFERROR(1*${pax},0),${pax}),0)`,
-      result:isError(value)?{error:value}:value
-     };
+    if(departureOnly){
+     data.getCell(departurePaxColumn+'5').value='Departure PAX';
+     for(const day of source.days)for(let row=day.start;row<=day.end;row++){
+      const pax='K'+row,value=departurePax(source.cells,computed,row);
+      data.getCell(departurePaxColumn+row).value={
+       formula:`IF(OR(ISNUMBER(G${row}),ISNUMBER(H${row})),IF(ISTEXT(${pax}),IFERROR(1*${pax},0),${pax}),0)`,
+       result:isError(value)?{error:value}:value
+      };
+     }
     }
    }
    // Template cells share style objects; clone before changing number formats.
