@@ -554,14 +554,16 @@ test('QA account display defaults CBS off, supports restore, scopes all totals, 
 });
 
 test('Safety Advocates can configure and review all PBB accounts in their own station only',async t=>{
- const advocate={id:'advocate',name:'Safety Advocate',position:'Safety Advocate',station:'SFO',account:'OPS',attach:false,detach:false,spotter:true};
- const f=await fixture(t,{extraEmployees:[advocate]});
+ const advocate={id:'advocate',name:'Safety Advocate',position:'Safety Advocate',station:'SFO',account:'HQ',attach:false,detach:false,spotter:true};
+ const stationOps={id:'sfo-ops',name:'SFO OPS Agent',position:'Agent',station:'SFO',account:'OPS',attach:false,detach:false,spotter:true};
+ const f=await fixture(t,{extraEmployees:[advocate,stationOps]});
  const own='station=SFO&account=MU',foreign='station=LAX&account=MU';
  const request=(path,body)=>f.request('advocate',path,body);
  const context=await request('/context?'+own);
  assert.equal(context.status,200);
  assert.equal(context.data.canConfigure,true);
  assert.equal(context.data.dashboard,true);
+ assert.equal((await request('/context')).data.employee.account,'MU');
  assert.deepEqual(context.data.accounts.map(s=>s.station+'/'+s.account).sort(),['SFO/MU','SFO/OPS']);
  for(const path of ['/context','/dashboard','/dashboard/config'])assert.equal((await request(path+'?'+foreign)).status,403);
  const config=(await request('/dashboard/config?'+own)).data;

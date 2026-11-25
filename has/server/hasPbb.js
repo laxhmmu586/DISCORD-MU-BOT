@@ -42,32 +42,53 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  const advocateStation=user=>safetyStation(profiles.linked(user));
  const accounts=row=>{
   const station=safetyStation(row);
-  const memberships=[employeeAccounts.scope(row),...(row.additionalAccounts||[]).slice(0,2).map(employeeAccounts.scope)];
-  const businessAccounts=()=>employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a));
-  const allowed=station?[memberships[0],...businessAccounts().filter(a=>a.station===station)]:isOps(row)?businessAccounts():memberships;
-  return [...new Map(allowed.map(scope=>[employeeAccounts.key(scope),scope])).values()];
+  const primary=employeeAccounts.scope(row);
+  if(station||isOps(row)){
+   const businessAccounts=employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)&&(!station||a.station===station));
+   const preferred=station&&businessAccounts.find(a=>same(a,primary));
+   return preferred?[preferred,...businessAccounts.filter(a=>!same(a,preferred))]:businessAccounts;
+  }
+  const memberships=[primary,...(row.additionalAccounts||[]).slice(0,2).map(employeeAccounts.scope)];
+  return [...new Map(memberships.map(scope=>[employeeAccounts.key(scope),scope])).values()];
  };
- function employee(user,scope){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);if(scope?.station!==undefined||scope?.account!==undefined){if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));if(!selected)fail('You are not assigned to this station/account.',403);return {...row,...selected};}return row;}
+ function employee(user,scope){
+  profiles.status(user);
+  const row=profiles.linked(user);
+  if(!row)fail('Link your employee account in My Profile first.',403);
+  if(scope?.station!==undefined||scope?.account!==undefined){
+   if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);
+   const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));
+   if(!selected)fail('You are not assigned to this station/account.',403);
+   return {...row,...selected};
+  }
+  if(!safetyStation(row))return row;
+  const [selected]=accounts(row);
+  if(!selected)fail('No PBB accounts assigned to this station.',403);
+  return {...row,...selected};
+ }
  const dashboard=user=>require('./serverOwners').isOwner(user);
  const configEditor=user=>require('./serverOwners').isOwner(user)||!!advocateStation(user)||['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
  const globalDashboard=user=>['lax@mu.com','nextweek1216@gmail.com','lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
  const businessManager=user=>employeePositions.normalize(profiles.linked(user)?.position)==='Business Manager';
  const permissionPage=require('./pagePermissions').pagePermissions;
  const qaPermissions=permissionPage(db,'qa',()=>employees.get().employees);
- const dashboardPermissions=permissionPage(db,'has-pbb-dashboard',()=>employees.get().employees.filter(row=>!employeeAccounts.isHeadquarter(row)));
+ const dashboardPermissions=permissionPage(db,'has-pbb-dashboard',()=>employees.get().employees.filter(row=>safetyStation(row)||!employeeAccounts.isHeadquarter(row)));
  const qaViewer=user=>{
   const row=profiles.linked(user);
   return !!safetyStation(row)||qaPermissions.allows(user,row,globalDashboard(user)||employeePositions.normalize(row?.position)==='Quality Assurance Manager & Project Coordinator');
  };
  const dashboardViewer=user=>{
   const row=profiles.linked(user);
-  return !!row&&!employeeAccounts.isHeadquarter(row)&&(!!safetyStation(row)||dashboardPermissions.allows(user,row,globalDashboard(user)||businessManager(user)));
+  return !!safetyStation(row)||!!row&&!employeeAccounts.isHeadquarter(row)&&dashboardPermissions.allows(user,row,globalDashboard(user)||businessManager(user));
  };
  function reportScope(req,{pdf=false}={}){
   const station=advocateStation(req.hasUser);
   if(req.pbbQa)return station?{station}:null;
   if(!station)return employeeAccounts.scope(employee(req.hasUser));
-  if(req.query.station===undefined&&req.query.account===undefined)return pdf?{station}:employeeAccounts.scope(employee(req.hasUser));
+  if(req.query.station===undefined&&req.query.account===undefined){
+   if(pdf)return {station};
+   return employeeAccounts.scope(employee(req.hasUser));
+  }
   return employeeAccounts.scope(employee(req.hasUser,req.query));
  }
  function roleCheck(e,role,date=today(),gate){

@@ -115,8 +115,8 @@ function registerEmployees(app,{store,authenticate,profiles,onChange=()=>{},fire
   const station=req.pbbSafetyStation;
   if(station&&(req.query.station!==undefined||req.query.account!==undefined)&&
    (!scope||scope.station!==station||!data.accounts.some(a=>employeeAccounts.same(a,scope))))return null;
-  const candidates=station?data.employees.filter(row=>!row.mergedInto&&!employeeAccounts.isHeadquarter(row)&&employeeAccounts.scope(row).station===station):scopedView(data,access).employees;
-  const visible=candidates.filter(row=>!row.accountDisabled&&(!scope||employeeAccounts.belongs(row,scope)));
+  const candidates=station?data.employees.filter(row=>!row.mergedInto&&!employeeAccounts.isHeadquarter(employeeAccounts.scope(row))&&employeeAccounts.normalize(row.station)===station):scopedView(data,access).employees;
+  const visible=candidates.filter(row=>!row.accountDisabled&&(!scope||employeeAccounts.belongs(row,scope)||station&&employeeAccounts.same(row,scope)));
   return {revision:data.revision,employees:visible.map(row=>({id:row.id,name:row.name,position:row.position,station:row.station,account:row.account,canEdit:!!station||access.mode==='admin'||editableBy(row,access)||(access.pbbPositions||[]).includes(employeePositions.normalize(row.position))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)),...Object.fromEntries(['pbbId','pbbExpiry','pbbMscId','pbbMscExpiry'].map(key=>[key,row[key]||'']))}))};
  };
  app.get('/employee-admin-api/pbb',(req,res)=>{
