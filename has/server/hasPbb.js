@@ -3,6 +3,7 @@ const items=require('../public/has-pbb-data');
 const terminalLicense=require('../public/pbb-terminal-license');
 const employeeAccounts=require('../public/employee-account-groups');
 const employeePositions=require('../public/employee-positions');
+const {safetyStation}=require('./pbbSafetyAccess');
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const validDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d))&&new Date(d).toISOString().slice(0,10)===d;
 function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildPdf=require('./hasPbbPdf').buildHasPbbPdf,sendProblemEmail}){
@@ -38,23 +39,58 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  const problemMail=require('./hasPbbProblemMail').createProblemMailer({db,employees,now:()=>store.now(),...(sendProblemEmail?{sendEmail:sendProblemEmail}:{})});
  const same=(a,b)=>a.station===b.station&&a.account===b.account;
  const isOps=row=>employeeAccounts.same(row,{station:'LAX',account:'OPS'});
- const accounts=row=>[...new Map((isOps(row)?employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)):[employeeAccounts.scope(row),...(row.additionalAccounts||[]).slice(0,2).map(employeeAccounts.scope)]).map(scope=>[employeeAccounts.key(scope),scope])).values()];
- function employee(user,scope){profiles.status(user);const row=profiles.linked(user);if(!row)fail('Link your employee account in My Profile first.',403);if(scope?.station!==undefined||scope?.account!==undefined){if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));if(!selected)fail('You are not assigned to this station/account.',403);return {...row,...selected};}return row;}
+ const advocateStation=user=>safetyStation(profiles.linked(user));
+ const accounts=row=>{
+  const station=safetyStation(row);
+  const primary=employeeAccounts.scope(row);
+  if(station||isOps(row)){
+   const businessAccounts=employees.get().accounts.filter(a=>!employeeAccounts.isHeadquarter(a)&&(!station||a.station===station));
+   const preferred=station&&businessAccounts.find(a=>same(a,primary));
+   return preferred?[preferred,...businessAccounts.filter(a=>!same(a,preferred))]:businessAccounts;
+  }
+  const memberships=[primary,...(row.additionalAccounts||[]).slice(0,2).map(employeeAccounts.scope)];
+  return [...new Map(memberships.map(scope=>[employeeAccounts.key(scope),scope])).values()];
+ };
+ function employee(user,scope){
+  profiles.status(user);
+  const row=profiles.linked(user);
+  if(!row)fail('Link your employee account in My Profile first.',403);
+  if(scope?.station!==undefined||scope?.account!==undefined){
+   if(typeof scope.station!=='string'||typeof scope.account!=='string'||!scope.station.trim()||!scope.account.trim())fail('Select a station and account.',400);
+   const selected=accounts(row).find(a=>employeeAccounts.same(a,employeeAccounts.scope(scope)));
+   if(!selected)fail('You are not assigned to this station/account.',403);
+   return {...row,...selected};
+  }
+  if(!safetyStation(row))return row;
+  const [selected]=accounts(row);
+  if(!selected)fail('No PBB accounts assigned to this station.',403);
+  return {...row,...selected};
+ }
  const dashboard=user=>require('./serverOwners').isOwner(user);
- const configEditor=user=>require('./serverOwners').isOwner(user)||['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
+ const configEditor=user=>require('./serverOwners').isOwner(user)||!!advocateStation(user)||['Supervisor','Business Manager'].includes(employeePositions.normalize(profiles.linked(user)?.position));
  const globalDashboard=user=>['lax@mu.com','nextweek1216@gmail.com','lake@mu.com','demo@hm.com'].includes(String(user.email||'').trim().toLowerCase());
  const businessManager=user=>employeePositions.normalize(profiles.linked(user)?.position)==='Business Manager';
  const permissionPage=require('./pagePermissions').pagePermissions;
  const qaPermissions=permissionPage(db,'qa',()=>employees.get().employees);
- const dashboardPermissions=permissionPage(db,'has-pbb-dashboard',()=>employees.get().employees.filter(row=>!employeeAccounts.isHeadquarter(row)));
+ const dashboardPermissions=permissionPage(db,'has-pbb-dashboard',()=>employees.get().employees.filter(row=>safetyStation(row)||!employeeAccounts.isHeadquarter(row)));
  const qaViewer=user=>{
   const row=profiles.linked(user);
-  return qaPermissions.allows(user,row,globalDashboard(user)||employeePositions.normalize(row?.position)==='Quality Assurance Manager & Project Coordinator');
+  return !!safetyStation(row)||qaPermissions.allows(user,row,globalDashboard(user)||employeePositions.normalize(row?.position)==='Quality Assurance Manager & Project Coordinator');
  };
  const dashboardViewer=user=>{
   const row=profiles.linked(user);
-  return !!row&&!employeeAccounts.isHeadquarter(row)&&dashboardPermissions.allows(user,row,globalDashboard(user)||businessManager(user));
+  return !!safetyStation(row)||!!row&&!employeeAccounts.isHeadquarter(row)&&dashboardPermissions.allows(user,row,globalDashboard(user)||businessManager(user));
  };
+ function reportScope(req,{pdf=false}={}){
+  const station=advocateStation(req.hasUser);
+  if(req.pbbQa)return station?{station}:null;
+  if(!station)return employeeAccounts.scope(employee(req.hasUser));
+  if(req.query.station===undefined&&req.query.account===undefined){
+   if(pdf)return {station};
+   return employeeAccounts.scope(employee(req.hasUser));
+  }
+  return employeeAccounts.scope(employee(req.hasUser,req.query));
+ }
  function roleCheck(e,role,date=today(),gate){
   if(!['driver','spotter'].includes(role))fail('Select Driver or Spotter');
   if(role==='driver'&&!(gate===undefined?terminalLicense.any(e,date):terminalLicense.valid(terminalLicense.forGate(e,gate),date)))fail('A valid '+(gate!==undefined&&e.station==='LAX'?(terminalLicense.terminal(e.station,gate)||'recognized LAX gate')+' ':'')+'PBB ID and unexpired qualification are required. Cannot drive PBB.',403);
@@ -165,7 +201,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   }
   res.json(saved);
  }));
- app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({allAccountAccess:isOps(profiles.linked(req.hasUser)),accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser)||configEditor(req.hasUser)&&(employeePositions.normalize(profiles.linked(req.hasUser)?.position)!=='Business Manager'||same(e,employeeAccounts.scope(profiles.linked(req.hasUser)))),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
+ app.get('/has-pbb-api/context',route((req,res)=>{const e=req.hasEmployee;res.json({allAccountAccess:!!advocateStation(req.hasUser)||isOps(profiles.linked(req.hasUser)),stationDashboard:!!advocateStation(req.hasUser),accounts:accounts(profiles.linked(req.hasUser)),employee:{id:e.id,name:e.name,station:e.station,account:e.account,pbbId:e.pbbId||'',pbbExpiry:e.pbbExpiry||'',pbbMscId:e.pbbMscId||'',pbbMscExpiry:e.pbbMscExpiry||'',driver:terminalLicense.any(e,today()),spotter:true},date:today(),dashboard:dashboardViewer(req.hasUser),canConfigure:dashboard(req.hasUser)||configEditor(req.hasUser)&&(employeePositions.normalize(profiles.linked(req.hasUser)?.position)!=='Business Manager'||same(e,employeeAccounts.scope(profiles.linked(req.hasUser)))),canManageFlights:e.position==='Manager',defaultFlights:defaultFlights(e),flightSchedule:scopedSchedule(e),...gateState(e)});}));
  app.post('/has-pbb-api/gate',route((req,res)=>{
   const e=req.hasEmployee;roleCheck(e,req.body.role);const flightNo=String(req.body.flightNo||'').trim().toUpperCase(),gate=String(req.body.gate||'').trim().toUpperCase();
   if(!/^[A-Z0-9]{2,3}\d{1,4}$/.test(flightNo)||! /^[A-Z0-9-]{1,20}$/.test(gate))fail('Confirm flight and gate number.');
@@ -267,7 +303,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
  };
  app.get('/has-pbb-api/records/:id/pdf',route((req,res)=>sendPdf(req,res,authorized(req,req.params.id),()=>authorized(req,req.params.id))));
  app.get('/has-pbb-api/dashboard/records/:id/pdf',route((req,res)=>{
-  const authorize=()=>{const r=get(req.params.id);if(!(req.pbbQa?qaViewer(req.hasUser):dashboardViewer(req.hasUser)))fail('Dashboard access denied.',403);if(employeeAccounts.isHeadquarter(r)||!req.pbbQa&&!same(employeeAccounts.scope(employee(req.hasUser)),r))fail('You can only download your Main Account PDFs.',403);return r;};
+  const authorize=()=>{const r=get(req.params.id);if(!(req.pbbQa?qaViewer(req.hasUser):dashboardViewer(req.hasUser)))fail('Dashboard access denied.',403);const allowed=reportScope(req,{pdf:true});if(employeeAccounts.isHeadquarter(r)||allowed&&(employeeAccounts.normalize(r.station)!==allowed.station||allowed.account&&r.account!==allowed.account))fail('This checklist is outside your dashboard scope.',403);return r;};
   return sendPdf(req,res,authorize(),authorize);
  }));
  app.get('/has-pbb-api/stream',route((req,res)=>{
@@ -278,16 +314,16 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
   const timer=setInterval(()=>{try{if(!same(employee(sub.user,sub.scope),sub.scope))return res.end();res.write(': keep-alive\n\n');}catch{res.end();}},15000);timer.unref();res.on('close',()=>{clearInterval(timer);streams.delete(sub);});
  }));
  app.get('/has-pbb-api/dashboard',route((req,res)=>{
-  // Resolve Main Account from the linked profile, never from client filters or additional accounts.
-  const allowed=req.pbbQa?null:employeeAccounts.scope(employee(req.hasUser));
+  const allowed=reportScope(req);
   const qaPolicy=req.pbbQa?qaAccountPolicy():null,hiddenQaAccounts=new Set((qaPolicy?.hidden||[]).map(employeeAccounts.key));
-  const visible=scope=>!employeeAccounts.isHeadquarter(scope)&&(!allowed||same(allowed,scope))&&(!req.pbbQa||!hiddenQaAccounts.has(employeeAccounts.key(scope)));
+  const visible=scope=>!employeeAccounts.isHeadquarter(scope)&&(!allowed||scope.station===allowed.station&&(!allowed.account||scope.account===allowed.account))&&(!req.pbbQa||!hiddenQaAccounts.has(employeeAccounts.key(scope)));
   const end=String(req.query.end||today());if(!validDate(end))fail('Select a valid end date.');
   const start=String(req.query.start||new Date(Date.parse(end)-6*86400000).toISOString().slice(0,10));
   if(!validDate(start)||!validDate(end)||start>end||(Date.parse(end)-Date.parse(start))/86400000>92)fail('Select a date range of up to 93 days.');
-  const station=String(req.query.station||'ALL').toUpperCase(),account=String(req.query.account||'ALL').toUpperCase();
-  if(allowed&&((station!=='ALL'&&station!==allowed.station)||(account!=='ALL'&&account!==allowed.account)))fail('You can only view your Main Account dashboard.',403);
-  const rowStation=allowed?.station||station,rowAccount=allowed?.account||account;
+  let station=String(req.query.station||'ALL').toUpperCase();const account=String(req.query.account||'ALL').toUpperCase();
+  if(allowed&&((station!=='ALL'&&station!==allowed.station)||(allowed.account&&account!=='ALL'&&account!==allowed.account)))fail('This dashboard is outside your station/account scope.',403);
+  if(allowed)station=allowed.station;
+  const rowStation=station,rowAccount=allowed?.account||account;
   const rows=db.prepare("SELECT data FROM has_pbb_records WHERE (?='ALL' OR station=?) AND (?='ALL' OR account=?) AND date>=? AND date<=? ORDER BY date,station,account,flight,bridge").all(rowStation,rowStation,rowAccount,rowAccount,start,end).map(x=>JSON.parse(x.data)).filter(visible);
   const configured=schedule().pairs.filter(visible);
   const roster=employees.get();
@@ -313,7 +349,7 @@ function registerHasPbb(app,{store,employees,profiles,authenticate,client,buildP
     }
    }
   }
-  res.json({station:allowed?.station||station,account:allowed?.account||account,start,end,daily,scopes:allowed?[allowed]:scopes,byScope,...(req.pbbQa?{missing,canManageAccounts:dashboard(req.hasUser),accountVisibilityRevision:qaPolicy.revision}:{}),records:(req.pbbQa&&(station==='ALL'||account==='ALL')?[]:rows).map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
+  res.json({station:allowed?.station||station,account:allowed?.account||account,start,end,daily,scopes:allowed?.account?[allowed]:scopes,byScope,...(req.pbbQa?{missing,stationScope:allowed?.station,canManageAccounts:dashboard(req.hasUser),accountVisibilityRevision:qaPolicy.revision}:{}),records:(req.pbbQa&&(station==='ALL'||account==='ALL')?[]:rows).map(({answers,signatures,evidence,...r})=>({...r,operators:Object.fromEntries(Object.entries(signatures).map(([role,s])=>[role,s.name]))}))});
  }));
  for(const row of db.prepare('SELECT id,data FROM has_pbb_records').all()){const r=JSON.parse(row.data);if(r.completedAt&&(r.delivery.status!=='ready'||r.station==='LAX'&&r.account==='MU'&&['pending','failed'].includes(r.discordDelivery?.status)))void deliver(row.id);}
  return {deliver,get,pruneIncomplete,flushProblemMail:problemMail.tick,close(){problemMail.close();clearInterval(cleanupTimer);for(const s of streams)s.res.end();}};

@@ -78,11 +78,12 @@ test('manual reset protects a concurrent answer and prevents stale PDF delivery 
  const fresh=(await f.request('spotter','/records/'+r.id+'/reset',{role:'spotter',revision:r.revision})).data;release(Buffer.from('obsolete PDF'));await job;
  assert.deepEqual(f.service.get(r.id),fresh);assert.equal(f.uploads(),0);assert.equal(f.db.prepare('SELECT pdf FROM has_pbb_records WHERE id=?').get(r.id).pdf,null);
 });
-async function fixture(t,{failUpload=false,buildPdf,client,sendProblemEmail,owner=false}={}){
+async function fixture(t,{failUpload=false,buildPdf,client,sendProblemEmail,owner=false,extraEmployees=[]}={}){
  const db=new Database(':memory:');let now=new Date('2026-10-21T17:00:00Z'),uploads=0;
  const seed=[['driver','LAX','MU'],['spotter','LAX','MU'],['other','SFO','MU'],['account','LAX','XX'],['expired','LAX','MU'],['missing','LAX','MU']].map(([id,station,account])=>({id,position:['driver','other','account'].includes(id)?'Manager':'Agent',name:'TEST '+id.toUpperCase(),eid:'123',station,account,attach:true,detach:true,spotter:true,pbbId:id==='missing'?'':'PBB-'+id,pbbExpiry:id==='missing'?'':id==='expired'?'2026-10-20':'2026-10-21'}));
- const employees=createEmployeeStore(db,{seed});const profiles={status:()=>{},linked:u=>{const row=employees.get().employees.find(e=>e.id===u.uid);return row&&{...row,isServerOwner:owner};}};
+ const employees=createEmployeeStore(db,{seed:[...seed,...extraEmployees]});const profiles={status:()=>{},linked:u=>{const row=employees.get().employees.find(e=>e.id===u.uid);return row&&{...row,isServerOwner:owner};}};
  const app=express();app.use(express.json({limit:'2mb'}));const service=registerHasPbb(app,{store:{db,now:()=>now},employees,profiles,client,authenticate:async req=>{const uid=req.headers.authorization?.replace('Bearer ','');if(!uid)throw Error('Sign in required');return {uid,email:uid==='lake'?'lake@mu.com':uid==='demo'?'demo@hm.com':uid+'@test.invalid'};},...(buildPdf?{buildPdf}:{}),...(sendProblemEmail?{sendProblemEmail}:{}),drive:{files:{generateIds:async()=>({data:{ids:['fake-id']}}),get:async()=>{throw {code:404};},create:async()=>{uploads++;if(failUpload)throw Error('fixture upload failure');return {data:{id:'fake-id'}};}}}});
+ if(extraEmployees.length)require('../has/server/employees').registerEmployees(app,{store:employees,profiles,authenticate:async req=>({uid:req.headers.authorization.replace('Bearer ',''),email:'advocate@test.invalid'})});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;
  t.after(()=>{service.close();server.closeAllConnections();server.close();db.close();});
  const request=async(user,path='',body,method)=>{if(body?.action==='answer'&&body.value===false&&body.evidence===undefined)body={...body,evidence:{reason:'Fixture obstruction',photo:'data:image/webp;base64,'+require('node:fs').readFileSync(require('node:path').join(__dirname,'../has/public/assets/pbb/has-crew-acknowledgment-v1.webp')).toString('base64')}};const res=await fetch(base+'/has-pbb-api'+path,{method:method||(body?'POST':'GET'),headers:{Authorization:'Bearer '+user,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:res.status,data:res.headers.get('content-type')?.includes('json')?await res.json():Buffer.from(await res.arrayBuffer())};};
@@ -550,4 +551,53 @@ test('QA account display defaults CBS off, supports restore, scopes all totals, 
  const detail=(await f.request('lake','/dashboard?qa=1&station=LAX&account=CBS&start=2026-10-21&end=2026-10-21')).data;assert.deepEqual(detail.byScope,[]);assert.deepEqual(detail.records,[]);assert.deepEqual(detail.missing,[]);
  const operational=(await f.request('driver','/dashboard?start=2026-10-21&end=2026-10-21')).data;assert.equal(operational.daily[0].expectedFlights,2);assert.equal(operational.scopes[0].account,'MU');
  assert.deepEqual(JSON.parse(f.db.prepare('SELECT hidden FROM has_pbb_qa_accounts').get().hidden),hidden);assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM has_pbb_records WHERE id=?').get(record.id).n,1);
+});
+
+test('Safety Advocates can configure and review all PBB accounts in their own station only',async t=>{
+ const advocate={id:'advocate',name:'Safety Advocate',position:'Safety Advocate',station:'SFO',account:'HQ',attach:false,detach:false,spotter:true};
+ const stationOps={id:'sfo-ops',name:'SFO OPS Agent',position:'Agent',station:'SFO',account:'OPS',attach:false,detach:false,spotter:true};
+ const f=await fixture(t,{extraEmployees:[advocate,stationOps]});
+ const own='station=SFO&account=MU',foreign='station=LAX&account=MU';
+ const request=(path,body)=>f.request('advocate',path,body);
+ const context=await request('/context?'+own);
+ assert.equal(context.status,200);
+ assert.equal(context.data.canConfigure,true);
+ assert.equal(context.data.dashboard,true);
+ assert.equal((await request('/context')).data.employee.account,'MU');
+ assert.deepEqual(context.data.accounts.map(s=>s.station+'/'+s.account).sort(),['SFO/MU','SFO/OPS']);
+ for(const path of ['/context','/dashboard','/dashboard/config'])assert.equal((await request(path+'?'+foreign)).status,403);
+ const config=(await request('/dashboard/config?'+own)).data;
+ const pair={id:'sfo-mu',station:'SFO',account:'MU',inbound:{flightNo:'MU101',days:[3]},outbound:{flightNo:'MU102',days:[3]}};
+ assert.equal((await request('/dashboard/config?'+own,{revision:config.revision,pairs:[{...pair,station:'LAX'}]})).status,403);
+ assert.equal((await request('/dashboard/config?'+own,{revision:config.revision,pairs:[pair]})).status,200);
+ assert.equal((await request('/dashboard?'+own)).data.byScope[0].expectedFlights,2);
+ const qa=(await request('/dashboard?qa=1')).data;
+ assert.equal(qa.station,'SFO');
+ assert.ok(qa.scopes.length&&qa.scopes.every(scope=>scope.station==='SFO'));
+ assert.equal((await request('/dashboard?qa=1&'+foreign)).status,403);
+ const outside=(await f.create()).data;
+ for(const suffix of ['', '?qa=1'])assert.equal((await request('/dashboard/records/'+outside.id+'/pdf'+suffix)).status,403);
+ const directory=async(path,body)=>{
+  const response=await fetch(f.base+'/employee-admin-api'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer advocate','Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+  return {status:response.status,data:await response.json()};
+ };
+ assert.equal((await directory('')).status,403);
+ assert.equal((await directory('/pbb?'+foreign)).status,403);
+ const {revision,employees}= (await directory('/pbb?'+own)).data;
+ assert.deepEqual(employees.map(e=>e.id),['other']);
+ const update={revision,id:'other',pbbId:'SFO-123',pbbExpiry:'2027-01-01',pbbMscId:'',pbbMscExpiry:''};
+ assert.equal((await directory('/pbb?'+own,{...update,id:'driver'})).status,403);
+ assert.equal((await directory('/pbb?'+own,update)).status,200);
+ assert.equal(f.employees.get().employees.find(e=>e.id==='other').pbbId,'SFO-123');
+});
+
+test('SFO gates accept letter and number combinations and store uppercase values',async t=>{
+ const f=await fixture(t);
+ for(const [index,gate] of ['a1','A15','b28','C20','g13','A1B2'].entries()){
+  const body={role:'driver',flightNo:'MU'+(200+index),gate};
+  assert.equal((await f.request('other','/gate',body)).status,200);
+  const record=await f.request('other','/records',{...body,bridge:'L1'});
+  assert.equal(record.status,201);
+  assert.equal(record.data.gate,gate.toUpperCase());
+ }
 });

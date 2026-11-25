@@ -1,4 +1,5 @@
 const employeeAccounts=require('../public/employee-account-groups');
+const {safetyStation}=require('./pbbSafetyAccess');
 const employeePositions=require('../public/employee-positions');
 const {StandardFontEmbedder,StandardFonts}=require('../../vendor/pdf-lib/pdf-lib');
 const employeeFont=StandardFontEmbedder.for(StandardFonts.Helvetica);
@@ -106,16 +107,24 @@ function registerEmployees(app,{store,authenticate,profiles,onChange=()=>{},fire
  };
  const editableBy=(row,access)=>(row.id===access.employeeId||access.canEditEmployeeInfo&&!employeeAccounts.isHeadquarter(row)&&(access.editablePositions||['Lead','Agent']).includes(employeePositions.normalize(row.position))&&!ADMIN_EMAILS.has(normalizeLoginId(row.loginId))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)));
  const scopedView=(data,access)=>{const hidden=new Set(store.db?store.db.prepare('SELECT source_employee_id FROM employee_profile_merges').all().map(row=>row.source_employee_id):[]);data={...data,employees:data.employees.filter(row=>!hidden.has(row.id))};return access.mode==='admin'?{...data,access}:{...data,access:{...access,editableEmployeeIds:data.employees.filter(row=>editableBy(row,access)).map(row=>row.id)},accountChoices:access.canAssignAccounts?data.accounts||[]:[employeeAccounts.scope(access)],accounts:(data.accounts||[]).filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope))),employees:data.employees.filter(row=>(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)))};};
- app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);if(require('./employeeAccountStatus').blocked(store.db,req.employeeAdmin))throw Error('Account disabled');req.employeeAccess=accessFor(req.employeeAdmin);if(!req.employeeAccess&&req.path==='/access'&&require('./notificationAccess').accessFor(req.employeeAdmin,profiles?.linked(req.employeeAdmin)))return res.json({canAccess:true,notificationOnly:true});if(!req.employeeAccess)return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
+ app.use('/employee-admin-api',async(req,res,next)=>{res.set('Cache-Control','private, no-store');try{req.employeeAdmin=await authenticate(req);if(require('./employeeAccountStatus').blocked(store.db,req.employeeAdmin))throw Error('Account disabled');if(req.path==='/pbb'&&['GET','POST'].includes(req.method))req.pbbSafetyStation=safetyStation(profiles?.linked(req.employeeAdmin));
+ req.employeeAccess=accessFor(req.employeeAdmin);if(req.pbbSafetyStation){next();return;}if(!req.employeeAccess&&req.path==='/access'&&require('./notificationAccess').accessFor(req.employeeAdmin,profiles?.linked(req.employeeAdmin)))return res.json({canAccess:true,notificationOnly:true});if(!req.employeeAccess)return res.status(403).json({error:'Employee administrator access required'});next();}catch{res.status(401).json({error:'Sign in required'});}});
  app.get('/employee-admin-api',(req,res)=>res.json(scopedView(store.get(),req.employeeAccess)));
  const pbbView=req=>{
   const data=store.get(),access=req.employeeAccess,scope=req.query.station&&req.query.account?employeeAccounts.scope(req.query):null;
-  const visible=scopedView(data,access).employees.filter(row=>!row.accountDisabled&&(!scope||employeeAccounts.belongs(row,scope)));
-  return {revision:data.revision,employees:visible.map(row=>({id:row.id,name:row.name,position:row.position,station:row.station,account:row.account,canEdit:access.mode==='admin'||editableBy(row,access)||(access.pbbPositions||[]).includes(employeePositions.normalize(row.position))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)),...Object.fromEntries(['pbbId','pbbExpiry','pbbMscId','pbbMscExpiry'].map(key=>[key,row[key]||'']))}))};
+  const station=req.pbbSafetyStation;
+  if(station&&(req.query.station!==undefined||req.query.account!==undefined)&&
+   (!scope||scope.station!==station||!data.accounts.some(a=>employeeAccounts.same(a,scope))))return null;
+  const candidates=station?data.employees.filter(row=>!row.mergedInto&&!employeeAccounts.isHeadquarter(employeeAccounts.scope(row))&&employeeAccounts.normalize(row.station)===station):scopedView(data,access).employees;
+  const visible=candidates.filter(row=>!row.accountDisabled&&(!scope||employeeAccounts.belongs(row,scope)||station&&employeeAccounts.same(row,scope)));
+  return {revision:data.revision,employees:visible.map(row=>({id:row.id,name:row.name,position:row.position,station:row.station,account:row.account,canEdit:!!station||access.mode==='admin'||editableBy(row,access)||(access.pbbPositions||[]).includes(employeePositions.normalize(row.position))&&(access.scopes||[access]).some(scope=>employeeAccounts.belongs(row,scope)),...Object.fromEntries(['pbbId','pbbExpiry','pbbMscId','pbbMscExpiry'].map(key=>[key,row[key]||'']))}))};
  };
- app.get('/employee-admin-api/pbb',(req,res)=>res.json(pbbView(req)));
+ app.get('/employee-admin-api/pbb',(req,res)=>{
+  const view=pbbView(req);if(!view)return res.status(403).json({error:'Choose a PBB account in your station.'});res.json(view);
+ });
  app.post('/employee-admin-api/pbb',(req,res)=>{try{
   const view=pbbView(req),input=req.body;
+  if(!view)throw Object.assign(Error('Choose a PBB account in your station.'),{status:403});
   if(view.revision!==input.revision)throw Object.assign(Error('Employee details changed. Reload before saving.'),{status:409});
   if(!view.employees.some(row=>row.id===input.id&&row.canEdit))throw Object.assign(Error('You cannot edit this employee’s PBB settings.'),{status:403});
   const data=store.get(),row=data.employees.find(row=>row.id===input.id);
