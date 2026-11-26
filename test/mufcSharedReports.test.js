@@ -19,7 +19,7 @@ test('DA/WWH writes and revisions are shared in both directions, while other HAS
  const {call,db}=await fixture(t);
  const saved=await call('mu','mufc','/da/2026-11',{revision:0,values:{K7:123,L6:1}});assert.equal(saved.status,200);
  const has=await call('mu','has','/da/2026-11');assert.equal(has.data.cells.K7.value,123);assert.equal(has.data.revision,1);
- assert.equal((await call('mu','has','/da/2026-11',{revision:1,values:{K7:234}})).status,200);
+ assert.equal((await call('mu','has','/da/2026-11',{revision:1,values:{G7:1130,K7:234}})).status,200);
  const mufc=await call('secondary','mufc','/da/2026-11',null,{station:'SFO',account:'XX'});assert.equal(mufc.data.cells.K7.value,234);assert.deepEqual(mufc.data.scope,{station:'LAX',account:'MU'});
  assert.equal((await call('mu','mufc','/da/2026-11',{revision:1,values:{K7:999}})).status,409);
  const wwh=await call('mu','mufc','/wwh/2026-11');assert.equal(wwh.data.calculated.AA11,234,'WWH consumes the shared DA');
